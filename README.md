@@ -1,20 +1,62 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Sahty EMR System
 
-# Run and deploy your AI Studio app
+Complete hospital Electronic Medical Records (EMR) system with integrated pharmacy module.
 
-This contains everything you need to run your app locally.
+## Features
 
-View your app in AI Studio: https://ai.studio/apps/drive/1eJumPAqG6lkxSJZ33tudU8VW67TzaF8R
+- **Patient Management**: Comprehensive patient records and dossiers
+- **Admission Management**: Patient admissions, ward mapping, and bed management
+- **Pharmacy Module**: Integrated pharmacy with inventory, prescriptions, and stock management
+- **AI Assistant**: Gemini-powered medical assistant
+- **Multi-language Support**: French and Arabic interface
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
+**Prerequisites:** Node.js
 
+### Frontend Setup
 
 1. Install dependencies:
-   `npm install`
+   ```bash
+   npm install
+   ```
+
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+
+3. Run the development server:
+   ```bash
+   npm run dev
+   ```
+
+4. Build for production:
+   ```bash
+   npm run build
+   ```
+
+### Backend Setup
+
+1. Navigate to backend directory:
+   ```bash
+   cd backend
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Run the backend server:
+   ```bash
+   npm run dev
+   ```
+
+## Architecture
+
+- **Frontend**: React + TypeScript + Vite
+- **Backend**: Node.js + Express + TypeScript
+- **Styling**: Custom CSS
+- **AI Integration**: Google Gemini API
+
+## License
+
+Proprietary
