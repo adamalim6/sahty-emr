@@ -1,0 +1,7 @@
+{
+  "name": "copy of Copy of Sahty EMR System",
+  "description": "A comprehensive Electronic Medical Record system featuring patient management, admissions, scheduling, ward mapping, and AI assistance.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
