@@ -27,6 +27,7 @@ export const formatDuration = (duration: string): string => {
 };
 
 export const getPosologyText = (formData: FormData): string | null => {
+    if (!formData || !formData.schedule) return null;
     const { type, schedule, adminMode, dilutionRequired, solvent } = formData;
 
     if (!schedule.startDateTime && type !== 'punctual-frequency') return null;

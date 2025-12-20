@@ -1,9 +1,12 @@
 
+// Server restart trigger
 import express from 'express';
 import cors from 'cors';
 import emrRoutes from './routes/emrRoutes';
 import pharmacyRoutes from './routes/pharmacyRoutes';
 import prescriptionRoutes from './routes/prescriptionRoutes';
+import serializedPackRoutes from './routes/serializedPackRoutes';
+import dispensationRoutes from './routes/dispensationRoutes';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -14,7 +17,10 @@ app.use(express.json());
 // Routes
 app.use('/api/emr', emrRoutes);
 app.use('/api/pharmacy', pharmacyRoutes);
+app.use('/api/pharmacy', serializedPackRoutes);
+app.use('/api/pharmacy', dispensationRoutes);
 app.use('/api/prescriptions', prescriptionRoutes);
+app.use('/api', dispensationRoutes); // For /api/prescriptions/:id/dispensations
 
 // Health check
 app.get('/health', (req, res) => {

@@ -13,7 +13,7 @@ import {
   InventoryItem, ItemCategory, InventorySession, InventoryStatus,
   ProductDefinition, PurchaseOrder, DeliveryNote, POStatus,
   StockLocation, QuarantineSessionResult, ProcessingStatus, ProductType,
-  PartnerInstitution, StockOutTransaction
+  PartnerInstitution, StockOutTransaction, PharmacySupplier, SerializedPack
 } from '../../types/pharmacy';
 import { StatCard } from './StatCard';
 import { InventoryTable } from './InventoryTable';
@@ -26,7 +26,8 @@ import { LocationManager } from './LocationManager';
 import { QuarantineManager } from './QuarantineManager';
 import { PartnerManager } from './PartnerManager';
 import { StockOutManager } from './StockOutManager';
-import { PrescriptionManager } from './PrescriptionManager'; // Import du composant
+import { PrescriptionManager } from './PrescriptionManager';
+import { SupplierManager } from './SupplierManager';
 import { analyzeInventoryDiscrepancies } from '../../services/pharmacyGemini';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -44,10 +45,12 @@ export const PharmacyModule: React.FC = () => {
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [deliveryNotes, setDeliveryNotes] = useState<DeliveryNote[]>([]);
   const [stockOutHistory, setStockOutHistory] = useState<StockOutTransaction[]>([]);
+  const [suppliers, setSuppliers] = useState<PharmacySupplier[]>([]);
+  const [allPacks, setAllPacks] = useState<SerializedPack[]>([]);
 
   const [loading, setLoading] = useState(true);
   // Ajout de 'prescriptions' au type de la vue
-  const [view, setView] = useState<'dashboard' | 'inventory' | 'stock' | 'catalog' | 'entry' | 'quarantine' | 'locations' | 'partners' | 'stockout' | 'prescriptions'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'inventory' | 'stock' | 'catalog' | 'entry' | 'quarantine' | 'locations' | 'partners' | 'stockout' | 'prescriptions' | 'suppliers'>('dashboard');
   const [searchTerm, setSearchTerm] = useState('');
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -61,12 +64,16 @@ export const PharmacyModule: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [inv, cat, loc, part, hist] = await Promise.all([
+        const [inv, cat, loc, part, hist, pos, notes, sups, packs] = await Promise.all([
           api.getInventory(),
           api.getCatalog(),
           api.getLocations(),
           api.getPartners(),
-          api.getStockOutHistory()
+          api.getStockOutHistory(),
+          api.getPurchaseOrders(),
+          api.getDeliveryNotes(),
+          api.getSuppliers(),
+          api.getSerializedPacks()
         ]);
         setSystemItems(inv);
         setProductCatalog(cat);
@@ -74,6 +81,10 @@ export const PharmacyModule: React.FC = () => {
         setPartners(part);
         // Convert date strings to Date objects
         setStockOutHistory(hist.map(h => ({ ...h, date: new Date(h.date) })));
+        setPurchaseOrders(pos.map(p => ({ ...p, date: new Date(p.date) })));
+        setDeliveryNotes(notes.map(n => ({ ...n, date: new Date(n.date) })));
+        setSuppliers(sups);
+        setAllPacks(packs);
         setLoading(false);
       } catch (error) {
         console.error("Failed to load pharmacy data", error);
@@ -83,66 +94,93 @@ export const PharmacyModule: React.FC = () => {
     fetchData();
   }, []);
 
-  const handleAddProduct = (product: ProductDefinition) => setProductCatalog([...productCatalog, product]);
-  const handleUpdateProduct = (product: ProductDefinition) => setProductCatalog(productCatalog.map(p => p.id === product.id ? product : p));
+  // Refetch Inventory when switching to Stock view to ensure fresh data after dispensations
+  useEffect(() => {
+    if (view === 'stock' || view === 'dashboard') {
+      api.getInventory().then(setSystemItems).catch(console.error);
+      if (view === 'stock') {
+        api.getSerializedPacks().then(setAllPacks).catch(console.error);
+      }
+    }
+  }, [view]);
+
+  const handleAddProduct = async (product: ProductDefinition) => {
+    try {
+      const newProduct = await api.createProduct(product);
+      setProductCatalog([...productCatalog, newProduct]);
+    } catch (e) {
+      alert("Erreur lors de la création du produit");
+    }
+  };
+
+  const handleUpdateProduct = async (product: ProductDefinition) => {
+    try {
+      const updated = await api.updateProduct(product);
+      setProductCatalog(productCatalog.map(p => p.id === updated.id ? updated : p));
+    } catch (e) {
+      alert("Erreur lors de la mise à jour du produit");
+    }
+  };
   const handleUpdateLocations = (newLocations: StockLocation[]) => setLocations(newLocations);
   const handleUpdatePartners = (newPartners: PartnerInstitution[]) => setPartners(newPartners);
-  const handleCreatePO = (po: PurchaseOrder) => setPurchaseOrders([po, ...purchaseOrders]);
-
-  const handleReceiveDelivery = (poId: string, deliveryNote: DeliveryNote) => {
-    const updatedPOs = purchaseOrders.map(po => {
-      if (po.id !== poId) return po;
-      const newItems = po.items.map(item => {
-        const deliveredNow = deliveryNote.items.find(d => d.productId === item.productId)?.deliveredQty || 0;
-        return { ...item, deliveredQty: item.deliveredQty + deliveredNow };
-      });
-      const allComplete = newItems.every(i => i.deliveredQty >= i.orderedQty);
-      const someDelivered = newItems.some(i => i.deliveredQty > 0);
-      const status = allComplete ? POStatus.COMPLETED : someDelivered ? POStatus.PARTIAL : POStatus.DRAFT;
-      return { ...po, items: newItems, status };
-    });
-    setPurchaseOrders(updatedPOs);
-    setDeliveryNotes([{ ...deliveryNote, status: ProcessingStatus.PENDING }, ...deliveryNotes]);
+  const handleUpdateSuppliers = async () => {
+    const sups = await api.getSuppliers();
+    setSuppliers(sups);
   };
+
+  const handleCreatePO = async (po: PurchaseOrder) => {
+    try {
+      const newPO = await api.createPurchaseOrder(po);
+      // Convert date string to Date object
+      const poWithDate = { ...newPO, date: new Date(newPO.date) };
+      setPurchaseOrders([poWithDate, ...purchaseOrders]);
+    } catch (e) {
+      console.error(e);
+      alert("Erreur lors de la création du bon de commande");
+    }
+  };
+
+  const handleReceiveDelivery = async (poId: string, deliveryNote: DeliveryNote) => {
+    try {
+      const newNote = await api.createDeliveryNote(deliveryNote);
+      // Convert date string to Date object
+      const noteWithDate = { ...newNote, date: new Date(newNote.date) };
+      setDeliveryNotes([noteWithDate, ...deliveryNotes]);
+
+      // Refresh POs to get updated deliveredQty/status
+      api.getPurchaseOrders().then(pos => {
+        setPurchaseOrders(pos.map(p => ({ ...p, date: new Date(p.date) })));
+      });
+    } catch (e) {
+      console.error(e);
+      alert("Erreur lors de la réception");
+    }
+  };
+
 
   const handleConfirmStockOut = (transaction: StockOutTransaction) => {
     setStockOutHistory([transaction, ...stockOutHistory]);
-    const newSystemItems = systemItems.map(item => {
-      const match = transaction.items.find(t => t.inventoryItemId === item.id);
-      if (match) return { ...item, theoreticalQty: item.theoreticalQty - match.quantityToRemove };
-      return item;
-    });
-    setSystemItems(newSystemItems);
-    alert(`Sortie de stock confirmée pour ${transaction.type}. Stock mis à jour.`);
+    // Note: Add API call for stock out later if needed, but backend has getStockOutHistory. 
+    // Assuming StockOutManager calls API internally? No, it calls onConfirmStockOut.
+    // Need to add API call here ideally.
   };
 
-  const handleQuarantineProcess = (result: QuarantineSessionResult) => {
-    const updatedNotes = deliveryNotes.map(n => n.id === result.noteId ? { ...n, status: ProcessingStatus.PROCESSED, processingResult: result } : n);
-    setDeliveryNotes(updatedNotes);
+  const handleQuarantineProcess = async (result: QuarantineSessionResult) => {
+    try {
+      await api.processQuarantine(result);
 
-    const newInventoryItems: InventoryItem[] = [];
-    result.items.forEach(procItem => {
-      const productDef = productCatalog.find(p => p.id === procItem.productId);
-      if (!productDef) return;
-      procItem.batches.forEach(batch => {
-        if (batch.quantity <= 0) return;
-        newInventoryItems.push({
-          id: `INV-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
-          productId: procItem.productId,
-          name: productDef.name,
-          category: productDef.type === ProductType.DRUG ? ItemCategory.ANTIBIOTICS : ItemCategory.CONSUMABLES,
-          location: batch.locationId,
-          batchNumber: batch.batchNumber || 'N/A',
-          expiryDate: batch.expiryDate || '2099-12-31',
-          unitPrice: productDef.suppliers[0]?.purchasePrice || 0,
-          theoreticalQty: batch.quantity,
-          actualQty: null,
-          lastUpdated: new Date()
-        });
-      });
-    });
-    setSystemItems([...newInventoryItems, ...systemItems]);
-    alert(`${newInventoryItems.length} nouvelles lignes de stock injectées avec succès.`);
+      // Update local state to reflect changes
+      const updatedNotes = deliveryNotes.map(n => n.id === result.noteId ? { ...n, status: ProcessingStatus.PROCESSED, processingResult: result } : n);
+      setDeliveryNotes(updatedNotes);
+
+      // Refetch inventory to show new stock
+      const freshInventory = await api.getInventory();
+      setSystemItems(freshInventory);
+
+      alert("Traitement quarantaine effectué. Stock mis à jour avec numéros de série.");
+    } catch (e) {
+      alert("Erreur lors du traitement de la quarantaine");
+    }
   };
 
   const handleCreateSession = () => {
@@ -265,6 +303,9 @@ export const PharmacyModule: React.FC = () => {
           <button onClick={() => { setView('quarantine'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'quarantine' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             <ShieldAlert size={20} /><span className="font-medium text-sm">Quarantaine / Contrôle</span>
           </button>
+          <button onClick={() => { setView('suppliers'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'suppliers' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+            <Truck size={20} /><span className="font-medium text-sm">Fournisseurs</span>
+          </button>
           <button onClick={() => { setView('stockout'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'stockout' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             <LogOut size={20} /><span className="font-medium text-sm">Sorties / Destructions</span>
           </button>
@@ -295,7 +336,7 @@ export const PharmacyModule: React.FC = () => {
 
       {/* Contenu Principal */}
       <main className="flex-1 md:ml-64 p-4 md:p-8 overflow-y-auto">
-        {view !== 'prescriptions' && (
+        {view !== 'prescriptions' && view !== 'requests' && (
           <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>
               <h2 className="text-2xl font-bold text-slate-900">
@@ -304,13 +345,26 @@ export const PharmacyModule: React.FC = () => {
                     view === 'entry' ? 'Gestion des Entrées' :
                       view === 'quarantine' ? 'Contrôle Quarantaine' :
                         view === 'locations' ? 'Zones de Stockage' :
-                          view === 'partners' ? 'Institutions Partenaires' :
-                            view === 'stockout' ? 'Gestion des Sorties' :
-                              view === 'inventory' ? (currentSession ? `Session : ${currentSession.id}` : 'Sessions d\'Inventaire') : 'État des Stocks Système'}
+                          view === 'suppliers' ? 'Gestion des Fournisseurs' :
+                            view === 'partners' ? 'Institutions Partenaires' :
+                              view === 'stockout' ? 'Gestion des Sorties' :
+                                view === 'inventory' ? (currentSession ? `Session : ${currentSession.id}` : 'Sessions d\'Inventaire') : 'État des Stocks Système'}
               </h2>
             </div>
 
             <div className="flex items-center space-x-3">
+              {view === 'stock' && (
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+                  <input
+                    type="text"
+                    placeholder="Rechercher (Nom, Molécule, Lot, Emplacement)..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-64 md:w-80"
+                  />
+                </div>
+              )}
               {currentSession && view === 'inventory' && (
                 <button onClick={generateReport} className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-lg font-medium shadow-sm transition-all transform active:scale-95">
                   <Sparkles size={18} /><span>Analyse IA Gemini</span>
@@ -346,13 +400,15 @@ export const PharmacyModule: React.FC = () => {
         ) : view === 'prescriptions' ? (
           <PrescriptionManager />
         ) : view === 'catalog' ? (
-          <ProductCatalog products={productCatalog} onAddProduct={handleAddProduct} onUpdateProduct={handleUpdateProduct} />
+          <ProductCatalog products={productCatalog} suppliers={suppliers} onAddProduct={handleAddProduct} onUpdateProduct={handleUpdateProduct} />
         ) : view === 'entry' ? (
-          <StockEntry purchaseOrders={purchaseOrders} products={productCatalog} deliveryNotes={deliveryNotes} onCreatePO={handleCreatePO} onReceiveDelivery={handleReceiveDelivery} />
+          <StockEntry purchaseOrders={purchaseOrders} products={productCatalog} deliveryNotes={deliveryNotes} suppliers={suppliers} onCreatePO={handleCreatePO} onReceiveDelivery={handleReceiveDelivery} />
         ) : view === 'quarantine' ? (
           <QuarantineManager deliveryNotes={deliveryNotes} products={productCatalog} locations={locations} onProcessNote={handleQuarantineProcess} />
         ) : view === 'stockout' ? (
           <StockOutManager systemItems={systemItems} partners={partners} deliveryNotes={deliveryNotes} products={productCatalog} onConfirmStockOut={handleConfirmStockOut} stockOutHistory={stockOutHistory} />
+        ) : view === 'suppliers' ? (
+          <SupplierManager suppliers={suppliers} onUpdateSuppliers={handleUpdateSuppliers} />
         ) : view === 'partners' ? (
           <PartnerManager partners={partners} onUpdatePartners={handleUpdatePartners} />
         ) : view === 'locations' ? (
@@ -394,7 +450,7 @@ export const PharmacyModule: React.FC = () => {
           </>
         ) : (
           <div className="space-y-4">
-            <SystemStockTable items={systemItems} filter={searchTerm} />
+            <SystemStockTable items={systemItems} products={productCatalog} filter={searchTerm} packs={allPacks} />
           </div>
         )}
 

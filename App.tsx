@@ -46,6 +46,8 @@ const App: React.FC = () => {
             <Route path="admission/:id" element={<AdmissionDossier />} />
             <Route path="calendar" element={<CalendarView />} />
             <Route path="waiting-room" element={<WaitingRoom />} />
+            <Route path="waiting-room" element={<WaitingRoom />} />
+            <Route path="map" element={<WardMap />} />
             <Route path="map" element={<WardMap />} />
             <Route path="settings" element={<Settings />} />
           </Route>

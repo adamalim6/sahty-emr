@@ -40,8 +40,9 @@ import {
   Hospital,
   ArrowUpRight
 } from 'lucide-react';
-import { MOCK_PATIENTS, MOCK_ROOMS, generateIPP, calculateAge, generateNDA, MOCK_ADMISSIONS } from '../constants';
+import { MOCK_PATIENTS, generateIPP, calculateAge, generateNDA } from '../constants';
 import { Patient, Gender, Admission } from '../types';
+import { api } from '../services/api';
 
 interface WizardProps {
   isOpen: boolean;
@@ -276,10 +277,17 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
   const [duplicateConflict, setDuplicateConflict] = useState<Patient | null>(null);
   const [showErrors, setShowErrors] = useState(false);
   const [selectedBedId, setSelectedBedId] = useState<string | null>(null);
+  const [apiPatients, setApiPatients] = useState<Patient[]>([]);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    // Load patients from API for search
+    api.getPatients().then(setApiPatients).catch(console.error);
+  }, []);
+
   const [patientData, setPatientData] = useState<Partial<Patient>>({
-    id: Date.now().toString(), ipp: generateIPP(), firstName: '', lastName: '', gender: Gender.Male, dateOfBirth: '', phone: '', cin: '', country: 'Maroc', city: '', zipCode: '', nationality: 'Marocaine', address: '', isPayant: false, profession: '', bloodGroup: '',
+    id: undefined, // Don't pre-set ID to allow creation detection
+    ipp: generateIPP(), firstName: '', lastName: '', gender: Gender.Male, dateOfBirth: '', phone: '', cin: '', country: 'Maroc', city: '', zipCode: '', nationality: 'Marocaine', address: '', isPayant: false, profession: '', bloodGroup: '',
     insurance: { mainOrg: '', relationship: 'Lui-même', registrationNumber: '' }, emergencyContacts: [{ name: '', relationship: 'Père', phone: '' }],
     guardian: { firstName: '', lastName: '', phone: '', relationship: 'Père', idType: 'CIN', idNumber: '', address: '', habilitation: '' }
   });
@@ -306,18 +314,18 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
 
   const filteredPatients = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
-    if (!term) return MOCK_PATIENTS;
-    return MOCK_PATIENTS.filter(p =>
+    if (!term) return apiPatients;
+    return apiPatients.filter(p =>
       `${p.firstName} ${p.lastName}`.toLowerCase().includes(term) ||
       p.ipp.toLowerCase().includes(term) ||
       p.cin?.toLowerCase().includes(term)
     );
-  }, [searchTerm]);
+  }, [searchTerm, apiPatients]);
 
   const isMinor = patientData.dateOfBirth ? calculateAge(patientData.dateOfBirth) < 18 : false;
 
   const isStep1Valid = useMemo(() => {
-    const baseValid = !!(patientData.lastName && patientData.firstName && patientData.dateOfBirth && patientData.cin && patientData.country && patientData.city && patientData.address && patientData.nationality);
+    const baseValid = !!(patientData.lastName && patientData.firstName && patientData.dateOfBirth && patientData.cin);
     if (!baseValid) return false;
     if (isMinor) return !!(patientData.guardian?.lastName && patientData.guardian?.firstName && patientData.guardian?.relationship);
     return true;
@@ -343,7 +351,7 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
     setStep(2);
   };
 
-  const handleCreateAdmission = () => {
+  const handleCreateAdmission = async () => {
     if (!admissionData.type || !admissionData.doctorName || !selectedBedId) return;
 
     // Build the admission object
@@ -376,12 +384,51 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
       currency: admissionData.currency
     };
 
-    // Note: In a real app we'd dispatch to a store or API. 
-    // Here we simulate success by adding to MOCK_ADMISSIONS for local navigation context.
-    MOCK_ADMISSIONS.unshift(newAdmission);
+    try {
+      let finalPatientId = patientData.id;
 
-    onClose();
-    navigate(`/admission/${newId}`);
+      // If no patient ID (new patient), create the patient first
+      if (!finalPatientId) {
+        const newPatientData = {
+          firstName: patientData.firstName,
+          lastName: patientData.lastName,
+          dateOfBirth: patientData.dateOfBirth,
+          gender: patientData.gender,
+          phone: patientData.phone,
+          cin: patientData.cin,
+          profession: patientData.profession,
+          bloodGroup: patientData.bloodGroup,
+          nationality: patientData.nationality, // Assuming these fields exist in Patient type
+          address: patientData.address,
+          insurance: patientData.insurance,
+          guardian: patientData.guardian
+        };
+        const createdPatient = await api.createPatient(newPatientData);
+        finalPatientId = createdPatient.id;
+      }
+
+      const newAdmission: Admission = {
+        id: newId,
+        nda: newNDA,
+        patientId: finalPatientId || "1", // Fallback should ideally not happen if createPatient works
+        reason: admissionData.reason,
+        service: admissionData.service,
+        admissionDate: new Date().toISOString(),
+        doctorName: admissionData.doctorName,
+        roomNumber: roomNum,
+        bedLabel: bedLab,
+        status: 'En cours',
+        type: admissionData.type,
+        currency: admissionData.currency
+      };
+
+      await api.createAdmission(newAdmission);
+      onClose();
+      navigate(`/admission/${newId}`);
+    } catch (error) {
+      console.error('Error creating admission or patient:', error);
+      alert('Erreur lors de la création de l\'admission (ou du patient)');
+    }
   };
 
   const handleInsuranceChange = (field: string, value: string) => {
@@ -481,11 +528,11 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
 
               <CardSection title="4. Localisation & Nationalité" icon={MapPin} colorClass="text-blue-600" bgClass="bg-blue-50">
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-5">
-                  <SelectField label="Pays" required options={['Maroc', 'France', 'Espagne', 'Sénégal', 'USA']} value={patientData.country} error={showErrors && !patientData.country} onChange={(e: any) => setPatientData({ ...patientData, country: e.target.value })} icon={Globe} />
-                  <InputField label="Ville" required value={patientData.city} error={showErrors && !patientData.city} onChange={(e: any) => setPatientData({ ...patientData, city: e.target.value })} icon={MapPin} />
+                  <SelectField label="Pays" options={['Maroc', 'France', 'Espagne', 'Sénégal', 'USA']} value={patientData.country} onChange={(e: any) => setPatientData({ ...patientData, country: e.target.value })} icon={Globe} />
+                  <InputField label="Ville" value={patientData.city} onChange={(e: any) => setPatientData({ ...patientData, city: e.target.value })} icon={MapPin} />
                   <InputField label="CP" value={patientData.zipCode} onChange={(e: any) => setPatientData({ ...patientData, zipCode: e.target.value })} />
-                  <SelectField label="Nationalité" required options={['Marocaine', 'Française', 'Espagnole', 'Sénégalaise']} value={patientData.nationality} error={showErrors && !patientData.nationality} onChange={(e: any) => setPatientData({ ...patientData, nationality: e.target.value })} icon={Flag} />
-                  <div className="sm:col-span-4"><InputField label="Adresse Actuelle" required value={patientData.address} error={showErrors && !patientData.address} onChange={(e: any) => setPatientData({ ...patientData, address: e.target.value })} icon={MapPin} /></div>
+                  <SelectField label="Nationalité" options={['Marocaine', 'Française', 'Espagnole', 'Sénégalaise']} value={patientData.nationality} onChange={(e: any) => setPatientData({ ...patientData, nationality: e.target.value })} icon={Flag} />
+                  <div className="sm:col-span-4"><InputField label="Adresse Actuelle" value={patientData.address} onChange={(e: any) => setPatientData({ ...patientData, address: e.target.value })} icon={MapPin} /></div>
                 </div>
               </CardSection>
 

@@ -52,11 +52,23 @@ export enum ProductType {
   DEVICE = 'Dispositif Médical'
 }
 
-export interface Supplier {
+export interface ProductSupplier { // Renamed from Supplier to avoid collision, or keep as sub-interface
   id: string;
   name: string;
   purchasePrice: number;
   isActive: boolean;
+}
+
+export interface PharmacySupplier {
+  id: string;
+  name: string;
+  contactPerson?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface Molecule {
@@ -70,11 +82,12 @@ export interface ProductDefinition {
   id: string;
   name: string;
   type: ProductType;
-  suppliers: Supplier[];
+  suppliers: ProductSupplier[];
   profitMargin: number;
   vatRate: number;
   isSubdivisable: boolean;
-  subdivisionUnits?: number;
+  subdivisionUnits?: number;          // DEPRECATED: use unitsPerPack
+  unitsPerPack: number;               // NOUVEAU: nombre d'unités par boîte (obligatoire)
   molecules?: Molecule[];
   dosage?: number;
   dosageUnit?: DosageUnit;
@@ -135,7 +148,7 @@ export enum ReturnReason {
 export interface BatchEntry {
   batchNumber: string;
   expiryDate: string;
-  quantity: number;
+  quantity: number;           // MODIFIÉ: en nombre de boîtes
   locationId: string;
 }
 
@@ -148,7 +161,7 @@ export interface ReturnEntry {
 export interface ProductProcessData {
   productId: string;
   deliveredQty: number;
-  batches: BatchEntry[]; 
+  batches: BatchEntry[];
   returns: ReturnEntry[];
 }
 
@@ -201,4 +214,89 @@ export interface StockOutTransaction {
   partnerId?: string;
   destructionReason?: DestructionReason;
   items: StockOutItem[];
+}
+
+export enum PackStatus {
+  ACTIVE = 'Active',
+  SEALED = 'Scellée',
+  OPENED = 'Entamée',
+  EMPTY = 'Vide',
+  DISPENSED = 'Dispensée',
+  QUARANTINE = 'Quarantaine',
+  EXPIRED = 'Périmée',
+  RETURNED = 'Retournée',
+  DESTROYED = 'Détruite'
+}
+
+export interface PackHistoryEvent {
+  date: string;
+  action: string;
+  userId: string;
+  details?: string;
+}
+
+export interface SerializedPack {
+  id: string; // Internal ID
+  serialNumber: string; // Human readable unique SN (e.g. SN-123456)
+  productId: string;
+  lotNumber: string;
+  expiryDate: string;
+  locationId: string;
+  status: PackStatus;
+  unitsPerPack: number;
+  remainingUnits: number;
+  history: PackHistoryEvent[];
+  createdAt: string;
+}
+
+export interface DispensedItem {
+  id: string;
+  prescriptionId: string;
+  productId: string;
+  productName?: string;
+  serialNumber?: string;
+  batchNumber: string;
+  expiryDate: string;
+  quantity: number;
+  mode: 'UNIT' | 'FULL_PACK';
+  dispensedAt: string;
+  dispensedBy: string;
+  totalPriceInclVAT: number;
+  unitPriceExclVAT: number;
+  vatRate: number;
+}
+
+export interface PatientWithPrescriptions {
+  id: string;
+  firstName: string;
+  lastName: string;
+  ipp: string;
+  dateOfBirth: string;
+  gender: string;
+  cin?: string;
+  prescriptionCount: number;
+  lastPrescriptionDate?: string;
+}
+
+export enum ReplenishmentStatus {
+  PENDING = 'En Attente',
+  APPROVED = 'Approuvé',
+  REJECTED = 'Rejeté',
+  COMPLETED = 'Terminé'
+}
+
+export interface ReplenishmentRequest {
+  id: string;
+  requesterId: string;
+  requesterName: string;
+  serviceName: string;
+  status: ReplenishmentStatus;
+  items: {
+    productId: string;
+    productName: string;
+    quantityRequested: number;
+    quantityApproved?: number;
+  }[];
+  createdAt: string; // JSON date string
+  updatedAt: string;
 }

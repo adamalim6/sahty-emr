@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MOCK_PATIENTS, calculateAge, generateIPP } from '../../constants';
+import { api } from '../../services/api';
 import { Gender, Patient } from '../../types';
 import {
   ArrowLeft,
@@ -138,14 +139,46 @@ export const PatientDossier: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  // Local state to simulate patient update
-  const [patient, setPatient] = useState<Patient | undefined>(MOCK_PATIENTS.find(p => p.id === id));
+  const [patient, setPatient] = useState<Patient | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState(true);
+  const [allPatients, setAllPatients] = useState<Patient[]>([]);
+
   const [activeTab, setActiveTab] = useState<string>('Parcours');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [formData, setFormData] = useState<Partial<Patient>>({});
 
+  useEffect(() => {
+    const fetchPatientData = async () => {
+      setIsLoading(true);
+      try {
+        const patients = await api.getPatients();
+        setAllPatients(patients);
+        const found = patients.find(p => p.id === id);
+
+        if (found) {
+          setPatient(found);
+        } else {
+          const mockFound = MOCK_PATIENTS.find(p => p.id === id);
+          setPatient(mockFound);
+        }
+      } catch (error) {
+        console.error("Failed to fetch patient:", error);
+        const mockFound = MOCK_PATIENTS.find(p => p.id === id);
+        setPatient(mockFound);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (id) fetchPatientData();
+  }, [id]);
+
   // Helper pour filtrer les numéros de téléphone
   const formatPhoneNumber = (val: string) => val.replace(/[^0-9+]/g, '');
+
+  if (isLoading) {
+    return <div className="flex justify-center items-center h-screen text-slate-500">Chargement...</div>;
+  }
 
   if (!patient) {
     return (
@@ -176,7 +209,7 @@ export const PatientDossier: React.FC = () => {
 
     // --- CHECK FOR DUPLICATE CIN/ID (Excluding current patient) ---
     if (formData.cin) {
-      const duplicate = MOCK_PATIENTS.find(p =>
+      const duplicate = allPatients.find(p =>
         p.id !== patient.id &&
         p.cin?.toLowerCase() === formData.cin?.toLowerCase()
       );

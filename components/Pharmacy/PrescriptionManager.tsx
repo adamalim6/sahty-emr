@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { FileSignature, Users, ChevronLeft, Calendar, User, IdCard, Loader2 } from 'lucide-react';
 import { api, PatientWithPrescriptions } from '../../services/api';
 import { PrescriptionCard } from '../Prescription/PrescriptionCard';
+import { DispensationForm } from '../Prescription/DispensationForm';
+import { DispensationHistory } from '../Prescription/DispensationHistory';
 
 type ViewType = 'patient-list' | 'patient-prescriptions';
 
@@ -44,7 +46,7 @@ export const PrescriptionManager: React.FC = () => {
       setLoading(true);
       setError(null);
       const data = await api.getPrescriptions(patientId);
-      setPrescriptions(data);
+      setPrescriptions(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Failed to load prescriptions:', err);
       setError('Impossible de charger les prescriptions');
@@ -74,6 +76,9 @@ export const PrescriptionManager: React.FC = () => {
   };
 
   const selectedPatient = patients.find(p => p.id === selectedPatientId);
+
+  // Refresh trigger for history
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
 
   // Patient List View
   if (view === 'patient-list') {
@@ -199,15 +204,62 @@ export const PrescriptionManager: React.FC = () => {
           <p className="text-slate-400 mt-2">Ce patient n'a aucune prescription pour le moment.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {prescriptions.map((prescription) => (
-            <div
-              key={prescription.id}
-              className="bg-white p-4 border border-slate-200 rounded-xl hover:border-emerald-200 hover:shadow-md transition-all"
-            >
-              <PrescriptionCard formData={prescription.data} />
-            </div>
-          ))}
+        <div className="space-y-8 max-w-7xl mx-auto pb-10">
+          {prescriptions.map((prescription: any) => {
+            if (!prescription) return null;
+            // Support both wrapped (backend) and unwrapped (local/mock) formats
+            const prescriptionData = prescription.data || prescription;
+
+            return (
+              <div
+                key={prescription.id}
+                className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-6"
+              >
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                  {/* LEFT ZONE: Prescription + History */}
+                  <div className="lg:col-span-5 space-y-6">
+                    {/* Zone 1: Prescription Details */}
+                    <div className="bg-white rounded-lg">
+                      <PrescriptionCard formData={prescriptionData} />
+                    </div>
+
+                    {/* Zone 3: Dispensation History */}
+                    <div className="rounded-xl overflow-hidden pt-4">
+                      <h4 className="text-sm font-bold text-slate-800 mb-3 ml-1">Dispensé</h4>
+                      <div className="bg-slate-100 rounded-lg p-3">
+                        <DispensationHistory
+                          prescriptionId={prescription.id}
+                          compact={true}
+                          lastUpdate={historyRefreshKey}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* RIGHT ZONE: Dispensation Form */}
+                  <div className="lg:col-span-7">
+                    <div className="h-full border border-slate-200 rounded-xl bg-slate-50 overflow-hidden">
+                      <DispensationForm
+                        prescription={prescription}
+                        product={prescriptionData.product || {
+                          // Fallback product if not in prescription data (should be improved in real app)
+                          id: prescription.productId || 'unknown',
+                          isSubdivisable: true,
+                          profitMargin: 25,
+                          vatRate: 5.5,
+                          suppliers: [{ purchasePrice: 10 }]
+                        }}
+                        onSuccess={() => {
+                          setHistoryRefreshKey(prev => prev + 1);
+                          if (selectedPatientId) loadPatientPrescriptions(selectedPatientId);
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

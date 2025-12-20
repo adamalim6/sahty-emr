@@ -52,11 +52,23 @@ export enum ProductType {
     DEVICE = 'Dispositif Médical'
 }
 
-export interface Supplier {
+export interface ProductSupplier {
     id: string;
     name: string;
     purchasePrice: number;
     isActive: boolean;
+}
+
+export interface PharmacySupplier {
+    id: string;
+    name: string;
+    contactPerson?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    isActive: boolean;
+    createdAt: Date;
+    updatedAt: Date;
 }
 
 export interface Molecule {
@@ -70,11 +82,12 @@ export interface ProductDefinition {
     id: string;
     name: string;
     type: ProductType;
-    suppliers: Supplier[];
+    suppliers: ProductSupplier[];
     profitMargin: number;
     vatRate: number;
     isSubdivisable: boolean;
-    subdivisionUnits?: number;
+    subdivisionUnits?: number;          // DEPRECATED: use unitsPerPack
+    unitsPerPack: number;               // NOUVEAU: nombre d'unités par boîte (obligatoire)
     molecules?: Molecule[];
     dosage?: number;
     dosageUnit?: DosageUnit;
@@ -203,3 +216,55 @@ export interface StockOutTransaction {
     destructionReason?: DestructionReason;
     items: StockOutItem[];
 }
+
+export enum ReplenishmentStatus {
+    PENDING = 'En Attente',
+    APPROVED = 'Approuvé',
+    REJECTED = 'Rejeté',
+    COMPLETED = 'Terminé'
+}
+
+export interface ReplenishmentRequest {
+    id: string;
+    requesterId: string;
+    requesterName: string;
+    serviceName: string;
+    status: ReplenishmentStatus;
+    items: {
+        productId: string;
+        productName: string;
+        quantityRequested: number;
+        quantityApproved?: number;
+    }[];
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+export enum PackStatus {
+    ACTIVE = 'Active',
+    DISPENSED = 'Dispensée',
+    QUARANTINE = 'Quarantaine',
+    EXPIRED = 'Périmée',
+    RETURNED = 'Retournée',
+    DESTROYED = 'Détruite'
+}
+
+export interface PackHistoryEvent {
+    date: string;
+    action: string;
+    userId: string;
+    details?: string;
+}
+
+export interface SerializedPack {
+    id: string;
+    serialNumber: string;
+    productId: string;
+    batchNumber: string;
+    expiryDate: string;
+    locationId: string;
+    status: PackStatus;
+    history: PackHistoryEvent[];
+    createdAt: string;
+}
+

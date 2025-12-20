@@ -1,0 +1,59 @@
+{
+  "patients": [
+    {
+      "id": "5371",
+      "isProvisional": false,
+      "firstName": "Adam",
+      "lastName": "ALIM",
+      "dateOfBirth": "2002-08-30",
+      "gender": "Homme",
+      "ipp": "UMAN-2025-329513",
+      "phone": "0635582822",
+      "cin": "AA103720",
+      "isPayant": true,
+      "emergencyContacts": [
+        {
+          "name": "",
+          "relationship": "Père",
+          "phone": ""
+        }
+      ],
+      "country": "Maroc",
+      "nationality": "Marocaine",
+      "address": "",
+      "insurance": {
+        "mainOrg": "",
+        "relationship": "Lui-même",
+        "registrationNumber": ""
+      },
+      "guardian": {
+        "firstName": "",
+        "lastName": "",
+        "phone": "",
+        "relationship": "Père",
+        "idType": "CIN",
+        "idNumber": "",
+        "address": "",
+        "habilitation": ""
+      }
+    }
+  ],
+  "admissions": [
+    {
+      "id": "adm-1766272352667",
+      "nda": "NDA-2025-7658",
+      "patientId": "5371",
+      "reason": "Chirurgie programmée",
+      "service": "Cardiologie",
+      "admissionDate": "2025-12-20T23:12:32.667Z",
+      "doctorName": "Dr. S. Alami",
+      "roomNumber": "103",
+      "bedLabel": "Lit A",
+      "status": "En cours",
+      "type": "Hospitalisation complète",
+      "currency": "MAD (Dirham)"
+    }
+  ],
+  "appointments": [],
+  "rooms": []
+}

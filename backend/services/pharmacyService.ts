@@ -1,8 +1,21 @@
 
 import {
     InventoryItem, ItemCategory, ProductDefinition, ProductType, StockLocation,
-    PartnerInstitution, StockOutTransaction, StockOutType, DestructionReason
+    PartnerInstitution, StockOutTransaction, StockOutType, DestructionReason,
+    PurchaseOrder, DeliveryNote, QuarantineSessionResult, PharmacySupplier
 } from '../models/pharmacy';
+import { SerializedPack, PackStatus, Dispensation } from '../models/serialized-pack';
+import { serializedPackService } from './serializedPackService';
+import * as fs from 'fs';
+import * as path from 'path';
+
+const DATA_DIR = path.join(__dirname, '../data');
+const DB_FILE = path.join(DATA_DIR, 'pharmacy_db.json');
+
+// Ensure data dir exists
+if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+}
 
 const MOCK_LOCATION_NAMES = ['Étagère A-1', 'Étagère A-2', 'Réfrigérateur 1', 'Armoire Sécurisée', 'Réserve Vrac B'];
 
@@ -25,153 +38,605 @@ export class PharmacyService {
     private locations: StockLocation[] = [];
     private partners: PartnerInstitution[] = [];
     private stockOutHistory: StockOutTransaction[] = [];
+    private purchaseOrders: PurchaseOrder[] = [];
+    private deliveryNotes: DeliveryNote[] = [];
+    private serializedPacks: SerializedPack[] = [];
+    private dispensations: Dispensation[] = [];
+    private suppliers: PharmacySupplier[] = [];
+    private static instance: PharmacyService;
+
 
     constructor() {
-        this.initializeMockData();
-    }
+        this.loadData();
 
-    private initializeMockData() {
-        // Locations
-        this.locations = MOCK_LOCATION_NAMES.map((name, index) => ({
-            id: `LOC-${100 + index}`,
-            name: name,
-            description: `Unité de stockage standard ${index + 1}`,
-            isActive: true
-        }));
-
-        // Partners
-        this.partners = [
-            {
-                id: 'PART-001',
-                name: 'Hôpital Général Central',
-                type: 'Hôpital',
-                contactPerson: 'Dr. Sarah Smith',
-                phone: '01 45 67 89 00',
-                email: 'pharmacie@hgc-paris.fr',
-                address: '123 Rue de la Santé, Paris',
-                isActive: true
-            },
-            {
-                id: 'PART-002',
-                name: 'Croix-Rouge Logistique',
-                type: 'ONG',
-                contactPerson: 'Marc Jones',
-                phone: '01 22 33 44 55',
-                email: 'logistique@croixrouge.fr',
-                address: '45 Avenue de l\'Aide',
-                isActive: true
-            },
-            {
-                id: 'PART-003',
-                name: 'Clinique de l\'Ouest',
-                type: 'Clinique',
-                contactPerson: 'Inf. Jackie',
-                phone: '02 99 88 77 66',
-                email: 'appros@cliniqueouest.com',
-                address: '88 Blvd de l\'Ouest',
-                isActive: true
-            }
-        ];
-
-        // Catalog
-        this.catalog = [
-            {
-                id: 'PROD-001',
-                name: 'Amoxicilline 500mg Gélules',
-                type: ProductType.DRUG,
-                suppliers: [{ id: 'SUP-01', name: 'PharmaCorp Global', purchasePrice: 0.12, isActive: true }],
-                profitMargin: 25,
-                vatRate: 5.5,
+        // If catalog is empty, it means no data loaded or empty file
+        if (this.catalog.length === 0) {
+            // Disabled default seeding for manual entry
+            /*
+            // Initialize Catalog
+            this.catalog = PRODUCTS_DB.map(p => ({
+                id: p.id,
+                name: p.name,
+                type: (p.id.includes('005') || p.id.includes('010')) ? ProductType.CONSUMABLE : ProductType.DRUG,
                 isSubdivisable: true,
-                subdivisionUnits: 30,
-                molecules: [{ id: 'MOL-01', name: 'Amoxicilline' }],
-                dosage: 500,
-                dosageUnit: 'mg',
-                therapeuticClass: 'Antibiotiques',
+                unitsPerPack: 10,
+                minStock: 10,
+                currentStock: 0,
+                suppliers: [{ id: 'SUP-001', name: 'Afric-Phar', purchasePrice: p.price, leadTimeDays: 2, isActive: true }],
+                vatRate: 20,
+                profitMargin: 30,
                 createdAt: new Date(),
                 updatedAt: new Date(),
+                description: p.name
+            }));
+
+            // Initialize Locations
+            if (this.locations.length === 0) {
+                this.locations = MOCK_LOCATION_NAMES.map((name, index) => ({
+                    id: `LOC-${100 + index}`,
+                    name: name,
+                    type: name.includes('Réfrigérateur') ? 'FRIDGE' : 'SHELF',
+                    description: 'Zone de stockage principale',
+                    temperature: name.includes('Réfrigérateur') ? '2-8°C' : 'Ambiante',
+                    isActive: true
+                }));
             }
-        ];
 
-        // Inventory
-        let lineIdCounter = 1000;
-        this.inventory.push({
-            id: `INV-${lineIdCounter++}`,
-            productId: 'PROD-001',
-            name: 'Amoxicilline 500mg Gélules',
-            category: ItemCategory.ANTIBIOTICS,
-            location: 'Étagère A-1',
-            batchNumber: 'LOT-1001',
-            expiryDate: '2025-11-30',
-            unitPrice: 0.15,
-            theoreticalQty: 120,
-            actualQty: null,
-        });
 
-        PRODUCTS_DB.slice(1).forEach((product) => {
-            const numBatches = Math.random() > 0.7 ? 2 : 1;
-            for (let i = 0; i < numBatches; i++) {
-                const theoretical = Math.floor(Math.random() * 200) + 10;
-                const date = new Date();
-                const daysOffset = Math.random() > 0.9 ? -10 : Math.floor(Math.random() * 500);
-                date.setDate(date.getDate() + daysOffset);
-                const location = MOCK_LOCATION_NAMES[Math.floor(Math.random() * MOCK_LOCATION_NAMES.length)];
-
-                this.inventory.push({
-                    id: `INV-${lineIdCounter++}`,
-                    productId: product.id,
-                    name: product.name,
-                    category: product.category,
-                    location: location,
-                    batchNumber: `LOT-${Math.floor(Math.random() * 9000) + 1000}`,
-                    expiryDate: date.toISOString().split('T')[0],
-                    unitPrice: product.price,
-                    theoreticalQty: theoretical,
-                    actualQty: null,
+            // Initialize Default Supplier
+            if (this.suppliers.length === 0) {
+                this.suppliers.push({
+                    id: 'SUP-001',
+                    name: 'Afric-Phar',
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                    isActive: true,
+                    address: 'Casablanca, Maroc',
+                    contactPerson: 'M. Alami',
+                    phone: '+212 5 22 00 00 00'
                 });
             }
-        });
 
-        // StockOut
-        this.stockOutHistory = [
-            {
-                id: 'SORT-2025-001',
-                date: new Date(Date.now() - 86400000 * 2),
-                type: StockOutType.DESTRUCTION,
-                createdBy: 'Pharm. Chef',
-                destructionReason: DestructionReason.EXPIRY,
-                items: []
-            },
-            {
-                id: 'SORT-2025-002',
-                date: new Date(Date.now() - 86400000 * 5),
-                type: StockOutType.OUTGOING_LOAN,
-                createdBy: 'Asst. Jean Dupont',
-                partnerId: 'PART-001',
-                items: []
-            }
-        ];
+            this.saveData();
+            */
+        }
     }
 
+    public static getInstance(): PharmacyService {
+        if (!PharmacyService.instance) {
+            PharmacyService.instance = new PharmacyService();
+        }
+        return PharmacyService.instance;
+    }
+
+    private saveData() {
+        try {
+            const data = {
+                inventory: this.inventory,
+                catalog: this.catalog,
+                locations: this.locations,
+                partners: this.partners,
+                stockOutHistory: this.stockOutHistory,
+                purchaseOrders: this.purchaseOrders,
+                deliveryNotes: this.deliveryNotes,
+                serializedPacks: this.serializedPacks,
+                dispensations: this.dispensations,
+                suppliers: this.suppliers
+            };
+            fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
+        } catch (error) {
+            console.error("Error saving pharmacy data:", error);
+        }
+    }
+
+    private loadData() {
+        try {
+            if (fs.existsSync(DB_FILE)) {
+                const raw = fs.readFileSync(DB_FILE, 'utf-8');
+                const data = JSON.parse(raw);
+                this.inventory = data.inventory || [];
+                this.catalog = data.catalog || [];
+                this.locations = data.locations || [];
+                this.partners = data.partners || [];
+                this.stockOutHistory = data.stockOutHistory || [];
+                this.purchaseOrders = data.purchaseOrders || [];
+                this.deliveryNotes = data.deliveryNotes || [];
+                this.serializedPacks = data.serializedPacks || [];
+
+                this.dispensations = (data.dispensations || []).map((d: any) => ({
+                    ...d,
+                    dispensedAt: new Date(d.dispensedAt)
+                }));
+
+                this.suppliers = (data.suppliers || []).map((s: any) => ({
+                    ...s,
+                    createdAt: new Date(s.createdAt),
+                    updatedAt: new Date(s.updatedAt)
+                }));
+            }
+        } catch (error) {
+            console.error("Error loading pharmacy data:", error);
+        }
+    }
+
+    // Getters and Setters
     getInventory(): InventoryItem[] {
         return this.inventory;
     }
 
     getCatalog(): ProductDefinition[] {
-        return this.catalog;
+        // Calculate live stock from serialized packs
+        return this.catalog.map(product => {
+            const activePacks = this.serializedPacks.filter(p =>
+                p.productId === product.id &&
+                (p.status === PackStatus.SEALED || p.status === PackStatus.OPENED)
+            );
+
+            // Calculate total units available (packs * unitsPerPack + partial units)
+            // But usually currentStock implies "boxes" or "total units"? 
+            // The frontend displays "qty disponible" which usually means boxes in BOX mode.
+            // However, usually detailed stock (units) is better.
+            // Let's stick to the simplest interpretation: quantity of packs + partials converted?
+            // Actually, for the search preview, we just need to know if > 0.
+            // Let's sum up remaining units.
+
+            const totalUnits = activePacks.reduce((sum, pack) => sum + (pack.remainingUnits || pack.unitsPerPack), 0);
+
+            // We can also calculate full boxes
+            const fullBoxes = activePacks.filter(p => p.status === PackStatus.SEALED).length;
+
+            return {
+                ...product,
+                currentStock: fullBoxes // Or totalUnits? The frontend often treats currentStock as a generic number. 
+                // Let's check how 'currentStock' is defined. In ProductDefinition it is a number.
+                // If I return 0 when no packs, that's enough to disable it.
+                // Let's return total active packs count as a safe proxy for "available stock" for now, 
+                // or better, if the frontend assumes currentStock is just for display/availability check.
+                // Given the requirement is "0 units and 0 boxes", if totalUnits is 0, currentStock should be 0.
+                // Let's set currentStock to totalUnits to be precise, as partial packs count as stock.
+                // Wait, if I have 1 opened pack with 1 tablet, is it in stock? Yes.
+            };
+        });
+    }
+
+    addProduct(product: ProductDefinition) {
+        this.catalog.push(product);
+        this.saveData();
+        return product;
+    }
+
+    updateProduct(product: ProductDefinition): ProductDefinition {
+        const index = this.catalog.findIndex(p => p.id === product.id);
+        if (index !== -1) {
+            this.catalog[index] = { ...product, updatedAt: new Date() };
+            this.saveData();
+            return this.catalog[index];
+        }
+        throw new Error(`Product with ID ${product.id} not found.`);
+    }
+
+    addLocation(location: StockLocation) {
+        if (!location.id) {
+            location.id = `LOC-${Date.now()}`;
+        }
+        this.locations.push(location);
+        this.saveData();
+        return location;
+    }
+
+    updateLocation(location: StockLocation): StockLocation {
+        const index = this.locations.findIndex(l => l.id === location.id);
+        if (index !== -1) {
+            this.locations[index] = { ...location };
+            this.saveData();
+            return this.locations[index];
+        }
+        throw new Error(`Location with ID ${location.id} not found.`);
+    }
+
+    deleteLocation(id: string): void {
+        const initialLength = this.locations.length;
+        this.locations = this.locations.filter(l => l.id !== id);
+        if (this.locations.length === initialLength) {
+            throw new Error(`Location with ID ${id} not found.`);
+        }
+        this.saveData();
     }
 
     getLocations(): StockLocation[] {
         return this.locations;
     }
 
+    // Supplier Management
+    getSuppliers(): PharmacySupplier[] {
+        return this.suppliers;
+    }
+
+    addSupplier(supplier: PharmacySupplier) {
+        if (!supplier.id) {
+            supplier.id = `SUP-${Date.now()}`;
+        }
+        supplier.createdAt = new Date();
+        supplier.updatedAt = new Date();
+        this.suppliers.push(supplier);
+        this.saveData();
+        return supplier;
+    }
+
+    updateSupplier(supplier: PharmacySupplier): PharmacySupplier {
+        const index = this.suppliers.findIndex(s => s.id === supplier.id);
+        if (index !== -1) {
+            this.suppliers[index] = { ...supplier, updatedAt: new Date() };
+            this.saveData();
+            return this.suppliers[index];
+        }
+        throw new Error(`Supplier with ID ${supplier.id} not found.`);
+    }
+
+    deleteSupplier(id: string): void {
+        const initialLength = this.suppliers.length;
+        this.suppliers = this.suppliers.filter(s => s.id !== id);
+        if (this.suppliers.length === initialLength) {
+            throw new Error(`Supplier with ID ${id} not found.`);
+        }
+        this.saveData();
+    }
+
     getPartners(): PartnerInstitution[] {
         return this.partners;
+    }
+
+    // PO & Delivery Management
+    createPurchaseOrder(po: PurchaseOrder) {
+        this.purchaseOrders.push(po);
+        this.saveData();
+        return po;
+    }
+
+    getPurchaseOrders() {
+        return this.purchaseOrders;
+    }
+
+    createDeliveryNote(note: DeliveryNote) {
+        this.deliveryNotes.push(note);
+
+        // Update linked PO
+        const po = this.purchaseOrders.find(p => p.id === note.poId);
+        if (po) {
+            note.items.forEach(noteItem => {
+                const poItem = po.items.find(i => i.productId === noteItem.productId);
+                if (poItem) {
+                    poItem.deliveredQty += noteItem.deliveredQty;
+                }
+            });
+
+            // Update PO Status
+            const allComplete = po.items.every(i => i.deliveredQty >= i.orderedQty);
+            const someDelivered = po.items.some(i => i.deliveredQty > 0);
+
+            if (allComplete) po.status = 'Terminé' as any;
+            else if (someDelivered) po.status = 'Partiel' as any;
+        }
+
+        this.saveData();
+        return note;
+    }
+
+    getDeliveryNotes() {
+        return this.deliveryNotes;
     }
 
     getStockOutHistory(): StockOutTransaction[] {
         return this.stockOutHistory;
     }
+
+    getProductById(productId: string): ProductDefinition | undefined {
+        return this.catalog.find(p => p.id === productId);
+    }
+
+    // Process Quarantine (Logic for connecting dots)
+    processQuarantine(result: QuarantineSessionResult) {
+        // 1. Update Delivery Note Status
+        const note = this.deliveryNotes.find(n => n.id === result.noteId);
+        if (note) {
+            note.status = 'Traité' as any; // ProcessingStatus.PROCESSED
+            note.processingResult = result;
+        }
+
+        // 2. Generate Serialized Packs & Update Inventory
+        result.items.forEach(procItem => {
+            const product = this.getProductById(procItem.productId);
+            if (!product) return;
+
+            // Map ProductType to ItemCategory
+            let category = ItemCategory.CONSUMABLES;
+            if (product.type === ProductType.DRUG) {
+                category = ItemCategory.ANTIBIOTICS; // Default fallback
+            }
+
+            procItem.batches.forEach(batch => {
+                if (batch.quantity <= 0) return;
+
+                // Create Serialized Packs via Service
+                const newPacks = serializedPackService.createPacksFromBatch({
+                    productId: procItem.productId,
+                    lotNumber: batch.batchNumber,
+                    expiryDate: batch.expiryDate,
+                    locationId: batch.locationId,
+                    quantityInPacks: batch.quantity,
+                    unitsPerPack: product.unitsPerPack || 1,
+                    deliveryNoteId: result.noteId
+                });
+
+                // Add new packs to main storage
+                this.serializedPacks.push(...newPacks);
+
+                // Update Aggregate Inventory (InventoryItem)
+                const inventoryId = `INV-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+                const totalUnits = batch.quantity * (product.unitsPerPack || 1);
+
+                // Check if existing line for same batch/location/product
+                const existingItem = this.inventory.find(i =>
+                    i.productId === procItem.productId &&
+                    i.batchNumber === batch.batchNumber &&
+                    i.location === batch.locationId
+                );
+
+                if (existingItem) {
+                    existingItem.theoreticalQty += totalUnits;
+                    existingItem.lastUpdated = new Date();
+                } else {
+                    this.inventory.push({
+                        id: inventoryId,
+                        productId: procItem.productId,
+                        name: product.name,
+                        category: category,
+                        location: batch.locationId,
+                        batchNumber: batch.batchNumber,
+                        expiryDate: batch.expiryDate,
+                        unitPrice: (product.suppliers[0]?.purchasePrice || 0) / (product.unitsPerPack || 1),
+                        theoreticalQty: totalUnits,
+                        actualQty: null,
+                        lastUpdated: new Date()
+                    });
+                }
+            });
+        });
+
+        this.saveData();
+        return { success: true };
+    }
+
+    // FEFO Dispensation Logic
+    dispenseWithFEFO(params: {
+        productId: string,
+        quantity: number,
+        mode: string, // 'UNIT' | 'FULL_PACK'
+        userId: string,
+        prescriptionId: string,
+        admissionId?: string,
+        targetPackIds?: string[]
+    }): Dispensation[] {
+        const { productId, quantity, mode, userId, prescriptionId, admissionId, targetPackIds } = params;
+
+        // 1. Find active packs for product
+        let candidates = this.serializedPacks.filter(p =>
+            p.productId === productId &&
+            [PackStatus.SEALED, PackStatus.OPENED].includes(p.status)
+        );
+
+        // Manual Selection Logic
+        if (targetPackIds && targetPackIds.length > 0) {
+            candidates = candidates.filter(p => targetPackIds.includes(p.id));
+            if (candidates.length < targetPackIds.length) {
+                throw new Error("Certains packs sélectionnés ne sont plus disponibles.");
+            }
+        } else {
+            // Auto FEFO Sort
+            candidates.sort((a, b) => {
+                if (a.status === PackStatus.OPENED && b.status !== PackStatus.OPENED) return -1;
+                if (a.status !== PackStatus.OPENED && b.status === PackStatus.OPENED) return 1;
+                return new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime();
+            });
+        }
+
+        const newDispensations: Dispensation[] = [];
+        const productDef = this.getProductById(productId);
+        if (!productDef) throw new Error("Produit inconnu");
+
+        const supplier = productDef.suppliers[0];
+        const purchasePrice = supplier?.purchasePrice || 0;
+        const priceWithMargin = purchasePrice * (1 + productDef.profitMargin / 100);
+        const unitPriceExclVAT = priceWithMargin; // Prix unitaire (si par unité) ou par boîte? 
+        // Logic: usually price is per pack in catalog? checkout unitsPerPack.
+        // Assuming price in catalog is per PACK.
+        const pricePerUnit = unitPriceExclVAT / (productDef.unitsPerPack || 1);
+
+        if (mode === 'FULL_PACK') {
+            if (candidates.length < quantity) {
+                throw new Error(`Stock insuffisant. ${candidates.length} boîtes disponibles.`);
+            }
+
+            for (let i = 0; i < quantity; i++) {
+                const pack = candidates[i];
+                pack.status = PackStatus.DISPENSED;
+                pack.history.push({
+                    date: new Date().toISOString(),
+                    action: 'DISPENSATION',
+                    userId: userId,
+                    details: `Dispensation Prescription ${prescriptionId}`
+                });
+
+                // Update Aggregate Inventory
+                // Update Aggregate Inventory
+                // Helper to normalize strings for comparison
+                const normalize = (s: string) => s?.trim().toLowerCase() || '';
+
+                let invItem = this.inventory.find(inv =>
+                    inv.productId === productId &&
+                    inv.batchNumber === pack.lotNumber &&
+                    normalize(inv.location) === normalize(pack.locationId)
+                );
+
+                // Fallback: if not found by location, try finding by product+batch only (legacy support / mismatch fix)
+                if (!invItem) {
+                    const candidates = this.inventory.filter(inv =>
+                        inv.productId === productId &&
+                        inv.batchNumber === pack.lotNumber
+                    );
+                    if (candidates.length === 1) {
+                        invItem = candidates[0];
+                        console.warn(`Stock update: Location mismatch for pack ${pack.id}. Matched by batch only.`);
+                    }
+                }
+
+                if (invItem) {
+                    const unitsPerPack = productDef?.unitsPerPack || 1;
+                    invItem.theoreticalQty -= unitsPerPack;
+                    if (invItem.theoreticalQty < 0) invItem.theoreticalQty = 0;
+                }
+
+                // Create Dispensation Record
+                const disp: Dispensation = {
+                    id: `DISP-${Date.now()}-${i}`,
+                    prescriptionId,
+                    admissionId: admissionId || 'unknown',
+                    productId,
+                    productName: productDef.name,
+                    mode: mode as any,
+                    quantity: 1, // 1 Box
+                    serializedPackId: pack.id,
+                    lotNumber: pack.lotNumber,
+                    expiryDate: pack.expiryDate,
+                    serialNumber: pack.serialNumber,
+                    unitPriceExclVAT: unitPriceExclVAT,
+                    vatRate: productDef.vatRate,
+                    totalPriceInclVAT: unitPriceExclVAT * (1 + productDef.vatRate / 100),
+                    dispensedAt: new Date(),
+                    dispensedBy: userId
+                };
+                newDispensations.push(disp);
+            }
+        } else {
+            // UNIT MODE
+            const totalUnits = candidates.reduce((acc, p) => acc + (p.remainingUnits || p.unitsPerPack), 0);
+            if (totalUnits < quantity) throw new Error("Stock insuffisant.");
+
+            let remaining = quantity;
+            for (const pack of candidates) {
+                if (remaining <= 0) break;
+
+                const availableInPack = pack.remainingUnits || pack.unitsPerPack;
+                const toTake = Math.min(availableInPack, remaining);
+
+                pack.remainingUnits = (pack.remainingUnits || pack.unitsPerPack) - toTake;
+                if (pack.status === PackStatus.SEALED) pack.status = PackStatus.OPENED;
+                if (pack.remainingUnits === 0) pack.status = PackStatus.EMPTY;
+                // Correction: EMPTY status overrides OPENED if 0 units
+                if (pack.remainingUnits === 0) pack.status = PackStatus.EMPTY;
+
+                pack.history.push({
+                    date: new Date().toISOString(),
+                    action: 'DISPENSATION_UNIT',
+                    userId: userId,
+                    details: `Dispensed ${toTake} units`
+                });
+
+                // Inventory
+                // Inventory
+                const normalize = (s: string) => s?.trim().toLowerCase() || '';
+
+                let invItem = this.inventory.find(inv =>
+                    inv.productId === productId &&
+                    inv.batchNumber === pack.lotNumber &&
+                    normalize(inv.location) === normalize(pack.locationId)
+                );
+
+                if (!invItem) {
+                    const candidates = this.inventory.filter(inv =>
+                        inv.productId === productId &&
+                        inv.batchNumber === pack.lotNumber
+                    );
+                    if (candidates.length === 1) {
+                        invItem = candidates[0];
+                        console.warn(`Stock update (Unit): Location mismatch for pack ${pack.id}. Matched by batch only.`);
+                    }
+                }
+                if (invItem) {
+                    invItem.theoreticalQty -= toTake;
+                    if (invItem.theoreticalQty < 0) invItem.theoreticalQty = 0;
+                }
+
+                const disp: Dispensation = {
+                    id: `DISP-${Date.now()}-${pack.id}`,
+                    prescriptionId,
+                    admissionId: admissionId || 'unknown',
+                    productId,
+                    productName: productDef.name,
+                    mode: mode as any,
+                    quantity: toTake,
+                    serializedPackId: pack.id,
+                    lotNumber: pack.lotNumber,
+                    expiryDate: pack.expiryDate,
+                    serialNumber: pack.serialNumber,
+                    unitPriceExclVAT: pricePerUnit,
+                    vatRate: productDef.vatRate,
+                    totalPriceInclVAT: (pricePerUnit * toTake) * (1 + productDef.vatRate / 100),
+                    dispensedAt: new Date(),
+                    dispensedBy: userId
+                };
+                newDispensations.push(disp);
+
+                remaining -= toTake;
+            }
+        }
+
+        this.dispensations.push(...newDispensations);
+        this.saveData();
+        return newDispensations;
+    }
+
+    getDispensationsByPrescription(prescriptionId: string): Dispensation[] {
+        return this.dispensations.filter(d => d.prescriptionId === prescriptionId);
+    }
+
+    getDispensationsByAdmission(admissionId: string): Dispensation[] {
+        return this.dispensations.filter(d => d.admissionId === admissionId);
+    }
+
+    // Serialized Pack Getters
+    getSerializedPacks(filters?: {
+        productId?: string;
+        status?: PackStatus;
+        locationId?: string;
+        expiringBefore?: Date;
+    }): SerializedPack[] {
+        let result = [...this.serializedPacks];
+
+        if (filters) {
+            if (filters.productId) {
+                result = result.filter(p => p.productId === filters.productId);
+            }
+            if (filters.status) {
+                result = result.filter(p => p.status === filters.status);
+            }
+            if (filters.locationId) {
+                result = result.filter(p => p.locationId === filters.locationId);
+            }
+            if (filters.expiringBefore) {
+                result = result.filter(p =>
+                    new Date(p.expiryDate) <= filters.expiringBefore!
+                );
+            }
+        }
+
+        return result;
+    }
+
+    getSerializedPackById(id: string): SerializedPack | null {
+        return this.serializedPacks.find(p => p.id === id) || null;
+    }
+
 }
 
 export const pharmacyService = new PharmacyService();

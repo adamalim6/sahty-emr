@@ -5,6 +5,8 @@ export type UserRole = 'DOCTOR' | 'PHARMACIST';
 export interface User {
     name: string;
     role: UserRole;
+    email?: string;
+    id?: string;
 }
 
 interface AuthContextType {
@@ -24,8 +26,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const login = (role: UserRole) => {
         const newUser: User = role === 'DOCTOR'
-            ? { name: 'Dr. S. Alami', role: 'DOCTOR' }
-            : { name: 'Pharmacien Chef', role: 'PHARMACIST' };
+            ? { id: 'u1', name: 'Dr. S. Alami', role: 'DOCTOR', email: 'dr.alami@hospital.com' }
+            : { id: 'u2', name: 'Pharmacien Chef', role: 'PHARMACIST', email: 'pharmacy@hospital.com' };
 
         setUser(newUser);
         localStorage.setItem('sahty_user', JSON.stringify(newUser));

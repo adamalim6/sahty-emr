@@ -1,0 +1,50 @@
+import { Request, Response } from 'express';
+import { pharmacyService } from '../services/pharmacyService';
+
+export const dispenseWithFEFO = async (req: Request, res: Response) => {
+    try {
+        const { prescriptionId, admissionId, productId, mode, quantity, userId, targetPackIds } = req.body;
+
+        // Validation
+        if (!prescriptionId || !admissionId || !productId || !mode || !quantity || !userId) {
+            return res.status(400).json({ message: 'Champs manquants' });
+        }
+
+        // Effectuer la dispensation
+        // Note: PharmacyService throws errors for stock/validation issues which we catch below
+        const dispensations = pharmacyService.dispenseWithFEFO({
+            prescriptionId,
+            admissionId,
+            productId,
+            mode,
+            quantity: parseInt(quantity),
+            userId,
+            targetPackIds
+        });
+
+        res.status(201).json(dispensations);
+    } catch (error: any) {
+        console.error("Dispensation Error:", error);
+        res.status(400).json({ message: error.message || 'Erreur lors de la dispensation' });
+    }
+};
+
+export const getDispensationsByPrescription = (req: Request, res: Response) => {
+    try {
+        const { prescriptionId } = req.params;
+        const dispensations = pharmacyService.getDispensationsByPrescription(prescriptionId);
+        res.json(dispensations);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching dispensations' });
+    }
+};
+
+export const getDispensationsByAdmission = (req: Request, res: Response) => {
+    try {
+        const { admissionId } = req.params;
+        const dispensations = pharmacyService.getDispensationsByAdmission(admissionId);
+        res.json(dispensations);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching dispensations' });
+    }
+};

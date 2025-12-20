@@ -60,6 +60,7 @@ export interface Admission {
     reason: string;
     service: string;
     admissionDate: string;
+    dischargeDate?: string;
     doctorName: string;
     roomNumber?: string;
     bedLabel?: string;

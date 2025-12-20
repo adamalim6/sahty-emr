@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
 import { StockLocation, InventoryItem } from '../../types/pharmacy';
-import { MapPin, Plus, Edit2, Trash2, X, Save, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { api } from '../../services/api';
+import { MapPin, Plus, Edit2, Trash2, X, Save, AlertCircle } from 'lucide-react';
 
 interface LocationManagerProps {
   locations: StockLocation[];
@@ -12,7 +13,7 @@ interface LocationManagerProps {
 export const LocationManager: React.FC<LocationManagerProps> = ({ locations, inventoryItems, onUpdateLocations }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  
+
   const [formData, setFormData] = useState<Partial<StockLocation>>({
     name: '',
     description: '',
@@ -34,13 +35,13 @@ export const LocationManager: React.FC<LocationManagerProps> = ({ locations, inv
     setIsModalOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name?.trim()) {
       setError('Le nom de l\'emplacement est requis.');
       return;
     }
 
-    const nameExists = locations.some(l => 
+    const nameExists = locations.some(l =>
       l.name.toLowerCase() === formData.name?.toLowerCase() && l.id !== editingId
     );
 
@@ -51,27 +52,37 @@ export const LocationManager: React.FC<LocationManagerProps> = ({ locations, inv
 
     let newLocations = [...locations];
 
-    if (editingId) {
-      newLocations = newLocations.map(l => 
-        l.id === editingId ? { ...l, ...formData } as StockLocation : l
-      );
-    } else {
-      const newLoc: StockLocation = {
-        id: `LOC-${Date.now()}`,
-        name: formData.name,
-        description: formData.description || '',
-        isActive: formData.isActive || true
-      };
-      newLocations.push(newLoc);
-    }
+    try {
+      if (editingId) {
+        const payload = { ...formData, id: editingId } as StockLocation;
+        const updatedLoc = await api.updateLocation(payload);
 
-    onUpdateLocations(newLocations);
-    setIsModalOpen(false);
+        newLocations = newLocations.map(l =>
+          l.id === editingId ? updatedLoc : l
+        );
+        onUpdateLocations(newLocations);
+        setIsModalOpen(false);
+      } else {
+        const payload: any = {
+          name: formData.name,
+          description: formData.description || '',
+          type: 'SHELF',
+          isActive: formData.isActive
+        };
+
+        const newLoc = await api.createLocation(payload);
+        newLocations.push(newLoc);
+        onUpdateLocations(newLocations);
+        setIsModalOpen(false);
+      }
+    } catch (e) {
+      console.error(e);
+      setError("Erreur lors de l'enregistrement");
+    }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     const locName = locations.find(l => l.id === id)?.name;
-    
     const isUsed = inventoryItems.some(item => item.location === locName);
 
     if (isUsed) {
@@ -80,8 +91,13 @@ export const LocationManager: React.FC<LocationManagerProps> = ({ locations, inv
     }
 
     if (window.confirm('Êtes-vous sûr de vouloir supprimer cet emplacement ?')) {
-      const newLocations = locations.filter(l => l.id !== id);
-      onUpdateLocations(newLocations);
+      try {
+        await api.deleteLocation(id);
+        const newLocations = locations.filter(l => l.id !== id);
+        onUpdateLocations(newLocations);
+      } catch (e) {
+        alert("Erreur lors de la suppression de l'emplacement");
+      }
     }
   };
 
@@ -92,7 +108,7 @@ export const LocationManager: React.FC<LocationManagerProps> = ({ locations, inv
           <h2 className="text-xl font-bold text-slate-900">Emplacements de Stockage</h2>
           <p className="text-slate-500 text-sm">Configurez les zones, étagères et réfrigérateurs.</p>
         </div>
-        <button 
+        <button
           onClick={openAddModal}
           className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium shadow-sm transition-colors"
         >
@@ -115,13 +131,13 @@ export const LocationManager: React.FC<LocationManagerProps> = ({ locations, inv
           <tbody className="divide-y divide-slate-100">
             {locations.map(loc => {
               const itemCount = inventoryItems.filter(i => i.location === loc.name).length;
-              
+
               return (
                 <tr key={loc.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border
-                      ${loc.isActive 
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                      ${loc.isActive
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                         : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
                       {loc.isActive ? 'Actif' : 'Inactif'}
                     </span>
@@ -140,14 +156,14 @@ export const LocationManager: React.FC<LocationManagerProps> = ({ locations, inv
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end space-x-2">
-                      <button 
+                      <button
                         onClick={() => openEditModal(loc)}
                         className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
                         title="Modifier"
                       >
                         <Edit2 size={16} />
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleDelete(loc.id)}
                         className={`p-1.5 rounded transition-colors ${itemCount > 0 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-400 hover:text-red-600 hover:bg-red-50'}`}
                         title={itemCount > 0 ? "Impossible de supprimer (Articles assignés)" : "Supprimer"}
@@ -173,7 +189,7 @@ export const LocationManager: React.FC<LocationManagerProps> = ({ locations, inv
                 <X size={24} />
               </button>
             </div>
-            
+
             <div className="p-6 space-y-4">
               {error && (
                 <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-start">
@@ -184,10 +200,10 @@ export const LocationManager: React.FC<LocationManagerProps> = ({ locations, inv
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Nom <span className="text-red-500">*</span></label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400"
                   placeholder="ex: Frigo 2"
                 />
@@ -195,20 +211,20 @@ export const LocationManager: React.FC<LocationManagerProps> = ({ locations, inv
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
-                <textarea 
+                <textarea
                   value={formData.description}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-900 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 h-24 resize-none"
                   placeholder="Détails optionnels..."
                 />
               </div>
 
               <div className="flex items-center space-x-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   id="isActive"
                   checked={formData.isActive}
-                  onChange={(e) => setFormData({...formData, isActive: e.target.checked})}
+                  onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
                   className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
                 />
                 <label htmlFor="isActive" className="text-sm font-medium text-slate-700 cursor-pointer select-none">
@@ -218,14 +234,14 @@ export const LocationManager: React.FC<LocationManagerProps> = ({ locations, inv
             </div>
 
             <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end space-x-3">
-              <button 
-                onClick={() => setIsModalOpen(false)} 
+              <button
+                onClick={() => setIsModalOpen(false)}
                 className="px-4 py-2 text-slate-600 hover:bg-slate-200 rounded-lg font-medium transition-colors"
               >
                 Annuler
               </button>
-              <button 
-                onClick={handleSave} 
+              <button
+                onClick={handleSave}
                 className="px-6 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg font-bold shadow-sm transition-colors flex items-center space-x-2"
               >
                 <Save size={18} />

@@ -148,7 +148,7 @@ export const PatientList: React.FC = () => {
     p.cin?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleSave = (finalStatus: 'provisional' | 'complete') => {
+  const handleSave = async (finalStatus: 'provisional' | 'complete') => {
     if (!formData.firstName || !formData.lastName || !formData.dateOfBirth) {
       alert("Veuillez remplir les champs obligatoires (Nom, Prénom, Date de naissance)"); return;
     }
@@ -161,12 +161,29 @@ export const PatientList: React.FC = () => {
       }
     }
 
-    const updatedPatient: Patient = { ...formData as Patient, isProvisional: finalStatus === 'provisional' };
-    setPatients(prev => {
-      const exists = prev.find(p => p.id === updatedPatient.id);
-      return exists ? prev.map(p => p.id === updatedPatient.id ? updatedPatient : p) : [updatedPatient, ...prev];
-    });
-    setIsModalOpen(false);
+    try {
+      const patientToSave = { ...formData, isProvisional: finalStatus === 'provisional' };
+
+      // Check if we are updating an existing patient (from DB) or ensuring a new one
+      // We look if the ID exists in the current list.
+      const isUpdate = patients.some(p => p.id === formData.id);
+
+      if (isUpdate && formData.id) {
+        const savedPatient = await api.updatePatient(formData.id, patientToSave);
+        setPatients(prev => prev.map(p => p.id === savedPatient.id ? savedPatient : p));
+      } else {
+        // Create new patient
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { id, ...dataToCreate } = patientToSave;
+        const savedPatient = await api.createPatient(dataToCreate as any);
+        setPatients(prev => [savedPatient, ...prev]);
+      }
+
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error("Error saving patient:", err);
+      alert("Erreur lors de l'enregistrement du patient. Vérifiez la console.");
+    }
   };
 
   const handleInsuranceChange = (field: string, value: string) => {
@@ -197,7 +214,20 @@ export const PatientList: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredPatients.map(patient => (
-          <div key={patient.id} onClick={() => navigate(`/patient/${patient.id}`)} className="bg-white rounded-2xl shadow-sm border p-6 transition-all cursor-pointer group hover:shadow-xl hover:-translate-y-1">
+          <div key={patient.id} onClick={() => {
+            if (patient.isProvisional) {
+              setFormData({
+                ...patient,
+                insurance: patient.insurance || { mainOrg: '', relationship: 'Lui-même', registrationNumber: '' },
+                guardian: patient.guardian || { firstName: '', lastName: '', phone: '', relationship: 'Père', idType: 'CIN', idNumber: '', address: '', habilitation: '' },
+                emergencyContacts: (patient.emergencyContacts && patient.emergencyContacts.length > 0) ? patient.emergencyContacts : [{ name: '', relationship: 'Père', phone: '' }]
+              });
+              setModalMode('complet');
+              setIsModalOpen(true);
+            } else {
+              navigate(`/patient/${patient.id}`);
+            }
+          }} className="bg-white rounded-2xl shadow-sm border p-6 transition-all cursor-pointer group hover:shadow-xl hover:-translate-y-1">
             <div className="flex items-start space-x-4">
               <div className={`h-14 w-14 rounded-2xl flex items-center justify-center border-2 ${patient.gender === Gender.Female ? 'bg-pink-50 text-pink-500 border-pink-100' : 'bg-blue-50 text-blue-500 border-blue-100'}`}><User size={28} /></div>
               <div className="flex-1 min-w-0"><h3 className="text-lg font-bold text-slate-900 truncate uppercase">{patient.lastName} {patient.firstName}</h3><div className="flex flex-col space-y-1 mt-1.5"><span className="text-[10px] font-black bg-slate-100 border px-2 py-0.5 rounded text-slate-500 uppercase w-fit">{patient.ipp}</span>{patient.cin && <div className="flex items-center space-x-1.5 text-slate-400"><IdCard size={12} /><span className="text-[10px] font-bold uppercase">{patient.cin}</span></div>}</div></div>
@@ -284,11 +314,11 @@ export const PatientList: React.FC = () => {
                   {/* 4. Localisation */}
                   <CardSection title="4. Localisation & Nationalité" icon={MapPin} colorClass="text-blue-600" bgClass="bg-blue-50">
                     <div className="grid grid-cols-1 sm:grid-cols-4 gap-5">
-                      <SelectField label="Pays" required options={WORLD_COUNTRIES} value={formData.country} onChange={(e: any) => setFormData({ ...formData, country: e.target.value })} icon={Globe} />
-                      <InputField label="Ville" required value={formData.city} onChange={(e: any) => setFormData({ ...formData, city: e.target.value })} icon={MapPin} />
+                      <SelectField label="Pays" options={WORLD_COUNTRIES} value={formData.country} onChange={(e: any) => setFormData({ ...formData, country: e.target.value })} icon={Globe} />
+                      <InputField label="Ville" value={formData.city} onChange={(e: any) => setFormData({ ...formData, city: e.target.value })} icon={MapPin} />
                       <InputField label="CP" value={formData.zipCode} onChange={(e: any) => setFormData({ ...formData, zipCode: e.target.value })} />
-                      <SelectField label="Nationalité" required options={NATIONALITIES} value={formData.nationality} onChange={(e: any) => setFormData({ ...formData, nationality: e.target.value })} icon={Flag} />
-                      <div className="sm:col-span-4"><InputField label="Adresse" required value={formData.address} onChange={(e: any) => setFormData({ ...formData, address: e.target.value })} icon={MapPin} /></div>
+                      <SelectField label="Nationalité" options={NATIONALITIES} value={formData.nationality} onChange={(e: any) => setFormData({ ...formData, nationality: e.target.value })} icon={Flag} />
+                      <div className="sm:col-span-4"><InputField label="Adresse" value={formData.address} onChange={(e: any) => setFormData({ ...formData, address: e.target.value })} icon={MapPin} /></div>
                     </div>
                   </CardSection>
 

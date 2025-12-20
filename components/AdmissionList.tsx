@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MOCK_PATIENTS, calculateDuration } from '../constants';
-import { Clock, Activity, FileText, Plus } from 'lucide-react';
+import { Clock, Activity, FileText, Plus, CheckCircle, Calendar } from 'lucide-react';
 import { AdmissionWizard } from './AdmissionWizard';
 
 import { api } from '../services/api';
@@ -11,14 +11,28 @@ import { Admission } from '../types';
 export const AdmissionList: React.FC = () => {
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [admissions, setAdmissions] = useState<Admission[]>([]);
+  const [patients, setPatients] = useState<any[]>([]);
   const navigate = useNavigate();
 
   React.useEffect(() => {
-    api.getAdmissions().then(setAdmissions).catch(console.error);
+    const loadData = async () => {
+      try {
+        const [admissionsData, patientsData] = await Promise.all([
+          api.getAdmissions(),
+          api.getPatients()
+        ]);
+        setAdmissions(admissionsData);
+        setPatients(patientsData);
+      } catch (error) {
+        console.error("Failed to load admissions or patients", error);
+      }
+    };
+    loadData();
   }, []);
 
   const getPatientName = (id: string) => {
-    const p = MOCK_PATIENTS.find(pat => pat.id === id);
+    // Try to find in API patients first, then fallback to MOCK if needed (though API should have all)
+    const p = patients.find(pat => pat.id === id) || MOCK_PATIENTS.find(pat => pat.id === id);
     return p ? `${p.firstName} ${p.lastName}` : 'Inconnu';
   };
 
@@ -83,10 +97,30 @@ export const AdmissionList: React.FC = () => {
             </div>
 
             <div className="flex items-center">
-              <div className="bg-orange-50 text-orange-700 px-4 py-2 rounded-full font-bold text-sm flex items-center shadow-sm">
-                <Clock size={16} className="mr-2" />
-                {calculateDuration(admission.admissionDate)}
-              </div>
+              {admission.status === 'En cours' ? (
+                <div className="bg-orange-50 text-orange-700 px-4 py-2 rounded-full font-bold text-sm flex items-center shadow-sm">
+                  <Clock size={16} className="mr-2" />
+                  {calculateDuration(admission.admissionDate)}
+                </div>
+              ) : admission.status === 'Sorti' ? (
+                <div className="flex flex-col items-end gap-2">
+                  <div className="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-full font-bold text-sm flex items-center shadow-sm">
+                    <CheckCircle size={16} className="mr-2" />
+                    Sorti
+                  </div>
+                  {admission.dischargeDate && (
+                    <div className="text-xs text-gray-500 flex items-center">
+                      <Calendar size={12} className="mr-1" />
+                      {new Date(admission.dischargeDate).toLocaleDateString('fr-FR')}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-red-50 text-red-700 px-4 py-2 rounded-full font-bold text-sm flex items-center shadow-sm">
+                  <Activity size={16} className="mr-2" />
+                  {admission.status}
+                </div>
+              )}
             </div>
           </div>
         ))}

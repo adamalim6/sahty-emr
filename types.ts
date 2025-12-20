@@ -7,7 +7,7 @@ export enum Gender {
 export interface Patient {
   id: string;
   isProvisional: boolean; // Statut de complétude
-  ipp: string; 
+  ipp: string;
   firstName: string;
   lastName: string;
   dateOfBirth: string;
@@ -16,7 +16,7 @@ export interface Patient {
   email?: string;
   cin?: string;
   avatar?: string;
-  
+
   // Infos Complémentaires
   fatherName?: string;
   fatherPhone?: string;
@@ -65,11 +65,12 @@ export interface Patient {
 
 export interface Admission {
   id: string;
-  nda: string; 
+  nda: string;
   patientId: string;
   reason: string;
   service: string;
   admissionDate: string;
+  dischargeDate?: string;
   doctorName: string;
   roomNumber?: string;
   bedLabel?: string;

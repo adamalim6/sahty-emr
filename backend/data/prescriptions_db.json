@@ -1,0 +1,82 @@
+[
+  {
+    "id": "PRESC-1766272403006-pkg4mhbul",
+    "patientId": "5371",
+    "data": {
+      "molecule": "Paracétamol",
+      "commercialName": "",
+      "qty": "1000",
+      "unit": "mg",
+      "route": "Orale",
+      "adminMode": "instant",
+      "adminDuration": "",
+      "type": "frequency",
+      "dilutionRequired": false,
+      "substitutable": true,
+      "solvent": {
+        "molecule": "",
+        "commercialName": "",
+        "qty": "--",
+        "unit": "mL"
+      },
+      "databaseMode": "hospital",
+      "schedule": {
+        "dailySchedule": "everyday",
+        "mode": "cycle",
+        "interval": "6",
+        "isCustomInterval": false,
+        "startDateTime": "2025-12-21T00:12",
+        "durationValue": "1",
+        "durationUnit": "days",
+        "selectedDays": [],
+        "specificTimes": [],
+        "simpleCount": "1",
+        "simplePeriod": "day",
+        "intervalDuration": ""
+      },
+      "conditionComment": ""
+    },
+    "createdAt": "2025-12-20T23:13:23.006Z",
+    "createdBy": "Current User"
+  },
+  {
+    "id": "PRESC-1766272445849-woplqhnbc",
+    "patientId": "5371",
+    "data": {
+      "molecule": "zamox",
+      "commercialName": "",
+      "qty": "4.5",
+      "unit": "mg",
+      "route": "Orale",
+      "adminMode": "instant",
+      "adminDuration": "",
+      "type": "frequency",
+      "dilutionRequired": false,
+      "substitutable": true,
+      "solvent": {
+        "molecule": "",
+        "commercialName": "",
+        "qty": "--",
+        "unit": "mL"
+      },
+      "databaseMode": "hospital",
+      "schedule": {
+        "dailySchedule": "everyday",
+        "mode": "cycle",
+        "interval": "8",
+        "isCustomInterval": false,
+        "startDateTime": "2025-12-21T00:13",
+        "durationValue": "1",
+        "durationUnit": "days",
+        "selectedDays": [],
+        "specificTimes": [],
+        "simpleCount": "1",
+        "simplePeriod": "day",
+        "intervalDuration": ""
+      },
+      "conditionComment": ""
+    },
+    "createdAt": "2025-12-20T23:14:05.849Z",
+    "createdBy": "Current User"
+  }
+]
