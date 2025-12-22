@@ -48,7 +48,7 @@ class SerializedPackService {
                 id: `pack-${timestamp}-${batchRandom}-${i}`, // Guaranteed unique
                 productId: params.productId,
                 serialNumber: this.generateSerialNumber(),
-                lotNumber: params.lotNumber,
+                batchNumber: params.lotNumber,
                 expiryDate: params.expiryDate,
                 locationId: params.locationId,
                 status: PackStatus.SEALED,

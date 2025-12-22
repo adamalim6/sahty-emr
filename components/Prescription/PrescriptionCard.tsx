@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
     Pill,
@@ -8,7 +7,10 @@ import {
     FlaskConical,
     FileText,
     AlertCircle,
-    Timer
+    Timer,
+    TestTube,
+    Scan,
+    Stethoscope
 } from 'lucide-react';
 import { FormData } from './types';
 import { getPosologyText, formatDuration } from './utils';
@@ -19,7 +21,79 @@ interface PrescriptionCardProps {
 }
 
 export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, extraContent }) => {
-    const posologyText = getPosologyText(formData);
+    // We can reuse getPosologyText for medical prescriptions and also for biology if we adapt it or check if it works.
+    // However, the `getPosologyText` usually talks about "Prendre" or "Administrer". 
+    // For Biology, we might want "Réaliser" or "Faire".
+    // Let's create a specific biology text generator right here or reuse getPosologyText if generic enough.
+    // Actually, getPosologyText relies on formData properties. 
+    // Biology form uses the exact same `schedule` structure.
+
+    // Generic description generator for Biology, Imagery and Care
+    const getProcedureDescription = (data: FormData): string | null => {
+        if (!data.schedule || !data.schedule.startDateTime) return null;
+
+        const startDate = new Date(data.schedule.startDateTime);
+        const dateStr = startDate.toLocaleDateString('fr-FR');
+        const timeStr = startDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+        if (data.type === 'one-time') {
+            return `À faire le ${dateStr} à ${timeStr}`;
+        }
+
+        // For frequency / punctual-frequency, we can reuse logic similar to getPosologyText logic
+        // but tailored for exams.
+
+        let freqText = "";
+        const schedule = data.schedule;
+
+        // Daily schedule part
+        if (schedule.dailySchedule === 'everyday') freqText = "Tous les jours";
+        else if (schedule.dailySchedule === 'every-other-day') freqText = "Un jour sur deux";
+        else if (schedule.dailySchedule === 'specific-days' && schedule.selectedDays && schedule.selectedDays.length > 0) {
+            freqText = `Les ${schedule.selectedDays.join(', ')}`;
+        }
+
+        // Intra-day schedule part
+        let modeText = "";
+        if (schedule.mode === 'simple') {
+            modeText = `${schedule.simpleCount} fois par jour`;
+        } else if (schedule.mode === 'cycle') {
+            modeText = `toutes les ${schedule.interval}h`;
+        } else if (schedule.mode === 'specific-time' && schedule.specificTimes.length > 0) {
+            modeText = `à ${schedule.specificTimes.join(', ')}`;
+        }
+
+        // Duration part
+        let durationText = "";
+        if (schedule.durationValue && schedule.durationValue !== '--') {
+            const unit = schedule.durationUnit === 'weeks' ? 'semaines' : 'jours';
+            durationText = `pendant ${schedule.durationValue} ${unit}`;
+        }
+
+        // Start date part
+        const startText = `à partir du ${dateStr} à ${timeStr}`;
+
+        // Combine everything
+        let fullText = [freqText, modeText, durationText, startText].filter(Boolean).join(', ');
+
+        // Specific handling for Ponct + Freq
+        if (data.type === 'punctual-frequency') {
+            // Logic for immediate dose is implied by the type, usually we might add "1 prise tout de suite puis..."
+            // But user asked for specific format: "Tous les jours, toutes les 6h..."
+            // The medical form usually generates "1 prise immédiate puis..." if applicable.
+            // If the user wants EXACTLY "Tous les jours..." then the standard generation above works.
+            // If we want to mention the immediate aspect:
+            const immediateText = "Réaliser maintenant, puis";
+            fullText = `${immediateText} ${fullText}`;
+        }
+
+        // Capitalize first letter
+        return fullText.charAt(0).toUpperCase() + fullText.slice(1);
+    };
+
+    const posologyText = (formData.prescriptionType === 'biology' || formData.prescriptionType === 'imagery' || formData.prescriptionType === 'care')
+        ? getProcedureDescription(formData)
+        : getPosologyText(formData);
 
     if (!formData.molecule) {
         return (
@@ -29,6 +103,106 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
             </div>
         );
     }
+
+    // Unified Schedule Description Component
+    const ScheduleDisplay = ({ text }: { text: string | null }) => {
+        if (!text) return null;
+        return (
+            <div className="flex items-start gap-3 bg-blue-50/50 border border-blue-100 rounded-lg p-3 text-sm text-blue-900 mt-2 animate-in fade-in slide-in-from-left-2">
+                <Calendar className="w-4 h-4 mt-0.5 flex-shrink-0 text-blue-500" />
+                <p className="font-medium leading-relaxed">{text}</p>
+            </div>
+        );
+    };
+
+    if (formData.prescriptionType === 'biology') {
+        const bioDescription = getProcedureDescription(formData);
+
+        return (
+            <div className="space-y-4">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <h2 className="text-lg font-bold text-blue-800">{formData.molecule}</h2>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 mt-1">
+                            Examen Biologique
+                        </span>
+                    </div>
+                    <div className="bg-blue-100 rounded-full p-2">
+                        <TestTube className="w-5 h-5 text-blue-600" />
+                    </div>
+                </div>
+
+                {formData.conditionComment && formData.conditionComment.trim().length > 0 && (
+                    <div className="flex items-start gap-2 text-xs text-slate-700 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">
+                        <FileText className="w-3 h-3 mt-0.5 flex-shrink-0 text-slate-500" />
+                        <span className="leading-tight">Commentaire: <strong>{formData.conditionComment.trim()}</strong></span>
+                    </div>
+                )}
+
+                <ScheduleDisplay text={bioDescription} />
+            </div>
+        );
+    }
+
+    if (formData.prescriptionType === 'imagery') {
+        const imgDescription = getProcedureDescription(formData);
+
+        return (
+            <div className="space-y-4">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <h2 className="text-lg font-bold text-purple-800">{formData.molecule}</h2>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 mt-1">
+                            Acte d'Imagerie
+                        </span>
+                    </div>
+                    <div className="bg-purple-100 rounded-full p-2">
+                        <Scan className="w-5 h-5 text-purple-600" />
+                    </div>
+                </div>
+
+                {formData.conditionComment && formData.conditionComment.trim().length > 0 && (
+                    <div className="flex items-start gap-2 text-xs text-slate-700 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">
+                        <FileText className="w-3 h-3 mt-0.5 flex-shrink-0 text-slate-500" />
+                        <span className="leading-tight">Commentaire: <strong>{formData.conditionComment.trim()}</strong></span>
+                    </div>
+                )}
+
+                <ScheduleDisplay text={imgDescription} />
+            </div>
+        );
+    }
+
+    if (formData.prescriptionType === 'care') {
+        const careDescription = getProcedureDescription(formData);
+
+        return (
+            <div className="space-y-4">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <h2 className="text-lg font-bold text-orange-800">{formData.molecule}</h2>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 mt-1">
+                            Acte & Soin
+                        </span>
+                    </div>
+                    <div className="bg-orange-100 rounded-full p-2">
+                        <Stethoscope className="w-5 h-5 text-orange-600" />
+                    </div>
+                </div>
+
+                {formData.conditionComment && formData.conditionComment.trim().length > 0 && (
+                    <div className="flex items-start gap-2 text-xs text-slate-700 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">
+                        <FileText className="w-3 h-3 mt-0.5 flex-shrink-0 text-slate-500" />
+                        <span className="leading-tight">Instructions: <strong>{formData.conditionComment.trim()}</strong></span>
+                    </div>
+                )}
+
+                <ScheduleDisplay text={careDescription} />
+            </div>
+        );
+    }
+
+
 
     return (
         <div className="space-y-4">
@@ -82,10 +256,25 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
             </div>
 
             {/* Natural Language Posology Card */}
-            {posologyText && (
-                <div className="flex items-start gap-3 bg-blue-50/50 border border-blue-100 rounded-lg p-3 text-sm text-blue-900 mt-2 animate-in fade-in slide-in-from-left-2">
-                    <FileText className="w-4 h-4 mt-0.5 flex-shrink-0 text-blue-500" />
-                    <p className="font-medium leading-relaxed">{posologyText}</p>
+            <ScheduleDisplay text={posologyText} />
+
+            {/* Skipped Doses Display - Moved Below Posology */}
+            {formData.skippedDoses && formData.skippedDoses.length > 0 && (
+                <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 animate-in fade-in">
+                    <AlertCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-amber-600" />
+                    <div>
+                        <span className="font-bold block mb-1">Prises sautées :</span>
+                        <ul className="list-disc pl-4 space-y-0.5">
+                            {formData.skippedDoses.map(dateStr => {
+                                const d = new Date(dateStr);
+                                return (
+                                    <li key={dateStr}>
+                                        {d.toLocaleDateString('fr-FR')} à {d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </div>
                 </div>
             )}
 
@@ -100,6 +289,13 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
                 const shouldShowDateInfo = isPunctual || (displayDate && !isNaN(displayDate.getTime()));
 
                 if (!shouldShowDateInfo || !displayDate) return null;
+
+                // For biology, we already showed detailed date info in bioDescription.
+                // So we can hide this block if prescriptionType is biology, 
+                // OR adapt it. 
+                // The current implementation of generic portion (lines 154+) is at the bottom.
+                // Let's hide it for biology to avoid redundancy.
+                if (formData.prescriptionType === 'biology' || formData.prescriptionType === 'imagery' || formData.prescriptionType === 'care') return null;
 
                 return (
                     <div className="text-xs text-slate-500 space-y-1 pt-2 border-t border-slate-200">

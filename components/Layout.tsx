@@ -11,10 +11,13 @@ import {
   Menu,
   X,
   Bot,
-  LogOut
+  LogOut,
+  MapPin,
+  Pill,
+  Package
 } from 'lucide-react';
 import { AIAssistant } from './AIAssistant';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, UserRole } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 interface LayoutProps {
@@ -28,12 +31,15 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
 
   const navItems = [
-    { to: '/', label: 'Patients', icon: Users },
-    { to: '/admissions', label: 'Admissions', icon: ClipboardList },
-    { to: '/calendar', label: 'Calendrier', icon: Calendar },
-    { to: '/waiting-room', label: 'Salle d\'Attente', icon: Armchair },
-    { to: '/map', label: 'Plan du Service', icon: Map },
-    { to: '/settings', label: 'Paramètres', icon: Settings },
+    { to: '/', label: 'Patients', icon: Users, roles: [UserRole.DOCTOR, UserRole.NURSE] }, // Assuming default roles for existing items
+    { to: '/admissions', label: 'Admissions', icon: ClipboardList, roles: [UserRole.DOCTOR, UserRole.NURSE] },
+
+    { to: '/replenishment', label: 'Réapprovisionnement', icon: ClipboardList, roles: [UserRole.DOCTOR, UserRole.NURSE] },
+    { to: '/service-stock', label: 'Stock Service', icon: Package, roles: [UserRole.DOCTOR, UserRole.NURSE] }, // New
+    { to: '/locations', label: 'Emplacements', icon: MapPin, roles: [UserRole.DOCTOR, UserRole.NURSE] },
+    { to: '/waiting-room', label: 'Salle d\'Attente', icon: Armchair, roles: [UserRole.DOCTOR, UserRole.NURSE] },
+    { to: '/map', label: 'Plan du Service', icon: Map, roles: [UserRole.DOCTOR, UserRole.NURSE] },
+    { to: '/settings', label: 'Paramètres', icon: Settings, roles: [UserRole.DOCTOR, UserRole.ADMIN] },
   ];
 
   return (
@@ -51,7 +57,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         fixed inset-y-0 left-0 z-30 w-64 bg-slate-900 text-white transform transition-transform duration-300 ease-in-out
         lg:relative lg:translate-x-0
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
+`}>
         <div className="flex items-center justify-between p-6 border-b border-slate-700">
           <div className="flex items-center space-x-2">
             <Activity className="h-8 w-8 text-emerald-400" />
@@ -72,8 +78,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 flex items-center px-4 py-3 rounded-lg transition-colors
                 ${isActive
                   ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20'
-                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'}
-              `}
+                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }
+`}
             >
               <item.icon className="h-5 w-5 mr-3" />
               <span className="font-medium">{item.label}</span>

@@ -187,3 +187,34 @@ export const processQuarantine = (req: Request, res: Response) => {
         res.status(500).json({ message: 'Error processing quarantine' });
     }
 };
+
+
+// Replenishment Endpoints
+export const getReplenishmentRequests = (req: Request, res: Response) => {
+    try {
+        const requests = pharmacyService.getReplenishmentRequests();
+        res.json(requests);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching replenishment requests' });
+    }
+};
+
+export const createReplenishmentRequest = (req: Request, res: Response) => {
+    try {
+        const request = pharmacyService.createReplenishmentRequest(req.body);
+        res.status(201).json(request);
+    } catch (error) {
+        res.status(500).json({ message: 'Error creating replenishment request' });
+    }
+};
+
+export const updateReplenishmentRequestStatus = (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { status, processedRequest } = req.body; // processedRequest contains prepared items
+        const updated = pharmacyService.updateReplenishmentRequestStatus(id, status, processedRequest);
+        res.json(updated);
+    } catch (error) {
+        res.status(500).json({ message: 'Error updating request status' });
+    }
+};

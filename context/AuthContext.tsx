@@ -1,6 +1,11 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
-export type UserRole = 'DOCTOR' | 'PHARMACIST';
+export enum UserRole {
+    DOCTOR = 'DOCTOR',
+    PHARMACIST = 'PHARMACIST',
+    NURSE = 'NURSE',
+    ADMIN = 'ADMIN'
+}
 
 export interface User {
     name: string;
@@ -25,9 +30,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
 
     const login = (role: UserRole) => {
-        const newUser: User = role === 'DOCTOR'
-            ? { id: 'u1', name: 'Dr. S. Alami', role: 'DOCTOR', email: 'dr.alami@hospital.com' }
-            : { id: 'u2', name: 'Pharmacien Chef', role: 'PHARMACIST', email: 'pharmacy@hospital.com' };
+        const newUser: User = role === UserRole.DOCTOR
+            ? { id: 'u1', name: 'Dr. S. Alami', role: UserRole.DOCTOR, email: 'dr.alami@hospital.com' }
+            : { id: 'u2', name: 'Pharmacien Chef', role: UserRole.PHARMACIST, email: 'pharmacy@hospital.com' };
 
         setUser(newUser);
         localStorage.setItem('sahty_user', JSON.stringify(newUser));

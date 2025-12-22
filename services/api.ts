@@ -1,9 +1,8 @@
-
 import { Patient, Admission, Appointment, Room } from '../types';
 import {
     InventoryItem, ProductDefinition, StockLocation, PartnerInstitution,
     StockOutTransaction, PurchaseOrder, DeliveryNote, PharmacySupplier,
-    SerializedPack, DispensedItem, PatientWithPrescriptions, ReplenishmentRequest // ensure PatientWithPrescriptions is imported
+    SerializedPack, DispensedItem, PatientWithPrescriptions, ReplenishmentRequest, ReplenishmentStatus
 } from '../types/pharmacy';
 import { Dispensation } from '../types/serialized-pack';
 export type { PatientWithPrescriptions }; // Re-export it
@@ -50,6 +49,22 @@ export const api = {
     getAppointments: () => fetchJson<Appointment[]>('/emr/appointments'),
     getRooms: () => fetchJson<Room[]>('/emr/rooms'),
 
+    // EMR Locations
+    getEmrLocations: () => fetchJson<StockLocation[]>('/emr/locations'),
+    createEmrLocation: (location: any) => fetchJson<StockLocation>('/emr/locations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(location)
+    }),
+    updateEmrLocation: (location: StockLocation) => fetchJson<StockLocation>(`/emr/locations`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(location)
+    }),
+    deleteEmrLocation: (id: string) => fetch(`${API_BASE_URL} /emr/locations / ${id} `, { method: 'DELETE' }).then(res => {
+        if (!res.ok) throw new Error('Delete failed');
+    }),
+
     // Pharmacy Module
     getInventory: () => fetchJson<InventoryItem[]>('/pharmacy/inventory'),
     getCatalog: () => fetchJson<ProductDefinition[]>('/pharmacy/catalog'),
@@ -65,7 +80,7 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(location)
     }),
-    deleteLocation: (id: string) => fetch(`${API_BASE_URL}/pharmacy/locations/${id}`, { method: 'DELETE' }).then(res => {
+    deleteLocation: (id: string) => fetch(`${API_BASE_URL} /pharmacy/locations / ${id} `, { method: 'DELETE' }).then(res => {
         if (!res.ok) throw new Error('Delete failed');
     }),
 
@@ -81,7 +96,7 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(supplier)
     }),
-    deleteSupplier: (id: string) => fetch(`${API_BASE_URL}/pharmacy/suppliers/${id}`, { method: 'DELETE' }).then(res => {
+    deleteSupplier: (id: string) => fetch(`${API_BASE_URL} /pharmacy/suppliers / ${id} `, { method: 'DELETE' }).then(res => {
         if (!res.ok) throw new Error('Delete failed');
     }),
 
@@ -167,9 +182,9 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(request)
     }),
-    updateReplenishmentRequestStatus: (id: string, status: string) => fetchJson<ReplenishmentRequest>(`/pharmacy/replenishments/${id}/status`, {
+    updateReplenishmentRequestStatus: (id: string, status: ReplenishmentStatus, processedRequest?: ReplenishmentRequest) => fetchJson<ReplenishmentRequest>(`/pharmacy/replenishments/${id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
+        body: JSON.stringify({ status, processedRequest })
     }),
 };

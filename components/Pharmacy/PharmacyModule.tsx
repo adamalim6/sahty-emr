@@ -18,6 +18,8 @@ import {
 import { StatCard } from './StatCard';
 import { InventoryTable } from './InventoryTable';
 import { SystemStockTable } from './SystemStockTable';
+import { RequestsAndTransfers } from './RequestsAndTransfers';
+import { ReplenishmentProcessing } from './ReplenishmentProcessing';
 import { InventorySessionList } from './InventorySessionList';
 import { JavaCodeModal } from './JavaCodeModal';
 import { ProductCatalog } from './ProductCatalog';
@@ -49,9 +51,10 @@ export const PharmacyModule: React.FC = () => {
   const [allPacks, setAllPacks] = useState<SerializedPack[]>([]);
 
   const [loading, setLoading] = useState(true);
-  // Ajout de 'prescriptions' au type de la vue
-  const [view, setView] = useState<'dashboard' | 'inventory' | 'stock' | 'catalog' | 'entry' | 'quarantine' | 'locations' | 'partners' | 'stockout' | 'prescriptions' | 'suppliers'>('dashboard');
+  // Ajout de 'prescriptions' et 'requests' au type de la vue
+  const [view, setView] = useState<'dashboard' | 'inventory' | 'stock' | 'catalog' | 'entry' | 'quarantine' | 'locations' | 'partners' | 'stockout' | 'prescriptions' | 'suppliers' | 'requests' | 'processing_request'>('dashboard');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiReport, setAiReport] = useState<string | null>(null);
@@ -322,6 +325,9 @@ export const PharmacyModule: React.FC = () => {
           <button onClick={() => { setView('stock'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'stock' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             <Database size={20} /><span className="font-medium text-sm">Stock Système</span>
           </button>
+          <button onClick={() => { setView('requests'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'requests' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+            <ArrowRight size={20} /><span className="font-medium text-sm">Demandes & Transferts</span>
+          </button>
 
           <div className="border-t border-slate-800 my-2"></div>
 
@@ -348,7 +354,8 @@ export const PharmacyModule: React.FC = () => {
                           view === 'suppliers' ? 'Gestion des Fournisseurs' :
                             view === 'partners' ? 'Institutions Partenaires' :
                               view === 'stockout' ? 'Gestion des Sorties' :
-                                view === 'inventory' ? (currentSession ? `Session : ${currentSession.id}` : 'Sessions d\'Inventaire') : 'État des Stocks Système'}
+                                view === 'requests' ? 'Demandes & Transferts' :
+                                  view === 'inventory' ? (currentSession ? `Session : ${currentSession.id}` : 'Sessions d\'Inventaire') : 'État des Stocks Système'}
               </h2>
             </div>
 
@@ -413,6 +420,10 @@ export const PharmacyModule: React.FC = () => {
           <PartnerManager partners={partners} onUpdatePartners={handleUpdatePartners} />
         ) : view === 'locations' ? (
           <LocationManager locations={locations} inventoryItems={systemItems} onUpdateLocations={handleUpdateLocations} />
+        ) : view === 'requests' ? (
+          <RequestsAndTransfers onViewDetails={(req) => { setSelectedRequestId(req.id); setView('processing_request'); }} />
+        ) : view === 'processing_request' ? (
+          <ReplenishmentProcessing requestIdStr={selectedRequestId || undefined} onBack={() => setView('requests')} />
         ) : view === 'inventory' ? (
           <>
             {!currentSession ? (

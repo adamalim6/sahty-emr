@@ -45,6 +45,8 @@ export interface FormData {
   schedule: ScheduleData;
   conditionComment?: string; // Nouveau champ pour les conditions/commentaires
   substitutable: boolean; // Nouveau champ pour la substituabilité
+  skippedDoses?: string[]; // Nouveau champ pour les prises sautées (IDs/Dates)
+  prescriptionType?: 'medication' | 'biology' | 'imagery' | 'care'; // Type de prescription
 }
 
 // Ajout de l'interface pour le retour de getDoseScheduleCards, incluant isError

@@ -114,10 +114,13 @@ export class PrescriptionService {
         return this.prescriptions.find(p => p.id === id);
     }
 
-    // Get all patients who have prescriptions with their info
+    // Get all patients who have prescriptions with their info, EXCLUDING biology prescriptions
     getPatientsWithPrescriptions() {
-        // Get unique patient IDs from all prescriptions
-        const patientIdsWithPrescriptions = [...new Set(this.prescriptions.map(p => p.patientId))];
+        // Filter out biology prescriptions for Pharmacy view
+        const pharmacyPrescriptions = this.prescriptions.filter(p => p.data.prescriptionType !== 'biology');
+
+        // Get unique patient IDs from relevant prescriptions
+        const patientIdsWithPrescriptions = [...new Set(pharmacyPrescriptions.map(p => p.patientId))];
 
         // Fetch patient data and combine with prescription count
         const patientsWithPrescriptions = patientIdsWithPrescriptions
@@ -125,7 +128,7 @@ export class PrescriptionService {
                 const patient = emrService.getPatientById(patientId);
                 if (!patient) return null;
 
-                const prescriptionCount = this.prescriptions.filter(p => p.patientId === patientId).length;
+                const prescriptionCount = pharmacyPrescriptions.filter(p => p.patientId === patientId).length;
 
                 return {
                     id: patient.id,

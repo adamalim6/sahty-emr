@@ -55,5 +55,13 @@
     }
   ],
   "appointments": [],
-  "rooms": []
+  "rooms": [],
+  "locations": [
+    {
+      "name": "armoire B",
+      "description": "",
+      "isActive": true,
+      "id": "LOC-EMR-1766277614022"
+    }
+  ]
 }

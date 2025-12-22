@@ -21,6 +21,7 @@ export interface InventoryItem {
   name: string;
   category: ItemCategory;
   location: string;
+  serviceId?: string; // Identifier for service-specific stock (e.g., 'SERVICE_DEFAULT')
   batchNumber: string;
   expiryDate: string;
   unitPrice: number;
@@ -239,7 +240,7 @@ export interface SerializedPack {
   id: string; // Internal ID
   serialNumber: string; // Human readable unique SN (e.g. SN-123456)
   productId: string;
-  lotNumber: string;
+  batchNumber: string; // Renamed from lotNumber for consistency
   expiryDate: string;
   locationId: string;
   status: PackStatus;
@@ -296,6 +297,14 @@ export interface ReplenishmentRequest {
     productName: string;
     quantityRequested: number;
     quantityApproved?: number;
+    targetLocationId?: string;
+    productDispensedId?: string;
+    productDispensedName?: string;
+    dispensedBatches?: {
+      batchNumber: string;
+      quantity: number;
+      expiryDate: string;
+    }[];
   }[];
   createdAt: string; // JSON date string
   updatedAt: string;

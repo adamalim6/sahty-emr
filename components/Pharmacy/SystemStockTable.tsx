@@ -190,7 +190,7 @@ export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, produ
                                         <Package size={16} className="text-slate-400" />
                                         <span>
                                             {productDef && productDef.unitsPerPack > 1
-                                                ? `${Math.floor(group.totalQty / productDef.unitsPerPack)} Btes (${group.totalQty})`
+                                                ? `${Math.ceil(group.totalQty / productDef.unitsPerPack)} Btes (${group.totalQty})`
                                                 : group.totalQty}
                                         </span>
                                     </div>
@@ -270,7 +270,7 @@ export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, produ
                                                 <div className="text-[10px] text-slate-400 uppercase font-semibold">Quantité</div>
                                                 <div className="font-mono font-bold text-lg text-slate-800">
                                                     {products.find(p => p.id === group.productId)?.unitsPerPack && (products.find(p => p.id === group.productId)?.unitsPerPack || 1) > 1
-                                                        ? `${Math.floor((item.theoreticalQty ?? 0) / (products.find(p => p.id === group.productId)?.unitsPerPack || 1))} Btes`
+                                                        ? `${Math.ceil((item.theoreticalQty ?? 0) / (products.find(p => p.id === group.productId)?.unitsPerPack || 1))} Btes`
                                                         : (item.theoreticalQty ?? 0)}
                                                 </div>
                                             </div>

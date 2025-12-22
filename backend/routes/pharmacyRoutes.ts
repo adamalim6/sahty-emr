@@ -37,4 +37,9 @@ router.post('/quarantine/process', pharmacyController.processQuarantine);
 router.post('/dispensations/fefo', dispenseWithFEFO);
 router.get('/dispensations/admission/:admissionId', getDispensationsByAdmission);
 
+// Replenishment
+router.get('/replenishments', pharmacyController.getReplenishmentRequests);
+router.post('/replenishments', pharmacyController.createReplenishmentRequest);
+router.put('/replenishments/:id/status', pharmacyController.updateReplenishmentRequestStatus);
+
 export default router;

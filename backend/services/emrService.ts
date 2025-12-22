@@ -1,5 +1,5 @@
 
-import { Patient, Admission, Appointment, Room, Gender, UserSettings } from '../models/emr';
+import { Patient, Admission, Appointment, Room, Gender, UserSettings, StockLocation } from '../models/emr';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -16,6 +16,7 @@ export class EmrService {
     private admissions: Admission[] = [];
     private appointments: Appointment[] = [];
     private rooms: Room[] = [];
+    private locations: StockLocation[] = [];
 
     constructor() {
         this.loadData();
@@ -39,7 +40,9 @@ export class EmrService {
                 this.patients = data.patients || [];
                 this.admissions = data.admissions || [];
                 this.appointments = data.appointments || [];
+                this.appointments = data.appointments || [];
                 if (data.rooms && data.rooms.length > 0) this.rooms = data.rooms;
+                this.locations = data.locations || [];
             } catch (error) {
                 console.error("Failed to load EMR DB", error);
             }
@@ -51,7 +54,8 @@ export class EmrService {
             patients: this.patients,
             admissions: this.admissions,
             appointments: this.appointments,
-            rooms: this.rooms
+            rooms: this.rooms,
+            locations: this.locations
         };
         fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
     }
@@ -176,6 +180,36 @@ export class EmrService {
         this.patients[index] = { ...this.patients[index], ...data };
         this.saveData();
         return this.patients[index];
+    }
+
+    // Location Management
+
+    getLocations(): StockLocation[] {
+        return this.locations;
+    }
+
+    addLocation(location: StockLocation) {
+        if (!location.id) {
+            location.id = `LOC-EMR-${Date.now()}`;
+        }
+        this.locations.push(location);
+        this.saveData();
+        return location;
+    }
+
+    updateLocation(location: StockLocation): StockLocation {
+        const index = this.locations.findIndex(l => l.id === location.id);
+        if (index !== -1) {
+            this.locations[index] = { ...location };
+            this.saveData();
+            return this.locations[index];
+        }
+        throw new Error(`Location with ID ${location.id} not found.`);
+    }
+
+    deleteLocation(id: string): void {
+        this.locations = this.locations.filter(l => l.id !== id);
+        this.saveData();
     }
 }
 

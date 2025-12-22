@@ -6,6 +6,9 @@ import { AdmissionList } from './components/AdmissionList';
 import { CalendarView } from './components/CalendarView';
 import { WaitingRoom } from './components/WaitingRoom';
 import { WardMap } from './components/WardMap';
+import { EmrLocationManager } from './components/EmrLocationManager';
+import { ReplenishmentPage } from './components/Replenishment/ReplenishmentPage';
+import { ServiceStock } from './components/ServiceStock';
 import { Settings } from './components/Settings';
 import { PatientDossier } from './components/PatientDossier/PatientDossier';
 import { AdmissionDossier } from './components/AdmissionDossier/AdmissionDossier';
@@ -48,7 +51,9 @@ const App: React.FC = () => {
             <Route path="waiting-room" element={<WaitingRoom />} />
             <Route path="waiting-room" element={<WaitingRoom />} />
             <Route path="map" element={<WardMap />} />
-            <Route path="map" element={<WardMap />} />
+            <Route path="locations" element={<EmrLocationManager />} />
+            <Route path="replenishment" element={<ReplenishmentPage />} />
+            <Route path="service-stock" element={<ServiceStock />} />
             <Route path="settings" element={<Settings />} />
           </Route>
 

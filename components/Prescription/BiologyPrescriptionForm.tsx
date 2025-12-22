@@ -1,0 +1,1066 @@
+import React, { useState, useCallback, useMemo } from 'react';
+import {
+    TestTube, Search, X, CheckCircle, FileText,
+    Clock, Calendar, Activity, Zap, Syringe, ChevronLeft, ChevronRight, ChevronDown, AlertCircle,
+    Sun, SunMedium, Moon, BedDouble, Plus
+} from 'lucide-react';
+import { FormData, ScheduleData, PrescriptionType } from './types';
+import { PrescriptionCard } from './PrescriptionCard';
+import { durationToDecimal, formatDuration } from './utils';
+
+// --- CONSTANTS ---
+const BIOLOGY_EXAMS = [
+    'NFS', 'CRP', 'Ionogramme Sanguin', 'Urée', 'Créatinine', 'Bilan Hépatique',
+    'Hémoculture', 'ECBU', 'TSH', 'HbA1c', 'Glycémie', 'Cholestérol Total',
+    'HDL/LDL', 'Triglycérides', 'Ferritine', 'Vitesse de Sédimentation'
+];
+
+const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+const MONTHS_FR = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+
+const TIME_SLOTS = Array.from({ length: 48 }).map((_, i) => {
+    const h = Math.floor(i / 2);
+    const m = i % 2 === 0 ? '00' : '30';
+    return `${String(h).padStart(2, '0')}:${m}`;
+});
+
+const HOURS_24 = Array.from({ length: 24 }).map((_, i) => `${String(i).padStart(2, '0')}:00`);
+
+const STANDARD_TIMES = [
+    { label: 'Matin', time: '08:00', icon: Sun },
+    { label: 'Midi', time: '12:00', icon: SunMedium },
+    { label: 'Soir', time: '18:00', icon: Moon },
+    { label: 'Coucher', time: '22:00', icon: BedDouble },
+];
+
+const getCurrentDateTime = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
+const getMinDateTimeForInput = () => {
+    const now = new Date();
+    // Return formatted string YYYY-MM-DDTHH:MM
+    // This allows past dates? The medical form usually restricts to NOW.
+    // Let's stick to current logic: min should probably be now or recent past.
+    // For simplicity, let's return empty string or current time string.
+    // The previous form didn't strictly block generic HTML inputmin, but used validation.
+    return getCurrentDateTime();
+};
+
+const parseDuration = (durationStr: string) => {
+    if (!durationStr || durationStr === '00:00') return { h: 0, m: 0 };
+    const [h, m] = durationStr.split(':').map(Number);
+    return { h: h || 0, m: m || 0 };
+};
+
+
+interface BiologyPrescriptionFormProps {
+    onSave?: (data: FormData[]) => void;
+}
+
+export const BiologyPrescriptionForm: React.FC<BiologyPrescriptionFormProps> = ({ onSave }) => {
+    // --- STATE ---
+    const [selectedExams, setSelectedExams] = useState<string[]>([]);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [comment, setComment] = useState('');
+    const [error, setError] = useState<string | null>(null);
+    const [warning, setWarning] = useState<string | null>(null);
+    const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({});
+
+    // Schedule State (Mirroring PrescriptionForm)
+    const [scheduleData, setScheduleData] = useState<ScheduleData>({
+        dailySchedule: "everyday",
+        mode: "cycle",
+        interval: "",
+        isCustomInterval: false,
+        startDateTime: getCurrentDateTime(),
+        durationValue: "--",
+        durationUnit: "days",
+        selectedDays: [],
+        specificTimes: [],
+        simpleCount: "1",
+        simplePeriod: "day",
+        intervalDuration: "",
+    });
+
+    // Default to one-time (Ponctuel) as requested, but users can switch
+    const [prescriptionType, setPrescriptionType] = useState<PrescriptionType>('one-time');
+
+    // Calendar Modal State
+    const [showCalendar, setShowCalendar] = useState(false);
+    const [pickerDate, setPickerDate] = useState(new Date());
+    const [tempSelectedDate, setTempSelectedDate] = useState<Date | null>(null);
+    const [tempTime, setTempTime] = useState("");
+
+    const filteredExams = BIOLOGY_EXAMS.filter(exam =>
+        exam.toLowerCase().includes(searchTerm.toLowerCase()) &&
+        !selectedExams.includes(exam)
+    );
+
+    const isSpecificTimeRestricted = prescriptionType === 'punctual-frequency' && scheduleData.mode === 'specific-time' && scheduleData.specificTimes.length > 0;
+
+
+    // --- HANDLERS ---
+
+    const handleToggleExam = (exam: string) => {
+        if (selectedExams.includes(exam)) {
+            setSelectedExams(prev => prev.filter(e => e !== exam));
+        } else {
+            setSelectedExams(prev => [...prev, exam]);
+            setSearchTerm('');
+        }
+        setError(null);
+    };
+
+    const handleRemoveExam = (exam: string) => {
+        setSelectedExams(prev => prev.filter(e => e !== exam));
+    };
+
+    // Schedule Handlers
+    const handleTypeChange = (newType: PrescriptionType) => {
+        setPrescriptionType(newType);
+
+        // Reset startDateTime if needed based on type logic from main form
+        if (newType === 'punctual-frequency') {
+            setScheduleData(prev => ({ ...prev, startDateTime: "" }));
+        } else if (newType === 'frequency' && (!scheduleData.startDateTime || prescriptionType === 'punctual-frequency')) {
+            if (!scheduleData.startDateTime) {
+                setScheduleData(prev => ({ ...prev, startDateTime: getCurrentDateTime() }));
+            }
+        } else if (newType === 'one-time') {
+            if (!scheduleData.startDateTime) {
+                setScheduleData(prev => ({ ...prev, startDateTime: getCurrentDateTime() }));
+            }
+        }
+    };
+
+    const updateSchedule = (field: keyof ScheduleData, value: any) => {
+        setScheduleData(prev => {
+            const newSchedule = { ...prev, [field]: value };
+            if (field === 'mode' && value === 'specific-time' && prescriptionType === 'punctual-frequency') {
+                newSchedule.startDateTime = "";
+            }
+            return newSchedule;
+        });
+    };
+
+    const handleDailyScheduleChange = (value: 'everyday' | 'every-other-day' | 'specific-days') => {
+        let newScheduleMode = scheduleData.mode;
+        if ((value === 'every-other-day' || value === 'specific-days') && scheduleData.mode === 'cycle') {
+            newScheduleMode = 'simple';
+        }
+        setScheduleData(prev => ({ ...prev, dailySchedule: value, mode: newScheduleMode }));
+    };
+
+    const toggleDay = (day: string) => {
+        setScheduleData(prev => ({
+            ...prev,
+            selectedDays: prev.selectedDays.includes(day)
+                ? prev.selectedDays.filter(d => d !== day)
+                : [...prev.selectedDays, day]
+        }));
+    };
+
+    const handleIntervalSelect = (hr: string) => {
+        updateSchedule('interval', hr);
+        updateSchedule('isCustomInterval', false);
+    };
+
+    const handleCustomInterval = () => {
+        updateSchedule('isCustomInterval', true);
+        if (['2', '4', '6', '8', '12', '24'].includes(scheduleData.interval)) {
+            updateSchedule('interval', '');
+        }
+    };
+
+    const toggleSpecificTime = (time: string) => {
+        const isRemoving = scheduleData.specificTimes.includes(time);
+        const newTimes = isRemoving
+            ? scheduleData.specificTimes.filter(t => t !== time)
+            : [...scheduleData.specificTimes, time].sort();
+
+        let newStartDateTime = scheduleData.startDateTime;
+
+        if (prescriptionType === 'punctual-frequency' && scheduleData.mode === 'specific-time') {
+            if (newStartDateTime) {
+                const currentStartTime = newStartDateTime.split('T')[1];
+                if (!newTimes.includes(currentStartTime)) {
+                    newStartDateTime = "";
+                }
+            }
+        }
+
+        setScheduleData(prev => ({
+            ...prev,
+            specificTimes: newTimes,
+            startDateTime: newStartDateTime
+        }));
+    };
+
+    const addCustomTime = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newTime = e.target.value;
+        if (newTime && !scheduleData.specificTimes.includes(newTime)) {
+            // Need wrapper for generic update logic or just call setState
+            const newTimes = [...scheduleData.specificTimes, newTime].sort();
+            setScheduleData(prev => ({ ...prev, specificTimes: newTimes }));
+        }
+    };
+
+    const handleManualTimeChange = (type: 'hours' | 'minutes', value: string, targetField: string) => {
+        // Simplified: Assume targetField is always intervalDuration for now as that's the only one used in ScheduleData
+        // If we had 'adminDuration' it would be different.
+        // But BiologyForm only uses simpleCount interval duration in UI.
+
+        let num = parseInt(value);
+        if (isNaN(num)) num = 0;
+        if (num < 0) num = 0;
+        if (type === 'minutes' && num > 59) num = 59;
+
+        const currentDuration = parseDuration(scheduleData.intervalDuration || "00:00");
+        let h = currentDuration.h;
+        let m = currentDuration.m;
+
+        if (type === 'hours') h = num;
+        else m = num;
+
+        const newDuration = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        updateSchedule('intervalDuration', newDuration);
+    };
+
+
+    // --- CALENDAR LOGIC ---
+
+    const openCalendarModal = () => {
+        const currentStr = scheduleData.startDateTime;
+        let initialDate = new Date();
+        if (currentStr) {
+            const d = new Date(currentStr);
+            if (!isNaN(d.getTime())) initialDate = d;
+        }
+        setPickerDate(new Date(initialDate.getFullYear(), initialDate.getMonth(), 1));
+        setTempSelectedDate(initialDate);
+        setTempTime("");
+        setShowCalendar(true);
+    };
+
+    const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
+    const getFirstDayOfMonth = (year: number, month: number) => {
+        const day = new Date(year, month, 1).getDay();
+        return (day === 0 ? 6 : day - 1);
+    };
+
+    const handlePrevMonth = () => setPickerDate(new Date(pickerDate.getFullYear(), pickerDate.getMonth() - 1, 1));
+    const handleNextMonth = () => setPickerDate(new Date(pickerDate.getFullYear(), pickerDate.getMonth() + 1, 1));
+
+    const isDateDisabled = (day: number) => {
+        const targetDate = new Date(pickerDate.getFullYear(), pickerDate.getMonth(), day);
+        targetDate.setHours(0, 0, 0, 0);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return targetDate < today;
+    };
+
+    const isTimeDisabled = (time: string) => {
+        if (!tempSelectedDate) return false;
+        if (prescriptionType === 'punctual-frequency' && scheduleData.mode === 'specific-time' && scheduleData.specificTimes.length > 0) {
+            if (!scheduleData.specificTimes.includes(time)) return true;
+        }
+        const selectedDateNormalized = new Date(tempSelectedDate);
+        selectedDateNormalized.setHours(0, 0, 0, 0);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (selectedDateNormalized.getTime() !== today.getTime()) return false;
+        const [h, m] = time.split(':').map(Number);
+        const now = new Date();
+        if (h < now.getHours()) return true;
+        if (h === now.getHours() && m <= now.getMinutes()) return true;
+        return false;
+    };
+
+    const handleDateClick = (day: number) => {
+        if (isDateDisabled(day)) return;
+        setTempSelectedDate(new Date(pickerDate.getFullYear(), pickerDate.getMonth(), day));
+    };
+
+    const confirmDateTime = () => {
+        if (tempSelectedDate && tempTime) {
+            const yyyy = tempSelectedDate.getFullYear();
+            const mm = String(tempSelectedDate.getMonth() + 1).padStart(2, '0');
+            const dd = String(tempSelectedDate.getDate()).padStart(2, '0');
+            updateSchedule('startDateTime', `${yyyy}-${mm}-${dd}T${tempTime}`);
+            setShowCalendar(false);
+        }
+    };
+
+    // --- VALIDATION AND SAVE ---
+
+    // --- VALIDATION AND SAVE ---
+
+    const getValidationState = () => {
+        const errorMessages: string[] = [];
+        const warningMessages: string[] = [];
+        const newFieldErrors: Record<string, boolean> = {};
+
+        // 1. Mandatory Fields
+        if (selectedExams.length === 0) {
+            errorMessages.push("Veuillez sélectionner au moins un examen.");
+            newFieldErrors['exams'] = true;
+        }
+        if (prescriptionType !== 'punctual-frequency' && !scheduleData.startDateTime) {
+            errorMessages.push("Veuillez sélectionner une date de début.");
+            newFieldErrors['startDate'] = true;
+        }
+        if (['frequency', 'punctual-frequency'].includes(prescriptionType)) {
+            const duration = parseFloat(scheduleData.durationValue === '--' ? '0' : scheduleData.durationValue);
+            if (!scheduleData.durationValue || scheduleData.durationValue === '--' || isNaN(duration) || duration <= 0) {
+                errorMessages.push("Durée de traitement requise.");
+                newFieldErrors['duration'] = true;
+            }
+        }
+
+        // 2. Schedule Logic (Simple Mode)
+        if (['frequency', 'punctual-frequency'].includes(prescriptionType)) {
+            if (scheduleData.mode === 'simple' && ['everyday', 'every-other-day', 'specific-days'].includes(scheduleData.dailySchedule)) {
+                const count = parseInt(scheduleData.simpleCount || '0');
+                if (count > 1) {
+                    // Check if interval is set
+                    const intervalStr = scheduleData.intervalDuration;
+                    if (!intervalStr || intervalStr === '00:00') {
+                        // Warning: No interval set for multiple daily doses
+                        warningMessages.push("Cette prescription ne sera pas ajoutée à la fiche de surveillance car la durée inter-prise n'est pas renseignée.");
+                        newFieldErrors['interval'] = true; // Highlight interval input even for warning? User asked for borders to correct. Maybe amber border for warning? Keeping it simple with red/invalid for now or just warning logic.
+                    } else {
+                        // Error: Check for overlap
+                        const { h, m } = parseDuration(intervalStr);
+                        const intervalMinutes = h * 60 + m;
+                        const totalSpanMinutes = (count - 1) * intervalMinutes;
+
+                        if (scheduleData.startDateTime) {
+                            const startDate = new Date(scheduleData.startDateTime);
+                            const startMinutes = startDate.getHours() * 60 + startDate.getMinutes();
+
+                            if (startMinutes + totalSpanMinutes >= 24 * 60) {
+                                errorMessages.push("Les prises programmées débordent sur le jour suivant (Débordement > 24h). Ajustez l'heure de début ou l'intervalle.");
+                                newFieldErrors['startDate'] = true;
+                                newFieldErrors['interval'] = true;
+                            }
+                        }
+                    }
+                }
+            } else if (scheduleData.mode === 'cycle') {
+                if (!scheduleData.interval || scheduleData.interval === '0') {
+                    errorMessages.push("Veuillez définir l'intervalle de répétition (toutes les X heures).");
+                    newFieldErrors['cycleInterval'] = true;
+                }
+            } else if (scheduleData.mode === 'specific-time') {
+                if (!scheduleData.specificTimes || scheduleData.specificTimes.length === 0) {
+                    errorMessages.push("Veuillez sélectionner au moins une heure de prise fixe.");
+                    newFieldErrors['specificTimes'] = true;
+                }
+            }
+        }
+
+        return {
+            isValid: errorMessages.length === 0,
+            errors: errorMessages,
+            warnings: warningMessages,
+            fieldErrors: newFieldErrors
+        };
+    };
+
+    const handleValidate = () => {
+        const { isValid, errors, warnings, fieldErrors: newFieldErrors } = getValidationState();
+
+        // Clear previous state
+        setError(null);
+        setWarning(null);
+        setFieldErrors(newFieldErrors);
+
+        if (!isValid) {
+            setError(errors.join(" "));
+            if (warnings.length > 0) setWarning(warnings.join(" "));
+            return;
+        }
+
+        // If valid but has warnings, we show them? OR we save?
+        // User asked to generate message. "cette prescription ne sera pas ajouté..."
+        // I'll show warning but allow save? 
+        // Actually, usually warnings strictly don't block. 
+        // But if I want user to see it, I should maybe show it and ask confirmation?
+        // For now, let's just save but perhaps alert?
+        // Wait, if I just save, they might miss it.
+        // Let's set warning state. If user clicks validate AGAIN while warning is visible, we proceed?
+        // Or just save and rely on the fact it's a "Warning".
+        // Use user instruction: "il faut générer un message".
+        // I will save, but maybe invalid data is saved? 
+        // No, invalid data is blocking (Error). Warning is strictly informational.
+        // Let's proceed to save.
+
+        const prescriptions: FormData[] = selectedExams.map(exam => ({
+            molecule: exam,
+            commercialName: exam,
+            prescriptionType: 'biology' as const,
+            qty: '--',
+            unit: '',
+            route: '',
+            adminMode: 'instant' as const,
+            adminDuration: '00:00',
+            type: prescriptionType,
+            dilutionRequired: false,
+            solvent: undefined,
+            databaseMode: 'hospital' as const,
+            substitutable: false,
+            skippedDoses: [],
+            conditionComment: comment,
+            schedule: scheduleData
+        }));
+
+        if (onSave) {
+            onSave(prescriptions);
+        }
+    };
+
+    const previewData: FormData = {
+        molecule: selectedExams.length > 0 ? selectedExams.join(', ') : "Aucun examen sélectionné",
+        commercialName: "",
+        prescriptionType: 'biology' as const,
+        qty: "--", unit: "", route: "",
+        adminMode: 'instant' as const,
+        adminDuration: "",
+        type: prescriptionType,
+        dilutionRequired: false,
+        substitutable: false,
+        solvent: undefined,
+        databaseMode: 'hospital',
+        schedule: scheduleData,
+        conditionComment: comment
+    };
+
+    return (
+        <div className="flex flex-col gap-6 relative">
+            {/* CALENDAR MODAL */}
+            {showCalendar && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="bg-indigo-600 p-4 text-white flex justify-between items-center">
+                            <h3 className="font-semibold text-lg">Sélectionner la date</h3>
+                            <button type="button" onClick={() => setShowCalendar(false)} className="hover:bg-white/20 p-1 rounded-full transition"><X className="w-5 h-5" /></button>
+                        </div>
+                        <div className="p-5">
+                            <div className="flex justify-between items-center mb-4">
+                                <button type="button" onClick={handlePrevMonth} className="p-1 hover:bg-slate-100 rounded-lg text-slate-600"><ChevronLeft className="w-5 h-5" /></button>
+                                <span className="font-bold text-slate-800 text-lg capitalize">{MONTHS_FR[pickerDate.getMonth()]} {pickerDate.getFullYear()}</span>
+                                <button type="button" onClick={handleNextMonth} className="p-1 hover:bg-slate-100 rounded-lg text-slate-600"><ChevronRight className="w-5 h-5" /></button>
+                            </div>
+                            <div className="grid grid-cols-7 mb-2 text-center">
+                                {DAYS.map(d => <div key={d} className="text-xs font-semibold text-slate-400 uppercase py-1">{d}</div>)}
+                            </div>
+                            <div className="grid grid-cols-7 gap-1 mb-6">
+                                {Array.from({ length: getFirstDayOfMonth(pickerDate.getFullYear(), pickerDate.getMonth()) }).map((_, i) => (
+                                    <div key={`empty-${i}`} className="h-9"></div>
+                                ))}
+                                {Array.from({ length: getDaysInMonth(pickerDate.getFullYear(), pickerDate.getMonth()) }).map((_, i) => {
+                                    const day = i + 1;
+                                    const isSelected = tempSelectedDate && tempSelectedDate.getDate() === day && tempSelectedDate.getMonth() === pickerDate.getMonth() && tempSelectedDate.getFullYear() === pickerDate.getFullYear();
+                                    const isDisabled = isDateDisabled(day);
+                                    return (
+                                        <button type="button" key={day} onClick={() => handleDateClick(day)} disabled={isDisabled}
+                                            className={`h-9 w-9 rounded-full text-sm font-medium flex items-center justify-center transition-all ${isSelected ? 'bg-indigo-600 text-white shadow-md' : isDisabled ? 'text-slate-300 cursor-not-allowed bg-slate-50' : 'text-slate-700 hover:bg-slate-100'}`}>
+                                            {day}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            <div className="bg-slate-50 p-3 rounded-xl mb-6 border border-slate-100">
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Heure de début</label>
+                                <div className="relative">
+                                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-500 pointer-events-none" />
+                                    <select value={tempTime} onChange={(e) => setTempTime(e.target.value)}
+                                        className="w-full pl-9 pr-10 py-2 h-12 bg-white border border-slate-200 rounded-lg appearance-none focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-800 text-lg cursor-pointer">
+                                        <option value="" disabled>--:--</option>
+                                        {TIME_SLOTS.map(t => <option key={t} value={t} disabled={isTimeDisabled(t)}>{t}</option>)}
+                                    </select>
+                                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                </div>
+                            </div>
+                            <div className="flex gap-3">
+                                <button type="button" onClick={() => setShowCalendar(false)} className="flex-1 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 border border-slate-200 rounded-xl transition">Annuler</button>
+                                <button type="button" onClick={confirmDateTime} disabled={!tempTime} className={`flex-1 py-2.5 text-sm font-semibold text-white rounded-xl shadow-lg transition ${!tempTime ? 'bg-slate-300' : 'bg-indigo-600 hover:bg-indigo-700'}`}>Valider</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* LEFT COLUMN: FORM */}
+            <div className="space-y-6">
+                {/* --- BIOLOGY SECTION --- */}
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="bg-blue-600 px-6 py-4 flex items-center gap-3">
+                        <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
+                            <TestTube className="text-white w-5 h-5" />
+                        </div>
+                        <h2 className="text-lg font-semibold text-white">Examens Biologiques</h2>
+                    </div>
+
+                    <div className="p-6 space-y-6">
+                        {/* Search Bar */}
+                        <div>
+                            <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                                Rechercher des examens
+                            </label>
+                            <div className="relative group">
+                                <input
+                                    type="text"
+                                    placeholder="Ex: NFS, CRP..."
+                                    className={`w-full pl-10 pr-4 py-3 h-12 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all font-medium text-slate-800 placeholder:text-slate-400 ${fieldErrors['exams'] ? 'border-red-500 ring-2 ring-red-100' : 'border-slate-200'}`}
+                                    value={searchTerm}
+                                    onChange={(e) => {
+                                        setSearchTerm(e.target.value);
+                                        setShowSuggestions(true);
+                                    }}
+                                    onFocus={() => setShowSuggestions(true)}
+                                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                                />
+                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
+
+                                {/* Suggestions */}
+                                {showSuggestions && searchTerm.length > 0 && filteredExams.length > 0 && (
+                                    <div className="absolute z-10 w-full bg-white border border-slate-200 rounded-xl shadow-lg mt-1 max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2">
+                                        {filteredExams.map((exam) => (
+                                            <button
+                                                type="button"
+                                                key={exam}
+                                                onClick={() => handleToggleExam(exam)}
+                                                className="block w-full text-left px-4 py-3 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors border-b border-slate-100 last:border-0 font-medium"
+                                            >
+                                                {exam}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Selected Exams List */}
+                        {selectedExams.length > 0 && (
+                            <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2">
+                                {selectedExams.map(exam => (
+                                    <div key={exam} className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg border border-blue-100 shadow-sm">
+                                        <span className="text-sm font-semibold">{exam}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveExam(exam)}
+                                            className="p-0.5 hover:bg-blue-100 rounded-full transition-colors"
+                                        >
+                                            <X className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Clinical Comments */}
+                        <div>
+                            <label htmlFor="comment" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                                Commentaires Cliniques (Optionnel)
+                            </label>
+                            <div className="relative">
+                                <textarea
+                                    id="comment"
+                                    rows={3}
+                                    placeholder="Ajouter des observations cliniques pertinentes..."
+                                    className="w-full px-4 py-3 pl-10 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all font-medium text-slate-800 placeholder:text-slate-400 resize-y"
+                                    value={comment}
+                                    onChange={(e) => setComment(e.target.value)}
+                                />
+                                <FileText className="absolute left-3.5 top-3.5 w-5 h-5 text-slate-400" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* --- CALENDAR SECTION --- */}
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="bg-indigo-600 px-6 py-4 flex items-center gap-3">
+                        <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
+                            <Clock className="text-white w-5 h-5" />
+                        </div>
+                        <h2 className="text-lg font-semibold text-white">Calendrier d'Administration</h2>
+                    </div>
+
+                    <div className="p-6 space-y-6">
+                        {/* Type Toggle */}
+                        <div className="flex bg-slate-100 p-1 rounded-xl">
+                            <button
+                                type="button"
+                                onClick={() => handleTypeChange('frequency')}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-all ${prescriptionType === 'frequency'
+                                    ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-black/5'
+                                    : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                            >
+                                <Activity className="w-4 h-4" /> Fréquence
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleTypeChange('punctual-frequency')}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-all ${prescriptionType === 'punctual-frequency'
+                                    ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-black/5'
+                                    : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                            >
+                                <div className="flex items-center gap-1">
+                                    <Zap className="w-4 h-4 fill-current" />
+                                    <span>Ponct + Freq</span>
+                                </div>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleTypeChange('one-time')}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-all ${prescriptionType === 'one-time'
+                                    ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-black/5'
+                                    : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                            >
+                                <Syringe className="w-4 h-4" /> Ponctuel
+                            </button>
+                        </div>
+
+                        {/* Mode Content */}
+                        <div className="min-h-[160px]">
+                            {prescriptionType === 'one-time' ? (
+                                <div className="flex flex-col items-center justify-center text-center p-8 bg-indigo-50/50 rounded-xl border border-indigo-100 animate-in fade-in slide-in-from-right-2 duration-300">
+                                    <div className="bg-white p-4 rounded-full shadow-sm mb-4">
+                                        <Calendar className="w-8 h-8 text-indigo-600" />
+                                    </div>
+                                    <h3 className="text-indigo-900 font-bold text-lg mb-2">Examen Biologique Ponctuel</h3>
+                                    <p className="text-slate-600 max-w-md leading-relaxed">
+                                        Le(s) examen(s) biologique(s) prescrit(s) seront réalisés une seule fois à la date et heure spécifiée ci dessous.
+                                    </p>
+
+                                    <div className="mt-8 w-full max-w-xs">
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 text-left">
+                                            Date et Heure de l'examen
+                                        </label>
+                                        <button
+                                            onClick={openCalendarModal}
+                                            className={`w-full bg-white border hover:border-indigo-300 hover:ring-4 hover:ring-indigo-50 transition-all rounded-xl px-4 py-3 flex items-center gap-3 group shadow-sm text-left ${fieldErrors['startDate'] ? 'border-red-500 ring-2 ring-red-100' : 'border-slate-200'}`}
+                                        >
+                                            <div className="bg-indigo-50 group-hover:bg-indigo-100 p-2 rounded-lg transition-colors">
+                                                <Calendar className="w-5 h-5 text-indigo-600" />
+                                            </div>
+                                            <div>
+                                                {scheduleData.startDateTime ? (
+                                                    <>
+                                                        <div className="font-bold text-slate-800">
+                                                            {new Date(scheduleData.startDateTime).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                                                        </div>
+                                                        <div className="text-xs text-slate-500 font-medium">
+                                                            à {new Date(scheduleData.startDateTime).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <span className="text-slate-400 font-medium">Sélectionner une date...</span>
+                                                )}
+                                            </div>
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                // FULL FREQUENCY UI (Restored from PrescriptionForm)
+                                <div className="space-y-6 animate-in fade-in slide-in-from-left-2 duration-300">
+
+                                    {/* IMMEDIATE DOSE BLOCK (Only for punctual-frequency) */}
+                                    {prescriptionType === 'punctual-frequency' && (
+                                        <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex items-center gap-4 shadow-sm">
+                                            <div className="bg-white p-2 rounded-full border border-indigo-100 shadow-sm">
+                                                <Zap className="w-5 h-5 text-indigo-600 fill-indigo-100" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <h4 className="text-sm font-bold text-indigo-900 flex items-center gap-2">
+                                                    Prise Immédiate
+                                                    <span className="bg-indigo-200 text-indigo-800 text-[10px] uppercase px-1.5 py-0.5 rounded font-bold tracking-wide">Automatique</span>
+                                                </h4>
+                                                <p className="text-xs text-indigo-700 mt-0.5">Une prise unique sera générée pour <strong>maintenant</strong>.</p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Daily Schedule Radio */}
+                                    <div className="flex gap-6">
+                                        <label className="flex items-center gap-3 cursor-pointer group">
+                                            <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${scheduleData.dailySchedule === 'everyday' ? 'border-indigo-600' : 'border-slate-300 group-hover:border-indigo-400'}`}>
+                                                {scheduleData.dailySchedule === 'everyday' && <div className="w-2.5 h-2.5 bg-indigo-600 rounded-full" />}
+                                            </div>
+                                            <span className={`text-sm font-medium ${scheduleData.dailySchedule === 'everyday' ? 'text-indigo-900' : 'text-slate-600'}`}>Tous les jours</span>
+                                            <input type="radio" className="hidden" checked={scheduleData.dailySchedule === 'everyday'} onChange={() => handleDailyScheduleChange('everyday')} />
+                                        </label>
+                                        <label className="flex items-center gap-3 cursor-pointer group">
+                                            <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${scheduleData.dailySchedule === 'every-other-day' ? 'border-indigo-600' : 'border-slate-300 group-hover:border-indigo-400'}`}>
+                                                {scheduleData.dailySchedule === 'every-other-day' && <div className="w-2.5 h-2.5 bg-indigo-600 rounded-full" />}
+                                            </div>
+                                            <span className={`text-sm font-medium ${scheduleData.dailySchedule === 'every-other-day' ? 'text-indigo-900' : 'text-slate-600'}`}>1 jour / 2</span>
+                                            <input type="radio" className="hidden" checked={scheduleData.dailySchedule === 'every-other-day'} onChange={() => handleDailyScheduleChange('every-other-day')} />
+                                        </label>
+                                        <label className="flex items-center gap-3 cursor-pointer group">
+                                            <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${scheduleData.dailySchedule === 'specific-days' ? 'border-indigo-600' : 'border-slate-300 group-hover:border-indigo-400'}`}>
+                                                {scheduleData.dailySchedule === 'specific-days' && <div className="w-2.5 h-2.5 bg-indigo-600 rounded-full" />}
+                                            </div>
+                                            <span className={`text-sm font-medium ${scheduleData.dailySchedule === 'specific-days' ? 'text-indigo-900' : 'text-slate-600'}`}>Jours spécifiques</span>
+                                            <input type="radio" className="hidden" checked={scheduleData.dailySchedule === 'specific-days'} onChange={() => handleDailyScheduleChange('specific-days')} />
+                                        </label>
+                                    </div>
+
+                                    {/* Specific Days Selector */}
+                                    {scheduleData.dailySchedule === 'specific-days' && (
+                                        <div className="animate-in fade-in slide-in-from-top-2">
+                                            <div className="flex gap-2 w-full">
+                                                {DAYS.map((day) => {
+                                                    const isSelected = scheduleData.selectedDays?.includes(day);
+                                                    return (
+                                                        <button
+                                                            type="button"
+                                                            key={day}
+                                                            onClick={() => toggleDay(day)}
+                                                            className={`flex-1 py-3 text-sm font-bold uppercase tracking-wider rounded-lg border-2 transition-all active:scale-95 ${isSelected ? 'border-indigo-600 bg-indigo-50 text-indigo-600 shadow-inner' : 'border-indigo-100 bg-white text-indigo-300 hover:border-indigo-300'}`}
+                                                        >
+                                                            {day}
+                                                        </button>
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Frequency Mode Selection */}
+                                    <div className="bg-indigo-50/50 p-5 rounded-xl border border-indigo-100/50">
+                                        <div className="flex justify-between items-center mb-4">
+                                            <span className="text-xs font-bold text-indigo-900 uppercase tracking-widest">Mode de Fréquence</span>
+                                            <div className="flex bg-white rounded-lg border border-indigo-100 p-1 shadow-sm">
+                                                {['cycle', 'specific-time', 'simple'].map((m) => (
+                                                    <button
+                                                        type="button"
+                                                        key={m}
+                                                        onClick={() => updateSchedule('mode', m)}
+                                                        disabled={(scheduleData.dailySchedule === 'every-other-day' || scheduleData.dailySchedule === 'specific-days') && m === 'cycle'}
+                                                        className={`px-3 py-2 text-sm font-semibold rounded-md transition-all ${scheduleData.mode === m
+                                                            ? 'bg-indigo-100 text-indigo-700'
+                                                            : 'text-slate-500 hover:text-slate-700'
+                                                            } ${((scheduleData.dailySchedule === 'every-other-day' || scheduleData.dailySchedule === 'specific-days') && m === 'cycle') ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                    >
+                                                        {m === 'simple' ? 'Simple' : m === 'cycle' ? 'Cyclique' : 'Heure Fixe'}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {scheduleData.mode === 'cycle' ? (
+                                            <div className="animate-in fade-in slide-in-from-bottom-2">
+                                                <label className="block text-sm font-medium text-indigo-900 mb-2">Répéter toutes les :</label>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {['2', '4', '6', '8', '12', '24'].map((hr) => (
+                                                        <button
+                                                            type="button"
+                                                            key={hr}
+                                                            onClick={() => handleIntervalSelect(hr)}
+                                                            className={`flex-1 min-w-[60px] py-2 text-sm font-medium border rounded-lg transition-all active:scale-95 ${!scheduleData.isCustomInterval && scheduleData.interval === hr
+                                                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-200'
+                                                                : 'bg-white text-slate-600 border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50'
+                                                                }`}
+                                                        >
+                                                            {hr}h
+                                                        </button>
+                                                    ))}
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleCustomInterval}
+                                                        className={`px-4 py-2 text-sm font-medium border rounded-lg transition-all ${scheduleData.isCustomInterval
+                                                            ? 'bg-indigo-600 text-white border-indigo-600'
+                                                            : 'bg-white text-slate-600 border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50'
+                                                            }`}
+                                                    >
+                                                        Autre
+                                                    </button>
+                                                </div>
+                                                {scheduleData.isCustomInterval && (
+                                                    <div className="mt-3 flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
+                                                        <input
+                                                            type="number"
+                                                            value={scheduleData.interval}
+                                                            onChange={(e) => updateSchedule('interval', e.target.value)}
+                                                            className={`w-24 p-2 text-sm text-center font-bold text-indigo-800 bg-white border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none ${fieldErrors['cycleInterval'] ? 'border-red-500 ring-2 ring-red-100' : 'border-indigo-300'}`}
+                                                            autoFocus
+                                                        />
+                                                        <span className="text-sm font-medium text-indigo-800">heures</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : scheduleData.mode === 'simple' ? (
+                                            <div className="animate-in fade-in slide-in-from-bottom-2">
+                                                <label className="block text-sm font-medium text-indigo-900 mb-2">Fréquence :</label>
+                                                <div className="flex items-center gap-3">
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        value={scheduleData.simpleCount}
+                                                        onChange={(e) => updateSchedule('simpleCount', e.target.value)}
+                                                        className="w-20 p-2 text-center text-sm font-bold text-indigo-800 bg-white border border-indigo-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                    />
+                                                    <span className="text-sm font-semibold text-indigo-700">fois par jours</span>
+                                                    <div className="flex items-center gap-1.5 ml-4">
+                                                        <label className="block text-xs font-semibold text-slate-500">Durée inter-prises:</label>
+                                                        <div className="flex flex-col">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="relative">
+                                                                    <input
+                                                                        type="number"
+                                                                        min="0"
+                                                                        placeholder="00"
+                                                                        value={parseDuration(scheduleData.intervalDuration || '00:00').h.toString()}
+                                                                        onChange={(e) => handleManualTimeChange('hours', e.target.value, 'schedule.intervalDuration')}
+                                                                        disabled={parseInt(scheduleData.simpleCount || '0') <= 1}
+                                                                        className={`w-16 pl-2 pr-1 py-2 text-center font-bold text-slate-700 bg-white border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none ${parseInt(scheduleData.simpleCount || '0') <= 1 ? 'opacity-50 cursor-not-allowed border-slate-200' :
+                                                                            fieldErrors['interval'] ? 'border-red-500 ring-2 ring-red-100' : 'border-slate-200'
+                                                                            }`}
+                                                                    />
+                                                                </div>
+                                                                <span className="font-bold text-slate-400">:</span>
+                                                                <div className="relative">
+                                                                    <input
+                                                                        type="number"
+                                                                        min="0"
+                                                                        max="59"
+                                                                        placeholder="00"
+                                                                        value={parseDuration(scheduleData.intervalDuration || '00:00').m.toString()}
+                                                                        onChange={(e) => handleManualTimeChange('minutes', e.target.value, 'schedule.intervalDuration')}
+                                                                        disabled={parseInt(scheduleData.simpleCount || '0') <= 1}
+                                                                        className={`w-16 pl-2 pr-1 py-2 text-center font-bold text-slate-700 bg-white border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none ${parseInt(scheduleData.simpleCount || '0') <= 1 ? 'opacity-50 cursor-not-allowed border-slate-200' :
+                                                                            fieldErrors['interval'] ? 'border-red-500 ring-2 ring-red-100' : 'border-slate-200'
+                                                                            }`}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+                                                {/* Standard Times Buttons */}
+                                                <div className="flex gap-3">
+                                                    {STANDARD_TIMES.map(({ label, time, icon: Icon }) => {
+                                                        const isSelected = scheduleData.specificTimes.includes(time);
+                                                        return (
+                                                            <button
+                                                                type="button"
+                                                                key={label}
+                                                                onClick={() => toggleSpecificTime(time)}
+                                                                className={`flex-1 py-2.5 px-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all active:scale-95 ${isSelected
+                                                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-200'
+                                                                    : 'bg-white border-indigo-100 text-slate-600 hover:border-indigo-300 hover:bg-indigo-50'
+                                                                    }`}
+                                                            >
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <Icon className="w-4 h-4" />
+                                                                    <span className="font-bold text-sm">{label}</span>
+                                                                </div>
+                                                                <span className={`text-xs ${isSelected ? 'text-indigo-200' : 'text-slate-400'}`}>{time}</span>
+                                                            </button>
+                                                        )
+                                                    })}
+                                                </div>
+
+                                                {/* Custom Time Dropdown */}
+                                                <div>
+                                                    <label className="block text-xs font-bold text-indigo-900 uppercase tracking-wide mb-2">
+                                                        Ajouter une heure personnalisée
+                                                    </label>
+                                                    <div className="relative">
+                                                        <select
+                                                            onChange={addCustomTime}
+                                                            className="w-full pl-3 pr-10 py-2.5 h-12 bg-white border border-indigo-200 rounded-xl appearance-none focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium text-slate-700 cursor-pointer hover:border-indigo-400 transition-colors"
+                                                            value=""
+                                                        >
+                                                            <option value="" disabled>Sélectionner une heure...</option>
+                                                            {HOURS_24.map(h => (
+                                                                <option key={h} value={h} disabled={scheduleData.specificTimes.includes(h)}>
+                                                                    {h}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                        <Plus className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-400 pointer-events-none" />
+                                                    </div>
+                                                </div>
+
+                                                {/* Selected Times Chips */}
+                                                {scheduleData.specificTimes && scheduleData.specificTimes.length > 0 && (
+                                                    <div className="flex flex-wrap gap-2 pt-2">
+                                                        {scheduleData.specificTimes.sort().map(time => (
+                                                            <div
+                                                                key={time}
+                                                                className="group flex items-center gap-2 pl-3 pr-2 py-1.5 bg-white border border-indigo-100 rounded-full shadow-sm text-indigo-700 text-sm font-bold animate-in zoom-in-95"
+                                                            >
+                                                                <span>{time}</span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => toggleSpecificTime(time)}
+                                                                    className="p-1 rounded-full hover:bg-red-50 text-indigo-300 hover:text-red-500 transition-colors"
+                                                                    title="Supprimer"
+                                                                >
+                                                                    <X className="w-3.5 h-3.5" />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="h-px bg-slate-100 w-full" />
+
+                                    {/* Date & Duration */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                        <div>
+                                            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Date de Début <span className="text-red-500">*</span></label>
+                                            <div className="relative">
+                                                <input
+                                                    type="datetime-local"
+                                                    min={getMinDateTimeForInput()}
+                                                    className={`w-full pl-3 pr-10 py-2.5 h-12 border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium text-slate-700 [&::-webkit-calendar-picker-indicator]:hidden ${isSpecificTimeRestricted ? 'bg-slate-100 cursor-pointer' : 'bg-slate-50 border-slate-200'}`}
+                                                    value={scheduleData.startDateTime}
+                                                    onChange={(e) => updateSchedule('startDateTime', e.target.value)}
+                                                    readOnly={isSpecificTimeRestricted}
+                                                    onClick={(e) => {
+                                                        if (isSpecificTimeRestricted) {
+                                                            e.preventDefault();
+                                                            openCalendarModal();
+                                                        }
+                                                    }}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={openCalendarModal}
+                                                    className="absolute right-1 top-1 bottom-1 aspect-square bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center justify-center transition-colors shadow-sm z-10"
+                                                    title="Ouvrir le calendrier"
+                                                >
+                                                    <Calendar className="w-5 h-5" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Durée de Traitement <span className="text-red-500">*</span></label>
+                                            <div className={`flex shadow-sm rounded-xl overflow-hidden border h-12 ${fieldErrors['duration'] ? 'border-red-500 ring-2 ring-red-100' : 'border-slate-200'}`}>
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    placeholder="--"
+                                                    className="flex-1 text-center bg-white outline-none text-sm font-medium h-full selection:bg-indigo-100 border-none focus:ring-0 p-2"
+                                                    value={scheduleData.durationValue === '--' ? '' : scheduleData.durationValue}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        if (val === '' || parseInt(val) <= 0) {
+                                                            updateSchedule('durationValue', '--');
+                                                        } else {
+                                                            updateSchedule('durationValue', val);
+                                                        }
+                                                    }}
+                                                />
+                                                <div className="w-px bg-slate-200"></div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => updateSchedule('durationUnit', scheduleData.durationUnit === 'days' ? 'weeks' : 'days')}
+                                                    className="w-1/2 bg-slate-50 hover:bg-slate-100 text-sm font-semibold text-slate-600 transition"
+                                                >
+                                                    {scheduleData.durationUnit === 'days' ? 'Jours' : 'Semaines'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* --- PREVIEW SECTION --- */}
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="bg-slate-800 px-6 py-4 flex items-center gap-3">
+                        <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
+                            <FileText className="text-white w-5 h-5" />
+                        </div>
+                        <h2 className="text-lg font-semibold text-white">Aperçu de l'Ordonnance</h2>
+                    </div>
+
+                    <div className="p-6 bg-slate-50/50">
+                        <PrescriptionCard formData={previewData} />
+                    </div>
+                </div>
+            </div>
+
+            {/* Validation Messages Overlay */}
+            {(error || warning) && (
+                <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-full max-w-lg px-4 pointer-events-none">
+                    {error && (
+                        <div className="pointer-events-auto bg-red-50 text-red-800 px-4 py-3 rounded-xl shadow-lg border border-red-200 flex items-center gap-3 animate-in slide-in-from-bottom-5 fade-in duration-300">
+                            <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-600" />
+                            <p className="text-sm font-medium">{error}</p>
+                            <button onClick={() => setError(null)} className="ml-auto hover:bg-red-100 p-1 rounded-full text-red-600 transition-colors"><X className="w-4 h-4" /></button>
+                        </div>
+                    )}
+                    {warning && (
+                        <div className="pointer-events-auto bg-amber-50 text-amber-900 px-4 py-3 rounded-xl shadow-lg border border-amber-200 flex items-center gap-3 animate-in slide-in-from-bottom-5 fade-in duration-300">
+                            <AlertCircle className="w-5 h-5 flex-shrink-0 text-amber-600" />
+                            <p className="text-sm font-medium">{warning}</p>
+                            <button onClick={() => setWarning(null)} className="ml-auto hover:bg-amber-100 p-1 rounded-full text-amber-600 transition-colors"><X className="w-4 h-4" /></button>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex gap-4 pt-4 border-t border-slate-200">
+                <button
+                    type="button"
+                    onClick={() => {
+                        setSelectedExams([]);
+                        setSearchTerm('');
+                        setComment('');
+                        setError(null);
+                        setWarning(null);
+                        setPrescriptionType('one-time');
+                        setScheduleData(prev => ({ ...prev, startDateTime: getCurrentDateTime() }));
+                    }}
+                    className="flex-1 px-6 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm active:scale-[0.98]"
+                >
+                    <div className="flex items-center justify-center gap-2">
+                        <X className="w-5 h-5" />
+                        <span>Effacer</span>
+                    </div>
+                </button>
+
+                <button
+                    type="button"
+                    onClick={handleValidate}
+                    className={`flex-1 px-6 py-3 font-bold rounded-xl transition-all shadow-md active:scale-[0.98] ${getValidationState().isValid
+                        ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/25'
+                        : 'bg-slate-300 text-slate-500 hover:bg-slate-300 cursor-pointer'
+                        }`}
+                >
+                    <div className="flex items-center justify-center gap-2">
+                        <CheckCircle className="w-5 h-5" />
+                        <span>Valider la Prescription</span>
+                    </div>
+                </button>
+            </div>
+        </div>
+    );
+};

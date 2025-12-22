@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getPatients, getAdmissions, getAppointments, getRooms, closeAdmission, createAdmission, createPatient, updatePatient, getPatient } from '../controllers/emrController';
+import { getPatients, getAdmissions, getAppointments, getRooms, closeAdmission, createAdmission, createPatient, updatePatient, getPatient, getLocations, addLocation, updateLocation, deleteLocation } from '../controllers/emrController';
 
 const router = Router();
 
@@ -20,5 +20,11 @@ router.put('/patients/:id', updatePatient);
 
 // Get single patient
 router.get('/patients/:id', getPatient);
+
+// Location Routes
+router.get('/locations', getLocations);
+router.post('/locations', addLocation);
+router.put('/locations', updateLocation);
+router.delete('/locations/:id', deleteLocation);
 
 export default router;

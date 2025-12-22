@@ -103,3 +103,43 @@ export const getPatient = (req: Request, res: Response) => {
         res.status(500).json({ message: 'Error fetching patient' });
     }
 };
+
+// Location Endpoints
+export const getLocations = (req: Request, res: Response) => {
+    try {
+        const locations = emrService.getLocations();
+        res.json(locations);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching locations' });
+    }
+};
+
+export const addLocation = (req: Request, res: Response) => {
+    try {
+        const location = req.body;
+        const newLocation = emrService.addLocation(location);
+        res.status(201).json(newLocation);
+    } catch (error) {
+        res.status(500).json({ message: 'Error adding location' });
+    }
+};
+
+export const updateLocation = (req: Request, res: Response) => {
+    try {
+        const location = req.body;
+        const updatedLocation = emrService.updateLocation(location);
+        res.json(updatedLocation);
+    } catch (error) {
+        res.status(404).json({ message: 'Location not found' });
+    }
+};
+
+export const deleteLocation = (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        emrService.deleteLocation(id);
+        res.status(204).send();
+    } catch (error) {
+        res.status(500).json({ message: 'Error deleting location' });
+    }
+};

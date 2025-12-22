@@ -41,6 +41,7 @@ export interface PrescriptionData {
     schedule: ScheduleData;
     conditionComment?: string;
     substitutable: boolean;
+    prescriptionType?: 'medication' | 'biology' | 'imagery' | 'care';
 }
 
 export interface Prescription {

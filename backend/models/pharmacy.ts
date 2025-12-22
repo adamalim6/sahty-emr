@@ -20,6 +20,7 @@ export interface InventoryItem {
     productId: string;
     name: string;
     category: ItemCategory;
+    serviceId?: string; // Optional: If present, belongs to a Service Stock (Replenishment target)
     location: string;
     batchNumber: string;
     expiryDate: string;
@@ -235,7 +236,16 @@ export interface ReplenishmentRequest {
         productName: string;
         quantityRequested: number;
         quantityApproved?: number;
+        targetLocationId?: string; // Where it should be stored in the service
+        productDispensedId?: string; // If substitution occurred
+        productDispensedName?: string;
+        dispensedBatches?: {
+            batchNumber: string;
+            expiryDate: string;
+            quantity: number;
+        }[];
     }[];
+    targetServiceId?: string; // Optional: Service ID (if multiple services supported in future)
     createdAt: Date;
     updatedAt: Date;
 }

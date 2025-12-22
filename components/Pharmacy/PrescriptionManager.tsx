@@ -46,7 +46,13 @@ export const PrescriptionManager: React.FC = () => {
       setLoading(true);
       setError(null);
       const data = await api.getPrescriptions(patientId);
-      setPrescriptions(Array.isArray(data) ? data : []);
+      const allPrescriptions = Array.isArray(data) ? data : [];
+      // Filter out biology prescriptions for Pharmacy view
+      const pharmacyPrescriptions = allPrescriptions.filter((p: any) => {
+        const pData = p.data || p; // Handle potential wrapped/unwrapped structure
+        return pData.prescriptionType !== 'biology';
+      });
+      setPrescriptions(pharmacyPrescriptions);
     } catch (err) {
       console.error('Failed to load prescriptions:', err);
       setError('Impossible de charger les prescriptions');

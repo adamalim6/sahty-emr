@@ -19,7 +19,8 @@ import {
   Zap,
   Sun,
   Sunset,
-  Moon
+  Moon,
+  TestTube
 } from 'lucide-react';
 import { MOLECULE_DB_UNIVERSAL, MOLECULE_DB_HOSPITAL, UNITS, ROUTES } from './constants';
 import { FormData, ScheduleData, SolventData, MoleculeDatabase, PrescriptionType } from './types';
@@ -28,6 +29,24 @@ import { PrescriptionCard } from './PrescriptionCard';
 
 const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
+const BIOLOGY_EXAMS = [
+  'NFS',
+  'CRP',
+  'Ionogramme Sanguin',
+  'Urée',
+  'Créatinine',
+  'Bilan Hépatique',
+  'Hémoculture',
+  'ECBU',
+  'TSH',
+  'HbA1c',
+  'Glycémie',
+  'Cholestérol Total',
+  'HDL/LDL',
+  'Triglycérides',
+  'Ferritine',
+  'Vitesse de Sédimentation'
+];
 
 const MONTHS_FR = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 
@@ -73,11 +92,9 @@ const getMinDateTimeForInput = () => {
 };
 
 
-
-
-
 interface PrescriptionFormProps {
-  onSave?: (data: FormData) => void;
+  onSave?: (data: FormData | FormData[]) => void;
+
 }
 
 export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) => {
@@ -115,8 +132,12 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
       intervalDuration: "",
     },
     conditionComment: "",
+    prescriptionType: 'medication'
   });
 
+
+
+  // Suggestions logic for medications...
   const [filteredCommercialNames, setFilteredCommercialNames] = useState<string[]>([]);
   const [showCommercialSuggestions, setShowCommercialSuggestions] = useState(false);
   const [filteredMoleculeNames, setFilteredMoleculeNames] = useState<string[]>([]);
@@ -1023,7 +1044,11 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
 
   const doseScheduleCards = getDoseScheduleCards;
 
+
+
   const handleValidate = () => {
+
+
     if (!validationState.validation_autorisee) {
       alert(validationState.alerte.message);
       setIsSubmitted(false);
@@ -1102,7 +1127,10 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
 
     setSummary(summaryText);
     if (onSave) {
-      onSave(formData);
+      onSave({
+        ...formData,
+        skippedDoses: Array.from(skippedDoseIds)
+      });
     }
     setIsSubmitted(true);
   };
@@ -1516,7 +1544,6 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
                 onChange={(e) => updateField('conditionComment', e.target.value)}
               />
             </div>
-
             {/* Dilution Toggle */}
             <div className="mt-6 mb-4">
               <label className="block text-sm font-semibold text-slate-700 mb-2">Dilution</label>
@@ -1737,6 +1764,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
             </div>
           </div>
         </div>
+
 
         {/* SECTION 2: CALENDAR D'ADMINISTRATION */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -2207,13 +2235,13 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
           </div>
         </div>
 
-      </div>
+      </div >
 
       {/* RIGHT COLUMN: PREVIEW & ACTION */}
-      <div className="space-y-6">
+      < div className="space-y-6" >
 
         {/* Live Preview Card */}
-        <div className="bg-white rounded-2xl shadow-lg border border-slate-100 p-6">
+        < div className="bg-white rounded-2xl shadow-lg border border-slate-100 p-6" >
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Aperçu de l'ordonnance</h3>
 
           <div className={`rounded-xl border-2 border-dashed p-6 transition-all duration-300 ${isSubmitted ? 'border-emerald-500 bg-emerald-50/30' : 'border-slate-200 bg-slate-50'}`}>
@@ -2222,20 +2250,24 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
 
 
           {/* Inter-dose duration warning */}
-          {showInterDoseWarning && (
-            <div className="mt-4 p-3 bg-amber-50 text-amber-800 text-xs rounded-lg border border-amber-200 flex items-start gap-2 animate-in fade-in slide-in-from-bottom-2">
-              <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0 text-amber-600" />
-              <span>Vous avez choisi le mode simple mais n'avez pas rempli la durée inter-prise; cette prescription ne sera donc pas ajoutée à la fiche de surveillance.</span>
-            </div>
-          )}
+          {
+            showInterDoseWarning && (
+              <div className="mt-4 p-3 bg-amber-50 text-amber-800 text-xs rounded-lg border border-amber-200 flex items-start gap-2 animate-in fade-in slide-in-from-bottom-2">
+                <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0 text-amber-600" />
+                <span>Vous avez choisi le mode simple mais n'avez pas rempli la durée inter-prise; cette prescription ne sera donc pas ajoutée à la fiche de surveillance.</span>
+              </div>
+            )
+          }
 
           {/* Validation Errors / Status */}
-          {validationState.alerte.active && (
-            <div className="mt-4 p-3 bg-red-50 text-red-700 text-xs rounded-lg border border-red-100 flex items-start gap-2 animate-in fade-in slide-in-from-bottom-2">
-              <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-              <span>{validationState.alerte.message}</span>
-            </div>
-          )}
+          {
+            validationState.alerte.active && (
+              <div className="mt-4 p-3 bg-red-50 text-red-700 text-xs rounded-lg border border-red-100 flex items-start gap-2 animate-in fade-in slide-in-from-bottom-2">
+                <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                <span>{validationState.alerte.message}</span>
+              </div>
+            )
+          }
 
           {/* Action Buttons */}
           <div className="mt-6 space-y-3">
@@ -2258,7 +2290,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
               Effacer
             </button>
           </div>
-        </div>
+        </div >
       </div >
     </div >
   );

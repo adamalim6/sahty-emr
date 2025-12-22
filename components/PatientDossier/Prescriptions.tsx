@@ -1,6 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, X, Ban } from 'lucide-react';
+import { PlusCircle, X, Ban, TestTube, Image, Stethoscope, Scan } from 'lucide-react';
 import { PrescriptionForm } from '../Prescription/PrescriptionForm';
+import { BiologyPrescriptionForm } from '../Prescription/BiologyPrescriptionForm';
+import { ImageryPrescriptionForm } from '../Prescription/ImageryPrescriptionForm';
+import { CarePrescriptionForm } from '../Prescription/CarePrescriptionForm';
 import { FormData } from '../Prescription/types';
 import { PrescriptionCard } from '../Prescription/PrescriptionCard';
 import { api } from '../../services/api';
@@ -11,6 +15,7 @@ interface PrescriptionsProps {
 
 export const Prescriptions: React.FC<PrescriptionsProps> = ({ patientId }) => {
   const [showModal, setShowModal] = useState(false);
+  const [formMode, setFormMode] = useState<'medication' | 'biology' | 'imagery' | 'care'>('medication');
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -31,10 +36,18 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ patientId }) => {
     loadPrescriptions();
   }, [patientId]);
 
-  const handleSavePrescription = async (data: FormData) => {
+  const handleSavePrescription = async (data: FormData | FormData[]) => {
     try {
-      const newPrescription = await api.createPrescription(patientId, data);
-      setPrescriptions(prev => [...prev, newPrescription]);
+      if (Array.isArray(data)) {
+        // Batch creation for Biology exams
+        const promises = data.map(item => api.createPrescription(patientId, item));
+        const newPrescriptions = await Promise.all(promises);
+        setPrescriptions(prev => [...prev, ...newPrescriptions]);
+      } else {
+        // Single creation for Medication
+        const newPrescription = await api.createPrescription(patientId, data);
+        setPrescriptions(prev => [...prev, newPrescription]);
+      }
       setShowModal(false);
     } catch (error) {
       console.error('Failed to save prescription:', error);
@@ -52,10 +65,30 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ patientId }) => {
     }
   };
 
+  const handleOpenMedication = () => {
+    setFormMode('medication');
+    setShowModal(true);
+  };
+
+  const handleOpenBiology = () => {
+    setFormMode('biology');
+    setShowModal(true);
+  };
+
+  const handleOpenImagery = () => {
+    setFormMode('imagery');
+    setShowModal(true);
+  };
+
+  const handleOpenCare = () => {
+    setFormMode('care');
+    setShowModal(true);
+  };
+
   if (loading) {
     return (
-      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 min-h-[400px] flex items-center justify-center">
-        <div className="text-gray-400">Chargement des prescriptions...</div>
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
       </div>
     );
   }
@@ -64,13 +97,39 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ patientId }) => {
     <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 min-h-[400px]">
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-lg font-semibold text-gray-800">Prescriptions</h3>
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors font-medium border border-emerald-100"
-        >
-          <PlusCircle size={20} />
-          <span>Médicament</span>
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleOpenCare}
+            className="flex items-center gap-2 px-4 py-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition-colors font-medium border border-orange-100"
+          >
+            <Stethoscope size={20} />
+            <span>Actes & Soins</span>
+          </button>
+
+          <button
+            onClick={handleOpenImagery}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors font-medium border border-purple-100"
+          >
+            <Scan size={20} />
+            <span>Imagerie</span>
+          </button>
+
+          <button
+            onClick={handleOpenBiology}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors font-medium border border-blue-100"
+          >
+            <TestTube size={20} />
+            <span>Biologie</span>
+          </button>
+
+          <button
+            onClick={handleOpenMedication}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors font-medium border border-emerald-100"
+          >
+            <PlusCircle size={20} />
+            <span>Médicament</span>
+          </button>
+        </div>
       </div>
 
       {prescriptions.length === 0 ? (
@@ -87,19 +146,7 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ patientId }) => {
                 <X className="w-4 h-4" />
               </button>
               <PrescriptionCard formData={p.data} />
-              <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end">
-                <button
-                  className="flex items-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm active:scale-95"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    // Placeholder action
-                    console.log("Ne pas dispenser:", p);
-                  }}
-                >
-                  <Ban className="w-4 h-4" />
-                  <span>Ne pas dispenser</span>
-                </button>
-              </div>
+
             </div>
           ))}
         </div>
@@ -123,7 +170,15 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ patientId }) => {
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
-              <PrescriptionForm onSave={handleSavePrescription} />
+              {formMode === 'biology' ? (
+                <BiologyPrescriptionForm onSave={handleSavePrescription} />
+              ) : formMode === 'imagery' ? (
+                <ImageryPrescriptionForm onSave={handleSavePrescription} />
+              ) : formMode === 'care' ? (
+                <CarePrescriptionForm onSave={handleSavePrescription} />
+              ) : (
+                <PrescriptionForm onSave={handleSavePrescription} />
+              )}
             </div>
           </div>
         </div>

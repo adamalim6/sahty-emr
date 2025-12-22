@@ -102,3 +102,10 @@ export interface UserSettings {
     bankAccount: string;
     shareDataWithSahty: boolean;
 }
+
+export interface StockLocation {
+    id: string;
+    name: string;
+    description?: string;
+    isActive: boolean;
+}
