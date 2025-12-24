@@ -1,12 +1,22 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
     Stethoscope, Search, X, CheckCircle, FileText,
     Clock, Calendar, Activity, Zap, Syringe, ChevronLeft, ChevronRight, ChevronDown, AlertCircle,
-    Sun, SunMedium, Moon, BedDouble, Plus
+    Sun, SunMedium, Moon, BedDouble, Plus,
+    Edit2, Trash2, RotateCcw, Undo2, Save, ArrowRight, CalendarOff
 } from 'lucide-react';
-import { FormData, ScheduleData, PrescriptionType } from './types';
+import { FormData, ScheduleData, PrescriptionType, DoseScheduleResult } from './types';
 import { PrescriptionCard } from './PrescriptionCard';
-import { durationToDecimal, formatDuration } from './utils';
+import { durationToDecimal, formatDuration, generateDoseSchedule } from './utils';
+import { DoseEditor } from './DoseEditor';
+
+interface Dose {
+    id: string;
+    date: Date;
+    time: string;
+    originalDate?: Date;
+    skipped?: boolean;
+}
 
 // --- CONSTANTS ---
 const CARE_ACTS = [
@@ -91,6 +101,110 @@ export const CarePrescriptionForm: React.FC<CarePrescriptionFormProps> = ({ onSa
     });
 
     const [prescriptionType, setPrescriptionType] = useState<PrescriptionType>('frequency');
+
+    // Dose Management State
+    const [manualDoseAdjustments, setManualDoseAdjustments] = useState<Map<string, string>>(new Map());
+    const [editingDoseId, setEditingDoseId] = useState<string | null>(null);
+    const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const [skippedDoses, setSkippedDoses] = useState<string[]>([]);
+
+    useEffect(() => {
+        if (manualDoseAdjustments.size > 0) {
+            setManualDoseAdjustments(new Map());
+            setToastMessage("Le calendrier a changé, les modifications manuelles ont été réinitialisées.");
+            setTimeout(() => setToastMessage(null), 3000);
+        }
+    }, [scheduleData, prescriptionType]);
+
+    // --- DOSE LOGIC ---
+
+    const getDoseScheduleCards = useMemo((): DoseScheduleResult => {
+        return generateDoseSchedule(
+            scheduleData,
+            prescriptionType,
+            undefined,
+            'instant',
+            '00:00'
+        );
+    }, [scheduleData, prescriptionType]);
+
+    const finalDoses = useMemo(() => {
+        if (!getDoseScheduleCards.cards) return [];
+        return getDoseScheduleCards.cards.map(dose => {
+            const adjustedTime = manualDoseAdjustments.get(dose.id);
+            const originalDate = dose.date;
+            const originalTime = dose.time;
+            const isSkipped = skippedDoses.includes(dose.id);
+
+            if (adjustedTime) {
+                const newDate = new Date(adjustedTime);
+                return {
+                    id: dose.id,
+                    date: newDate,
+                    time: newDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+                    originalDate,
+                    originalTime,
+                    isModified: true,
+                    skipped: isSkipped
+                };
+            }
+            return {
+                id: dose.id,
+                date: originalDate,
+                time: originalTime,
+                originalDate,
+                originalTime,
+                isModified: false,
+                skipped: isSkipped
+            };
+        });
+    }, [getDoseScheduleCards, manualDoseAdjustments, skippedDoses]);
+
+    const modifiedDosesSummary = useMemo(() => {
+        if (manualDoseAdjustments.size === 0) return null;
+        const count = manualDoseAdjustments.size;
+        return `${count} horaire${count > 1 ? 's' : ''} modifié${count > 1 ? 's' : ''} manuellement`;
+    }, [manualDoseAdjustments]);
+
+    const skippedDosesSummary = useMemo(() => {
+        if (skippedDoses.length === 0) return null;
+        const count = skippedDoses.length;
+        return `${count} prise${count > 1 ? 's' : ''} ignorée${count > 1 ? 's' : ''}`;
+    }, [skippedDoses]);
+
+    const handleEditDose = (doseId: string) => {
+        setEditingDoseId(doseId);
+    };
+
+    const handleSaveDose = (newTimeIso: string) => {
+        if (editingDoseId) {
+            setManualDoseAdjustments(prev => {
+                const next = new Map(prev);
+                next.set(editingDoseId, newTimeIso);
+                return next;
+            });
+            setEditingDoseId(null);
+        }
+    };
+
+    const handleCancelEdit = () => {
+        setEditingDoseId(null);
+    };
+
+    const handleResetDose = (doseId: string) => {
+        setManualDoseAdjustments(prev => {
+            const next = new Map(prev);
+            next.delete(doseId);
+            return next;
+        });
+    };
+
+    const handleToggleDoseSkipped = (doseId: string) => {
+        setSkippedDoses(prev => {
+            if (prev.includes(doseId)) return prev.filter(id => id !== doseId);
+            return [...prev, doseId];
+        });
+    };
 
     // Calendar Modal State
     const [showCalendar, setShowCalendar] = useState(false);
@@ -381,6 +495,8 @@ export const CarePrescriptionForm: React.FC<CarePrescriptionFormProps> = ({ onSa
             return;
         }
 
+        const manualAdjustmentsRecord = Object.fromEntries(manualDoseAdjustments);
+
         const prescriptions: FormData[] = selectedActs.map(act => ({
             molecule: act,
             commercialName: act,
@@ -395,7 +511,8 @@ export const CarePrescriptionForm: React.FC<CarePrescriptionFormProps> = ({ onSa
             solvent: undefined,
             databaseMode: 'hospital' as const,
             substitutable: false,
-            skippedDoses: [],
+            skippedDoses: skippedDoses,
+            manualDoseAdjustments: manualAdjustmentsRecord,
             conditionComment: comment,
             schedule: scheduleData
         }));
@@ -418,6 +535,8 @@ export const CarePrescriptionForm: React.FC<CarePrescriptionFormProps> = ({ onSa
         solvent: undefined,
         databaseMode: 'hospital',
         schedule: scheduleData,
+        skippedDoses: skippedDoses,
+        manualDoseAdjustments: Object.fromEntries(manualDoseAdjustments),
         conditionComment: comment
     };
 
@@ -966,8 +1085,158 @@ export const CarePrescriptionForm: React.FC<CarePrescriptionFormProps> = ({ onSa
                                 </div>
                             )}
                         </div>
+
+                        {/* --- SCHEDULE DETAILS (EMBEDDED) --- */}
+                        {['frequency', 'punctual-frequency'].includes(prescriptionType) && (
+                            <div className="pt-2 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div className="flex items-center gap-2 mb-4 p-3 bg-orange-50/50 border border-orange-100/50 rounded-xl">
+                                    <Clock className="w-5 h-5 text-orange-600" />
+                                    <h3 className="font-bold text-orange-900 text-sm">Détail des horaires calculés</h3>
+                                    {(modifiedDosesSummary || skippedDosesSummary) && (
+                                        <div className="flex flex-wrap gap-2 ml-auto">
+                                            {modifiedDosesSummary && <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200">{modifiedDosesSummary}</span>}
+                                            {skippedDosesSummary && <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200">{skippedDosesSummary}</span>}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                                    {getDoseScheduleCards.needsDetail ? (
+                                        <div className="space-y-3">
+                                            {finalDoses.map((dose, index) => {
+                                                const isEditing = editingDoseId === dose.id;
+                                                const showDateHeader = index === 0 || finalDoses[index - 1].date.getDate() !== dose.date.getDate();
+                                                const isModified = manualDoseAdjustments.has(dose.id);
+                                                const isSkipped = skippedDoses.includes(dose.id);
+
+                                                return (
+                                                    <div key={dose.id}>
+                                                        {showDateHeader && (
+                                                            <div className="flex items-center gap-4 py-4">
+                                                                <div className="h-px flex-1 bg-slate-200"></div>
+                                                                <div className="flex items-center gap-2 text-slate-500 font-medium text-sm">
+                                                                    <Calendar className="w-4 h-4" />
+                                                                    <span className="capitalize">
+                                                                        {dose.date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="h-px flex-1 bg-slate-200"></div>
+                                                            </div>
+                                                        )}
+
+                                                        {isEditing ? (
+                                                            <DoseEditor
+                                                                dose={dose}
+                                                                prevDoseEnd={index > 0 ? getDoseScheduleCards.cards[index - 1].date : new Date(dose.date.getTime() - 24 * 60 * 60 * 1000)}
+                                                                nextDoseStart={index < getDoseScheduleCards.cards.length - 1 ? getDoseScheduleCards.cards[index + 1].date : new Date(dose.date.getTime() + 24 * 60 * 60 * 1000)}
+                                                                onSave={handleSaveDose}
+                                                                onCancel={handleCancelEdit}
+                                                                adminMode="instant"
+                                                                adminDuration="00:00"
+                                                            />
+                                                        ) : (
+                                                            <div className={`group flex items-center justify-between p-4 rounded-xl border transition-all duration-200 hover:shadow-md ${isSkipped
+                                                                ? 'bg-slate-50 border-slate-200 opacity-75'
+                                                                : isModified
+                                                                    ? 'bg-amber-50 border-amber-200 shadow-sm'
+                                                                    : 'bg-white border-slate-200 hover:border-orange-200'
+                                                                }`}>
+                                                                <div className="flex items-center gap-4">
+                                                                    <div className={`p-2.5 rounded-full ${isSkipped
+                                                                        ? 'bg-slate-100 text-slate-400'
+                                                                        : isModified
+                                                                            ? 'bg-amber-100 text-amber-600'
+                                                                            : 'bg-orange-50 text-orange-600'
+                                                                        }`}>
+                                                                        {isSkipped ? <CalendarOff size={18} /> : <Clock size={18} />}
+                                                                    </div>
+
+                                                                    <div className="flex flex-col">
+                                                                        <div className="flex items-center gap-2">
+                                                                            {isModified && !isSkipped ? (
+                                                                                <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2">
+                                                                                    <span className="text-xs font-medium text-slate-400 line-through decoration-slate-300">
+                                                                                        {dose.originalDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) === dose.date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+                                                                                            ? dose.originalTime
+                                                                                            : `${dose.originalDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })} ${dose.originalTime}`
+                                                                                        }
+                                                                                    </span>
+                                                                                    <ArrowRight size={14} className="text-amber-400" />
+                                                                                    <span className="text-lg font-bold text-slate-700 font-mono tracking-tight">
+                                                                                        {dose.originalDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) === dose.date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+                                                                                            ? dose.time
+                                                                                            : `${dose.date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })} ${dose.time}`
+                                                                                        }
+                                                                                    </span>
+                                                                                    <span className="bg-amber-100 text-amber-700 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded-full tracking-wide">
+                                                                                        Modifié
+                                                                                    </span>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <span className={`text-lg font-bold font-mono tracking-tight ${isSkipped ? 'text-slate-500 line-through decoration-slate-400' : 'text-slate-700'}`}>
+                                                                                    {dose.time}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                        <span className="text-xs font-medium text-slate-400 capitalize">
+                                                                            {isSkipped ? 'Prise ignorée' :
+                                                                                isModified ? 'Horaire personnalisé' :
+                                                                                    'Horaire standard'}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    {!isSkipped && (
+                                                                        <>
+                                                                            {isModified && (
+                                                                                <button
+                                                                                    onClick={() => handleResetDose(dose.id)}
+                                                                                    className="p-2 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                                                                                    title="Rétablir l'horaire initial"
+                                                                                >
+                                                                                    <RotateCcw size={16} />
+                                                                                </button>
+                                                                            )}
+                                                                            <button
+                                                                                onClick={() => handleEditDose(dose.id)}
+                                                                                className="p-2 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                                                                                title="Modifier l'horaire"
+                                                                            >
+                                                                                <Edit2 size={16} />
+                                                                            </button>
+                                                                        </>
+                                                                    )}
+                                                                    <button
+                                                                        onClick={() => handleToggleDoseSkipped(dose.id)}
+                                                                        className={`p-2 rounded-lg transition-colors ${isSkipped
+                                                                            ? 'text-orange-600 bg-orange-50 hover:bg-orange-100'
+                                                                            : 'text-slate-400 hover:text-red-600 hover:bg-red-50'
+                                                                            }`}
+                                                                        title={isSkipped ? "Rétablir la prise" : "Ignorer cette prise"}
+                                                                    >
+                                                                        {isSkipped ? <Undo2 size={16} /> : <Trash2 size={16} />}
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center py-8 text-slate-400">
+                                            <Clock className="w-8 h-8 mb-2 text-slate-300" />
+                                            <p className="text-sm font-medium">{getDoseScheduleCards.message || "Configurez la fréquence ci-dessus."}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
+
+
 
                 {/* --- PREVIEW SECTION --- */}
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">

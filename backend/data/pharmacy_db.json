@@ -367,11 +367,18 @@
       "lotNumber": "123",
       "expiryDate": "2025-12-31",
       "locationId": "Zone picking",
-      "status": "Scellée",
+      "status": "Dispensée",
       "unitsPerPack": 10,
       "remainingUnits": 10,
       "sourceDeliveryNoteId": "56789",
-      "history": [],
+      "history": [
+        {
+          "date": "2025-12-22T12:03:45.459Z",
+          "action": "DISPENSATION",
+          "userId": "current-user",
+          "details": "Dispensation Prescription PRESC-1766404588207-7bvsfzlli"
+        }
+      ],
       "createdAt": "2025-12-20T23:03:11.866Z"
     },
     {
@@ -381,11 +388,18 @@
       "lotNumber": "123",
       "expiryDate": "2025-12-31",
       "locationId": "Zone picking",
-      "status": "Scellée",
+      "status": "Dispensée",
       "unitsPerPack": 10,
       "remainingUnits": 10,
       "sourceDeliveryNoteId": "56789",
-      "history": [],
+      "history": [
+        {
+          "date": "2025-12-22T12:03:45.459Z",
+          "action": "DISPENSATION",
+          "userId": "current-user",
+          "details": "Dispensation Prescription PRESC-1766404588207-7bvsfzlli"
+        }
+      ],
       "createdAt": "2025-12-20T23:03:11.866Z"
     },
     {
@@ -458,11 +472,18 @@
       "lotNumber": "456",
       "expiryDate": "2025-12-02",
       "locationId": "Zone picking",
-      "status": "Scellée",
+      "status": "Dispensée",
       "unitsPerPack": 10,
       "remainingUnits": 10,
       "sourceDeliveryNoteId": "56789",
-      "history": [],
+      "history": [
+        {
+          "date": "2025-12-22T11:57:16.939Z",
+          "action": "DISPENSATION",
+          "userId": "current-user",
+          "details": "Dispensation Prescription PRESC-1766404588207-7bvsfzlli"
+        }
+      ],
       "createdAt": "2025-12-20T23:03:11.866Z"
     },
     {
@@ -996,6 +1017,57 @@
       "totalPriceInclVAT": 63.3,
       "dispensedAt": "2025-12-20T23:20:36.053Z",
       "dispensedBy": "current-user"
+    },
+    {
+      "id": "DISP-1766404636939-0",
+      "prescriptionId": "PRESC-1766404588207-7bvsfzlli",
+      "admissionId": "adm-1766272352667",
+      "productId": "PROD-2025-6613",
+      "productName": "Zamox",
+      "mode": "FULL_PACK",
+      "quantity": 1,
+      "serializedPackId": "pack-1766271791866-7455-1",
+      "expiryDate": "2025-12-02",
+      "serialNumber": "SN-1766271791866-000007",
+      "unitPriceExclVAT": 72,
+      "vatRate": 5.5,
+      "totalPriceInclVAT": 75.96,
+      "dispensedAt": "2025-12-22T11:57:16.939Z",
+      "dispensedBy": "current-user"
+    },
+    {
+      "id": "DISP-1766405025459-0",
+      "prescriptionId": "PRESC-1766404588207-7bvsfzlli",
+      "admissionId": "adm-1766272352667",
+      "productId": "PROD-2025-6613",
+      "productName": "Zamox",
+      "mode": "FULL_PACK",
+      "quantity": 1,
+      "serializedPackId": "pack-1766271791865-2853-0",
+      "expiryDate": "2025-12-31",
+      "serialNumber": "SN-1766271791865-000001",
+      "unitPriceExclVAT": 72,
+      "vatRate": 5.5,
+      "totalPriceInclVAT": 75.96,
+      "dispensedAt": "2025-12-22T12:03:45.459Z",
+      "dispensedBy": "current-user"
+    },
+    {
+      "id": "DISP-1766405025459-1",
+      "prescriptionId": "PRESC-1766404588207-7bvsfzlli",
+      "admissionId": "adm-1766272352667",
+      "productId": "PROD-2025-6613",
+      "productName": "Zamox",
+      "mode": "FULL_PACK",
+      "quantity": 1,
+      "serializedPackId": "pack-1766271791865-2853-1",
+      "expiryDate": "2025-12-31",
+      "serialNumber": "SN-1766271791866-000002",
+      "unitPriceExclVAT": 72,
+      "vatRate": 5.5,
+      "totalPriceInclVAT": 75.96,
+      "dispensedAt": "2025-12-22T12:03:45.459Z",
+      "dispensedBy": "current-user"
     }
   ],
   "suppliers": [
@@ -1355,6 +1427,35 @@
       ],
       "createdAt": "2025-12-21T12:34:44.501Z",
       "updatedAt": "2025-12-21T12:36:31.870Z"
+    },
+    {
+      "id": "REP-1766404867686",
+      "requesterId": "CURRENT_USER",
+      "requesterName": "Infirmier EMR",
+      "serviceName": "Service Médecine",
+      "status": "En Attente",
+      "items": [
+        {
+          "productId": "PROD-2025-4540",
+          "productName": "Doliprane 1000 mg",
+          "quantityRequested": 9,
+          "targetLocationId": "LOC-EMR-1766277614022"
+        },
+        {
+          "productId": "PROD-2025-6613",
+          "productName": "Zamox",
+          "quantityRequested": 11,
+          "targetLocationId": "LOC-EMR-1766277614022"
+        },
+        {
+          "productId": "PROD-2025-8584",
+          "productName": "Zyrtec 5mg",
+          "quantityRequested": 15,
+          "targetLocationId": "LOC-EMR-1766277614022"
+        }
+      ],
+      "createdAt": "2025-12-22T12:01:07.686Z",
+      "updatedAt": "2025-12-22T12:01:07.686Z"
     }
   ]
 }

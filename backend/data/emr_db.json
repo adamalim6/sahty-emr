@@ -36,6 +36,43 @@
         "address": "",
         "habilitation": ""
       }
+    },
+    {
+      "id": "1635",
+      "isProvisional": false,
+      "firstName": "Lahlou",
+      "lastName": "KHADIJA",
+      "dateOfBirth": "1999-12-12",
+      "gender": "Femme",
+      "ipp": "UMAN-2025-689402",
+      "phone": "",
+      "cin": "456789",
+      "isPayant": true,
+      "emergencyContacts": [
+        {
+          "name": "",
+          "relationship": "Père",
+          "phone": ""
+        }
+      ],
+      "country": "Maroc",
+      "nationality": "Marocaine",
+      "address": "",
+      "insurance": {
+        "mainOrg": "",
+        "relationship": "Lui-même",
+        "registrationNumber": ""
+      },
+      "guardian": {
+        "firstName": "",
+        "lastName": "",
+        "phone": "",
+        "relationship": "Père",
+        "idType": "CIN",
+        "idNumber": "",
+        "address": "",
+        "habilitation": ""
+      }
     }
   ],
   "admissions": [

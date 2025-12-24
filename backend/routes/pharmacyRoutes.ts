@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { pharmacyService } from '../services/pharmacyService';
+import { prescriptionService } from '../services/prescriptionService';
 import * as pharmacyController from '../controllers/pharmacyController';
 import { dispenseWithFEFO, getDispensationsByPrescription, getDispensationsByAdmission } from '../controllers/dispensationController';
 
@@ -41,5 +43,9 @@ router.get('/dispensations/admission/:admissionId', getDispensationsByAdmission)
 router.get('/replenishments', pharmacyController.getReplenishmentRequests);
 router.post('/replenishments', pharmacyController.createReplenishmentRequest);
 router.put('/replenishments/:id/status', pharmacyController.updateReplenishmentRequestStatus);
+
+
+
+
 
 export default router;

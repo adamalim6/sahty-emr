@@ -1,4 +1,4 @@
-import { Prescription, PrescriptionData } from '../models/prescription';
+import { Prescription, PrescriptionData, PrescriptionExecution } from '../models/prescription';
 import { emrService } from './emrService';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -144,6 +144,79 @@ export class PrescriptionService {
             .filter(p => p !== null);
 
         return patientsWithPrescriptions;
+    }
+
+    // --- EXECUTION MANAGEMENT ---
+
+    // Load executions (Lazy load or specific DB file)
+    private getExecutionsDBPath(): string {
+        return path.join(DATA_DIR, 'executions_db.json');
+    }
+
+    private loadExecutions(): PrescriptionExecution[] {
+        const dbPath = this.getExecutionsDBPath();
+        if (fs.existsSync(dbPath)) {
+            try {
+                return JSON.parse(fs.readFileSync(dbPath, 'utf8')).map((e: any) => ({
+                    ...e,
+                    updatedAt: new Date(e.updatedAt)
+                }));
+            } catch (error) {
+                console.error("Failed to load Executions DB", error);
+                return [];
+            }
+        }
+        return [];
+    }
+
+    private saveExecutions(executions: PrescriptionExecution[]) {
+        const dbPath = this.getExecutionsDBPath();
+        fs.writeFileSync(dbPath, JSON.stringify(executions, null, 2));
+    }
+
+    // Get Executions for a specific prescription
+    getExecutions(prescriptionId: string): PrescriptionExecution[] {
+        const allExecutions = this.loadExecutions();
+        return allExecutions.filter(e => e.prescriptionId === prescriptionId);
+    }
+
+    // Record or Update an execution
+    recordExecution(execution: Partial<PrescriptionExecution> & { prescriptionId: string, plannedDate: string }): PrescriptionExecution {
+        const allExecutions = this.loadExecutions();
+        // Check if execution already exists for this slot (prescription + plannedDate)
+        // We use simple string match for plannedDate as it should be precise ISO from schedule calculation
+        const existingIndex = allExecutions.findIndex(e =>
+            e.prescriptionId === execution.prescriptionId &&
+            e.plannedDate === execution.plannedDate
+        );
+
+        let savedExecution: PrescriptionExecution;
+
+        if (existingIndex !== -1) {
+            // Update
+            savedExecution = {
+                ...allExecutions[existingIndex],
+                ...execution,
+                updatedAt: new Date()
+            };
+            allExecutions[existingIndex] = savedExecution;
+        } else {
+            // Create
+            savedExecution = {
+                id: `EXEC-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                prescriptionId: execution.prescriptionId,
+                plannedDate: execution.plannedDate,
+                status: execution.status || 'planned',
+                justification: execution.justification,
+                performedBy: execution.performedBy,
+                actualDate: execution.actualDate,
+                updatedAt: new Date()
+            };
+            allExecutions.push(savedExecution);
+        }
+
+        this.saveExecutions(allExecutions);
+        return savedExecution;
     }
 }
 

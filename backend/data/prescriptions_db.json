@@ -650,5 +650,220 @@
     },
     "createdAt": "2025-12-22T00:47:17.219Z",
     "createdBy": "Current User"
+  },
+  {
+    "id": "PRESC-1766368409028-s3fdhk140",
+    "patientId": "5371",
+    "data": {
+      "molecule": "Ibuprofène",
+      "commercialName": "Nurofen",
+      "qty": "200",
+      "unit": "mg",
+      "route": "Orale",
+      "adminMode": "instant",
+      "adminDuration": "",
+      "type": "frequency",
+      "dilutionRequired": false,
+      "substitutable": true,
+      "solvent": {
+        "molecule": "",
+        "commercialName": "",
+        "qty": "--",
+        "unit": "mL"
+      },
+      "databaseMode": "hospital",
+      "schedule": {
+        "dailySchedule": "everyday",
+        "mode": "cycle",
+        "interval": "2",
+        "isCustomInterval": false,
+        "startDateTime": "2025-12-22T02:52",
+        "durationValue": "2",
+        "durationUnit": "days",
+        "selectedDays": [],
+        "specificTimes": [],
+        "simpleCount": "1",
+        "simplePeriod": "day",
+        "intervalDuration": ""
+      },
+      "conditionComment": "",
+      "prescriptionType": "medication",
+      "skippedDoses": []
+    },
+    "createdAt": "2025-12-22T01:53:29.028Z",
+    "createdBy": "Current User"
+  },
+  {
+    "id": "PRESC-1766404588207-7bvsfzlli",
+    "patientId": "5371",
+    "data": {
+      "molecule": "Ibuprofène",
+      "commercialName": "Advil",
+      "qty": "200",
+      "unit": "mg",
+      "route": "Orale",
+      "adminMode": "continuous",
+      "adminDuration": "02:00",
+      "type": "punctual-frequency",
+      "dilutionRequired": true,
+      "substitutable": false,
+      "solvent": {
+        "molecule": "Glucose",
+        "commercialName": "Glucose 5%",
+        "qty": "200",
+        "unit": "mL"
+      },
+      "databaseMode": "hospital",
+      "schedule": {
+        "dailySchedule": "everyday",
+        "mode": "cycle",
+        "interval": "6",
+        "isCustomInterval": false,
+        "startDateTime": "2025-12-22T15:30",
+        "durationValue": "1",
+        "durationUnit": "days",
+        "selectedDays": [],
+        "specificTimes": [],
+        "simpleCount": "1",
+        "simplePeriod": "day",
+        "intervalDuration": ""
+      },
+      "conditionComment": "si eva dépasse 9",
+      "prescriptionType": "medication",
+      "skippedDoses": []
+    },
+    "createdAt": "2025-12-22T11:56:28.208Z",
+    "createdBy": "Current User"
+  },
+  {
+    "id": "PRESC-1766432017589-l7mlq36hb",
+    "patientId": "5371",
+    "data": {
+      "molecule": "a",
+      "commercialName": "",
+      "qty": "6",
+      "unit": "mg",
+      "route": "Intraveineuse directe (IVD)",
+      "adminMode": "continuous",
+      "adminDuration": "02:30",
+      "type": "punctual-frequency",
+      "dilutionRequired": true,
+      "substitutable": false,
+      "solvent": {
+        "molecule": "Glucose",
+        "commercialName": "Glucose 5%",
+        "qty": "50",
+        "unit": "mL"
+      },
+      "databaseMode": "hospital",
+      "schedule": {
+        "dailySchedule": "everyday",
+        "mode": "cycle",
+        "interval": "6",
+        "isCustomInterval": false,
+        "startDateTime": "2025-12-23T22:30",
+        "durationValue": "4",
+        "durationUnit": "days",
+        "selectedDays": [],
+        "specificTimes": [],
+        "simpleCount": "4",
+        "simplePeriod": "day",
+        "intervalDuration": "04:00"
+      },
+      "conditionComment": "v=2",
+      "prescriptionType": "medication",
+      "skippedDoses": [
+        "2025-12-23T13:30:00.000Z",
+        "2025-12-23T19:30:00.000Z",
+        "2025-12-24T03:30:00.000Z",
+        "2025-12-24T09:30:00.000Z"
+      ]
+    },
+    "createdAt": "2025-12-22T19:33:37.590Z",
+    "createdBy": "Current User"
+  },
+  {
+    "id": "PRESC-1766549798216-zfiq9re7u",
+    "patientId": "5371",
+    "data": {
+      "molecule": "Culot Globulaire (CGR)",
+      "commercialName": "Culot Globulaire (CGR)",
+      "prescriptionType": "transfusion",
+      "qty": "3",
+      "unit": "poche(s)",
+      "route": "IV",
+      "adminMode": "continuous",
+      "adminDuration": "04:00",
+      "type": "frequency",
+      "dilutionRequired": false,
+      "databaseMode": "hospital",
+      "substitutable": false,
+      "skippedDoses": [],
+      "manualDoseAdjustments": {
+        "2025-12-24T12:15:00.000Z": "2025-12-24T12:43:00.000Z"
+      },
+      "conditionComment": "",
+      "schedule": {
+        "dailySchedule": "everyday",
+        "mode": "cycle",
+        "interval": "8",
+        "isCustomInterval": false,
+        "startDateTime": "2025-12-24T05:15",
+        "durationValue": "2",
+        "durationUnit": "days",
+        "selectedDays": [],
+        "specificTimes": [],
+        "simpleCount": "1",
+        "simplePeriod": "day",
+        "intervalDuration": ""
+      }
+    },
+    "createdAt": "2025-12-24T04:16:38.216Z",
+    "createdBy": "Current User"
+  },
+  {
+    "id": "PRESC-1766584743669-6l15bttdh",
+    "patientId": "5371",
+    "data": {
+      "molecule": "Ibuprofène",
+      "commercialName": "Nurofen",
+      "qty": "200",
+      "unit": "mg",
+      "route": "Orale",
+      "adminMode": "instant",
+      "adminDuration": "",
+      "type": "frequency",
+      "dilutionRequired": false,
+      "substitutable": true,
+      "solvent": {
+        "molecule": "",
+        "commercialName": "",
+        "qty": "--",
+        "unit": "mL"
+      },
+      "databaseMode": "hospital",
+      "schedule": {
+        "dailySchedule": "everyday",
+        "mode": "cycle",
+        "interval": "8",
+        "isCustomInterval": false,
+        "startDateTime": "2025-12-24T14:58",
+        "durationValue": "2",
+        "durationUnit": "days",
+        "selectedDays": [],
+        "specificTimes": [],
+        "simpleCount": "1",
+        "simplePeriod": "day",
+        "intervalDuration": ""
+      },
+      "conditionComment": "",
+      "prescriptionType": "medication",
+      "skippedDoses": [],
+      "manualDoseAdjustments": {
+        "2025-12-25T05:58:00.000Z": "2025-12-25T07:21:25.056Z"
+      }
+    },
+    "createdAt": "2025-12-24T13:59:03.670Z",
+    "createdBy": "Current User"
   }
 ]

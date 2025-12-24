@@ -51,3 +51,16 @@ export interface Prescription {
     createdAt: Date;
     createdBy: string;
 }
+
+export type ExecutionStatus = 'planned' | 'administered' | 'not-administered' | 'late';
+
+export interface PrescriptionExecution {
+    id: string;
+    prescriptionId: string;
+    plannedDate: string; // ISO Date String
+    actualDate?: string; // ISO Date String (when action was taken)
+    status: ExecutionStatus;
+    justification?: string; // Required if not-administered
+    performedBy?: string; // User who performed the action
+    updatedAt: Date;
+}

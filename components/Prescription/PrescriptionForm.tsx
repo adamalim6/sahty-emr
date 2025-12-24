@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   Pill,
   Calendar,
@@ -12,6 +12,10 @@ import {
   AlertCircle,
   X,
   Timer,
+  Undo2,
+  Save,
+  Pencil,
+  RotateCcw,
   ChevronLeft,
   ChevronRight,
   Plus,
@@ -20,11 +24,13 @@ import {
   Sun,
   Sunset,
   Moon,
-  TestTube
+  TestTube,
+  Edit2, Trash2, ArrowRight, CalendarOff
 } from 'lucide-react';
 import { MOLECULE_DB_UNIVERSAL, MOLECULE_DB_HOSPITAL, UNITS, ROUTES } from './constants';
 import { FormData, ScheduleData, SolventData, MoleculeDatabase, PrescriptionType } from './types';
-import { durationToDecimal, formatDuration, getPosologyText, FULL_DAYS_MAP } from './utils';
+import { durationToDecimal, formatDuration, getPosologyText, FULL_DAYS_MAP, generateDoseSchedule } from './utils';
+import { DoseEditor } from './DoseEditor';
 import { PrescriptionCard } from './PrescriptionCard';
 
 const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
@@ -151,6 +157,14 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
 
   // State for manually skipped doses
   const [skippedDoseIds, setSkippedDoseIds] = useState<Set<string>>(new Set());
+
+  // State for manual dose time adjustments (doseId -> newIsoString)
+  const [manualDoseAdjustments, setManualDoseAdjustments] = useState<Map<string, string>>(new Map());
+  const [editingDoseId, setEditingDoseId] = useState<string | null>(null);
+
+  // State for toast notification
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
 
   const [summary, setSummary] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -882,165 +896,50 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
   // --- DOSE SCHEDULE CARDS LOGIC ---
   const getDoseScheduleCards = useMemo(() => {
     const { schedule, type, adminMode } = formData;
-    const { startDateTime, durationValue, durationUnit, dailySchedule, selectedDays, mode, interval, specificTimes, simpleCount, intervalDuration } = schedule;
 
-    if (!startDateTime || durationValue === '--' || parseFloat(durationValue) <= 0) {
-      return { needsDetail: false, message: "Veuillez compléter la date de début et la durée de traitement pour voir le détail des prises.", cards: [], allDosesMap: new Map(), isError: false };
+    // Use the central utility for consistent scheduling logic
+    const baseResult = generateDoseSchedule(schedule, 'medication', type, adminMode, formData.adminDuration);
+
+    if (baseResult.cards.length === 0 && !baseResult.needsDetail) {
+      return baseResult;
     }
 
-    const startDate = new Date(startDateTime);
-    if (isNaN(startDate.getTime())) {
-      return { needsDetail: false, message: "Date de début invalide.", cards: [], allDosesMap: new Map(), isError: false };
-    }
+    if (baseResult.cards.length > 0 && adminMode !== 'permanent') {
+      const adjustedCards = baseResult.cards.map(card => {
+        const hasAdjustment = manualDoseAdjustments.has(card.id);
+        const originalDate = card.date; // The date from generateDoseSchedule is the base (original)
 
-    if (type === 'one-time') {
-      const oneTimeDose = {
-        id: startDate.toISOString(),
-        date: startDate,
-        time: startDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-      };
-      const singleDoseMap = new Map().set(oneTimeDose.id, oneTimeDose);
-      return { needsDetail: true, message: null, cards: [oneTimeDose], allDosesMap: singleDoseMap, isError: false };
-    }
-
-    if (adminMode === 'permanent') {
-      return { needsDetail: false, message: "Le détail des prises n'est pas applicable pour l'administration en continu.", cards: [], allDosesMap: new Map(), isError: false };
-    }
-
-    if (mode === 'simple') {
-      const numDoses = parseInt(simpleCount || '0');
-      const intervalDurationDecimal = durationToDecimal(intervalDuration || '00:00');
-
-      if (numDoses > 1 && intervalDurationDecimal <= 0) {
-        return {
-          needsDetail: true,
-          message: "Veuillez remplir la durée inter-prise pour générer le détail des prises",
-          cards: [],
-          allDosesMap: new Map(),
-          isError: true,
-        };
-      }
-
-      if (numDoses > 1 && intervalDurationDecimal > 0) {
-        const startTimeInMinutes = startDate.getHours() * 60 + startDate.getMinutes();
-        const intervalInMinutes = intervalDurationDecimal * 60;
-        const lastDoseTimeInMinutes = startTimeInMinutes + (numDoses - 1) * intervalInMinutes;
-
-        if (lastDoseTimeInMinutes >= 24 * 60) {
+        if (hasAdjustment) {
+          const newTime = manualDoseAdjustments.get(card.id)!;
+          const dateObj = new Date(newTime);
           return {
-            needsDetail: true,
-            message: "⚠️ Les prises calculées dépassent la fin de la journée. Veuillez ajuster la durée inter-prise ou l’heure de début.",
-            cards: [],
-            allDosesMap: new Map(),
-            isError: true,
+            ...card,
+            date: dateObj,
+            time: dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+            originalDate,
+            originalTime: originalDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
           };
         }
-      }
+        return {
+          ...card,
+          originalDate,
+          originalTime: originalDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+        };
+      });
+
+      // Re-sort after adjustments
+      adjustedCards.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+      return {
+        ...baseResult,
+        cards: adjustedCards,
+        // Re-map for quick access if needed, though simple map sufficient
+        allDosesMap: new Map(adjustedCards.map(c => [c.id, c]))
+      };
     }
 
-    const totalDuration = parseFloat(durationValue);
-    const endDate = new Date(startDate);
-    if (durationUnit === 'days') {
-      endDate.setDate(startDate.getDate() + totalDuration - 1);
-    } else if (durationUnit === 'weeks') {
-      endDate.setDate(startDate.getDate() + (totalDuration * 7) - 1);
-    }
-    endDate.setHours(23, 59, 59, 999);
-
-    const allCalculatedDoses: Date[] = [];
-
-    if (type === 'punctual-frequency') {
-      allCalculatedDoses.push(new Date());
-    }
-
-    if (mode === 'cycle') {
-      const intervalHours = parseFloat(interval || '0');
-      if (intervalHours > 0) {
-        let currentDoseTime = new Date(startDate);
-        const intervalMs = intervalHours * 60 * 60 * 1000;
-
-        while (currentDoseTime.getTime() <= endDate.getTime()) {
-          allCalculatedDoses.push(new Date(currentDoseTime));
-          currentDoseTime = new Date(currentDoseTime.getTime() + intervalMs);
-        }
-      }
-    }
-    else {
-      let dayIterator = new Date(startDate);
-      dayIterator.setHours(0, 0, 0, 0);
-
-      while (dayIterator.getTime() <= endDate.getTime()) {
-        let isDayEligible = false;
-        const dayOfWeekShort = DAYS[dayIterator.getDay() === 0 ? 6 : dayIterator.getDay() - 1];
-
-        if (dailySchedule === 'everyday') {
-          isDayEligible = true;
-        } else if (dailySchedule === 'every-other-day') {
-          const startDayOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
-          const diffTime = dayIterator.getTime() - startDayOnly.getTime();
-          const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-          isDayEligible = (diffDays % 2 === 0);
-        } else if (dailySchedule === 'specific-days' && selectedDays.length > 0) {
-          isDayEligible = selectedDays.includes(dayOfWeekShort);
-        }
-
-        if (isDayEligible) {
-          if (mode === 'specific-time' && specificTimes.length > 0) {
-            specificTimes.forEach(time => {
-              const [h, m] = time.split(':').map(Number);
-              const doseDate = new Date(dayIterator);
-              doseDate.setHours(h, m, 0, 0);
-              if (doseDate.getTime() >= startDate.getTime() && doseDate.getTime() <= endDate.getTime()) {
-                allCalculatedDoses.push(doseDate);
-              }
-            });
-          } else if (mode === 'simple') {
-            const numDoses = parseInt(simpleCount || '0');
-            if (numDoses > 0) {
-              const intervalMs = durationToDecimal(intervalDuration || '00:00') * 60 * 60 * 1000;
-
-              let firstDoseOfDay = new Date(dayIterator);
-              firstDoseOfDay.setHours(startDate.getHours(), startDate.getMinutes(), 0, 0);
-
-              for (let i = 0; i < numDoses; i++) {
-                const doseTime = new Date(firstDoseOfDay.getTime() + (i * intervalMs));
-
-                if (doseTime.getDate() !== dayIterator.getDate() || doseTime.getMonth() !== dayIterator.getMonth() || doseTime.getFullYear() !== dayIterator.getFullYear()) {
-                  continue;
-                }
-
-                if (doseTime.getTime() >= startDate.getTime() && doseTime.getTime() <= endDate.getTime()) {
-                  allCalculatedDoses.push(doseTime);
-                }
-              }
-            }
-          }
-        }
-        dayIterator.setDate(dayIterator.getDate() + 1);
-      }
-    }
-
-    const uniqueDosesMap = new Map<string, { date: Date; time: string; id: string; }>();
-    allCalculatedDoses.forEach(dose => {
-      const id = dose.toISOString();
-      if (!uniqueDosesMap.has(id)) {
-        uniqueDosesMap.set(id, {
-          id,
-          date: dose,
-          time: dose.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-        });
-      }
-    });
-
-    const filteredAndSortedDoses = Array.from(uniqueDosesMap.values())
-      .sort((a, b) => a.date.getTime() - b.date.getTime());
-
-    if (filteredAndSortedDoses.length === 0 && (type === 'frequency' || type === 'punctual-frequency')) {
-      return { needsDetail: true, message: "Aucune prise calculable avec les paramètres actuels. Vérifiez la durée et la fréquence.", cards: [], allDosesMap: new Map(), isError: false };
-    }
-
-    return { needsDetail: true, message: null, cards: filteredAndSortedDoses, allDosesMap: uniqueDosesMap, isError: false };
-  }, [formData]);
+    return baseResult;
+  }, [formData, manualDoseAdjustments]);
 
   const doseScheduleCards = getDoseScheduleCards;
 
@@ -1129,7 +1028,8 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
     if (onSave) {
       onSave({
         ...formData,
-        skippedDoses: Array.from(skippedDoseIds)
+        skippedDoses: Array.from(skippedDoseIds),
+        manualDoseAdjustments: Object.fromEntries(manualDoseAdjustments)
       });
     }
     setIsSubmitted(true);
@@ -1181,6 +1081,8 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
     setSummary(null);
     setIsSubmitted(false);
     setSkippedDoseIds(new Set());
+    setManualDoseAdjustments(new Map());
+    setEditingDoseId(null);
   };
 
   const handleToggleDoseSkipped = useCallback((doseId: string) => {
@@ -1223,7 +1125,98 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
     );
   }, [skippedDoseIds, doseScheduleCards.allDosesMap, formData.type]);
 
+  const modifiedDosesSummary = useMemo(() => {
+    if (manualDoseAdjustments.size === 0 || formData.type === 'one-time') return null;
+
+    const modifiedDetails: Array<{ originalDate?: Date; newDate: Date; id: string }> = [];
+    manualDoseAdjustments.forEach((isoDate, id) => {
+      const originalDose = doseScheduleCards.allDosesMap.get(id);
+      if (originalDose) {
+        modifiedDetails.push({
+          originalDate: originalDose.date,
+          newDate: new Date(isoDate),
+          id
+        });
+      }
+    });
+
+    if (modifiedDetails.length === 0) return null;
+
+    // Sort by new date
+    modifiedDetails.sort((a, b) => a.newDate.getTime() - b.newDate.getTime());
+
+    return (
+      <div className="mt-4 p-3 bg-indigo-50 text-indigo-800 text-xs rounded-lg border border-indigo-100 flex items-start gap-2 animate-in fade-in slide-in-from-bottom-2">
+        <Clock className="w-4 h-4 mt-0.5 flex-shrink-0 text-indigo-600" />
+        <div>
+          <h4 className="font-bold text-indigo-900">Horaires modifiés manuellement :</h4>
+          <ul className="list-disc pl-4 mt-1 space-y-0.5">
+            {modifiedDetails.map((detail, index) => (
+              <li key={index} className="flex flex-wrap items-center gap-1">
+                <span className="line-through opacity-60">
+                  {detail.originalDate?.toLocaleDateString('fr-FR')} à {detail.originalDate?.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+                <span className="text-indigo-400 mx-1">→</span>
+                <span className="font-bold">
+                  {detail.newDate.toLocaleDateString('fr-FR')} à {detail.newDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    );
+  }, [manualDoseAdjustments, doseScheduleCards.allDosesMap, formData.type]);
+
+  // Effect: Invalidate manual adjustments if admin duration changes
+  useEffect(() => {
+    if (manualDoseAdjustments.size === 0) return;
+
+    const checkValidity = () => {
+      // 1. Generate fresh schedule with NEW duration
+      const baseResult = generateDoseSchedule(formData.schedule, 'medication', formData.type, formData.adminMode, formData.adminDuration);
+
+      if (baseResult.cards.length === 0) return true;
+
+      const durationHours = (formData.adminMode !== 'instant') ? durationToDecimal(formData.adminDuration) : 0;
+      const durationMs = durationHours * 60 * 60 * 1000;
+      const BUFFER_MS = 5 * 60 * 1000;
+
+      // 2. Apply current adjustments
+      const adjustedCards = baseResult.cards.map(c => {
+        if (manualDoseAdjustments.has(c.id)) {
+          return { ...c, date: new Date(manualDoseAdjustments.get(c.id)!) };
+        }
+        return c;
+      });
+
+      // 3. Sort
+      adjustedCards.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+      // 4. Check overlaps
+      for (let i = 0; i < adjustedCards.length - 1; i++) {
+        const current = adjustedCards[i];
+        const next = adjustedCards[i + 1];
+        // End of current + buffer > Start of next?
+        const currentEnd = current.date.getTime() + durationMs;
+        if (currentEnd + BUFFER_MS > next.date.getTime()) {
+          return false; // Invalid
+        }
+      }
+      return true; // Valid
+    };
+
+    if (!checkValidity()) {
+      setManualDoseAdjustments(new Map());
+      setToastMessage("Les modifications apportées au détail des prises ont été annulées car la durée d’administration a été modifiée.");
+      setTimeout(() => setToastMessage(null), 4000);
+    }
+
+  }, [formData.adminDuration, formData.adminMode, formData.schedule, formData.type, manualDoseAdjustments]);
+
+
   const isSpecificTimeRestricted = formData.type === 'punctual-frequency' && formData.schedule.mode === 'specific-time' && formData.schedule.specificTimes.length > 0;
+
 
   return (
     <div className="flex flex-col gap-6 relative">
@@ -2173,56 +2166,181 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
             )}
 
             {/* Dose Schedule Cards Section - RESTORED HERE */}
-            {doseScheduleCards.needsDetail && (
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 mt-6 animate-in fade-in slide-in-from-top-2 duration-300">
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Détail des Prises</h3>
-                {doseScheduleCards.message ? (
-                  <div className={`flex items-start gap-3 p-3 rounded-lg ${doseScheduleCards.isError
-                    ? 'bg-red-50 border border-red-200 text-red-800'
-                    : 'text-slate-500 bg-slate-50 border border-slate-100'
-                    }`}>
-                    <AlertCircle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${doseScheduleCards.isError ? 'text-red-600' : 'text-slate-400'}`} />
-                    <span className={`${doseScheduleCards.isError ? 'font-bold text-base md:text-lg' : 'text-sm'}`}>
-                      {doseScheduleCards.message}
-                    </span>
+            {/* --- DETAIL DES PRISES (DYNAMIC) --- */}
+            {(['frequency', 'punctual-frequency', 'one-time'].includes(formData.type)) && (
+              <div className="mt-8 pt-6 border-t border-slate-100">
+                <div className="flex items-center gap-2 mb-4 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                  <Clock className="w-5 h-5 text-slate-500" />
+                  <h3 className="font-bold text-slate-700 text-sm">Détail des horaires calculés</h3>
+                </div>
+
+                {/* Summaries (Rendered as blocks below header) */}
+                <div className="mb-4 space-y-2">
+                  {modifiedDosesSummary}
+                  {skippedDosesSummary}
+                </div>
+                {doseScheduleCards.message && (
+                  <div className="flex items-start gap-3 p-3 rounded-lg text-slate-500 bg-slate-50 border border-slate-100 mb-4 animate-in fade-in">
+                    <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-slate-400" />
+                    <span className="text-sm">{doseScheduleCards.message}</span>
                   </div>
-                ) : doseScheduleCards.cards.length > 0 ? (
-                  <div className="max-h-60 overflow-y-auto space-y-2">
-                    {doseScheduleCards.cards.map((dose) => {
+                )}
+
+                {doseScheduleCards.cards.length > 0 ? (
+                  <div className="space-y-3 pr-1">
+                    {doseScheduleCards.cards.map((dose: any, idx: number) => {
+                      const finalDoses = doseScheduleCards.cards;
                       const isSkipped = skippedDoseIds.has(dose.id);
+
+                      const isFirst = idx === 0;
+                      const isLast = idx === finalDoses.length - 1;
+                      const isPunctualMode = formData.type === 'punctual-frequency';
+                      const isSecondInPunctual = isPunctualMode && idx === 1; // "First programmed"
+                      const isEditable = !isFirst && !isLast && !isSecondInPunctual && !isSkipped;
+
+                      const isEditing = editingDoseId === dose.id;
+                      const isModified = manualDoseAdjustments.has(dose.id);
+                      const isImmediate = isPunctualMode && idx === 0;
                       const isOneTime = formData.type === 'one-time';
-                      const isImmediate = formData.type === 'punctual-frequency' && doseScheduleCards.cards.length > 0 && dose.date.getTime() === doseScheduleCards.cards[0].date.getTime();
+
+                      const showDateHeader = idx === 0 || finalDoses[idx - 1].date.getDate() !== dose.date.getDate();
+
+                      const handleResetDose = () => {
+                        const newMap = new Map(manualDoseAdjustments);
+                        newMap.delete(dose.id);
+                        setManualDoseAdjustments(newMap);
+                      };
 
                       return (
-                        <div key={dose.id} className={`flex items-center justify-between gap-3 bg-blue-50 border border-blue-100 rounded-lg p-3 text-sm transition-colors ${isSkipped && !isOneTime ? 'opacity-60 bg-red-50 border-red-100 line-through' : 'text-blue-800'}`}>
-                          <div className="flex items-center gap-3">
-                            {isImmediate ? (
-                              <Zap className="w-4 h-4 flex-shrink-0 text-amber-500 fill-amber-500" />
-                            ) : (
-                              <Clock className={`w-4 h-4 flex-shrink-0 ${isSkipped && !isOneTime ? 'text-red-600' : 'text-blue-600'}`} />
-                            )}
-                            <span className={`${isSkipped && !isOneTime ? 'text-red-700' : 'text-blue-800'}`}>
-                              {isImmediate ?
-                                <span className="font-bold flex items-center gap-1.5">
-                                  Maintenant
-                                  <span className="text-xs font-normal opacity-75">({dose.date.toLocaleDateString('fr-FR')} à {dose.time})</span>
+                        <div key={dose.id}>
+                          {showDateHeader && (
+                            <div className="flex items-center gap-4 py-4">
+                              <div className="h-px flex-1 bg-slate-200"></div>
+                              <div className="flex items-center gap-2 text-slate-500 font-medium text-sm">
+                                <Calendar className="w-4 h-4" />
+                                <span className="capitalize">
+                                  {dose.date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
                                 </span>
-                                : `${dose.date.toLocaleDateString('fr-FR')} à ${dose.time}`
-                              }
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleToggleDoseSkipped(dose.id)}
-                            disabled={isOneTime || isImmediate}
-                            className={`p-1 rounded-full ${isSkipped && !isOneTime ? 'bg-white text-red-500 hover:bg-red-100' : 'bg-white text-emerald-600 hover:bg-emerald-100'} transition-colors flex-shrink-0 ${(isOneTime || isImmediate) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            title={(isOneTime || isImmediate) ? 'Ne peut pas être sautée' : (isSkipped ? 'Marquer comme active' : 'Marquer comme sautée')}
-                          >
-                            {isSkipped && !isOneTime ? <X size={16} /> : <CheckCircle size={16} />}
-                          </button>
+                              </div>
+                              <div className="h-px flex-1 bg-slate-200"></div>
+                            </div>
+                          )}
+
+                          {isEditing && !isSkipped ? (
+                            <DoseEditor
+                              dose={dose}
+                              prevDoseEnd={idx > 0 ? new Date(finalDoses[idx - 1].date.getTime() + (formData.adminMode !== 'instant' ? durationToDecimal(formData.adminDuration) * 3600000 : 0)) : new Date(dose.date.getTime() - 24 * 60 * 60 * 1000)}
+                              nextDoseStart={idx < finalDoses.length - 1 ? finalDoses[idx + 1].date : new Date(dose.date.getTime() + 24 * 60 * 60 * 1000)}
+                              onSave={(newTimeStr) => {
+                                const newMap = new Map(manualDoseAdjustments);
+                                newMap.set(dose.id, newTimeStr as string);
+                                setManualDoseAdjustments(newMap);
+                                setEditingDoseId(null);
+                              }}
+                              onCancel={() => setEditingDoseId(null)}
+                              adminMode={formData.adminMode}
+                              adminDuration={formData.adminDuration}
+                            />
+                          ) : (
+                            <div className={`group flex items-center justify-between p-4 rounded-xl border transition-all duration-200 hover:shadow-md ${isSkipped ? 'bg-slate-50 border-slate-200 opacity-75' :
+                              isModified ? 'bg-amber-50 border-amber-200 shadow-sm' :
+                                'bg-white border-slate-200 hover:border-slate-300'
+                              } `}>
+                              <div className="flex items-center gap-4">
+                                <div className={`p-2.5 rounded-full ${isSkipped
+                                  ? 'bg-slate-100 text-slate-400'
+                                  : isImmediate || isOneTime
+                                    ? 'bg-amber-100 text-amber-600'
+                                    : isModified
+                                      ? 'bg-amber-100 text-amber-600'
+                                      : 'bg-blue-50 text-blue-600'
+                                  }`}>
+                                  {isSkipped ? <CalendarOff size={18} /> : (isImmediate || isOneTime) ? <Zap size={18} /> : <Clock size={18} />}
+                                </div>
+
+                                <div className="flex flex-col">
+                                  <div className="flex items-center gap-2">
+                                    {isModified && !isSkipped ? (
+                                      <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2">
+                                        <span className="text-xs font-medium text-slate-400 line-through decoration-slate-300">
+                                          {dose.originalDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) === dose.date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+                                            ? dose.originalTime
+                                            : `${dose.originalDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })} ${dose.originalTime}`
+                                          }
+                                        </span>
+                                        <ArrowRight size={14} className="text-amber-400" />
+                                        <span className="text-lg font-bold text-slate-700 font-mono tracking-tight">
+                                          {dose.originalDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) === dose.date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+                                            ? dose.time
+                                            : `${dose.date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })} ${dose.time}`
+                                          }
+                                        </span>
+                                        <span className="bg-amber-100 text-amber-700 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded-full tracking-wide">
+                                          Modifié
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <span className={`text-lg font-bold font-mono tracking-tight ${isSkipped ? 'text-slate-500 line-through decoration-slate-400' : 'text-slate-700'}`}>
+                                        {dose.time}
+                                      </span>
+                                    )}
+
+                                    {(isImmediate || isOneTime) && (
+                                      <span className="bg-amber-100 text-amber-700 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded-full tracking-wide">
+                                        {isOneTime ? "Unique" : "Maintenant"}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-xs font-medium text-slate-400 capitalize">
+                                    {isSkipped ? 'Prise annulée' :
+                                      (isImmediate || isOneTime) ? (isOneTime ? 'Prise unique' : 'Prise immédiate') :
+                                        isModified ? 'Horaire personnalisé' :
+                                          'Horaire standard'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* ACTIONS */}
+                              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                {isModified && (
+                                  <button
+                                    type="button"
+                                    onClick={handleResetDose}
+                                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                    title="Revenir à l'horaire initial"
+                                  >
+                                    <RotateCcw size={16} />
+                                  </button>
+                                )}
+
+                                {isEditable && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingDoseId(dose.id)}
+                                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                    title="Éditer l'horaire"
+                                  >
+                                    <Edit2 size={16} />
+                                  </button>
+                                )}
+
+                                {!isImmediate && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleDoseSkipped(dose.id)}
+                                    className={`p-2 rounded-lg transition-colors ${isSkipped ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' : 'text-slate-400 hover:text-red-600 hover:bg-red-50'}`}
+                                    title={isSkipped ? 'Marquer comme active' : 'Marquer comme annulée'}
+                                  >
+                                    {isSkipped ? <Undo2 size={16} /> : <Trash2 size={16} />}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
+
                   </div>
                 ) : (
                   <div className="flex flex-col items-center text-center text-slate-400 py-4">
@@ -2245,7 +2363,16 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Aperçu de l'ordonnance</h3>
 
           <div className={`rounded-xl border-2 border-dashed p-6 transition-all duration-300 ${isSubmitted ? 'border-emerald-500 bg-emerald-50/30' : 'border-slate-200 bg-slate-50'}`}>
-            <PrescriptionCard formData={formData} extraContent={skippedDosesSummary} />
+            <PrescriptionCard
+              formData={formData}
+              extraContent={
+                <div className="space-y-4">
+                  {modifiedDosesSummary}
+                  {skippedDosesSummary}
+                </div>
+              }
+              manualDoseAdjustments={manualDoseAdjustments}
+            />
           </div>
 
 
@@ -2291,6 +2418,19 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
             </button>
           </div>
         </div >
+
+        {/* Toast Notification */}
+        {toastMessage && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="bg-slate-800/90 backdrop-blur text-white px-4 py-3 rounded-lg shadow-xl flex items-center gap-3 max-w-md">
+              <div className="bg-amber-500/20 p-1.5 rounded-full">
+                <AlertCircle className="w-4 h-4 text-amber-500" />
+              </div>
+              <p className="text-sm font-medium pr-2">{toastMessage}</p>
+            </div>
+          </div>
+        )}
+
       </div >
     </div >
   );

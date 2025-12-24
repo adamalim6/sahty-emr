@@ -146,6 +146,14 @@ export const api = {
         method: 'DELETE'
     }),
 
+    // Prescription Executions
+    recordExecution: (prescriptionId: string, execution: any) => fetchJson<any>(`/prescriptions/${prescriptionId}/execute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(execution)
+    }),
+    getExecutions: (prescriptionId: string) => fetchJson<any[]>(`/prescriptions/${prescriptionId}/executions`),
+
     // Serialization
     getSerializedPacks: () => fetchJson<SerializedPack[]>('/pharmacy/packs'),
 

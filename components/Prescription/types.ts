@@ -46,7 +46,8 @@ export interface FormData {
   conditionComment?: string; // Nouveau champ pour les conditions/commentaires
   substitutable: boolean; // Nouveau champ pour la substituabilité
   skippedDoses?: string[]; // Nouveau champ pour les prises sautées (IDs/Dates)
-  prescriptionType?: 'medication' | 'biology' | 'imagery' | 'care'; // Type de prescription
+  manualDoseAdjustments?: Record<string, string>; // ID -> ISO Date string for time shifts
+  prescriptionType?: 'medication' | 'biology' | 'imagery' | 'care' | 'transfusion'; // Type de prescription
 }
 
 // Ajout de l'interface pour le retour de getDoseScheduleCards, incluant isError
@@ -56,4 +57,25 @@ export interface DoseScheduleResult {
   cards: Array<{ date: Date; time: string; id: string; }>;
   allDosesMap: Map<string, { date: Date; time: string; id: string; }>;
   isError: boolean;
+}
+
+export interface Prescription {
+  id: string;
+  patientId: string;
+  data: FormData;
+  createdAt: Date;
+  createdBy: string;
+}
+
+export type ExecutionStatus = 'planned' | 'administered' | 'not-administered' | 'late';
+
+export interface PrescriptionExecution {
+  id: string;
+  prescriptionId: string;
+  plannedDate: string; // ISO
+  actualDate?: string;
+  status: ExecutionStatus;
+  justification?: string;
+  performedBy?: string;
+  updatedAt: Date;
 }

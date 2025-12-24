@@ -261,7 +261,7 @@ export const PatientDossier: React.FC = () => {
     { id: 'Imagerie', label: 'Imagerie', icon: ScanLine, component: <Imagerie /> },
     { id: 'Diagnostic', label: 'Diagnostic', icon: Microscope, component: <Diagnostic /> },
     { id: 'Prescriptions', label: 'Prescriptions', icon: FileText, component: <Prescriptions patientId={patient.id} /> },
-    { id: 'Surveillance', label: 'Fiche de Surveillance', icon: ClipboardCheck, component: <FicheSurveillance /> },
+    { id: 'Surveillance', label: 'Fiche de Surveillance', icon: ClipboardCheck, component: <FicheSurveillance patientId={patient.id} /> },
     { id: 'PrescriptionSortie', label: 'Prescription Externe', icon: LogOut, component: <PrescriptionSortie /> },
     { id: 'CAT', label: 'Conduite à tenir', icon: Compass, component: <ConduiteATenir /> },
     { id: 'Evolution', label: 'Évolution', icon: TrendingUp, component: <Evolution /> },
