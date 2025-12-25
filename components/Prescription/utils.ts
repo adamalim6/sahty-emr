@@ -1,4 +1,4 @@
-import { FormData, ScheduleData, DoseScheduleResult } from './types';
+import { FormData, ScheduleData, DoseScheduleResult, ScheduledDose } from './types';
 
 
 export const FULL_DAYS_MAP: Record<string, string> = {
@@ -121,19 +121,23 @@ export const generateDoseSchedule = (
     prescriptionType: string,
     type?: string,
     adminMode: string = 'standard',
-    adminDuration: string = '00:00'
+    adminDuration: string = '00:00',
+    overrides?: {
+        skippedDoses?: string[];
+        manualDoseAdjustments?: Record<string, string>;
+    }
 ): DoseScheduleResult => {
     const { startDateTime, durationValue, durationUnit, dailySchedule, selectedDays, mode, interval, specificTimes, simpleCount, intervalDuration } = scheduleData;
     // Support legacy calls where the second argument was the schedule type (e.g. 'frequency')
     const effectiveType = type || prescriptionType;
 
     if (!startDateTime || (['frequency', 'punctual-frequency'].includes(effectiveType) && (durationValue === '--' || parseFloat(durationValue) <= 0))) {
-        return { needsDetail: false, message: "Veuillez compléter la date de début et la durée de traitement pour voir le détail des prises.", cards: [], allDosesMap: new Map(), isError: false };
+        return { needsDetail: false, message: "Veuillez compléter la date de début et la durée de traitement pour voir le détail des prises.", cards: [], scheduledDoses: [], allDosesMap: new Map(), isError: false };
     }
 
     const startDate = new Date(startDateTime);
     if (isNaN(startDate.getTime())) {
-        return { needsDetail: false, message: "Date de début invalide.", cards: [], allDosesMap: new Map(), isError: false };
+        return { needsDetail: false, message: "Date de début invalide.", cards: [], scheduledDoses: [], allDosesMap: new Map(), isError: false };
     }
 
     if (effectiveType === 'one-time') {
@@ -143,7 +147,13 @@ export const generateDoseSchedule = (
             time: startDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
         };
         const singleDoseMap = new Map().set(oneTimeDose.id, oneTimeDose);
-        return { needsDetail: true, message: null, cards: [oneTimeDose], allDosesMap: singleDoseMap, isError: false };
+        const scheduledDoses: ScheduledDose[] = [{
+            id: oneTimeDose.id,
+            plannedDateTime: oneTimeDose.id,
+            effectiveDateTime: overrides?.manualDoseAdjustments?.[oneTimeDose.id] || null,
+            isSkipped: overrides?.skippedDoses?.includes(oneTimeDose.id) || false
+        }];
+        return { needsDetail: true, message: null, cards: [oneTimeDose], scheduledDoses, allDosesMap: singleDoseMap, isError: false };
     }
 
     if (mode === 'simple') {
@@ -155,6 +165,7 @@ export const generateDoseSchedule = (
                 needsDetail: true,
                 message: "Veuillez remplir la durée inter-prise pour générer le détail des prises",
                 cards: [],
+                scheduledDoses: [],
                 allDosesMap: new Map(),
                 isError: true,
             };
@@ -169,6 +180,7 @@ export const generateDoseSchedule = (
                     needsDetail: true,
                     message: "⚠️ Les prises calculées dépassent la fin de la journée. Veuillez ajuster la durée inter-prise ou l’heure de début.",
                     cards: [],
+                    scheduledDoses: [],
                     allDosesMap: new Map(),
                     isError: true,
                 };
@@ -272,10 +284,31 @@ export const generateDoseSchedule = (
 
     const sortedDoses = Array.from(uniqueDosesMap.values()).sort((a, b) => a.date.getTime() - b.date.getTime());
 
+    const scheduledDoses: ScheduledDose[] = Array.from(uniqueDosesMap.values()).map(d => {
+        const id = d.id;
+        const isSkipped = overrides?.skippedDoses?.includes(id) || false;
+        const adjustedDateStr = overrides?.manualDoseAdjustments?.[id];
+
+        // Pour l'affichage "cards", on doit peut-être utiliser la date ajustée si elle existe ?
+        // Le comportement actuel de Monitoring Sheet doit utliser ce tableau scheduledDoses.
+        // Les "cards" continuent de retourner le théorique ou le réel ?
+        // Pour ne pas casser l'existant, on laisse "cards" comme théorique ou on le met à jour ?
+        // Le ticket demande une synchro stricte pour la surveillance.
+        // Les composants existants utilisent "cards" pour afficher le planning théorique souvent.
+
+        return {
+            id,
+            plannedDateTime: id,
+            effectiveDateTime: adjustedDateStr || null,
+            isSkipped
+        };
+    });
+
     return {
         needsDetail: true,
         message: null,
         cards: sortedDoses,
+        scheduledDoses,
         allDosesMap: uniqueDosesMap,
         isError: false
     };

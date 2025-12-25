@@ -51,10 +51,18 @@ export interface FormData {
 }
 
 // Ajout de l'interface pour le retour de getDoseScheduleCards, incluant isError
+export interface ScheduledDose {
+  id: string; // Original planned ISO string
+  plannedDateTime: string;
+  effectiveDateTime: string | null;
+  isSkipped: boolean;
+}
+
 export interface DoseScheduleResult {
   needsDetail: boolean;
   message: string | null;
   cards: Array<{ date: Date; time: string; id: string; }>;
+  scheduledDoses: ScheduledDose[]; // Validation stricte
   allDosesMap: Map<string, { date: Date; time: string; id: string; }>;
   isError: boolean;
 }

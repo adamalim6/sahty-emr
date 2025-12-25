@@ -2174,11 +2174,6 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
                   <h3 className="font-bold text-slate-700 text-sm">Détail des horaires calculés</h3>
                 </div>
 
-                {/* Summaries (Rendered as blocks below header) */}
-                <div className="mb-4 space-y-2">
-                  {modifiedDosesSummary}
-                  {skippedDosesSummary}
-                </div>
                 {doseScheduleCards.message && (
                   <div className="flex items-start gap-3 p-3 rounded-lg text-slate-500 bg-slate-50 border border-slate-100 mb-4 animate-in fade-in">
                     <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-slate-400" />

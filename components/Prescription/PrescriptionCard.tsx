@@ -11,10 +11,12 @@ import {
     TestTube,
     Scan,
     Stethoscope,
-    Droplet
+    Droplet,
+    List
 } from 'lucide-react';
 import { FormData } from './types';
 import { getPosologyText, formatDuration, generateDoseSchedule } from './utils';
+import { ScheduleDetailsModal } from './ScheduleDetailsModal';
 
 interface PrescriptionCardProps {
     formData: FormData;
@@ -23,6 +25,8 @@ interface PrescriptionCardProps {
 }
 
 export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, extraContent, manualDoseAdjustments }) => {
+    const [isScheduleModalOpen, setIsScheduleModalOpen] = React.useState(false);
+
     const { schedule, type, adminMode } = formData;
     const { startDateTime, durationValue } = schedule;
     const startDate = new Date(startDateTime);
@@ -134,9 +138,19 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
     const ScheduleDisplay = ({ text }: { text: string | null }) => {
         if (!text) return null;
         return (
-            <div className="flex items-start gap-3 bg-blue-50/50 border border-blue-100 rounded-lg p-3 text-sm text-blue-900 mt-2 animate-in fade-in slide-in-from-left-2">
-                <Calendar className="w-4 h-4 mt-0.5 flex-shrink-0 text-blue-500" />
-                <p className="font-medium leading-relaxed">{text}</p>
+            <div className="flex items-start justify-between gap-3 bg-blue-50/50 border border-blue-100 rounded-lg p-3 text-sm text-blue-900 mt-2 animate-in fade-in slide-in-from-left-2 group">
+                <div className="flex items-start gap-3">
+                    <Calendar className="w-4 h-4 mt-0.5 flex-shrink-0 text-blue-500" />
+                    <p className="font-medium leading-relaxed">{text}</p>
+                </div>
+                <button
+                    onClick={() => setIsScheduleModalOpen(true)}
+                    className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity bg-white text-blue-600 text-xs px-2 py-1 rounded border border-blue-200 shadow-sm hover:bg-blue-50 whitespace-nowrap"
+                    title="Voir le planning détaillé"
+                >
+                    <List size={12} />
+                    <span>Détail</span>
+                </button>
             </div>
         );
     };
@@ -491,6 +505,14 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
                     </div>
                 );
             })()}
+            {/* Modal */}
+            <ScheduleDetailsModal
+                isOpen={isScheduleModalOpen}
+                onClose={() => setIsScheduleModalOpen(false)}
+                formData={formData}
+                manualDoseAdjustments={formData.manualDoseAdjustments} // Or pass prop if it overrides
+                skippedDoses={formData.skippedDoses}
+            />
         </div>
     );
 };

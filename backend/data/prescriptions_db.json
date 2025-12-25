@@ -865,5 +865,99 @@
     },
     "createdAt": "2025-12-24T13:59:03.670Z",
     "createdBy": "Current User"
+  },
+  {
+    "id": "PRESC-1766602558316-35jfqu91m",
+    "patientId": "5371",
+    "data": {
+      "molecule": "Chlorure de sodium",
+      "commercialName": "NaCl 0.9%",
+      "qty": "14.5",
+      "unit": "mg",
+      "route": "Orale",
+      "adminMode": "continuous",
+      "adminDuration": "02:00",
+      "type": "frequency",
+      "dilutionRequired": false,
+      "substitutable": true,
+      "solvent": {
+        "molecule": "",
+        "commercialName": "",
+        "qty": "--",
+        "unit": "mL"
+      },
+      "databaseMode": "hospital",
+      "schedule": {
+        "dailySchedule": "everyday",
+        "mode": "cycle",
+        "interval": "4",
+        "isCustomInterval": false,
+        "startDateTime": "2025-12-24T19:53",
+        "durationValue": "2",
+        "durationUnit": "days",
+        "selectedDays": [],
+        "specificTimes": [],
+        "simpleCount": "1",
+        "simplePeriod": "day",
+        "intervalDuration": ""
+      },
+      "conditionComment": "",
+      "prescriptionType": "medication",
+      "skippedDoses": [
+        "2025-12-24T18:53:00.000Z"
+      ],
+      "manualDoseAdjustments": {
+        "2025-12-24T22:53:00.000Z": "2025-12-25T00:19:39.639Z"
+      }
+    },
+    "createdAt": "2025-12-24T18:55:58.316Z",
+    "createdBy": "Current User"
+  },
+  {
+    "id": "PRESC-1766612032471-8ivz4gqbf",
+    "patientId": "1635",
+    "data": {
+      "molecule": "Paracétamol",
+      "commercialName": "Doliprane",
+      "qty": "200",
+      "unit": "mg",
+      "route": "Orale",
+      "adminMode": "instant",
+      "adminDuration": "",
+      "type": "frequency",
+      "dilutionRequired": false,
+      "substitutable": true,
+      "solvent": {
+        "molecule": "",
+        "commercialName": "",
+        "qty": "--",
+        "unit": "mL"
+      },
+      "databaseMode": "hospital",
+      "schedule": {
+        "dailySchedule": "everyday",
+        "mode": "cycle",
+        "interval": "6",
+        "isCustomInterval": false,
+        "startDateTime": "2025-12-24T22:33",
+        "durationValue": "2",
+        "durationUnit": "days",
+        "selectedDays": [],
+        "specificTimes": [],
+        "simpleCount": "1",
+        "simplePeriod": "day",
+        "intervalDuration": ""
+      },
+      "conditionComment": "si eva dépasse 5",
+      "prescriptionType": "medication",
+      "skippedDoses": [
+        "2025-12-25T15:33:00.000Z"
+      ],
+      "manualDoseAdjustments": {
+        "2025-12-25T03:33:00.000Z": "2025-12-25T04:25:51.080Z"
+      }
+    },
+    "createdAt": "2025-12-24T21:33:52.471Z",
+    "createdBy": "Current User"
   }
 ]

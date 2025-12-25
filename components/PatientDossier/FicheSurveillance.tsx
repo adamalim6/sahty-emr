@@ -47,95 +47,7 @@ const HOURS = Array.from({ length: 24 }, (_, i) => {
 // --- Helper Functions for Timeline ---
 
 // Calculates planned slot times (HHh) for a given date based on prescription schedule
-const calculatePlannedSlots = (prescription: Prescription, date: Date): string[] => {
-  const slots: string[] = [];
-  const schedule = prescription.data.schedule;
-  const pStart = new Date(schedule.startDateTime);
 
-  // Surveillance Day: 08:00 of selected date to 08:00 of next day
-  const survStart = new Date(date);
-  survStart.setHours(START_HOUR, 0, 0, 0); // e.g. 22 Dec 08:00
-
-  const survEnd = new Date(survStart);
-  survEnd.setDate(survEnd.getDate() + 1); // e.g. 23 Dec 08:00
-
-  // Basic check: is prescription active during this window?
-  // We can filter out starts strictly after end of surveillance
-  if (pStart.getTime() >= survEnd.getTime()) return [];
-
-  // Check duration if available to define an absolute end for the prescription
-  let pEnd: Date | null = null;
-  if (schedule.durationValue && schedule.durationUnit) {
-    const val = parseInt(schedule.durationValue);
-    if (!isNaN(val) && val > 0) {
-      pEnd = new Date(pStart);
-      if (schedule.durationUnit === 'days') pEnd.setDate(pEnd.getDate() + val);
-      else if (schedule.durationUnit === 'weeks') pEnd.setDate(pEnd.getDate() + val * 7);
-      else if (schedule.durationUnit === 'months') pEnd.setMonth(pEnd.getMonth() + val);
-    }
-  }
-
-  if (pEnd && pEnd.getTime() <= survStart.getTime()) return [];
-
-  // Frequency / Cycle logic
-  if (prescription.data.type === 'frequency' && schedule.interval) {
-    const intervalHours = parseInt(schedule.interval);
-    if (isNaN(intervalHours) || intervalHours <= 0) return [];
-
-    const intervalMs = intervalHours * 60 * 60 * 1000;
-
-    let currentDoseTime = new Date(pStart);
-
-    // Optimization: Jump to near surveillance start if pStart is far behind
-    if (currentDoseTime.getTime() < survStart.getTime()) {
-      const diff = survStart.getTime() - currentDoseTime.getTime();
-      const jumps = Math.floor(diff / intervalMs);
-      // We might land slightly before survStart, which is fine, one iteration will fix
-      currentDoseTime = new Date(currentDoseTime.getTime() + jumps * intervalMs);
-    }
-
-    // Iterate while we are before the surveillance end AND (if pEnd exists) before pEnd
-    while (currentDoseTime.getTime() < survEnd.getTime()) {
-      // Check pEnd constraint
-      if (pEnd && currentDoseTime.getTime() >= pEnd.getTime()) break;
-
-      // Check if within surveillance window
-      if (currentDoseTime.getTime() >= survStart.getTime()) {
-        const h = currentDoseTime.getHours();
-        const hStr = h.toString().padStart(2, '0') + 'h';
-        // Only add if it corresponds to a column in our grid (should always be true for 0-23h)
-        if (HOURS.includes(hStr)) {
-          // Check uniqueness to avoid duplicates if multiple match same hour (unlikely with >1h interval)
-          if (!slots.includes(hStr)) slots.push(hStr);
-        }
-      }
-      // Next dose
-      currentDoseTime = new Date(currentDoseTime.getTime() + intervalMs);
-    }
-
-  } else if (schedule.dailySchedule === 'specific-days' && schedule.specificTimes) {
-    // Specific times
-    // TODO: Check specific days (Mon, Tue...) logic if needed
-    schedule.specificTimes.forEach(time => {
-      const [h, m] = time.split(':');
-      const hInt = parseInt(h);
-      const slot = hInt.toString().padStart(2, '0') + 'h';
-      // Verify if valid slot
-      slots.push(slot);
-    });
-  } else {
-    // Default or simple
-    if (schedule.simpleCount) {
-      const count = parseInt(schedule.simpleCount);
-      if (count === 1) slots.push('08h');
-      if (count === 2) slots.push('08h', '20h');
-      if (count === 3) slots.push('08h', '16h', '23h');
-      if (count === 4) slots.push('08h', '13h', '18h', '23h');
-    }
-  }
-
-  return slots;
-};
 
 const isSlotLate = (
   plannedHour: string,
@@ -188,6 +100,7 @@ interface RowConfig {
   parentId?: string; // For grouping dynamic rows
   prescriptionId?: string; // For timeline rows
   prescriptionData?: any; // For timeline rows
+  scheduledSlots?: string[]; // Pre-calculated strict slots (HHh)
 }
 
 interface FicheSurveillanceProps {
@@ -382,6 +295,7 @@ const STATIC_SECTIONS: SectionConfig[] = [
       { id: 'aspi_gastrique', label: 'Aspiration Gastrique', unit: 'ml', type: 'number', isOutput: true },
       { id: 'residu', label: 'Résidu Gastrique', unit: 'ml', type: 'number', isOutput: true },
       { id: 'vomis', label: 'Vomis / Selles', unit: 'ml', type: 'text', isOutput: true },
+      { id: 'cumul_gastrique', label: 'Cumul Gastrique', unit: 'ml', type: 'computed', computeSource: 'gastrique_all', bgColor: 'bg-green-50 font-bold' },
     ]
   },
   {
@@ -651,6 +565,38 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
 
             const fullScheduleText = generateFullScheduleDescription(data.schedule, data.prescriptionType);
 
+            // --- STRICT SLOT CALCULATION ---
+            // 1. Generate full schedule with overrides
+            const doseResult = generateDoseSchedule(
+              data.schedule,
+              data.prescriptionType || 'medication',
+              undefined,
+              data.adminMode,
+              data.adminDuration,
+              {
+                skippedDoses: data.skippedDoses,
+                manualDoseAdjustments: data.manualDoseAdjustments
+              }
+            );
+
+            // 2. Filter doses in surveillance window & map to slots
+            const validSlots: string[] = [];
+            if (doseResult.scheduledDoses) {
+              doseResult.scheduledDoses.forEach(dose => {
+                if (dose.isSkipped) return;
+
+                const timeToUse = dose.effectiveDateTime || dose.plannedDateTime;
+                const doseDate = new Date(timeToUse);
+
+                // Check if in window [survStart, survEnd)
+                if (doseDate.getTime() >= survStart.getTime() && doseDate.getTime() < survEnd.getTime()) {
+                  const h = doseDate.getHours();
+                  const hStr = h.toString().padStart(2, '0') + 'h';
+                  if (!validSlots.includes(hStr)) validSlots.push(hStr);
+                }
+              });
+            }
+
             const labelNode = (
               <div className="flex flex-col items-start w-full overflow-hidden space-y-0.5">
                 {/* Header Line: Name (Bold) */}
@@ -718,7 +664,8 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
               label: labelNode,
               type: 'prescription_timeline',
               prescriptionId: p.id,
-              prescriptionData: p.data
+              prescriptionData: p.data,
+              scheduledSlots: validSlots
             };
           })
         });
@@ -817,6 +764,21 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
           const val = parseFloat(currentDayData[`redon_${r} _qty`]?.[h] as string || '0');
           if (!isNaN(val)) total += val;
         }
+      }
+      return total;
+    }
+
+    // Special Case: Total Gastric Cumul
+    if (sourceRowId === 'gastrique_all') {
+      for (let i = 0; i <= hourIndex; i++) {
+        const h = HOURS[i];
+        const aspi = parseFloat(currentDayData['aspi_gastrique']?.[h] as string || '0');
+        const residu = parseFloat(currentDayData['residu']?.[h] as string || '0');
+        const vomis = parseFloat(currentDayData['vomis']?.[h] as string || '0');
+
+        if (!isNaN(aspi)) total += aspi;
+        if (!isNaN(residu)) total += residu;
+        if (!isNaN(vomis)) total += vomis;
       }
       return total;
     }
@@ -951,8 +913,7 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
   const renderCell = (row: RowConfig, hour: string) => {
     // Timeline Row
     if (row.type === 'prescription_timeline' && row.prescriptionData) {
-      const plannedSlots = calculatePlannedSlots({ id: row.prescriptionId!, data: row.prescriptionData } as Prescription, selectedDate);
-      const isPlanned = plannedSlots.includes(hour);
+      const isPlanned = row.scheduledSlots?.includes(hour);
 
       // Find execution for this specific slot
       const execution = executions.find(e => {

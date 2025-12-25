@@ -1149,12 +1149,6 @@ export const TransfusionPrescriptionForm: React.FC<TransfusionPrescriptionFormPr
                                         <h3 className="font-bold text-indigo-900 text-sm">Détail des horaires calculés</h3>
                                     </div>
 
-                                    {/* Summaries Block */}
-                                    <div className="mb-4 space-y-2">
-                                        {modifiedDosesSummary}
-                                        {skippedDosesSummary}
-                                    </div>
-
 
                                     <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
                                         {doseScheduleCards.needsDetail ? (
