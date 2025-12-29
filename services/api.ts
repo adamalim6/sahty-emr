@@ -46,6 +46,9 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates)
     }),
+    closeAdmission: (id: string) => fetchJson<Admission>(`/emr/admissions/${id}/close`, {
+        method: 'PUT'
+    }),
     getAppointments: () => fetchJson<Appointment[]>('/emr/appointments'),
     getRooms: () => fetchJson<Room[]>('/emr/rooms'),
 
@@ -195,4 +198,49 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status, processedRequest })
     }),
+
+    // Service Stock Exit
+    dispenseFromServiceStock: (params: {
+        admissionId: string;
+        serviceId: string;
+        items: {
+            productId: string;
+            quantity: number;
+            mode: 'BOX' | 'UNIT';
+            dispensedBatches?: { batchNumber: string; quantity: number }[];
+        }[];
+    }) => fetchJson<any>('/pharmacy/service-dispense', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params)
+    }),
+
+    // Returns
+    createReturnRequest: (params: {
+        admissionId: string;
+        items: any[];
+        destination: string;
+        userId?: string;
+        targetLocationId?: string;
+        serviceId?: string;
+    }) => fetchJson<any>('/pharmacy/returns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params)
+    }),
+
+    getReturns: () => fetchJson<any[]>('/pharmacy/returns'),
+    processReturn: (id: string, decision: string, userId?: string) => fetchJson<any>(`/pharmacy/returns/${id}/process`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision, userId })
+    }),
+
+    processReturnSplit: (id: string, decisions: any[], userId?: string) => fetchJson<any>(`/pharmacy/returns/${id}/process-split`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decisions, userId })
+    }),
+
+    getReturnsByAdmission: (admissionId: string) => fetchJson<any[]>(`/pharmacy/returns/admission/${admissionId}`),
 };

@@ -9,6 +9,8 @@ import { SerializedPack, PackStatus, Dispensation } from '../models/serialized-p
 import { serializedPackService } from './serializedPackService';
 import * as fs from 'fs';
 import * as path from 'path';
+import { ProductVersion } from '../models/product-version';
+
 
 const DATA_DIR = path.join(__dirname, '../data');
 const DB_FILE = path.join(DATA_DIR, 'pharmacy_db.json');
@@ -39,6 +41,7 @@ export class PharmacyService {
     private locations: StockLocation[] = [];
     private partners: PartnerInstitution[] = [];
     private stockOutHistory: StockOutTransaction[] = [];
+    private productVersions: ProductVersion[] = []; // Version storage
     private purchaseOrders: PurchaseOrder[] = [];
     private deliveryNotes: DeliveryNote[] = [];
     private serializedPacks: SerializedPack[] = [];
@@ -123,7 +126,8 @@ export class PharmacyService {
                 serializedPacks: this.serializedPacks,
                 dispensations: this.dispensations,
                 suppliers: this.suppliers,
-                replenishmentRequests: this.replenishmentRequests
+                replenishmentRequests: this.replenishmentRequests,
+                productVersions: this.productVersions
             };
             fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
         } catch (error) {
@@ -143,8 +147,14 @@ export class PharmacyService {
                 this.stockOutHistory = data.stockOutHistory || [];
                 this.purchaseOrders = data.purchaseOrders || [];
                 this.deliveryNotes = data.deliveryNotes || [];
-                this.deliveryNotes = data.deliveryNotes || [];
                 this.serializedPacks = data.serializedPacks || [];
+                // Load Product Versions
+                this.productVersions = (data.productVersions || []).map((v: any) => ({
+                    ...v,
+                    validFrom: new Date(v.validFrom),
+                    validTo: v.validTo ? new Date(v.validTo) : undefined,
+                    createdAt: new Date(v.createdAt)
+                }));
                 // Load Replenishment Requests with Date conversion
                 this.replenishmentRequests = (data.replenishmentRequests || []).map((r: any) => ({
                     ...r,
@@ -416,6 +426,170 @@ export class PharmacyService {
         return { success: true };
     }
 
+    // Process Validated Return (Called by ReturnService)
+    public processValidatedReturn(params: {
+        productId: string,
+        batchNumber: string,
+        expiryDate: string,
+        quantity: number, // Units
+        condition: 'SEALED' | 'OPENED',
+        isBox: boolean,
+        serialNumber?: string
+    }) {
+        const { productId, batchNumber, expiryDate, quantity, condition, isBox, serialNumber } = params;
+        const productDef = this.getProductById(productId);
+        if (!productDef) return;
+
+        // 1. Determine Location (Restocking)
+        // Ideally, find where this batch is already stored in Pharmacy
+        const existingInv = this.inventory.find(i =>
+            i.productId === productId &&
+            i.batchNumber === batchNumber &&
+            !i.serviceId // Strict Pharmacy
+        );
+        const targetLocation = existingInv ? existingInv.location : this.locations[0]?.id || 'PHARMACY_DEFAULT';
+
+        // 2. Update Serialized Packs (if Box)
+        if (isBox && serialNumber) {
+            // Check if pack exists (it should if it was dispensed)
+            let pack = this.serializedPacks.find(p => p.id === serialNumber || p.serialNumber === serialNumber);
+
+            if (pack) {
+                // Reactivate Pack
+                pack.status = condition === 'SEALED' ? PackStatus.SEALED : PackStatus.OPENED;
+                pack.locationId = targetLocation;
+                pack.remainingUnits = quantity; // Reset if sealed, or partial if opened? 
+
+                pack.history.push({
+                    date: new Date().toISOString(),
+                    action: 'RETURN_RESTOCK',
+                    userId: 'SYSTEM',
+                    details: 'Restocked from validated return'
+                });
+            } else {
+                // Create new Pack (e.g. if it was lost or legacy)
+                const newPack: SerializedPack = {
+                    id: serialNumber, // Use serial as ID if new, or generate? Better generate internal ID.
+                    serialNumber: serialNumber,
+                    productId: productId,
+                    batchNumber: batchNumber,
+                    expiryDate: expiryDate,
+                    locationId: targetLocation,
+                    status: condition === 'SEALED' ? PackStatus.SEALED : PackStatus.OPENED,
+                    unitsPerPack: productDef.unitsPerPack || 1,
+                    remainingUnits: quantity,
+                    createdAt: new Date(), // Fixed: Expects Date object, not string
+                    history: [{
+                        date: new Date().toISOString(),
+                        action: 'RETURN_CREATED',
+                        userId: 'SYSTEM',
+                        details: 'Created from return'
+                    }],
+                    sourceDeliveryNoteId: 'RETURN' // Mandatory field
+                };
+                // Ensure ID uniqueness if using serialNumber as ID
+                if (this.serializedPacks.some(p => p.id === newPack.id)) {
+                    newPack.id = `PACK-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+                }
+                this.serializedPacks.push(newPack);
+            }
+        }
+
+        // 3. Update Aggregate Inventory
+        if (existingInv) {
+            existingInv.theoreticalQty += quantity;
+            existingInv.lastUpdated = new Date();
+        } else {
+            this.inventory.push({
+                id: `INV-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+                productId: productId,
+                name: productDef.name,
+                category: productDef.type === ProductType.DRUG ? ItemCategory.ANTIBIOTICS : ItemCategory.CONSUMABLES,
+                location: targetLocation,
+                batchNumber: batchNumber,
+                expiryDate: expiryDate,
+                unitPrice: (productDef.suppliers[0]?.purchasePrice || 0) / (productDef.unitsPerPack || 1),
+                theoreticalQty: quantity,
+                actualQty: null,
+                lastUpdated: new Date()
+            });
+        }
+
+        this.saveData();
+    }
+
+    public markDispensationAsReturned(dispensationId: string, quantity: number) {
+        const dispensation = this.dispensations.find(d => d.id === dispensationId);
+        if (dispensation) {
+            dispensation.returnedQuantity = (dispensation.returnedQuantity || 0) + quantity;
+
+            // Calculate total units dispensed to compare correctly
+            let totalUnitsDispensed = dispensation.quantity;
+
+            // Check if mode is BOX/FULL_PACK -> Convert to units
+            if ((dispensation.mode as any) === 'FULL_PACK' || (dispensation.mode as any) === 'Boîte Complète' || (dispensation.mode as any) === 'BOX') {
+                const product = this.catalog.find(p => p.id === dispensation.productId);
+                if (product && product.unitsPerPack > 1) {
+                    totalUnitsDispensed = dispensation.quantity * product.unitsPerPack;
+                }
+            }
+
+            // If fully returned (returned UNITS >= dispensed UNITS), mark as RETURNED status
+            if (dispensation.returnedQuantity >= totalUnitsDispensed) {
+                dispensation.status = 'RETURNED';
+            } else {
+                // Ensure status is NOT returned if it was previously set incorrectly
+                // (or if we are doing partial returns)
+                delete dispensation.status;
+            }
+            this.saveData();
+        }
+    }
+
+    // Process Return to Service Stock
+    public processServiceReturn(params: {
+        productId: string,
+        batchNumber: string,
+        expiryDate: string,
+        quantity: number,
+        condition: string,
+        locationId: string,
+        serviceId?: string
+    }) {
+        const { productId, batchNumber, expiryDate, quantity, locationId, serviceId } = params;
+        const productDef = this.getProductById(productId);
+        if (!productDef) return;
+
+        // Find existing inventory in this service location
+        let existingInv = this.inventory.find(i =>
+            i.productId === productId &&
+            i.batchNumber === batchNumber &&
+            i.location === locationId
+        );
+
+        if (existingInv) {
+            existingInv.theoreticalQty += quantity;
+            existingInv.lastUpdated = new Date();
+        } else {
+            // Create new inventory item for service stock
+            this.inventory.push({
+                id: `INV-SERV-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+                productId: productId,
+                name: productDef.name,
+                category: productDef.type === ProductType.DRUG ? ItemCategory.ANTIBIOTICS : ItemCategory.CONSUMABLES,
+                location: locationId,
+                serviceId: serviceId, // Important for scoping
+                batchNumber: batchNumber,
+                expiryDate: expiryDate,
+                unitPrice: (productDef.suppliers[0]?.purchasePrice || 0) / (productDef.unitsPerPack || 1),
+                theoreticalQty: quantity,
+                actualQty: null,
+                lastUpdated: new Date()
+            });
+        }
+        this.saveData();
+    }
+
     // FEFO Dispensation Logic
     dispenseWithFEFO(params: {
         productId: string,
@@ -429,9 +603,15 @@ export class PharmacyService {
         const { productId, quantity, mode, userId, prescriptionId, admissionId, targetPackIds } = params;
 
         // 1. Find active packs for product
+        // RESTRICTION: Only dispense packs currently in Pharmacy Locations (not in Service Stock)
+        const pharmacyLocationIds = this.locations.map(l => l.id);
+        const pharmacyLocationNames = this.locations.map(l => l.name);
+
         let candidates = this.serializedPacks.filter(p =>
             p.productId === productId &&
-            [PackStatus.SEALED, PackStatus.OPENED].includes(p.status)
+            [PackStatus.SEALED, PackStatus.OPENED].includes(p.status) &&
+            // Check if location is a known Pharmacy Location
+            (pharmacyLocationIds.includes(p.locationId) || pharmacyLocationNames.includes(p.locationId))
         );
 
         // Manual Selection Logic
@@ -601,6 +781,174 @@ export class PharmacyService {
         }
 
         this.dispensations.push(...newDispensations);
+        this.saveData();
+        return newDispensations;
+    }
+
+    /**
+     * Dispense directly from Service Stock (Sortie Pharmacie)
+     */
+    dispenseFromServiceStock(params: {
+        admissionId: string;
+        serviceId: string; // The service asking for output (e.g. "Cardiologie")
+        items: {
+            productId: string;
+            quantity: number;
+            mode: 'BOX' | 'UNIT';
+            dispensedBatches?: { batchNumber: string; quantity: number }[]; // For Manual
+        }[];
+    }) {
+        const { admissionId, serviceId, items } = params;
+        const newDispensations: Dispensation[] = [];
+
+        items.forEach(item => {
+            const productDef = this.getProductById(item.productId);
+            if (!productDef) return;
+
+            // 1. Identify Source Stock (Service Location)
+            // We look for InventoryItems belonging to this service
+            // DEMO FIX: Relaxed to allow "Tous Services" visibility
+            const serviceInventory = this.inventory.filter(i =>
+                i.productId === item.productId &&
+                (!!i.serviceId) && // Allow ANY service stock
+                i.theoreticalQty > 0
+            );
+
+            const totalAvailable = serviceInventory.reduce((acc, i) => acc + i.theoreticalQty, 0);
+
+            // Determine Qty in Units for validation (if mode is Box, we assume Inventory is stored in Units/Boxes? 
+            // InventoryItem.theoreticalQty is usually in Units or Boxes depending on convention. 
+            // In ReplenishmentProcessing, we store quantity. 
+            // Generally InventoryItem tracks units (e.g. tablet count or box count?)
+            // Let's assume theoreticalQty is in "Basic Unit" (Boxes for drugs?).
+            // If Replenishment adds "quantityApproved" which was Boxes...
+            // Wait, ReplenishmentProcessing uses "quantityApproved" which we fixed to be Units if product is big?
+            // "finalQuantity = state.quantity * activeProductDef.unitsPerPack;"
+            // So InventoryItem tracks UNITS (e.g. pills).
+
+            // So if `item.mode` is BOX, we need to convert to units for inventory deduction.
+            const unitsPerPerPack = productDef.unitsPerPack || 1;
+            const quantityToDeduct = item.mode === 'BOX' ? item.quantity * unitsPerPerPack : item.quantity;
+
+            if (totalAvailable < quantityToDeduct) {
+                console.warn(`[DispenseService] Not enough stock for ${productDef.name} in ${serviceId}. Wanted ${quantityToDeduct}, Has ${totalAvailable}`);
+                // Proceed with what we have? Or throw?
+                // Throwing might block the whole transaction. Let's allow partial or throw.
+                throw new Error(`Stock insuffisant pour ${productDef.name} dans le service ${serviceId}`);
+            }
+
+            // 2. Allocation Logic
+            let remainingToDeduct = quantityToDeduct;
+            const allocatedBatches: { batchNumber: string; expiryDate: string; location: string; quantity: number }[] = [];
+
+            // If Manual Batches provided
+            if (item.dispensedBatches && item.dispensedBatches.length > 0) {
+                item.dispensedBatches.forEach(b => {
+                    // Find corresponding inventory item
+                    const invItem = serviceInventory.find(i => i.batchNumber === b.batchNumber);
+                    if (invItem && remainingToDeduct > 0) {
+                        const take = Math.min(b.quantity, remainingToDeduct); // Batch quantity is likely in basic units? Or boxes?
+                        // In modal, manual input max is theoreticalQty.
+                        // So b.quantity is in Inventory Units.
+                        allocatedBatches.push({
+                            batchNumber: b.batchNumber,
+                            expiryDate: invItem.expiryDate,
+                            location: invItem.location,
+                            quantity: b.quantity
+                        });
+                        remainingToDeduct -= b.quantity;
+                    }
+                });
+            } else {
+                // Auto FEFO on Service Stock
+                // Sort by Expiry
+                serviceInventory.sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime());
+
+                for (const invItem of serviceInventory) {
+                    if (remainingToDeduct <= 0) break;
+                    const take = Math.min(invItem.theoreticalQty, remainingToDeduct);
+                    allocatedBatches.push({
+                        batchNumber: invItem.batchNumber,
+                        expiryDate: invItem.expiryDate,
+                        location: invItem.location,
+                        quantity: take
+                    });
+                    remainingToDeduct -= take;
+                }
+            }
+
+            // 3. Apply Deduction & Create Records
+            allocatedBatches.forEach(batch => {
+                // Decrement Inventory
+                const invItem = this.inventory.find(i =>
+                    i.productId === item.productId &&
+                    i.batchNumber === batch.batchNumber &&
+                    i.location === batch.location
+                );
+                if (invItem) {
+                    invItem.theoreticalQty -= batch.quantity;
+                    if (invItem.theoreticalQty < 0) invItem.theoreticalQty = 0;
+                }
+
+                // Update Serialized Packs (Status -> DISPENSED)
+                // We need to find packs in this location/batch
+                // "Consume" them.
+                serializedPackService.dispensePacks({
+                    productId: item.productId,
+                    batchNumber: batch.batchNumber,
+                    locationId: batch.location,
+                    mode: item.mode,
+                    quantity: batch.quantity, // If BOX mode, this is Box count. If UNIT mode, it's Unit count.
+                    unitsPerPack: unitsPerPerPack,
+                    userId: 'Infirmier Service', // Should pass real user
+                    reason: 'Sortie Pharmacie Service'
+                });
+
+                // 4. Create Dispensation Record (for traceability in Admission)
+                // We define price.
+                const pricePerUnit = (productDef.suppliers[0]?.purchasePrice || 0) / unitsPerPerPack;
+                const cost = pricePerUnit * batch.quantity;
+
+                // If mode was BOX, we display BOX count in dispensation?
+                // Dispensation struct has 'quantity' and 'mode'.
+                // If we split across batches, we might create multiple dispensations.
+
+                // Let's assume we create one dispensation per batch for traceability.
+                // Dispensation Quantity: usage in Admission.
+                // If we consumed 10 units (1 box), we want to show "1 Box".
+                // But here we might have 5 units from batch A and 5 from batch B.
+                // We'll record them as Units to be safe/precise.
+
+                const disp: Dispensation = {
+                    id: `DISP-SERV-${Date.now()}-${Math.random()}`,
+                    prescriptionId: 'SERVICE_EXIT', // Marker
+                    admissionId: admissionId,
+                    productId: item.productId,
+                    productName: productDef.name,
+                    mode: 'UNIT' as any, // Always record as UNIT splits if complex
+                    quantity: batch.quantity,
+                    serializedPackId: 'unknown', // We didn't strictly pick a pack ID here yet without fetch
+                    lotNumber: batch.batchNumber,
+                    expiryDate: batch.expiryDate,
+                    serialNumber: 'BATCH-EXIT',
+                    unitPriceExclVAT: pricePerUnit,
+                    vatRate: productDef.vatRate,
+                    totalPriceInclVAT: cost * (1 + productDef.vatRate / 100),
+                    dispensedAt: new Date(),
+                    dispensedBy: 'Infirmier Service' // TODO user
+                };
+
+                // Friendly display fix: If original request was BOX and we fully satisfied with one batch of proper size
+                if (item.mode === 'BOX' && batch.quantity % unitsPerPerPack === 0) {
+                    disp.mode = 'FULL_PACK' as any;
+                    disp.quantity = batch.quantity / unitsPerPerPack;
+                }
+
+                newDispensations.push(disp);
+                this.dispensations.push(disp);
+            });
+        });
+
         this.saveData();
         return newDispensations;
     }
@@ -781,6 +1129,21 @@ export class PharmacyService {
 
                 // 2. Increment Service Stock
                 this.incrementServiceStock(serviceId, productId, batch.batchNumber, batch.quantity, batchExpiry, targetLocation);
+
+                // 3. TRANSFER SERIALIZED PACKS
+                // If the product is tracked by serialization, we must move the packs to the service location
+                // The targetLocation passed here is usually specific (e.g. 'Armoire Urgence'), or a generic service ID.
+                // We should use the serviceId as the new "location status" or the actual targetLocationId if it acts as a container.
+                const newLocationId = targetLocation;
+
+                serializedPackService.transferPacks({
+                    productId: productId,
+                    batchNumber: batch.batchNumber,
+                    quantity: batch.quantity,
+                    toLocationId: newLocationId,
+                    reason: `Replenishment for ${serviceName}`,
+                    userId: 'system' // TODO: Pass actual user ID
+                });
             });
         });
     }
@@ -915,6 +1278,78 @@ export class PharmacyService {
                 lastUpdated: new Date()
             });
         }
+    }
+
+    // --- Product Versioning Logic ---
+
+    private generateId(): string {
+        return Date.now().toString(36) + Math.random().toString(36).substring(2);
+    }
+
+    public getProductVersions(productId: string): ProductVersion[] {
+        return this.productVersions.filter(v => v.productId === productId).sort((a, b) => b.versionNumber - a.versionNumber);
+    }
+
+    public getActiveProductVersion(productId: string): ProductVersion | undefined {
+        // Find version where validTo is undefined (active)
+        let active = this.productVersions.find(v => v.productId === productId && !v.validTo);
+
+        // Fallback: if no active version found (legacy data), create active version based on current Product Definition
+        if (!active) {
+            const product = this.getProductById(productId);
+            if (product) {
+                const newVersion: ProductVersion = {
+                    id: this.generateId(),
+                    productId: product.id,
+                    versionNumber: 1,
+                    isSubdivisable: product.isSubdivisable,
+                    unitsPerPack: product.unitsPerPack,
+                    validFrom: new Date(),
+                    createdAt: new Date(),
+                    createdBy: 'SYSTEM_MIGRATION'
+                };
+                this.productVersions.push(newVersion);
+                this.saveData(); // This persists the new version
+                return newVersion;
+            }
+        }
+        return active;
+    }
+
+    public updateProductSubdivisibility(productId: string, isSubdivisable: boolean, userId: string): ProductDefinition {
+        const product = this.getProductById(productId);
+        if (!product) throw new Error('Product not found');
+
+        if (product.isSubdivisable === isSubdivisable) return product; // No change
+
+        // 1. Close current version
+        const currentVersion = this.getActiveProductVersion(productId);
+        if (currentVersion) {
+            currentVersion.validTo = new Date();
+        }
+
+        // 2. Create new version
+        const newVersionNumber = (currentVersion?.versionNumber || 0) + 1;
+        const newVersion: ProductVersion = {
+            id: this.generateId(),
+            productId: product.id,
+            versionNumber: newVersionNumber,
+            isSubdivisable: isSubdivisable, // New status
+            unitsPerPack: product.unitsPerPack, // Carry over (unless we allow changing this too?)
+            validFrom: new Date(),
+            createdAt: new Date(),
+            createdBy: userId
+        };
+        this.productVersions.push(newVersion);
+
+        // 3. Update main product definition (snapshot of current state)
+        product.isSubdivisable = isSubdivisable;
+        product.updatedAt = new Date();
+
+        this.updateProduct(product); // Saves catalog logic if separated, but here catalog is in-memory
+        this.saveData(); // Saves everything
+
+        return product;
     }
 }
 

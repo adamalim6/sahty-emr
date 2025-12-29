@@ -1,0 +1,523 @@
+[
+  {
+    "id": "mjolzdd8uxoo5teiokd",
+    "type": "RETURNED_BOX",
+    "productId": "PROD-2025-8584",
+    "productVersionId": "mjolzdd1zg8mdkh9zws",
+    "serialNumber": "SN-1766320578606-000001",
+    "lotNumber": "EZ54",
+    "expiryDate": "2025-12-31",
+    "originLocation": "CENTRAL_PHARMACY",
+    "currentLocation": "PHARMACY_STOCK",
+    "unitsPerPack": 12,
+    "availableBoxes": 1,
+    "availableUnits": 12,
+    "state": "APPROVED_NORMAL",
+    "history": [
+      {
+        "id": "mjolzdd856u43u4clb",
+        "type": "RETURN",
+        "date": "2025-12-27T18:03:04.940Z",
+        "fromLocation": "ADMISSION",
+        "toLocation": "CENTRAL_PHARMACY",
+        "userId": "CURRENT_USER"
+      },
+      {
+        "id": "mjom0i7s9e0izlv0xb9",
+        "type": "QA_DECISION",
+        "date": "2025-12-27T18:03:57.880Z",
+        "fromLocation": "PHARMACY_QA",
+        "toLocation": "PHARMACY_STOCK",
+        "userId": "CURRENT_USER",
+        "details": {
+          "decision": "APPROVE_NORMAL"
+        }
+      }
+    ],
+    "createdAt": "2025-12-27T18:03:04.940Z",
+    "updatedAt": "2025-12-27T18:03:04.940Z"
+  },
+  {
+    "id": "mjomgokm45nf8atao79",
+    "type": "RETURNED_BOX",
+    "productId": "PROD-2025-8584",
+    "productVersionId": "mjolzdd1zg8mdkh9zws",
+    "serialNumber": "SN-1766320578606-000001",
+    "lotNumber": "EZ54",
+    "expiryDate": "2025-12-31",
+    "originLocation": "CENTRAL_PHARMACY",
+    "currentLocation": "TRANSIT",
+    "unitsPerPack": 12,
+    "availableBoxes": 1,
+    "availableUnits": 12,
+    "state": "RETURNED_PENDING_QA",
+    "history": [
+      {
+        "id": "mjomgokm53i1ym3thy",
+        "type": "RETURN",
+        "date": "2025-12-27T18:16:32.614Z",
+        "fromLocation": "ADMISSION",
+        "toLocation": "CENTRAL_PHARMACY",
+        "userId": "CURRENT_USER"
+      }
+    ],
+    "createdAt": "2025-12-27T18:16:32.614Z",
+    "updatedAt": "2025-12-27T18:16:32.614Z"
+  },
+  {
+    "id": "mjonpu4jasab4shd7b5",
+    "type": "RETURNED_BOX",
+    "productId": "PROD-2025-8584",
+    "productVersionId": "mjolzdd1zg8mdkh9zws",
+    "serialNumber": "BATCH-EXIT",
+    "lotNumber": "EZ54",
+    "expiryDate": "2025-12-31",
+    "originLocation": "CENTRAL_PHARMACY",
+    "currentLocation": "TRANSIT",
+    "unitsPerPack": 12,
+    "availableBoxes": 1,
+    "availableUnits": 12,
+    "state": "RETURNED_PENDING_QA",
+    "history": [
+      {
+        "id": "mjonpu4jsap8v6joykp",
+        "type": "RETURN",
+        "date": "2025-12-27T18:51:39.331Z",
+        "fromLocation": "ADMISSION",
+        "toLocation": "CENTRAL_PHARMACY",
+        "userId": "CURRENT_USER"
+      }
+    ],
+    "createdAt": "2025-12-27T18:51:39.331Z",
+    "updatedAt": "2025-12-27T18:51:39.331Z"
+  },
+  {
+    "id": "mjonv6y8ekzjd2tb5dl",
+    "type": "RETURNED_BOX",
+    "productId": "PROD-2025-8584",
+    "productVersionId": "mjolzdd1zg8mdkh9zws",
+    "serialNumber": "BATCH-EXIT",
+    "lotNumber": "EZ54",
+    "expiryDate": "2025-12-31",
+    "originLocation": "CENTRAL_PHARMACY",
+    "currentLocation": "TRANSIT",
+    "unitsPerPack": 12,
+    "availableBoxes": 1,
+    "availableUnits": 12,
+    "state": "RETURNED_PENDING_QA",
+    "history": [
+      {
+        "id": "mjonv6y893wyuqpvv8d",
+        "type": "RETURN",
+        "date": "2025-12-27T18:55:49.232Z",
+        "fromLocation": "ADMISSION",
+        "toLocation": "CENTRAL_PHARMACY",
+        "userId": "CURRENT_USER"
+      }
+    ],
+    "createdAt": "2025-12-27T18:55:49.232Z",
+    "updatedAt": "2025-12-27T18:55:49.232Z"
+  },
+  {
+    "id": "mjonve6y14t120dqs5r",
+    "type": "RETURNED_UNIT_BATCH",
+    "productId": "PROD-2025-4540",
+    "productVersionId": "mjonve6sdcyevn37am8",
+    "lotNumber": "4567",
+    "expiryDate": "2025-12-31",
+    "originLocation": "CENTRAL_PHARMACY",
+    "currentLocation": "TRANSIT",
+    "unitsPerPack": 20,
+    "availableBoxes": 0,
+    "availableUnits": 2,
+    "state": "RETURNED_PENDING_QA",
+    "history": [
+      {
+        "id": "mjonve6ywqqsycqwde",
+        "type": "RETURN",
+        "date": "2025-12-27T18:55:58.618Z",
+        "fromLocation": "ADMISSION",
+        "toLocation": "CENTRAL_PHARMACY",
+        "userId": "CURRENT_USER"
+      }
+    ],
+    "createdAt": "2025-12-27T18:55:58.618Z",
+    "updatedAt": "2025-12-27T18:55:58.618Z"
+  },
+  {
+    "id": "mjoo4frsri30nczswn",
+    "type": "RETURNED_BOX",
+    "productId": "PROD-2025-6613",
+    "productVersionId": "mjoo4frqe6l7os217gv",
+    "serialNumber": "SN-1766271791865-000001",
+    "expiryDate": "2025-12-31",
+    "dispensationId": "DISP-1766405025459-0",
+    "originLocation": "CENTRAL_PHARMACY",
+    "currentLocation": "TRANSIT",
+    "unitsPerPack": 10,
+    "availableBoxes": 1,
+    "availableUnits": 10,
+    "state": "RETURNED_PENDING_QA",
+    "history": [
+      {
+        "id": "mjoo4frs7cd8cjza612",
+        "type": "RETURN",
+        "date": "2025-12-27T19:03:00.568Z",
+        "fromLocation": "ADMISSION",
+        "toLocation": "CENTRAL_PHARMACY",
+        "userId": "CURRENT_USER"
+      }
+    ],
+    "createdAt": "2025-12-27T19:03:00.568Z",
+    "updatedAt": "2025-12-27T19:03:00.568Z"
+  },
+  {
+    "id": "mjoo8oy0beaxc92h2l7",
+    "type": "RETURNED_BOX",
+    "productId": "PROD-2025-8584",
+    "productVersionId": "mjolzdd1zg8mdkh9zws",
+    "serialNumber": "BATCH-EXIT",
+    "lotNumber": "EZ54",
+    "expiryDate": "2025-12-31",
+    "dispensationId": "DISP-SERV-1766862207675-0.9550461273189059",
+    "originLocation": "CENTRAL_PHARMACY",
+    "currentLocation": "TRANSIT",
+    "unitsPerPack": 12,
+    "availableBoxes": 1,
+    "availableUnits": 12,
+    "state": "RETURNED_PENDING_QA",
+    "history": [
+      {
+        "id": "mjoo8oy1tkrmaket10r",
+        "type": "RETURN",
+        "date": "2025-12-27T19:06:19.081Z",
+        "fromLocation": "ADMISSION",
+        "toLocation": "SERVICE_STOCK",
+        "userId": "CURRENT_USER"
+      }
+    ],
+    "createdAt": "2025-12-27T19:06:19.081Z",
+    "updatedAt": "2025-12-27T19:06:19.081Z"
+  },
+  {
+    "id": "mjor2lw4s5nuhqtazwj",
+    "type": "RETURNED_BOX",
+    "productId": "PROD-2025-6607",
+    "productVersionId": "mjor2lw2jry3tlwsgcb",
+    "serialNumber": "BATCH-EXIT",
+    "lotNumber": "546789",
+    "expiryDate": "2029-12-12",
+    "dispensationId": "DISP-SERV-1766867113122-0.7367675123121296",
+    "originLocation": "CENTRAL_PHARMACY",
+    "currentLocation": "PHARMACY_STOCK",
+    "unitsPerPack": 30,
+    "availableBoxes": 1,
+    "availableUnits": 30,
+    "state": "APPROVED_NORMAL",
+    "history": [
+      {
+        "id": "mjor2lw5m9p08b07rgs",
+        "type": "RETURN",
+        "date": "2025-12-27T20:25:34.037Z",
+        "fromLocation": "ADMISSION",
+        "toLocation": "SERVICE_STOCK",
+        "userId": "CURRENT_USER"
+      },
+      {
+        "id": "mjor2lw8txpj7wp0qwf",
+        "type": "QA_DECISION",
+        "date": "2025-12-27T20:25:34.040Z",
+        "fromLocation": "PHARMACY_QA",
+        "toLocation": "PHARMACY_STOCK",
+        "userId": "CURRENT_USER",
+        "details": {
+          "decision": "APPROVE_NORMAL"
+        }
+      }
+    ],
+    "createdAt": "2025-12-27T20:25:34.037Z",
+    "updatedAt": "2025-12-27T20:25:34.037Z"
+  },
+  {
+    "id": "mjornjnybzi6xn3ysic",
+    "type": "RETURNED_BOX",
+    "productId": "PROD-2025-6607",
+    "productVersionId": "mjor2lw2jry3tlwsgcb",
+    "serialNumber": "BATCH-EXIT",
+    "lotNumber": "546789",
+    "expiryDate": "2029-12-12",
+    "dispensationId": "DISP-SERV-1766868092850-0.466697509190675",
+    "originLocation": "CENTRAL_PHARMACY",
+    "currentLocation": "PHARMACY_STOCK",
+    "unitsPerPack": 30,
+    "availableBoxes": 1,
+    "availableUnits": 30,
+    "state": "APPROVED_NORMAL",
+    "history": [
+      {
+        "id": "mjornjny67zi7v2lxlr",
+        "type": "RETURN",
+        "date": "2025-12-27T20:41:50.926Z",
+        "fromLocation": "ADMISSION",
+        "toLocation": "SERVICE_STOCK",
+        "userId": "CURRENT_USER"
+      },
+      {
+        "id": "mjornjo232j0uo03l9s",
+        "type": "QA_DECISION",
+        "date": "2025-12-27T20:41:50.930Z",
+        "fromLocation": "PHARMACY_QA",
+        "toLocation": "PHARMACY_STOCK",
+        "userId": "CURRENT_USER",
+        "details": {
+          "decision": "APPROVE_NORMAL"
+        }
+      }
+    ],
+    "createdAt": "2025-12-27T20:41:50.926Z",
+    "updatedAt": "2025-12-27T20:41:50.926Z"
+  },
+  {
+    "id": "mjorpfin0hn7gu91c2y",
+    "type": "RETURNED_BOX",
+    "productId": "PROD-2025-6607",
+    "productVersionId": "mjor2lw2jry3tlwsgcb",
+    "serialNumber": "BATCH-EXIT",
+    "lotNumber": "546789",
+    "expiryDate": "2029-12-12",
+    "dispensationId": "DISP-SERV-1766868185002-0.35223358485628065",
+    "originLocation": "CENTRAL_PHARMACY",
+    "currentLocation": "PHARMACY_STOCK",
+    "unitsPerPack": 30,
+    "availableBoxes": 1,
+    "availableUnits": 30,
+    "state": "APPROVED_NORMAL",
+    "history": [
+      {
+        "id": "mjorpfin8rnia26bhp4",
+        "type": "RETURN",
+        "date": "2025-12-27T20:43:18.863Z",
+        "fromLocation": "ADMISSION",
+        "toLocation": "SERVICE_STOCK",
+        "userId": "CURRENT_USER"
+      },
+      {
+        "id": "mjorpfissz5idue25sl",
+        "type": "QA_DECISION",
+        "date": "2025-12-27T20:43:18.868Z",
+        "fromLocation": "PHARMACY_QA",
+        "toLocation": "PHARMACY_STOCK",
+        "userId": "CURRENT_USER",
+        "details": {
+          "decision": "APPROVE_NORMAL"
+        }
+      }
+    ],
+    "createdAt": "2025-12-27T20:43:18.863Z",
+    "updatedAt": "2025-12-27T20:43:18.863Z"
+  },
+  {
+    "id": "mjosc0g02ss4gx5kzad",
+    "type": "RETURNED_BOX",
+    "productId": "PROD-2025-6607",
+    "productVersionId": "mjor2lw2jry3tlwsgcb",
+    "serialNumber": "BATCH-EXIT",
+    "lotNumber": "546789",
+    "expiryDate": "2029-12-12",
+    "dispensationId": "DISP-SERV-1766869229604-0.7259920123498617",
+    "originLocation": "CENTRAL_PHARMACY",
+    "currentLocation": "TRANSIT",
+    "unitsPerPack": 30,
+    "availableBoxes": 1,
+    "availableUnits": 30,
+    "state": "RETURNED_PENDING_QA",
+    "history": [
+      {
+        "id": "mjosc0g0kw2nz67mtuo",
+        "type": "RETURN",
+        "date": "2025-12-27T21:00:52.416Z",
+        "fromLocation": "ADMISSION",
+        "toLocation": "CENTRAL_PHARMACY",
+        "userId": "CURRENT_USER"
+      }
+    ],
+    "createdAt": "2025-12-27T21:00:52.416Z",
+    "updatedAt": "2025-12-27T21:00:52.416Z"
+  },
+  {
+    "id": "mjosf7ty8mci8zwymzn",
+    "type": "RETURNED_BOX",
+    "productId": "PROD-2025-6607",
+    "productVersionId": "mjor2lw2jry3tlwsgcb",
+    "serialNumber": "BATCH-EXIT",
+    "lotNumber": "546789",
+    "expiryDate": "2029-12-12",
+    "dispensationId": "DISP-SERV-1766869356476-0.1531954320792499",
+    "originLocation": "CENTRAL_PHARMACY",
+    "currentLocation": "PHARMACY_STOCK",
+    "unitsPerPack": 30,
+    "availableBoxes": 1,
+    "availableUnits": 30,
+    "state": "APPROVED_NORMAL",
+    "history": [
+      {
+        "id": "mjosf7tz22m1h8vxihc",
+        "type": "RETURN",
+        "date": "2025-12-27T21:03:21.959Z",
+        "fromLocation": "ADMISSION",
+        "toLocation": "SERVICE_STOCK",
+        "userId": "CURRENT_USER"
+      },
+      {
+        "id": "mjosf7u4bg0ak8lty7b",
+        "type": "QA_DECISION",
+        "date": "2025-12-27T21:03:21.964Z",
+        "fromLocation": "PHARMACY_QA",
+        "toLocation": "PHARMACY_STOCK",
+        "userId": "CURRENT_USER",
+        "details": {
+          "decision": "APPROVE_NORMAL"
+        }
+      }
+    ],
+    "createdAt": "2025-12-27T21:03:21.959Z",
+    "updatedAt": "2025-12-27T21:03:21.959Z"
+  },
+  {
+    "id": "mjq9lacbdkkm5lf09kc",
+    "type": "RETURNED_BOX",
+    "productId": "PROD-2025-4540",
+    "productVersionId": "mjonve6sdcyevn37am8",
+    "serialNumber": "SN-1766271791866-000011",
+    "lotNumber": "4567",
+    "expiryDate": "2025-12-31",
+    "dispensationId": "DISP-1766272469637-0",
+    "originLocation": "CENTRAL_PHARMACY",
+    "currentLocation": "TRANSIT",
+    "unitsPerPack": 20,
+    "availableBoxes": 1,
+    "availableUnits": 20,
+    "state": "RETURNED_PENDING_QA",
+    "history": [
+      {
+        "id": "mjq9lacbtcli18dmrh9",
+        "type": "RETURN",
+        "date": "2025-12-28T21:51:44.795Z",
+        "fromLocation": "ADMISSION",
+        "toLocation": "CENTRAL_PHARMACY",
+        "userId": "CURRENT_USER"
+      }
+    ],
+    "createdAt": "2025-12-28T21:51:44.795Z",
+    "updatedAt": "2025-12-28T21:51:44.795Z"
+  },
+  {
+    "id": "mjq9lflhqbr5ex0ktjr",
+    "type": "RETURNED_UNIT_BATCH",
+    "productId": "PROD-2025-4540",
+    "productVersionId": "mjonve6sdcyevn37am8",
+    "lotNumber": "4567",
+    "expiryDate": "2025-12-31",
+    "dispensationId": "DISP-1766272836053-pack-1766271791866-8937-1",
+    "originLocation": "CENTRAL_PHARMACY",
+    "currentLocation": "TRANSIT",
+    "unitsPerPack": 20,
+    "availableBoxes": 0,
+    "availableUnits": 5,
+    "state": "RETURNED_PENDING_QA",
+    "history": [
+      {
+        "id": "mjq9lflhkgwkcz0bn08",
+        "type": "RETURN",
+        "date": "2025-12-28T21:51:51.605Z",
+        "fromLocation": "ADMISSION",
+        "toLocation": "CENTRAL_PHARMACY",
+        "userId": "CURRENT_USER"
+      }
+    ],
+    "createdAt": "2025-12-28T21:51:51.605Z",
+    "updatedAt": "2025-12-28T21:51:51.605Z"
+  },
+  {
+    "id": "mjqgrz71ogr7dgrx22n",
+    "type": "RETURNED_BOX",
+    "productId": "PROD-2025-6613",
+    "productVersionId": "mjoo4frqe6l7os217gv",
+    "serialNumber": "SN-1766271791866-000006",
+    "lotNumber": "456",
+    "expiryDate": "2025-12-02",
+    "dispensationId": "DISP-1766272495200-0",
+    "originLocation": "CENTRAL_PHARMACY",
+    "currentLocation": "TRANSIT",
+    "unitsPerPack": 10,
+    "availableBoxes": 1,
+    "availableUnits": 10,
+    "state": "RETURNED_PENDING_QA",
+    "history": [
+      {
+        "id": "mjqgrz71vuz5ew6da2h",
+        "type": "RETURN",
+        "date": "2025-12-29T01:12:54.253Z",
+        "fromLocation": "ADMISSION",
+        "toLocation": "CENTRAL_PHARMACY",
+        "userId": "CURRENT_USER"
+      }
+    ],
+    "createdAt": "2025-12-29T01:12:54.253Z",
+    "updatedAt": "2025-12-29T01:12:54.253Z"
+  },
+  {
+    "id": "mjqhdah0n6vprpqfjwd",
+    "type": "RETURNED_BOX",
+    "productId": "PROD-2025-6613",
+    "productVersionId": "mjoo4frqe6l7os217gv",
+    "serialNumber": "SN-1766271791866-000007",
+    "expiryDate": "2025-12-02",
+    "dispensationId": "DISP-1766404636939-0",
+    "originLocation": "CENTRAL_PHARMACY",
+    "currentLocation": "TRANSIT",
+    "unitsPerPack": 10,
+    "availableBoxes": 1,
+    "availableUnits": 6,
+    "state": "RETURNED_PENDING_QA",
+    "history": [
+      {
+        "id": "mjqhdah0ukpda8kbbce",
+        "type": "RETURN",
+        "date": "2025-12-29T01:29:28.644Z",
+        "fromLocation": "ADMISSION",
+        "toLocation": "CENTRAL_PHARMACY",
+        "userId": "CURRENT_USER"
+      }
+    ],
+    "createdAt": "2025-12-29T01:29:28.644Z",
+    "updatedAt": "2025-12-29T01:29:28.644Z"
+  },
+  {
+    "id": "mjr0xmxesl2mlsuc80g",
+    "type": "RETURNED_BOX",
+    "productId": "PROD-2025-6613",
+    "productVersionId": "mjoo4frqe6l7os217gv",
+    "serialNumber": "SN-1766271791866-000003",
+    "expiryDate": "2025-12-31",
+    "dispensationId": "DISP-1767004520346-0",
+    "originLocation": "CENTRAL_PHARMACY",
+    "currentLocation": "TRANSIT",
+    "unitsPerPack": 10,
+    "availableBoxes": 1,
+    "availableUnits": 10,
+    "state": "RETURNED_PENDING_QA",
+    "history": [
+      {
+        "id": "mjr0xmxe4rjck1rmit",
+        "type": "RETURN",
+        "date": "2025-12-29T10:37:10.610Z",
+        "fromLocation": "ADMISSION",
+        "toLocation": "CENTRAL_PHARMACY",
+        "userId": "CURRENT_USER"
+      }
+    ],
+    "createdAt": "2025-12-29T10:37:10.610Z",
+    "updatedAt": "2025-12-29T10:37:10.610Z"
+  }
+]

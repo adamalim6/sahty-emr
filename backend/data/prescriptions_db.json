@@ -959,5 +959,134 @@
     },
     "createdAt": "2025-12-24T21:33:52.471Z",
     "createdBy": "Current User"
+  },
+  {
+    "id": "PRESC-1766857331912-1dg091uc4",
+    "patientId": "1635",
+    "data": {
+      "molecule": "Chlorure de sodium",
+      "commercialName": "",
+      "qty": "0.5",
+      "unit": "mg",
+      "route": "Orale",
+      "adminMode": "instant",
+      "adminDuration": "",
+      "type": "frequency",
+      "dilutionRequired": false,
+      "substitutable": true,
+      "solvent": {
+        "molecule": "",
+        "commercialName": "",
+        "qty": "--",
+        "unit": "mL"
+      },
+      "databaseMode": "hospital",
+      "schedule": {
+        "dailySchedule": "everyday",
+        "mode": "cycle",
+        "interval": "8",
+        "isCustomInterval": false,
+        "startDateTime": "2025-12-27T18:41",
+        "durationValue": "2",
+        "durationUnit": "days",
+        "selectedDays": [],
+        "specificTimes": [],
+        "simpleCount": "1",
+        "simplePeriod": "day",
+        "intervalDuration": ""
+      },
+      "conditionComment": "",
+      "prescriptionType": "medication",
+      "skippedDoses": [],
+      "manualDoseAdjustments": {}
+    },
+    "createdAt": "2025-12-27T17:42:11.912Z",
+    "createdBy": "Current User"
+  },
+  {
+    "id": "PRESC-1767003039845-jl49ih604",
+    "patientId": "5371",
+    "data": {
+      "molecule": "Paracétamol",
+      "commercialName": "Doliprane",
+      "qty": "200",
+      "unit": "mg",
+      "route": "Orale",
+      "adminMode": "continuous",
+      "adminDuration": "03:00",
+      "type": "frequency",
+      "dilutionRequired": true,
+      "substitutable": false,
+      "solvent": {
+        "molecule": "Glucose",
+        "commercialName": "Glucose 5%",
+        "qty": "200",
+        "unit": "mL"
+      },
+      "databaseMode": "hospital",
+      "schedule": {
+        "dailySchedule": "everyday",
+        "mode": "cycle",
+        "interval": "6",
+        "isCustomInterval": false,
+        "startDateTime": "2025-12-29T11:10",
+        "durationValue": "3",
+        "durationUnit": "days",
+        "selectedDays": [],
+        "specificTimes": [],
+        "simpleCount": "1",
+        "simplePeriod": "day",
+        "intervalDuration": ""
+      },
+      "conditionComment": "si eva sup à 5",
+      "prescriptionType": "medication",
+      "skippedDoses": [],
+      "manualDoseAdjustments": {}
+    },
+    "createdAt": "2025-12-29T10:10:39.845Z",
+    "createdBy": "Current User"
+  },
+  {
+    "id": "PRESC-1767004473086-zsjpfpwkw",
+    "patientId": "1635",
+    "data": {
+      "molecule": "Ibuprofène",
+      "commercialName": "Advil",
+      "qty": "9.5",
+      "unit": "mg",
+      "route": "Orale",
+      "adminMode": "instant",
+      "adminDuration": "",
+      "type": "frequency",
+      "dilutionRequired": false,
+      "substitutable": true,
+      "solvent": {
+        "molecule": "",
+        "commercialName": "",
+        "qty": "--",
+        "unit": "mL"
+      },
+      "databaseMode": "hospital",
+      "schedule": {
+        "dailySchedule": "everyday",
+        "mode": "cycle",
+        "interval": "6",
+        "isCustomInterval": false,
+        "startDateTime": "2025-12-29T11:34",
+        "durationValue": "2",
+        "durationUnit": "days",
+        "selectedDays": [],
+        "specificTimes": [],
+        "simpleCount": "1",
+        "simplePeriod": "day",
+        "intervalDuration": ""
+      },
+      "conditionComment": "",
+      "prescriptionType": "medication",
+      "skippedDoses": [],
+      "manualDoseAdjustments": {}
+    },
+    "createdAt": "2025-12-29T10:34:33.086Z",
+    "createdBy": "Current User"
   }
 ]

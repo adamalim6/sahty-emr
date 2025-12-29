@@ -1,0 +1,306 @@
+[
+  {
+    "id": "mjqgrz715axideso1wv",
+    "admissionId": "adm-1766272352667",
+    "items": [
+      {
+        "containerId": "mjqgrz71ogr7dgrx22n",
+        "quantity": 1,
+        "type": "RETURNED_BOX",
+        "condition": "SEALED",
+        "dispensationId": "DISP-1766272495200-0"
+      }
+    ],
+    "destination": "CENTRAL_PHARMACY",
+    "status": "PENDING_QA",
+    "createdAt": "2025-12-29T01:12:54.253Z",
+    "createdBy": "CURRENT_USER"
+  },
+  {
+    "id": "mjq9lflh56hvm9suk9t",
+    "admissionId": "adm-1766272352667",
+    "items": [
+      {
+        "containerId": "mjq9lflhqbr5ex0ktjr",
+        "quantity": 5,
+        "type": "RETURNED_UNIT_BATCH",
+        "condition": "OPENED",
+        "dispensationId": "DISP-1766272836053-pack-1766271791866-8937-1"
+      }
+    ],
+    "destination": "CENTRAL_PHARMACY",
+    "status": "PENDING_QA",
+    "createdAt": "2025-12-28T21:51:51.605Z",
+    "createdBy": "CURRENT_USER"
+  },
+  {
+    "id": "mjq9lacb6ceozrklpdm",
+    "admissionId": "adm-1766272352667",
+    "items": [
+      {
+        "containerId": "mjq9lacbdkkm5lf09kc",
+        "quantity": 1,
+        "type": "RETURNED_BOX",
+        "condition": "SEALED",
+        "dispensationId": "DISP-1766272469637-0"
+      }
+    ],
+    "destination": "CENTRAL_PHARMACY",
+    "status": "PENDING_QA",
+    "createdAt": "2025-12-28T21:51:44.795Z",
+    "createdBy": "CURRENT_USER"
+  },
+  {
+    "id": "mjosf7tzs7idzwm40un",
+    "admissionId": "adm-1766858447632",
+    "items": [
+      {
+        "containerId": "mjosf7ty8mci8zwymzn",
+        "quantity": 2,
+        "type": "RETURNED_BOX",
+        "condition": "SEALED",
+        "dispensationId": "DISP-SERV-1766869356476-0.1531954320792499"
+      }
+    ],
+    "destination": "SERVICE_STOCK",
+    "targetLocationId": "LOC-EMR-1766864455985",
+    "serviceId": "Cardiologie",
+    "status": "APPROVED",
+    "createdAt": "2025-12-27T21:03:21.959Z",
+    "createdBy": "CURRENT_USER",
+    "qaDecisionBy": "CURRENT_USER",
+    "qaDecisionAt": "2025-12-27T21:03:21.964Z"
+  },
+  {
+    "id": "mjosc0g03u3v73y6pgc",
+    "admissionId": "adm-1766858447632",
+    "items": [
+      {
+        "containerId": "mjosc0g02ss4gx5kzad",
+        "quantity": 1,
+        "type": "RETURNED_BOX",
+        "condition": "SEALED",
+        "dispensationId": "DISP-SERV-1766869229604-0.7259920123498617"
+      }
+    ],
+    "destination": "CENTRAL_PHARMACY",
+    "status": "PENDING_QA",
+    "createdAt": "2025-12-27T21:00:52.416Z",
+    "createdBy": "CURRENT_USER"
+  },
+  {
+    "id": "mjorpfin2revcn8uiq4",
+    "admissionId": "adm-1766858447632",
+    "items": [
+      {
+        "containerId": "mjorpfin0hn7gu91c2y",
+        "quantity": 1,
+        "type": "RETURNED_BOX",
+        "condition": "SEALED",
+        "dispensationId": "DISP-SERV-1766868185002-0.35223358485628065"
+      }
+    ],
+    "destination": "SERVICE_STOCK",
+    "targetLocationId": "LOC-EMR-1766277614022",
+    "serviceId": "Cardiologie",
+    "status": "APPROVED",
+    "createdAt": "2025-12-27T20:43:18.863Z",
+    "createdBy": "CURRENT_USER",
+    "qaDecisionBy": "CURRENT_USER",
+    "qaDecisionAt": "2025-12-27T20:43:18.867Z"
+  },
+  {
+    "id": "mjornjnyamyx8k850e",
+    "admissionId": "adm-1766272352667",
+    "items": [
+      {
+        "containerId": "mjornjnybzi6xn3ysic",
+        "quantity": 2,
+        "type": "RETURNED_BOX",
+        "condition": "SEALED",
+        "dispensationId": "DISP-SERV-1766868092850-0.466697509190675"
+      }
+    ],
+    "destination": "SERVICE_STOCK",
+    "targetLocationId": "LOC-EMR-1766864447975",
+    "serviceId": "Cardiologie",
+    "status": "APPROVED",
+    "createdAt": "2025-12-27T20:41:50.926Z",
+    "createdBy": "CURRENT_USER",
+    "qaDecisionBy": "CURRENT_USER",
+    "qaDecisionAt": "2025-12-27T20:41:50.930Z"
+  },
+  {
+    "id": "mjor2lw5slwbycdsr9r",
+    "admissionId": "adm-1766858447632",
+    "items": [
+      {
+        "containerId": "mjor2lw4s5nuhqtazwj",
+        "quantity": 1,
+        "type": "RETURNED_BOX",
+        "condition": "SEALED",
+        "dispensationId": "DISP-SERV-1766867113122-0.7367675123121296"
+      }
+    ],
+    "destination": "SERVICE_STOCK",
+    "targetLocationId": "LOC-EMR-1766277614022",
+    "serviceId": "Cardiologie",
+    "status": "APPROVED",
+    "createdAt": "2025-12-27T20:25:34.037Z",
+    "createdBy": "CURRENT_USER",
+    "qaDecisionBy": "CURRENT_USER",
+    "qaDecisionAt": "2025-12-27T20:25:34.039Z"
+  },
+  {
+    "id": "mjoo8oy12zoipu9tigf",
+    "admissionId": "adm-1766272352667",
+    "items": [
+      {
+        "containerId": "mjoo8oy0beaxc92h2l7",
+        "quantity": 2,
+        "type": "RETURNED_BOX",
+        "condition": "SEALED",
+        "dispensationId": "DISP-SERV-1766862207675-0.9550461273189059"
+      }
+    ],
+    "destination": "SERVICE_STOCK",
+    "targetLocationId": "LOC-EMR-1766277614022",
+    "serviceId": "Cardiologie",
+    "status": "PENDING_QA",
+    "createdAt": "2025-12-27T19:06:19.081Z",
+    "createdBy": "CURRENT_USER"
+  },
+  {
+    "id": "mjoo4frsc27xn0e31cg",
+    "admissionId": "adm-1766272352667",
+    "items": [
+      {
+        "containerId": "mjoo4frsri30nczswn",
+        "quantity": 1,
+        "type": "RETURNED_BOX",
+        "condition": "SEALED",
+        "dispensationId": "DISP-1766405025459-0"
+      }
+    ],
+    "destination": "CENTRAL_PHARMACY",
+    "status": "PENDING_QA",
+    "createdAt": "2025-12-27T19:03:00.568Z",
+    "createdBy": "CURRENT_USER"
+  },
+  {
+    "id": "mjonve6yfb1z02c2nmv",
+    "admissionId": "adm-1766272352667",
+    "items": [
+      {
+        "containerId": "mjonve6y14t120dqs5r",
+        "quantity": 2,
+        "type": "RETURNED_UNIT_BATCH",
+        "condition": "OPENED"
+      }
+    ],
+    "destination": "CENTRAL_PHARMACY",
+    "status": "PENDING_QA",
+    "createdAt": "2025-12-27T18:55:58.618Z",
+    "createdBy": "CURRENT_USER"
+  },
+  {
+    "id": "mjonv6y8d4b1oh2o0b9",
+    "admissionId": "adm-1766272352667",
+    "items": [
+      {
+        "containerId": "mjonv6y8ekzjd2tb5dl",
+        "quantity": 1,
+        "type": "RETURNED_BOX",
+        "condition": "SEALED"
+      }
+    ],
+    "destination": "CENTRAL_PHARMACY",
+    "status": "PENDING_QA",
+    "createdAt": "2025-12-27T18:55:49.232Z",
+    "createdBy": "CURRENT_USER"
+  },
+  {
+    "id": "mjonpu4jp4dxessy1bo",
+    "admissionId": "adm-1766272352667",
+    "items": [
+      {
+        "containerId": "mjonpu4jasab4shd7b5",
+        "quantity": 1,
+        "type": "RETURNED_BOX",
+        "condition": "SEALED"
+      }
+    ],
+    "destination": "CENTRAL_PHARMACY",
+    "status": "PENDING_QA",
+    "createdAt": "2025-12-27T18:51:39.331Z",
+    "createdBy": "CURRENT_USER"
+  },
+  {
+    "id": "mjomgokmokjqvyg4qtb",
+    "admissionId": "adm-1766858447632",
+    "items": [
+      {
+        "containerId": "mjomgokm45nf8atao79",
+        "quantity": 1,
+        "type": "RETURNED_BOX",
+        "condition": "SEALED"
+      }
+    ],
+    "destination": "CENTRAL_PHARMACY",
+    "status": "PENDING_QA",
+    "createdAt": "2025-12-27T18:16:32.614Z",
+    "createdBy": "CURRENT_USER"
+  },
+  {
+    "id": "mjolzdd8vtpm53zaph",
+    "admissionId": "adm-1766858447632",
+    "items": [
+      {
+        "containerId": "mjolzdd8uxoo5teiokd",
+        "quantity": 1,
+        "type": "RETURNED_BOX",
+        "condition": "SEALED"
+      }
+    ],
+    "destination": "CENTRAL_PHARMACY",
+    "status": "APPROVED",
+    "createdAt": "2025-12-27T18:03:04.940Z",
+    "createdBy": "CURRENT_USER",
+    "qaDecisionBy": "CURRENT_USER",
+    "qaDecisionAt": "2025-12-27T18:03:57.880Z"
+  },
+  {
+    "id": "mjqhdah02ah88w7cmkr",
+    "admissionId": "adm-1766272352667",
+    "items": [
+      {
+        "containerId": "mjqhdah0n6vprpqfjwd",
+        "quantity": 6,
+        "type": "RETURNED_BOX",
+        "condition": "OPENED",
+        "dispensationId": "DISP-1766404636939-0"
+      }
+    ],
+    "destination": "CENTRAL_PHARMACY",
+    "status": "PENDING_QA",
+    "createdAt": "2025-12-29T01:29:28.644Z",
+    "createdBy": "CURRENT_USER"
+  },
+  {
+    "id": "mjr0xmxfdunr7mbvrau",
+    "admissionId": "adm-1766858447632",
+    "items": [
+      {
+        "containerId": "mjr0xmxesl2mlsuc80g",
+        "quantity": 1,
+        "type": "RETURNED_BOX",
+        "condition": "SEALED",
+        "dispensationId": "DISP-1767004520346-0"
+      }
+    ],
+    "destination": "CENTRAL_PHARMACY",
+    "status": "PENDING_QA",
+    "createdAt": "2025-12-29T10:37:10.611Z",
+    "createdBy": "CURRENT_USER"
+  }
+]

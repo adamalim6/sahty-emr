@@ -1,6 +1,8 @@
 
 import { Request, Response } from 'express';
 import { pharmacyService } from '../services/pharmacyService';
+import { returnService } from '../services/returnService';
+import { ReturnDestination } from '../models/return-request';
 
 export const getInventory = (req: Request, res: Response) => {
     try {
@@ -216,5 +218,70 @@ export const updateReplenishmentRequestStatus = (req: Request, res: Response) =>
         res.json(updated);
     } catch (error) {
         res.status(500).json({ message: 'Error updating request status' });
+    }
+};
+
+export const dispenseFromServiceStock = (req: Request, res: Response) => {
+    try {
+        const result = pharmacyService.dispenseFromServiceStock(req.body);
+        res.json(result);
+    } catch (error: any) {
+        console.error('Error dispensing from service stock:', error);
+        res.status(500).json({ message: error.message || 'Error dispensing from service stock' });
+    }
+};
+
+// Returns
+export const createReturnRequest = (req: Request, res: Response) => {
+    try {
+        const { admissionId, items, destination, userId, targetLocationId, serviceId } = req.body;
+        const request = returnService.createReturnRequest(admissionId, items, destination, userId || 'system', targetLocationId, serviceId);
+        res.status(201).json(request);
+    } catch (error) {
+        console.error('Error creating return request:', error);
+        res.status(500).json({ message: 'Error creating return request' });
+    }
+};
+
+export const getReturns = (req: Request, res: Response) => {
+    try {
+        const returns = returnService.getAllRequests();
+        res.json(returns);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching returns' });
+    }
+};
+
+export const processReturn = (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { decision, userId } = req.body;
+        returnService.processReturnDecision(id, decision, userId || 'system');
+        res.status(200).json({ success: true });
+    } catch (error) {
+        console.error('Error processing return:', error);
+        res.status(500).json({ message: 'Error processing return' });
+    }
+};
+
+export const processReturnSplit = (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { decisions, userId } = req.body;
+        returnService.processReturnSplitDecision(id, decisions, userId || 'system');
+        res.status(200).json({ success: true });
+    } catch (error) {
+        console.error('Error processing split return:', error);
+        res.status(500).json({ message: 'Error processing split return' });
+    }
+};
+
+export const getReturnsByAdmission = (req: Request, res: Response) => {
+    try {
+        const { admissionId } = req.params;
+        const returns = returnService.getReturnsByAdmission(admissionId);
+        res.json(returns);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching admission returns' });
     }
 };

@@ -35,6 +35,8 @@ import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
+import { ReturnsReception } from './ReturnsReception';
+
 export const PharmacyModule: React.FC = () => {
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -52,7 +54,7 @@ export const PharmacyModule: React.FC = () => {
 
   const [loading, setLoading] = useState(true);
   // Ajout de 'prescriptions' et 'requests' au type de la vue
-  const [view, setView] = useState<'dashboard' | 'inventory' | 'stock' | 'catalog' | 'entry' | 'quarantine' | 'locations' | 'partners' | 'stockout' | 'prescriptions' | 'suppliers' | 'requests' | 'processing_request'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'inventory' | 'stock' | 'catalog' | 'entry' | 'quarantine' | 'locations' | 'partners' | 'stockout' | 'prescriptions' | 'suppliers' | 'requests' | 'processing_request' | 'returns'>('dashboard');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
 
@@ -312,6 +314,9 @@ export const PharmacyModule: React.FC = () => {
           <button onClick={() => { setView('stockout'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'stockout' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             <LogOut size={20} /><span className="font-medium text-sm">Sorties / Destructions</span>
           </button>
+          <button onClick={() => { setView('returns'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'returns' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+            <RotateCcw size={20} /><span className="font-medium text-sm">Réception Retours</span>
+          </button>
           <button onClick={() => { setView('partners'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'partners' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             <Building2 size={20} /><span className="font-medium text-sm">Partenaires / Cliniques</span>
           </button>
@@ -323,7 +328,7 @@ export const PharmacyModule: React.FC = () => {
             <ClipboardList size={20} /><span className="font-medium text-sm">Audit d'Inventaire</span>
           </button>
           <button onClick={() => { setView('stock'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'stock' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
-            <Database size={20} /><span className="font-medium text-sm">Stock Système</span>
+            <Database size={20} /><span className="font-medium text-sm">Stock Pharma</span>
           </button>
           <button onClick={() => { setView('requests'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'requests' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             <ArrowRight size={20} /><span className="font-medium text-sm">Demandes & Transferts</span>
@@ -342,7 +347,7 @@ export const PharmacyModule: React.FC = () => {
 
       {/* Contenu Principal */}
       <main className="flex-1 md:ml-64 p-4 md:p-8 overflow-y-auto">
-        {view !== 'prescriptions' && view !== 'requests' && (
+        {view !== 'prescriptions' && view !== 'requests' && view !== 'returns' && (
           <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>
               <h2 className="text-2xl font-bold text-slate-900">
@@ -354,8 +359,8 @@ export const PharmacyModule: React.FC = () => {
                           view === 'suppliers' ? 'Gestion des Fournisseurs' :
                             view === 'partners' ? 'Institutions Partenaires' :
                               view === 'stockout' ? 'Gestion des Sorties' :
-                                view === 'requests' ? 'Demandes & Transferts' :
-                                  view === 'inventory' ? (currentSession ? `Session : ${currentSession.id}` : 'Sessions d\'Inventaire') : 'État des Stocks Système'}
+                                view === 'stockout' ? 'Gestion des Sorties' :
+                                  view === 'inventory' ? (currentSession ? `Session : ${currentSession.id}` : 'Sessions d\'Inventaire') : 'État des Stocks Pharma'}
               </h2>
             </div>
 
@@ -414,6 +419,8 @@ export const PharmacyModule: React.FC = () => {
           <QuarantineManager deliveryNotes={deliveryNotes} products={productCatalog} locations={locations} onProcessNote={handleQuarantineProcess} />
         ) : view === 'stockout' ? (
           <StockOutManager systemItems={systemItems} partners={partners} deliveryNotes={deliveryNotes} products={productCatalog} onConfirmStockOut={handleConfirmStockOut} stockOutHistory={stockOutHistory} />
+        ) : view === 'returns' ? (
+          <ReturnsReception />
         ) : view === 'suppliers' ? (
           <SupplierManager suppliers={suppliers} onUpdateSuppliers={handleUpdateSuppliers} />
         ) : view === 'partners' ? (

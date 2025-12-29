@@ -89,6 +89,20 @@
       "status": "En cours",
       "type": "Hospitalisation complète",
       "currency": "MAD (Dirham)"
+    },
+    {
+      "id": "adm-1766858447632",
+      "nda": "NDA-2025-2423",
+      "patientId": "1635",
+      "reason": "Chirurgie programmée",
+      "service": "Cardiologie",
+      "admissionDate": "2025-12-27T18:00:47.634Z",
+      "doctorName": "Dr. S. Alami",
+      "roomNumber": "102",
+      "bedLabel": "Lit B",
+      "status": "En cours",
+      "type": "Hospitalisation complète",
+      "currency": "MAD (Dirham)"
     }
   ],
   "appointments": [],
@@ -99,6 +113,18 @@
       "description": "",
       "isActive": true,
       "id": "LOC-EMR-1766277614022"
+    },
+    {
+      "name": "armoire A",
+      "description": "",
+      "isActive": true,
+      "id": "LOC-EMR-1766864447975"
+    },
+    {
+      "name": "placard 6",
+      "description": "",
+      "isActive": true,
+      "id": "LOC-EMR-1766864455985"
     }
   ]
 }

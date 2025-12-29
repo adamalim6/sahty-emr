@@ -78,11 +78,19 @@ export const ReplenishmentProcessing: React.FC<ReplenishmentProcessingProps> = (
             // Only send items that have quantity to add
             if (state.quantity <= 0 && state.selectedBatches.length === 0) return null;
 
+            const activeProductDef = catalog.find(p => p.id === finalProductId);
+
+            // Calculate final quantity regarding unit mode
+            let finalQuantity = state.quantity;
+            if (state.mode === 'BOX' && activeProductDef?.unitsPerPack && activeProductDef.unitsPerPack > 1) {
+                finalQuantity = state.quantity * activeProductDef.unitsPerPack;
+            }
+
             return {
                 ...item,
                 productDispensedId: state.substitutedProductId,
                 productDispensedName: state.substitutedProductId ? finalName : undefined,
-                quantityApproved: state.quantity, // Amount to ADD
+                quantityApproved: finalQuantity, // Amount to ADD (Converted to Units)
                 targetLocationId: item.targetLocationId, // Use the originally requested location
                 dispensedBatches: state.selectionMode === 'MANUAL' ? state.selectedBatches.map(b => ({
                     batchNumber: b.batchNumber,

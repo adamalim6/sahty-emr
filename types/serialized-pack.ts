@@ -57,4 +57,6 @@ export interface Dispensation {
 
     dispensedAt: Date;
     dispensedBy: string;
+    status?: 'DISPENSED' | 'RETURNED';
+    returnedQuantity?: number;
 }

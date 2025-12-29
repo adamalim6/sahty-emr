@@ -1,41 +1,66 @@
 import React, { useEffect, useState } from 'react';
-import { Pill, Plus, Calendar, Hash, Tag, DollarSign, Package, AlertCircle } from 'lucide-react';
+import { Pill, Plus, Calendar, Hash, Tag, DollarSign, Package, AlertCircle, Undo2 } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { api } from '../../services/api';
 import { Dispensation } from '../../types/serialized-pack';
 import { ProductDefinition } from '../../types/pharmacy';
 
-export const Pharmacie: React.FC = () => {
+import { ServiceStockExitModal } from './ServiceStockExitModal';
+import { ReturnCreationModal } from './ReturnCreationModal';
+import { Admission } from '../../types';
+
+interface PharmacieProps {
+  admission?: Admission;
+}
+
+export const Pharmacie: React.FC<PharmacieProps> = ({ admission }) => {
   const { id } = useParams<{ id: string }>(); // Admission ID
   const [dispensations, setDispensations] = useState<Dispensation[]>([]);
   const [products, setProducts] = useState<ProductDefinition[]>([]);
+  const [pendingReturns, setPendingReturns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showExitModal, setShowExitModal] = useState(false);
+  const [returnModalOpen, setReturnModalOpen] = useState(false);
+  const [selectedDispensation, setSelectedDispensation] = useState<Dispensation | undefined>(undefined);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      if (id) {
+        const [dispData, prodData, returnsData] = await Promise.all([
+          api.getDispensationsByAdmission(id),
+          api.getCatalog(),
+          api.getReturnsByAdmission(id)
+        ]);
+        setDispensations(dispData);
+        setProducts(prodData);
+        setPendingReturns(returnsData.filter((r: any) => r.status === 'PENDING_QA'));
+      }
+    } catch (error) {
+      console.error("Error fetching pharmacy data", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        if (id) {
-          const [dispData, prodData] = await Promise.all([
-            api.getDispensationsByAdmission(id),
-            api.getCatalog()
-          ]);
-          // Filter dispensations only for this admission just in case, though API handles it
-          setDispensations(dispData);
-          setProducts(prodData);
-        }
-      } catch (error) {
-        console.error("Error fetching pharmacy data", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
   }, [id]);
 
   const getProductDetails = (productId: string) => {
     return products.find(p => p.id === productId);
+  };
+
+  const getPendingReturnQty = (dispensationId: string) => {
+    let qty = 0;
+    pendingReturns.forEach(req => {
+      req.items.forEach((item: any) => {
+        if (item.dispensationId === dispensationId) {
+          qty += item.quantity;
+        }
+      });
+    });
+    return qty;
   };
 
   if (loading) {
@@ -48,10 +73,24 @@ export const Pharmacie: React.FC = () => {
         <h3 className="text-lg font-black uppercase text-slate-800 flex items-center">
           <Pill className="mr-3 text-rose-600" /> Consommation Pharmacie
         </h3>
-        <button className="bg-slate-900 text-white px-5 py-2 rounded-xl font-bold flex items-center shadow-lg hover:bg-slate-800 transition-colors">
+        <button
+          onClick={() => setShowExitModal(true)}
+          className="bg-slate-900 text-white px-5 py-2 rounded-xl font-bold flex items-center shadow-lg hover:bg-slate-800 transition-colors"
+        >
           <Plus size={18} className="mr-2" /> Sortie Pharmacie
         </button>
       </div>
+
+      {showExitModal && admission && (
+        <ServiceStockExitModal
+          isOpen={showExitModal}
+          onClose={() => setShowExitModal(false)}
+          admissionId={admission.id}
+          // TEMP DEMO: Force Service Médecine stock view as per user request
+          serviceName="Service Médecine"
+          onSuccess={fetchData}
+        />
+      )}
 
       {dispensations.length === 0 ? (
         <div className="text-center py-20 text-slate-300">
@@ -59,59 +98,173 @@ export const Pharmacie: React.FC = () => {
           <p className="font-bold">Aucune consommation médicamenteuse enregistrée pour cette admission.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-300">
-          {dispensations.map((disp) => {
-            const product = getProductDetails(disp.productId);
-            return (
-              <div key={disp.id} className="bg-white border border-slate-200 rounded-xl p-5 hover:border-indigo-300 hover:shadow-md transition-all group relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                  <Pill size={64} className="text-indigo-600" />
-                </div>
+        <div className="space-y-6 animate-in fade-in duration-300">
+          {(() => {
+            // GROUP BY PRODUCT
+            const groupedDispensations: Record<string, Dispensation[]> = {};
+            dispensations.forEach(d => {
+              if (d.status === 'RETURNED') return; // Skip fully returned
+              if (!groupedDispensations[d.productId]) {
+                groupedDispensations[d.productId] = [];
+              }
+              groupedDispensations[d.productId].push(d);
+            });
 
-                <div className="mb-4">
-                  <h4 className="font-black text-slate-800 text-lg leading-tight mb-1">{disp.productName || product?.name}</h4>
-                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center">
-                    <Tag size={12} className="mr-1" />
-                    {product?.molecules && product.molecules.length > 0 ? product.molecules.map(m => m.name).join(', ') : 'N/A'}
+            return Object.entries(groupedDispensations).map(([productId, items]) => {
+              const product = getProductDetails(productId);
+              if (!product) return null;
+
+              // Calculate Totals for Header
+              let totalRemainingUnits = 0;
+              let totalOriginalUnits = 0;
+
+              items.forEach(d => {
+                const unitsPerPack = product.unitsPerPack || 1;
+                const isBoxMode = (d.mode as any) === 'FULL_PACK' || (d.mode as any) === 'BOX' || (d.mode as any) === 'Boîte Complète';
+
+                const originalUnits = isBoxMode ? d.quantity * unitsPerPack : d.quantity;
+                const returnedUnits = d.returnedQuantity || 0;
+                const pendingQtyForDisp = getPendingReturnQty(d.id); // This is in boxes if mode is box, units if mode is unit
+                const pendingUnits = isBoxMode ? pendingQtyForDisp * unitsPerPack : pendingQtyForDisp;
+
+                const effectiveRemainingUnits = originalUnits - returnedUnits - pendingUnits;
+
+                totalRemainingUnits += Math.max(0, effectiveRemainingUnits);
+                totalOriginalUnits += originalUnits;
+              });
+
+              if (totalRemainingUnits <= 0) return null;
+
+              // Determine display string (Box + Units)
+              const unitsPerPack = product.unitsPerPack || 1;
+              const remainingBoxes = Math.floor(totalRemainingUnits / unitsPerPack);
+              const remainingLoose = totalRemainingUnits % unitsPerPack;
+
+              let qtyDisplay = '';
+              if (unitsPerPack > 1) {
+                if (remainingBoxes > 0) qtyDisplay += `${remainingBoxes} Bte(s) `;
+                if (remainingLoose > 0) qtyDisplay += `${remainingLoose} Uté(s)`;
+              } else {
+                qtyDisplay = `${totalRemainingUnits} Uté(s)`;
+              }
+
+              return (
+                <div key={productId} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                  {/* PRODUCT HEADER */}
+                  <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                    <div className="flex items-center space-x-4">
+                      <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm text-indigo-600">
+                        <Package size={24} />
+                      </div>
+                      <div>
+                        <h4 className="font-black text-slate-800 text-lg">{product.name}</h4>
+                        <div className="flex items-center space-x-2 text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
+                          <span>Reste: <span className="text-emerald-600">{qtyDisplay}</span></span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* DISPENSATIONS LIST */}
+                  <div className="divide-y divide-slate-100">
+                    {items.map(disp => {
+                      const pendingQtyForDisp = getPendingReturnQty(disp.id);
+                      const isBoxMode = (disp.mode as any) === 'FULL_PACK' || (disp.mode as any) === 'BOX' || (disp.mode as any) === 'Boîte Complète';
+                      const unitsPerPack = product.unitsPerPack || 1;
+
+                      const originalUnits = isBoxMode ? disp.quantity * unitsPerPack : disp.quantity;
+                      const returnedUnits = disp.returnedQuantity || 0;
+                      const pendingUnits = isBoxMode ? pendingQtyForDisp * unitsPerPack : pendingQtyForDisp;
+
+                      const remainingInfoUnits = originalUnits - returnedUnits - pendingUnits;
+
+                      // Display logic for this specific container
+                      const remainingInfoBoxes = Math.floor(remainingInfoUnits / unitsPerPack);
+                      const remainingInfoLoose = remainingInfoUnits % unitsPerPack;
+
+                      if (remainingInfoUnits <= 0) return null;
+
+                      return (
+                        <div key={disp.id} className="p-4 hover:bg-slate-50 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4">
+                          {/* Left: Batch & Origin */}
+                          <div className="flex items-center gap-4">
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-2 mb-1">
+                                {disp.prescriptionId === 'SERVICE_EXIT' ? (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wide bg-blue-100 text-blue-700">Stock Service</span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wide bg-purple-100 text-purple-700">Pharmacie</span>
+                                )}
+                                <span className="text-xs font-mono font-bold text-slate-500">Lot {disp.lotNumber}</span>
+                              </div>
+                              <div className="text-xs text-slate-400">
+                                Dispensé le {new Date(disp.dispensedAt).toLocaleDateString()} à {new Date(disp.dispensedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Right: Quantity & Actions */}
+                          <div className="flex items-center justify-between md:justify-end gap-6 w-full md:w-auto">
+                            <div className="text-right">
+                              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quantité</div>
+                              <div className="font-bold text-slate-700">
+                                {unitsPerPack > 1 ? (
+                                  <>
+                                    {remainingInfoBoxes > 0 && <span>{remainingInfoBoxes} Bte(s)</span>}
+                                    {remainingInfoBoxes > 0 && remainingInfoLoose > 0 && <span className="mx-1">+</span>}
+                                    {remainingInfoLoose > 0 && <span>{remainingInfoLoose} Uté(s)</span>}
+                                  </>
+                                ) : (
+                                  <span>{remainingInfoUnits} Uté(s)</span>
+                                )}
+                              </div>
+                              {returnedUnits > 0 && (
+                                <div className="text-[10px] text-emerald-600 font-bold mt-0.5">
+                                  Déjà retourné: {returnedUnits} utés
+                                </div>
+                              )}
+                              {pendingUnits > 0 && (
+                                <div className="text-[10px] text-amber-600 font-bold mt-0.5">
+                                  En attente: {pendingUnits} utés
+                                </div>
+                              )}
+                            </div>
+
+                            <button
+                              onClick={() => {
+                                setSelectedDispensation(disp);
+                                setReturnModalOpen(true);
+                              }}
+                              className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-indigo-600 rounded-lg transition-colors"
+                              title="Retourner ce produit"
+                            >
+                              <Undo2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-
-                <div className="space-y-3 mb-4">
-                  <div className="flex items-center text-sm text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100">
-                    <Hash size={16} className="text-slate-400 mr-2" />
-                    <span className="font-mono font-bold text-slate-700">{disp.lotNumber}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center text-sm text-slate-600">
-                      <Calendar size={16} className="text-slate-400 mr-2" />
-                      <span>{new Date(disp.dispensedAt).toLocaleDateString()}</span>
-                    </div>
-                    <div className="text-xs text-slate-400">
-                      {new Date(disp.dispensedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t border-slate-100 flex justify-between items-end">
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Quantité</span>
-                    <div className="flex items-center font-bold text-slate-800">
-                      <Package size={16} className="mr-1.5 text-indigo-500" />
-                      {disp.quantity} {(disp.mode as any) === 'FULL_PACK' || disp.mode === 'Boîte Complète' ? 'Bte(s)' : 'Unités'}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Prix Total</span>
-                    <div className="font-black text-lg text-emerald-600 flex items-center justify-end">
-                      {disp.totalPriceInclVAT.toFixed(2)} <span className="text-xs ml-1 font-bold text-emerald-700/50">MAD</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+              );
+            });
+          })()}
         </div>
+      )}
+
+      {returnModalOpen && admission && selectedDispensation && (
+        <ReturnCreationModal
+          isOpen={returnModalOpen}
+          onClose={() => setReturnModalOpen(false)}
+          admissionId={admission.id}
+          dispensation={selectedDispensation}
+          product={getProductDetails(selectedDispensation.productId)}
+          onSuccess={() => {
+            fetchData();
+            // Optional: Show success toast
+          }}
+          serviceName={admission.service}
+        />
       )}
     </div>
   );

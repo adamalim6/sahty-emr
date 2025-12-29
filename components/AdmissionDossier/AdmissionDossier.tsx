@@ -97,7 +97,7 @@ export const AdmissionDossier: React.FC = () => {
   const tabs = [
     { id: 'Dashboard', label: 'Dashboard', icon: LayoutDashboard, component: <Dashboard /> },
     { id: 'Actes', label: 'Actes', icon: ClipboardList, component: <Actes /> },
-    { id: 'Pharmacie', label: 'Pharmacie', icon: Pill, component: <Pharmacie /> },
+    { id: 'Pharmacie', label: 'Pharmacie', icon: Pill, component: <Pharmacie admission={admission} /> },
     { id: 'Factures', label: 'Factures', icon: FileText, component: <Factures /> },
     { id: 'Devis', label: 'Devis', icon: FileSignature, component: <Devis /> },
     { id: 'Reglement', label: 'Règlement', icon: Wallet, component: <Reglement /> },

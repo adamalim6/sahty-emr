@@ -34,14 +34,20 @@ export const DispensationForm: React.FC<DispensationFormProps> = ({ prescription
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Initial Load: Admissions
+    const [locations, setLocations] = useState<any[]>([]);
+
+    // Initial Load: Admissions & Locations
     useEffect(() => {
-        api.getAdmissions().then(admissions => {
+        Promise.all([
+            api.getAdmissions(),
+            api.getLocations()
+        ]).then(([admissions, locs]) => {
             const active = admissions.filter(
                 a => a.patientId === prescription.patientId && a.status === 'En cours'
             );
             setActiveAdmissions(active);
             if (active.length > 0) setSelectedAdmission(active[0].id);
+            setLocations(locs);
         }).catch(console.error);
     }, [prescription.patientId]);
 
@@ -63,12 +69,18 @@ export const DispensationForm: React.FC<DispensationFormProps> = ({ prescription
                     // Cast packs to the correct type since api.ts might return a lighter type
                     const fullPacks = packs as unknown as SerializedPack[];
 
-                    // Filter out non-available packs (Dispensed, Destroyed, Returned)
+                    // Filter out non-available packs AND Service Stock
                     // We allow EXPIRED to show up as per user request
+
+                    const pharmacyLocationIds = locations.map(l => l.id);
+                    const pharmacyLocationNames = locations.map(l => l.name);
+
                     const active = fullPacks.filter(p =>
                         p.status !== PackStatus.DISPENSED &&
                         p.status !== PackStatus.DESTROYED &&
-                        p.status !== PackStatus.RETURNED
+                        p.status !== PackStatus.RETURNED &&
+                        // RESTRICTION: Only show packs in Pharmacy Locations
+                        (pharmacyLocationIds.includes(p.locationId) || pharmacyLocationNames.includes(p.locationId))
                     );
                     // Sort by FEFO default
                     const sorted = active.sort((a, b) => {
@@ -138,7 +150,13 @@ export const DispensationForm: React.FC<DispensationFormProps> = ({ prescription
             // Reload stock
             api.getSerializedPacksByProduct(selectedProduct.id).then(packs => {
                 const fullPacks = packs as unknown as SerializedPack[];
-                const active = fullPacks.filter(p => [PackStatus.SEALED, PackStatus.OPENED].includes(p.status));
+                const pharmacyLocationIds = locations.map(l => l.id);
+                const pharmacyLocationNames = locations.map(l => l.name);
+
+                const active = fullPacks.filter(p =>
+                    [PackStatus.SEALED, PackStatus.OPENED].includes(p.status) &&
+                    (pharmacyLocationIds.includes(p.locationId) || pharmacyLocationNames.includes(p.locationId))
+                );
                 // re-sort
                 active.sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime());
                 setAvailablePacks(active);
