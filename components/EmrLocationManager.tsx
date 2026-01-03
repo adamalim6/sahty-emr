@@ -8,14 +8,21 @@ export const EmrLocationManager: React.FC = () => {
     // Real API Data
     const [locations, setLocations] = useState<StockLocation[]>([]);
     const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState<string | null>(null);
 
     const fetchLocations = async () => {
         try {
             setLoading(true);
+            setFetchError(null);
             const data = await api.getEmrLocations();
             setLocations(data);
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
+            if (err.message?.includes('403') || err.message?.toLowerCase().includes('forbidden')) {
+                setFetchError("Accès refusé : Vous n'avez pas les permissions pour gérer les emplacements.");
+            } else {
+                setFetchError("Impossible de charger les emplacements.");
+            }
         } finally {
             setLoading(false);
         }
@@ -107,6 +114,13 @@ export const EmrLocationManager: React.FC = () => {
                     <span>Nouvel Emplacement</span>
                 </button>
             </div>
+
+            {fetchError && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 flex items-center mb-4">
+                    <AlertCircle className="w-5 h-5 mr-2" />
+                    {fetchError}
+                </div>
+            )}
 
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <table className="w-full text-left text-sm">

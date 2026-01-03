@@ -14,6 +14,7 @@ import { ProductVersion } from '../models/product-version';
 
 const DATA_DIR = path.join(__dirname, '../data');
 const DB_FILE = path.join(DATA_DIR, 'pharmacy_db.json');
+const GLOBAL_SUPPLIERS_FILE = path.join(DATA_DIR, 'global_suppliers.json');
 
 // Ensure data dir exists
 if (!fs.existsSync(DATA_DIR)) {
@@ -46,7 +47,9 @@ export class PharmacyService {
     private deliveryNotes: DeliveryNote[] = [];
     private serializedPacks: SerializedPack[] = [];
     private dispensations: Dispensation[] = [];
-    private suppliers: PharmacySupplier[] = [];
+    private suppliers: PharmacySupplier[] = [];     // Tenant-local suppliers
+    private globalSuppliers: PharmacySupplier[] = []; // Global suppliers (read-only)
+    private replenishmentRequests: ReplenishmentRequest[] = [];
     private static instance: PharmacyService;
 
 
@@ -141,51 +144,93 @@ export class PharmacyService {
                 const raw = fs.readFileSync(DB_FILE, 'utf-8');
                 const data = JSON.parse(raw);
                 this.inventory = data.inventory || [];
-                this.catalog = data.catalog || [];
+                this.catalog = (data.catalog || []).map((p: any) => ({
+                    ...p,
+                    createdAt: new Date(p.createdAt),
+                    updatedAt: new Date(p.updatedAt)
+                }));
                 this.locations = data.locations || [];
                 this.partners = data.partners || [];
-                this.stockOutHistory = data.stockOutHistory || [];
-                this.purchaseOrders = data.purchaseOrders || [];
-                this.deliveryNotes = data.deliveryNotes || [];
-                this.serializedPacks = data.serializedPacks || [];
-                // Load Product Versions
-                this.productVersions = (data.productVersions || []).map((v: any) => ({
-                    ...v,
-                    validFrom: new Date(v.validFrom),
-                    validTo: v.validTo ? new Date(v.validTo) : undefined,
-                    createdAt: new Date(v.createdAt)
+                this.stockOutHistory = (data.stockOutHistory || []).map((h: any) => ({
+                    ...h,
+                    date: new Date(h.date)
                 }));
-                // Load Replenishment Requests with Date conversion
+                this.purchaseOrders = (data.purchaseOrders || []).map((p: any) => ({
+                    ...p,
+                    date: new Date(p.date)
+                }));
+                this.deliveryNotes = (data.deliveryNotes || []).map((n: any) => ({
+                    ...n,
+                    date: new Date(n.date)
+                }));
+                this.serializedPacks = (data.serializedPacks || []).map((p: any) => ({
+                    ...p,
+                    createdAt: new Date(p.createdAt)
+                }));
+                this.dispensations = (data.dispensations || []).map((d: any) => ({
+                    ...d,
+                    dispensedAt: new Date(d.dispensedAt)
+                }));
                 this.replenishmentRequests = (data.replenishmentRequests || []).map((r: any) => ({
                     ...r,
                     createdAt: new Date(r.createdAt),
                     updatedAt: new Date(r.updatedAt)
                 }));
-
-                this.dispensations = (data.dispensations || []).map((d: any) => ({
-                    ...d,
-                    dispensedAt: new Date(d.dispensedAt)
+                this.productVersions = (data.productVersions || []).map((v: any) => ({
+                    ...v,
+                    createdAt: new Date(v.createdAt)
                 }));
-
                 this.suppliers = (data.suppliers || []).map((s: any) => ({
                     ...s,
                     createdAt: new Date(s.createdAt),
                     updatedAt: new Date(s.updatedAt)
                 }));
+                console.log(`[PharmacyService] Loaded ${this.catalog.length} products from DB.`);
+                console.log(`[PharmacyService] Loaded ${this.suppliers.length} suppliers from DB.`);
+            } else {
+                console.log("[PharmacyService] No DB file found. Starting empty.");
+            }
+
+            // Load Global Suppliers
+            if (fs.existsSync(GLOBAL_SUPPLIERS_FILE)) {
+                const raw = fs.readFileSync(GLOBAL_SUPPLIERS_FILE, 'utf-8');
+                const globalData = JSON.parse(raw);
+                this.globalSuppliers = globalData.map((s: any) => ({
+                    id: s.id,
+                    name: s.name,
+                    contactPerson: 'Fournisseur Global',
+                    isActive: s.is_active,
+                    createdAt: new Date(s.created_at || new Date()),
+                    updatedAt: new Date(s.updated_at || new Date()),
+                    source: 'GLOBAL'
+                }));
+                 console.log(`[PharmacyService] Loaded ${this.globalSuppliers.length} global suppliers.`);
             }
         } catch (error) {
-            console.error("Error loading pharmacy data:", error);
+            console.error("[PharmacyService] Error loading pharmacy data:", error);
         }
     }
 
     // Getters and Setters
-    getInventory(): InventoryItem[] {
-        return this.inventory;
+    getInventory(tenantId?: string, serviceId?: string): InventoryItem[] {
+        let items = this.inventory;
+        if (tenantId) {
+             items = items.filter(item => !item.tenantId || item.tenantId === tenantId);
+        }
+        if (serviceId) {
+             items = items.filter(item => item.serviceId === serviceId);
+        }
+        return items;
     }
 
-    getCatalog(): ProductDefinition[] {
+    getCatalog(tenantId?: string): ProductDefinition[] {
         // Calculate live stock from serialized packs
-        return this.catalog.map(product => {
+        let products = this.catalog;
+        if (tenantId) {
+            products = products.filter(p => !p.tenantId || p.tenantId === tenantId);
+        }
+
+        return products.map(product => {
             const activePacks = this.serializedPacks.filter(p =>
                 p.productId === product.id &&
                 (p.status === PackStatus.SEALED || p.status === PackStatus.OPENED)
@@ -219,6 +264,10 @@ export class PharmacyService {
     }
 
     addProduct(product: ProductDefinition) {
+        // Assign tenant scoping if passed (via controller)
+        if (!product.id) {
+            product.id = `PROD-${new Date().getFullYear()}-${Math.floor(Math.random() * 100000)}`;
+        }
         this.catalog.push(product);
         this.saveData();
         return product;
@@ -227,6 +276,12 @@ export class PharmacyService {
     updateProduct(product: ProductDefinition): ProductDefinition {
         const index = this.catalog.findIndex(p => p.id === product.id);
         if (index !== -1) {
+            // Strict Tenant Check if tenantId is provided in update request (optional safety)
+            const existing = this.catalog[index];
+            if (product.tenantId && existing.tenantId && product.tenantId !== existing.tenantId) {
+                throw new Error("Accès refusé : Ce produit appartient à un autre tenant.");
+            }
+            
             this.catalog[index] = { ...product, updatedAt: new Date() };
             this.saveData();
             return this.catalog[index];
@@ -234,10 +289,63 @@ export class PharmacyService {
         throw new Error(`Product with ID ${product.id} not found.`);
     }
 
+    getLocations(tenantId?: string, serviceId?: string, scope?: 'PHARMACY' | 'SERVICE'): StockLocation[] {
+         let locs = this.locations;
+         
+         // 1. Filter by Tenant
+         if (tenantId) {
+             locs = locs.filter(l => !l.tenantId || l.tenantId === tenantId);
+         }
+
+         // 2. Strict Scope Filtering
+         if (scope === 'PHARMACY') {
+             // Pharmacy emplacements MUST NOT have a serviceId (or if they do, ignore them? No, rule is strict separate)
+             // We return only those marked as PHARMACY or (legacy) those without serviceId.
+             // Given migration script ran, we rely on 'scope' field mostly, butfallback to no serviceId.
+             locs = locs.filter(l => l.scope === 'PHARMACY' || (!l.scope && !l.serviceId));
+         } else if (scope === 'SERVICE') {
+             // Service emplacements MUST have a serviceId matching the request
+             // if (!serviceId) {
+             //    // Return [] if no serviceId provided for SERVICE scope to avoid leaking
+             //    return [];
+             // }
+             if (serviceId) {
+                locs = locs.filter(l => (l.scope === 'SERVICE' || !l.scope) && l.serviceId === serviceId);
+             } else {
+                // Return ALL service locations
+                locs = locs.filter(l => l.scope === 'SERVICE' || (l.serviceId && !l.scope));
+             }
+         } else {
+             // If no scope provided (legacy calls?), we might want to be careful.
+             // If serviceId is provided, imply SERVICE scope.
+             if (serviceId) {
+                 locs = locs.filter(l => l.serviceId === serviceId);
+             } else {
+                 // Return PHARMACY locations by default if no serviceId? 
+                 // Or return everything? Let's return PHARMACY only to be safe for "Pharmacy Module" old calls
+                 locs = locs.filter(l => !l.serviceId || l.scope === 'PHARMACY');
+             }
+         }
+         
+         return locs;
+    }
+
     addLocation(location: StockLocation) {
         if (!location.id) {
             location.id = `LOC-${Date.now()}`;
         }
+        
+        // Strict Validation
+        if (location.scope === 'PHARMACY') {
+            if (location.serviceId) throw new Error("Pharmacy locations cannot belong to a service.");
+        } else if (location.scope === 'SERVICE') {
+            if (!location.serviceId) throw new Error("Service locations must belong to a service.");
+        } else {
+            // Infer scope if missing
+            if (location.serviceId) location.scope = 'SERVICE';
+            else location.scope = 'PHARMACY';
+        }
+
         this.locations.push(location);
         this.saveData();
         return location;
@@ -246,7 +354,25 @@ export class PharmacyService {
     updateLocation(location: StockLocation): StockLocation {
         const index = this.locations.findIndex(l => l.id === location.id);
         if (index !== -1) {
-            this.locations[index] = { ...location };
+            const existing = this.locations[index];
+            
+            // Scope immutability check? better safe than sorry
+            if (existing.scope && location.scope && existing.scope !== location.scope) {
+                 throw new Error("Cannot change location scope.");
+            }
+
+            // Merge
+            const updated = { ...existing, ...location };
+            
+            // Re-validate
+             if (updated.scope === 'PHARMACY' && updated.serviceId) {
+                 throw new Error("Pharmacy locations cannot have serviceId.");
+             }
+             if (updated.scope === 'SERVICE' && !updated.serviceId) {
+                 throw new Error("Service locations must have serviceId.");
+             }
+
+            this.locations[index] = updated;
             this.saveData();
             return this.locations[index];
         }
@@ -262,13 +388,23 @@ export class PharmacyService {
         this.saveData();
     }
 
-    getLocations(): StockLocation[] {
-        return this.locations;
-    }
+
 
     // Supplier Management
-    getSuppliers(): PharmacySupplier[] {
-        return this.suppliers;
+    getSuppliers(tenantId?: string): PharmacySupplier[] {
+        // Merge Tenant and Global suppliers at response level
+        // READ-ONLY separation is enforced by 'source' property
+        let tenantSuppliers = this.suppliers.map(s => ({ ...s, source: 'TENANT' as const }));
+
+        // Filter by Tenant ID if permitted (strict isolation)
+        if (tenantId) {
+            tenantSuppliers = tenantSuppliers.filter(s => s.tenantId === tenantId);
+        }
+        
+        // Ensure globals are marked properly (already done in loadData but double check safety)
+        const globalSuppliersSafe = this.globalSuppliers.map(s => ({ ...s, source: 'GLOBAL' as const }));
+        
+        return [...tenantSuppliers, ...globalSuppliersSafe];
     }
 
     addSupplier(supplier: PharmacySupplier) {
@@ -277,46 +413,119 @@ export class PharmacyService {
         }
         supplier.createdAt = new Date();
         supplier.updatedAt = new Date();
+        supplier.source = 'TENANT'; // Force Tenant Source for all new creations
+        
         this.suppliers.push(supplier);
         this.saveData();
         return supplier;
     }
 
     updateSupplier(supplier: PharmacySupplier): PharmacySupplier {
+        // 1. Check if it is a Global Supplier -> BLOCK
+        const isGlobal = this.globalSuppliers.some(s => s.id === supplier.id);
+        if (isGlobal || supplier.source === 'GLOBAL') {
+            throw new Error("Action interdite : Impossible de modifier un fournisseur global (Read-Only).");
+        }
+
+        // 2. Find and Update Tenant Supplier
         const index = this.suppliers.findIndex(s => s.id === supplier.id);
         if (index !== -1) {
-            this.suppliers[index] = { ...supplier, updatedAt: new Date() };
+            this.suppliers[index] = { 
+                ...supplier, 
+                updatedAt: new Date(), 
+                source: 'TENANT' // Ensure it remains Tenant
+            };
             this.saveData();
             return this.suppliers[index];
         }
-        throw new Error(`Supplier with ID ${supplier.id} not found.`);
+        
+        throw new Error(`Fournisseur introuvable (ID: ${supplier.id}).`);
     }
 
     deleteSupplier(id: string): void {
+        // 1. Check if it is a Global Supplier -> BLOCK
+        const isGlobal = this.globalSuppliers.some(s => s.id === id);
+        if (isGlobal) {
+            throw new Error("Action interdite : Impossible de supprimer un fournisseur global (Read-Only).");
+        }
+
         const initialLength = this.suppliers.length;
         this.suppliers = this.suppliers.filter(s => s.id !== id);
+        
         if (this.suppliers.length === initialLength) {
-            throw new Error(`Supplier with ID ${id} not found.`);
+            throw new Error(`Fournisseur introuvable (ID: ${id}).`);
         }
         this.saveData();
     }
 
-    getPartners(): PartnerInstitution[] {
-        return this.partners;
+    getPartners(tenantId?: string): PartnerInstitution[] {
+        let items = this.partners;
+        if (tenantId) {
+            items = items.filter(p => !p.tenantId || p.tenantId === tenantId);
+        }
+        return items;
+    }
+
+    addPartner(partner: PartnerInstitution) {
+        if (!partner.id) {
+            partner.id = `PART-${Date.now()}`;
+        }
+        this.partners.push(partner);
+        this.saveData();
+        return partner;
+    }
+
+    updatePartner(partner: PartnerInstitution): PartnerInstitution {
+        const index = this.partners.findIndex(p => p.id === partner.id);
+        if (index !== -1) {
+             // Strict Tenant Check
+            const existing = this.partners[index];
+            if (partner.tenantId && existing.tenantId && partner.tenantId !== existing.tenantId) {
+                throw new Error("Accès refusé : Ce partenaire appartient à un autre tenant.");
+            }
+            this.partners[index] = { ...existing, ...partner };
+            this.saveData();
+            return this.partners[index];
+        }
+        throw new Error(`Partner with ID ${partner.id} not found.`);
+    }
+
+    deletePartner(id: string, tenantId?: string): void {
+        const index = this.partners.findIndex(p => p.id === id);
+        if (index !== -1) {
+            const partner = this.partners[index];
+            if (tenantId && partner.tenantId && partner.tenantId !== tenantId) {
+                throw new Error("Accès refusé : Impossible de supprimer ce partenaire (Tenant Mismatch).");
+            }
+            this.partners.splice(index, 1);
+            this.saveData();
+            return;
+        }
+        throw new Error(`Partner with ID ${id} not found.`);
     }
 
     // PO & Delivery Management
     createPurchaseOrder(po: PurchaseOrder) {
+        if (!po.id) {
+             po.id = `PO-${Date.now()}`;
+        }
         this.purchaseOrders.push(po);
         this.saveData();
         return po;
     }
 
-    getPurchaseOrders() {
-        return this.purchaseOrders;
+    getPurchaseOrders(tenantId?: string) {
+        let pos = this.purchaseOrders;
+        if (tenantId) {
+            pos = pos.filter(p => !p.tenantId || p.tenantId === tenantId);
+        }
+        return pos;
     }
 
     createDeliveryNote(note: DeliveryNote) {
+        if (!note.id) {
+            note.id = `DN-${Date.now()}`;
+        }
         this.deliveryNotes.push(note);
 
         // Update linked PO
@@ -341,8 +550,19 @@ export class PharmacyService {
         return note;
     }
 
-    getDeliveryNotes() {
-        return this.deliveryNotes;
+    getDeliveryNotes(tenantId?: string) {
+        console.log(`[Service] getDeliveryNotes for tenant: ${tenantId}`);
+        let notes = this.deliveryNotes;
+        if (tenantId) {
+            notes = notes.filter(n => {
+                const match = !n.tenantId || n.tenantId === tenantId;
+                if (!match) console.log(`[Service] Hiding Note ${n.id} (Tenant: ${n.tenantId}) from ${tenantId}`);
+                return match;
+            });
+        } else {
+             console.log(`[Service] No tenantId provided, returning all notes.`);
+        }
+        return notes;
     }
 
     getStockOutHistory(): StockOutTransaction[] {
@@ -387,6 +607,12 @@ export class PharmacyService {
                     deliveryNoteId: result.noteId
                 });
 
+                // Assign Tenant ID explicitly
+                const note = this.deliveryNotes.find(n => n.id === result.noteId);
+                const tenantId = note?.tenantId;
+
+                newPacks.forEach(p => p.tenantId = tenantId);
+
                 // Add new packs to main storage
                 this.serializedPacks.push(...newPacks);
 
@@ -398,7 +624,8 @@ export class PharmacyService {
                 const existingItem = this.inventory.find(i =>
                     i.productId === procItem.productId &&
                     i.batchNumber === batch.batchNumber &&
-                    i.location === batch.locationId
+                    i.location === batch.locationId &&
+                    (!i.tenantId || i.tenantId === tenantId)
                 );
 
                 if (existingItem) {
@@ -416,7 +643,8 @@ export class PharmacyService {
                         unitPrice: (product.suppliers[0]?.purchasePrice || 0) / (product.unitsPerPack || 1),
                         theoreticalQty: totalUnits,
                         actualQty: null,
-                        lastUpdated: new Date()
+                        lastUpdated: new Date(),
+                        tenantId: tenantId // Persist Tenant
                     });
                 }
             });
@@ -962,15 +1190,21 @@ export class PharmacyService {
     }
 
     // Serialized Pack Getters
+    // Serialized Pack Getters
     getSerializedPacks(filters?: {
         productId?: string;
         status?: PackStatus;
         locationId?: string;
         expiringBefore?: Date;
+        tenantId?: string;
     }): SerializedPack[] {
         let result = [...this.serializedPacks];
 
         if (filters) {
+            // Tenant Isolation
+            if (filters.tenantId) {
+                result = result.filter(p => !p.tenantId || p.tenantId === filters.tenantId);
+            }
             if (filters.productId) {
                 result = result.filter(p => p.productId === filters.productId);
             }
@@ -995,10 +1229,13 @@ export class PharmacyService {
     }
 
     // Replenishment & Service Stock Logic
-    private replenishmentRequests: ReplenishmentRequest[] = [];
 
-    getReplenishmentRequests(): ReplenishmentRequest[] {
-        return this.replenishmentRequests;
+    getReplenishmentRequests(tenantId?: string): ReplenishmentRequest[] {
+        let items = this.replenishmentRequests;
+        if (tenantId) {
+            items = items.filter(r => !r.tenantId || r.tenantId === tenantId);
+        }
+        return items;
     }
 
     createReplenishmentRequest(request: Partial<ReplenishmentRequest>): ReplenishmentRequest {
@@ -1011,6 +1248,7 @@ export class PharmacyService {
             items: request.items || [],
             createdAt: new Date(),
             updatedAt: new Date(),
+            tenantId: request.tenantId, // Store Tenant ID
             ...request
         } as ReplenishmentRequest;
 
@@ -1245,8 +1483,8 @@ export class PharmacyService {
     private incrementServiceStock(serviceId: string, productId: string, batchNumber: string, quantity: number, expiryDate: string, locationId: string) {
         const product = this.getProductById(productId);
         const name = product?.name || 'Unknown Product';
-        const category = product?.type === ProductType.DRUG ? ItemCategory.ANTIBIOTICS : ItemCategory.CONSUMABLES; // Simplified
-        const unitPrice = (product?.suppliers[0]?.purchasePrice || 0) / (product?.unitsPerPack || 1);
+        const category = product?.type === ProductType.DRUG ? ItemCategory.ANTIBIOTICS : ItemCategory.CONSUMABLES; 
+        const unitPrice = (product?.suppliers?.[0]?.purchasePrice || 0) / (product?.unitsPerPack || 1);
 
         // Resolve Location Name if ID is provided
         const locationObj = this.locations.find(l => l.id === locationId);
@@ -1256,7 +1494,7 @@ export class PharmacyService {
             i.serviceId === serviceId &&
             i.productId === productId &&
             i.batchNumber === batchNumber &&
-            i.location === locationName // Match by Name
+            i.location === locationName 
         );
 
         if (existing) {
@@ -1269,14 +1507,14 @@ export class PharmacyService {
                 productId,
                 name,
                 category,
-                location: locationId,
+                location: locationName, 
                 batchNumber,
                 expiryDate,
                 unitPrice,
                 theoreticalQty: quantity,
                 actualQty: null,
                 lastUpdated: new Date()
-            });
+            } as InventoryItem);
         }
     }
 
@@ -1309,7 +1547,7 @@ export class PharmacyService {
                     createdBy: 'SYSTEM_MIGRATION'
                 };
                 this.productVersions.push(newVersion);
-                this.saveData(); // This persists the new version
+                this.saveData(); 
                 return newVersion;
             }
         }
@@ -1335,7 +1573,7 @@ export class PharmacyService {
             productId: product.id,
             versionNumber: newVersionNumber,
             isSubdivisable: isSubdivisable, // New status
-            unitsPerPack: product.unitsPerPack, // Carry over (unless we allow changing this too?)
+            unitsPerPack: product.unitsPerPack, // Carry over 
             validFrom: new Date(),
             createdAt: new Date(),
             createdBy: userId
@@ -1346,8 +1584,8 @@ export class PharmacyService {
         product.isSubdivisable = isSubdivisable;
         product.updatedAt = new Date();
 
-        this.updateProduct(product); // Saves catalog logic if separated, but here catalog is in-memory
-        this.saveData(); // Saves everything
+        this.updateProduct(product); 
+        this.saveData(); 
 
         return product;
     }

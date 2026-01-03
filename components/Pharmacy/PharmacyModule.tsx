@@ -33,13 +33,24 @@ import { SupplierManager } from './SupplierManager';
 import { analyzeInventoryDiscrepancies } from '../../services/pharmacyGemini';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 import { ReturnsReception } from './ReturnsReception';
 
 export const PharmacyModule: React.FC = () => {
   const { logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const getCurrentView = () => {
+    const path = location.pathname.split('/').pop() || 'dashboard';
+    // Mapping common routes to views
+    if (path === 'pharmacy') return 'dashboard';
+    return path as any; 
+  };
+
+  const view = getCurrentView();
+
   const [systemItems, setSystemItems] = useState<InventoryItem[]>([]);
   const [productCatalog, setProductCatalog] = useState<ProductDefinition[]>([]);
   const [locations, setLocations] = useState<StockLocation[]>([]);
@@ -53,8 +64,7 @@ export const PharmacyModule: React.FC = () => {
   const [allPacks, setAllPacks] = useState<SerializedPack[]>([]);
 
   const [loading, setLoading] = useState(true);
-  // Ajout de 'prescriptions' et 'requests' au type de la vue
-  const [view, setView] = useState<'dashboard' | 'inventory' | 'stock' | 'catalog' | 'entry' | 'quarantine' | 'locations' | 'partners' | 'stockout' | 'prescriptions' | 'suppliers' | 'requests' | 'processing_request' | 'returns'>('dashboard');
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
 
@@ -107,14 +117,30 @@ export const PharmacyModule: React.FC = () => {
         api.getSerializedPacks().then(setAllPacks).catch(console.error);
       }
     }
+    if (view === 'suppliers' || view === 'catalog' || view === 'entry') {
+         console.log(`View switched to ${view}. Fetching fresh list of suppliers...`);
+         api.getSuppliers().then(sups => {
+             console.log(`Fetched ${sups.length} suppliers (Frontend).`);
+             setSuppliers(sups);
+         }).catch(console.error);
+         
+         if (view === 'catalog') {
+            console.log("View is catalog. Fetching products...");
+            api.getCatalog().then(cat => {
+                console.log(`[PharmacyModule] Fetched ${cat.length} products dynamically.`);
+                setProductCatalog(cat);
+            }).catch(e => console.error("Error fetching catalog in effect:", e));
+         }
+    }
   }, [view]);
 
   const handleAddProduct = async (product: ProductDefinition) => {
     try {
       const newProduct = await api.createProduct(product);
       setProductCatalog([...productCatalog, newProduct]);
-    } catch (e) {
-      alert("Erreur lors de la création du produit");
+    } catch (e: any) {
+      console.error("Creation Error Details:", e);
+      alert(`Erreur lors de la création du produit: ${e.message || 'Erreur inconnue'}`);
     }
   };
 
@@ -127,7 +153,33 @@ export const PharmacyModule: React.FC = () => {
     }
   };
   const handleUpdateLocations = (newLocations: StockLocation[]) => setLocations(newLocations);
-  const handleUpdatePartners = (newPartners: PartnerInstitution[]) => setPartners(newPartners);
+  
+  const handleAddPartner = async (partner: PartnerInstitution) => {
+    try {
+        const newPartner = await api.createPartner(partner);
+        setPartners([...partners, newPartner]);
+    } catch (e) {
+        alert("Erreur lors de l'ajout du partenaire");
+    }
+  };
+
+  const handleUpdatePartner = async (partner: PartnerInstitution) => {
+    try {
+        const updated = await api.updatePartner(partner);
+        setPartners(partners.map(p => p.id === updated.id ? updated : p));
+    } catch (e) {
+        alert("Erreur lors de la mise à jour du partenaire");
+    }
+  };
+
+  const handleDeletePartner = async (id: string) => {
+    try {
+        await api.deletePartner(id);
+        setPartners(partners.filter(p => p.id !== id));
+    } catch (e) {
+        alert("Erreur lors de la suppression du partenaire");
+    }
+  };
   const handleUpdateSuppliers = async () => {
     const sups = await api.getSuppliers();
     setSuppliers(sups);
@@ -292,45 +344,45 @@ export const PharmacyModule: React.FC = () => {
         </div>
 
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          <button onClick={() => { setView('dashboard'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'dashboard' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+          <button onClick={() => { navigate('/pharmacy/dashboard'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'dashboard' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             <LayoutDashboard size={20} /><span className="font-medium text-sm">Tableau de Bord</span>
           </button>
-          {/* Nouveau bouton Prescriptions */}
-          <button onClick={() => { setView('prescriptions'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'prescriptions' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+          
+          <button onClick={() => { navigate('/pharmacy/prescriptions'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'prescriptions' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             <FileSignature size={20} /><span className="font-medium text-sm">Prescriptions</span>
           </button>
-          <button onClick={() => { setView('catalog'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'catalog' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+          <button onClick={() => { navigate('/pharmacy/catalog'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'catalog' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             <BookOpen size={20} /><span className="font-medium text-sm">Catalogue Produits</span>
           </button>
-          <button onClick={() => { setView('entry'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'entry' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+          <button onClick={() => { navigate('/pharmacy/entry'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'entry' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             <Truck size={20} /><span className="font-medium text-sm">Entrées de Stock</span>
           </button>
-          <button onClick={() => { setView('quarantine'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'quarantine' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+          <button onClick={() => { navigate('/pharmacy/quarantine'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'quarantine' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             <ShieldAlert size={20} /><span className="font-medium text-sm">Quarantaine / Contrôle</span>
           </button>
-          <button onClick={() => { setView('suppliers'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'suppliers' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+          <button onClick={() => { navigate('/pharmacy/suppliers'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'suppliers' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             <Truck size={20} /><span className="font-medium text-sm">Fournisseurs</span>
           </button>
-          <button onClick={() => { setView('stockout'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'stockout' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+          <button onClick={() => { navigate('/pharmacy/stockout'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'stockout' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             <LogOut size={20} /><span className="font-medium text-sm">Sorties / Destructions</span>
           </button>
-          <button onClick={() => { setView('returns'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'returns' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+          <button onClick={() => { navigate('/pharmacy/returns'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'returns' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             <RotateCcw size={20} /><span className="font-medium text-sm">Réception Retours</span>
           </button>
-          <button onClick={() => { setView('partners'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'partners' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+          <button onClick={() => { navigate('/pharmacy/partners'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'partners' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             <Building2 size={20} /><span className="font-medium text-sm">Partenaires / Cliniques</span>
           </button>
-          <button onClick={() => { setView('locations'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'locations' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+          <button onClick={() => { navigate('/pharmacy/locations'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'locations' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             <MapPin size={20} /><span className="font-medium text-sm">Emplacements</span>
           </button>
           <div className="border-t border-slate-800 my-2"></div>
-          <button onClick={() => setView('inventory')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'inventory' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+          <button onClick={() => navigate('/pharmacy/inventory')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'inventory' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             <ClipboardList size={20} /><span className="font-medium text-sm">Audit d'Inventaire</span>
           </button>
-          <button onClick={() => { setView('stock'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'stock' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+          <button onClick={() => { navigate('/pharmacy/stock'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'stock' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             <Database size={20} /><span className="font-medium text-sm">Stock Pharma</span>
           </button>
-          <button onClick={() => { setView('requests'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'requests' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+          <button onClick={() => { navigate('/pharmacy/requests'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'requests' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             <ArrowRight size={20} /><span className="font-medium text-sm">Demandes & Transferts</span>
           </button>
 
@@ -359,7 +411,7 @@ export const PharmacyModule: React.FC = () => {
                           view === 'suppliers' ? 'Gestion des Fournisseurs' :
                             view === 'partners' ? 'Institutions Partenaires' :
                               view === 'stockout' ? 'Gestion des Sorties' :
-                                view === 'stockout' ? 'Gestion des Sorties' :
+
                                   view === 'inventory' ? (currentSession ? `Session : ${currentSession.id}` : 'Sessions d\'Inventaire') : 'État des Stocks Pharma'}
               </h2>
             </div>
@@ -416,7 +468,7 @@ export const PharmacyModule: React.FC = () => {
         ) : view === 'entry' ? (
           <StockEntry purchaseOrders={purchaseOrders} products={productCatalog} deliveryNotes={deliveryNotes} suppliers={suppliers} onCreatePO={handleCreatePO} onReceiveDelivery={handleReceiveDelivery} />
         ) : view === 'quarantine' ? (
-          <QuarantineManager deliveryNotes={deliveryNotes} products={productCatalog} locations={locations} onProcessNote={handleQuarantineProcess} />
+          <QuarantineManager deliveryNotes={deliveryNotes} products={productCatalog} locations={locations} onProcessNote={handleQuarantineProcess} purchaseOrders={purchaseOrders} />
         ) : view === 'stockout' ? (
           <StockOutManager systemItems={systemItems} partners={partners} deliveryNotes={deliveryNotes} products={productCatalog} onConfirmStockOut={handleConfirmStockOut} stockOutHistory={stockOutHistory} />
         ) : view === 'returns' ? (
@@ -424,13 +476,13 @@ export const PharmacyModule: React.FC = () => {
         ) : view === 'suppliers' ? (
           <SupplierManager suppliers={suppliers} onUpdateSuppliers={handleUpdateSuppliers} />
         ) : view === 'partners' ? (
-          <PartnerManager partners={partners} onUpdatePartners={handleUpdatePartners} />
+          <PartnerManager partners={partners} onAdd={handleAddPartner} onUpdate={handleUpdatePartner} onDelete={handleDeletePartner} />
         ) : view === 'locations' ? (
-          <LocationManager locations={locations} inventoryItems={systemItems} onUpdateLocations={handleUpdateLocations} />
+          <LocationManager locations={locations} inventoryItems={systemItems} onUpdateLocations={handleUpdateLocations} scope="PHARMACY" />
         ) : view === 'requests' ? (
-          <RequestsAndTransfers onViewDetails={(req) => { setSelectedRequestId(req.id); setView('processing_request'); }} />
+          <RequestsAndTransfers onViewDetails={(req) => { setSelectedRequestId(req.id); navigate('/pharmacy/processing_request'); }} />
         ) : view === 'processing_request' ? (
-          <ReplenishmentProcessing requestIdStr={selectedRequestId || undefined} onBack={() => setView('requests')} />
+          <ReplenishmentProcessing requestIdStr={selectedRequestId || undefined} onBack={() => navigate('/pharmacy/requests')} />
         ) : view === 'inventory' ? (
           <>
             {!currentSession ? (

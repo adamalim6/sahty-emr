@@ -6,23 +6,49 @@ import { AdmissionList } from './components/AdmissionList';
 import { CalendarView } from './components/CalendarView';
 import { WaitingRoom } from './components/WaitingRoom';
 import { WardMap } from './components/WardMap';
-import { EmrLocationManager } from './components/EmrLocationManager';
-import { ReplenishmentPage } from './components/Replenishment/ReplenishmentPage';
-import { ServiceStock } from './components/ServiceStock';
 import { Settings } from './components/Settings';
 import { PatientDossier } from './components/PatientDossier/PatientDossier';
 import { AdmissionDossier } from './components/AdmissionDossier/AdmissionDossier';
 import { PharmacyModule } from './components/Pharmacy/PharmacyModule';
-import { AuthProvider, useAuth, UserRole } from './context/AuthContext';
+import { AuthProvider, useAuth, UserType } from './context/AuthContext';
 import { Login } from './components/Login';
+import { SuperAdminLayout } from './components/SuperAdmin/SuperAdminLayout';
+import { ActesPage } from './components/SuperAdmin/ActesPage';
+import { ClientsPage } from './components/SuperAdmin/ClientsPage';
+import { ClientDetailPage } from './components/SuperAdmin/ClientDetailPage';
+import { OrganismesPage } from './components/SuperAdmin/OrganismesPage';
+import { SettingsLayout } from './components/Settings/SettingsLayout';
+import { UsersPage } from './components/Settings/UsersPage';
+import { ServicesPage } from './components/Settings/ServicesPage';
+import { ServiceDetailPage } from './components/Settings/ServiceDetailPage';
+import { RoomsPage } from './components/Settings/RoomsPage';
+import { PricingPage } from './components/Settings/PricingPage';
+import { RolesPage } from './components/Settings/RolesPage'; 
+import { ReadOnlyRoleDetailPage } from './components/Settings/ReadOnlyRoleDetailPage'; 
+// Correct import for Super Admin
+import { RolesPage as SuperAdminRolesPage } from './components/SuperAdmin/RolesPage';
+import { SuppliersPage } from './components/SuperAdmin/SuppliersPage';
+import { RoleDetailPage } from './components/SuperAdmin/RoleDetailPage';
+import { ServiceStock } from './components/ServiceStock';
+import { ReplenishmentPage } from './components/ReplenishmentPage';
+import { EmrLocationManager } from './components/EmrLocationManager';
 
-const ProtectedRoute = ({ role, children }: { role: UserRole, children: React.ReactNode }) => {
-  const { user, isAuthenticated } = useAuth();
+const ProtectedRoute = ({ role, children }: { role: string | UserType, children: React.ReactNode }) => {
+  const { user, isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen bg-slate-50 text-slate-400">Loading Session...</div>;
+  }
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (user?.role !== role) {
-    // Redirect to the correct home based on role
-    return <Navigate to={user?.role === 'PHARMACIST' ? '/pharmacy' : '/'} replace />;
+  
+  // Simple check: if role is one of UserType, check user_type. Else check role_id.
+  const hasRole = Object.values(UserType).includes(role as UserType) 
+    ? user?.user_type === role
+    : user?.role_id === role || (role === 'DOCTOR' && user?.user_type === UserType.TENANT_USER); // Fallback for DOCTOR if it maps to TENANT_USER
+
+  if (!hasRole) {
+     return <Navigate to="/login" replace />;
   }
 
   return <>{children}</>;
@@ -51,15 +77,56 @@ const App: React.FC = () => {
             <Route path="waiting-room" element={<WaitingRoom />} />
             <Route path="waiting-room" element={<WaitingRoom />} />
             <Route path="map" element={<WardMap />} />
-            <Route path="locations" element={<EmrLocationManager />} />
-            <Route path="replenishment" element={<ReplenishmentPage />} />
+            <Route path="map" element={<WardMap />} />
             <Route path="service-stock" element={<ServiceStock />} />
-            <Route path="settings" element={<Settings />} />
+            <Route path="replenishment" element={<ReplenishmentPage />} />
+
+          </Route>
+          
+          <Route path="/profile" element={
+            <ProtectedRoute role="DOCTOR">
+               <Layout>
+                  <Settings />
+               </Layout>
+            </ProtectedRoute>
+          } />
+
+          {/* Tenant Admin (DSI) Routes */}
+          <Route path="/settings" element={
+            <ProtectedRoute role={UserType.TENANT_SUPERADMIN}>
+               <SettingsLayout />
+            </ProtectedRoute>
+          }>
+             <Route index element={<Navigate to="users" replace />} />
+             <Route path="users" element={<UsersPage />} />
+             <Route path="services" element={<ServicesPage />} />
+             <Route path="services/:id" element={<ServiceDetailPage />} />
+             <Route path="rooms" element={<RoomsPage />} />
+             <Route path="pricing" element={<PricingPage />} />
+             <Route path="roles" element={<RolesPage />} />
+             <Route path="roles/:id" element={<ReadOnlyRoleDetailPage />} />
+          </Route>
+
+          {/* Super Admin Routes */}
+          <Route path="/super-admin/*" element={
+            <ProtectedRoute role={UserType.PUBLISHER_SUPERADMIN}>
+              <SuperAdminLayout />
+            </ProtectedRoute>
+          }>
+             <Route path="clients" element={<ClientsPage />} />
+             <Route path="clients" element={<ClientsPage />} />
+             <Route path="clients/:id" element={<ClientDetailPage />} />
+             <Route path="organismes" element={<OrganismesPage />} />
+             <Route path="actes" element={<ActesPage />} />
+             <Route path="roles" element={<SuperAdminRolesPage />} />
+             <Route path="roles/:id" element={<RoleDetailPage />} />
+             <Route path="suppliers" element={<SuppliersPage />} />
+             <Route index element={<Navigate to="clients" replace />} />
           </Route>
 
           {/* Pharmacist / Pharmacy Routes */}
           <Route path="/pharmacy/*" element={
-            <ProtectedRoute role="PHARMACIST">
+            <ProtectedRoute role="role_pharmacien">
               <PharmacyModule />
             </ProtectedRoute>
           } />

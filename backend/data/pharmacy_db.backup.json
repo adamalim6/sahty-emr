@@ -1,0 +1,353 @@
+{
+  "inventory": [],
+  "catalog": [
+    {
+      "id": "PROD-TEST-1767375143491",
+      "name": "Secret Demo Product",
+      "type": "Médicament",
+      "suppliers": [],
+      "profitMargin": 20,
+      "vatRate": 5.5,
+      "isSubdivisable": false,
+      "unitsPerPack": 10,
+      "createdAt": "2026-01-02T17:32:23.491Z",
+      "updatedAt": "2026-01-02T17:32:23.491Z",
+      "tenantId": "client_demo"
+    },
+    {
+      "id": "PROD-2026-6997",
+      "type": "Médicament",
+      "suppliers": [
+        {
+          "id": "supp_1",
+          "name": "Laprophan",
+          "purchasePrice": 10,
+          "isActive": true
+        }
+      ],
+      "molecules": [
+        {
+          "id": "MOL-1767375486561",
+          "name": "Paracétamol"
+        }
+      ],
+      "profitMargin": 0,
+      "vatRate": 0,
+      "isSubdivisable": false,
+      "unitsPerPack": 30,
+      "createdAt": "2026-01-02T17:37:53.607Z",
+      "updatedAt": "2026-01-02T17:38:30.847Z",
+      "name": "doliprane 1000mg",
+      "dosage": 1000,
+      "subdivisionUnits": 30,
+      "tenantId": "client_demo"
+    },
+    {
+      "id": "PROD-TEST-1767375682130",
+      "name": "Secret Demo Product",
+      "type": "Médicament",
+      "suppliers": [],
+      "profitMargin": 20,
+      "vatRate": 5.5,
+      "isSubdivisable": false,
+      "unitsPerPack": 10,
+      "createdAt": "2026-01-02T17:41:22.130Z",
+      "updatedAt": "2026-01-02T17:41:22.130Z",
+      "tenantId": "client_demo"
+    },
+    {
+      "id": "PROD-2026-5237",
+      "type": "Médicament",
+      "suppliers": [
+        {
+          "id": "supp_2",
+          "name": "Pharma 5",
+          "purchasePrice": 10,
+          "isActive": true
+        }
+      ],
+      "molecules": [],
+      "profitMargin": 0,
+      "vatRate": 0,
+      "isSubdivisable": false,
+      "unitsPerPack": 30,
+      "createdAt": "2026-01-02T17:42:20.267Z",
+      "updatedAt": "2026-01-02T17:42:55.916Z",
+      "name": "Amoxicilline 1000mg",
+      "dosage": 1000,
+      "therapeuticClass": "Analgésiques",
+      "subdivisionUnits": 30,
+      "tenantId": "client_demo"
+    },
+    {
+      "id": "PROD-2026-3421",
+      "type": "Médicament",
+      "suppliers": [
+        {
+          "id": "supp_4",
+          "name": "Sothema",
+          "purchasePrice": 20,
+          "isActive": true
+        }
+      ],
+      "molecules": [],
+      "profitMargin": 0,
+      "vatRate": 0,
+      "isSubdivisable": false,
+      "unitsPerPack": 30,
+      "createdAt": "2026-01-02T17:47:05.986Z",
+      "updatedAt": "2026-01-02T17:47:30.071Z",
+      "name": "Zyrtec 20mg",
+      "subdivisionUnits": 30,
+      "tenantId": "client_demo"
+    },
+    {
+      "id": "PROD-UMAN-1767376205686",
+      "name": "UMAN Test Product",
+      "type": "Médicament",
+      "suppliers": [],
+      "profitMargin": 20,
+      "vatRate": 5.5,
+      "isSubdivisable": false,
+      "unitsPerPack": 10,
+      "createdAt": "2026-01-02T17:50:05.687Z",
+      "updatedAt": "2026-01-02T17:50:05.687Z",
+      "tenantId": "client_1767102086031"
+    },
+    {
+      "id": "PROD-2026-8346",
+      "type": "Médicament",
+      "suppliers": [
+        {
+          "id": "supp_3",
+          "name": "Cooper Pharma",
+          "purchasePrice": 15,
+          "isActive": true
+        }
+      ],
+      "molecules": [],
+      "profitMargin": 0,
+      "vatRate": 0,
+      "isSubdivisable": true,
+      "unitsPerPack": 15,
+      "createdAt": "2026-01-02T17:54:29.350Z",
+      "updatedAt": "2026-01-02T17:55:04.535Z",
+      "name": "doliprane 1500mg",
+      "dosage": 1000,
+      "therapeuticClass": "Cardiologie",
+      "subdivisionUnits": 15,
+      "tenantId": "client_1767102086031"
+    },
+    {
+      "id": "PROD-2026-8401",
+      "type": "Médicament",
+      "suppliers": [
+        {
+          "id": "supp_4",
+          "name": "Sothema",
+          "purchasePrice": 30,
+          "isActive": true
+        }
+      ],
+      "molecules": [],
+      "profitMargin": 0,
+      "vatRate": 0,
+      "isSubdivisable": true,
+      "unitsPerPack": 30,
+      "createdAt": "2026-01-02T17:56:08.087Z",
+      "updatedAt": "2026-01-02T17:56:48.320Z",
+      "name": "Panadol 200mg",
+      "dosage": 190,
+      "therapeuticClass": "Analgésiques",
+      "subdivisionUnits": 30,
+      "tenantId": "client_demo"
+    },
+    {
+      "id": "PROD-UMAN-1767377240452",
+      "name": "UMAN Test Product",
+      "type": "Médicament",
+      "suppliers": [],
+      "profitMargin": 20,
+      "vatRate": 5.5,
+      "isSubdivisable": false,
+      "unitsPerPack": 10,
+      "createdAt": "2026-01-02T18:07:20.452Z",
+      "updatedAt": "2026-01-02T18:07:20.452Z",
+      "tenantId": "client_1767102086031"
+    },
+    {
+      "id": "PROD-UMAN-1767380816967",
+      "name": "UMAN Test Product",
+      "type": "Médicament",
+      "suppliers": [],
+      "profitMargin": 20,
+      "vatRate": 5.5,
+      "isSubdivisable": false,
+      "unitsPerPack": 10,
+      "createdAt": "2026-01-02T19:06:56.968Z",
+      "updatedAt": "2026-01-02T19:06:56.968Z",
+      "tenantId": "client_1767102086031"
+    },
+    {
+      "id": "PROD-UMAN-1767380864109",
+      "name": "UMAN Test Product",
+      "type": "Médicament",
+      "suppliers": [],
+      "profitMargin": 20,
+      "vatRate": 5.5,
+      "isSubdivisable": false,
+      "unitsPerPack": 10,
+      "createdAt": "2026-01-02T19:07:44.109Z",
+      "updatedAt": "2026-01-02T19:07:44.109Z",
+      "tenantId": "client_1767102086031"
+    },
+    {
+      "id": "PROD-UMAN-1767380897441",
+      "name": "UMAN Test Product",
+      "type": "Médicament",
+      "suppliers": [],
+      "profitMargin": 20,
+      "vatRate": 5.5,
+      "isSubdivisable": false,
+      "unitsPerPack": 10,
+      "createdAt": "2026-01-02T19:08:17.442Z",
+      "updatedAt": "2026-01-02T19:08:17.442Z",
+      "tenantId": "client_1767102086031"
+    },
+    {
+      "id": "PROD-UMAN-1767380925622",
+      "name": "UMAN Test Product",
+      "type": "Médicament",
+      "suppliers": [],
+      "profitMargin": 20,
+      "vatRate": 5.5,
+      "isSubdivisable": false,
+      "unitsPerPack": 10,
+      "createdAt": "2026-01-02T19:08:45.623Z",
+      "updatedAt": "2026-01-02T19:08:45.623Z",
+      "tenantId": "client_1767102086031"
+    },
+    {
+      "id": "PROD-UMAN-1767380947967",
+      "name": "UMAN Test Product",
+      "type": "Médicament",
+      "suppliers": [],
+      "profitMargin": 20,
+      "vatRate": 5.5,
+      "isSubdivisable": false,
+      "unitsPerPack": 10,
+      "createdAt": "2026-01-02T19:09:07.967Z",
+      "updatedAt": "2026-01-02T19:09:07.967Z",
+      "tenantId": "client_1767102086031"
+    },
+    {
+      "id": "PROD-UMAN-1767380995622",
+      "name": "UMAN Test Product",
+      "type": "Médicament",
+      "suppliers": [],
+      "profitMargin": 20,
+      "vatRate": 5.5,
+      "isSubdivisable": false,
+      "unitsPerPack": 10,
+      "createdAt": "2026-01-02T19:09:55.623Z",
+      "updatedAt": "2026-01-02T19:09:55.623Z",
+      "tenantId": "client_1767102086031"
+    },
+    {
+      "id": "PROD-UMAN-1767381183931",
+      "name": "UMAN Test Product",
+      "type": "Médicament",
+      "suppliers": [],
+      "profitMargin": 20,
+      "vatRate": 5.5,
+      "isSubdivisable": false,
+      "unitsPerPack": 10,
+      "createdAt": "2026-01-02T19:13:03.931Z",
+      "updatedAt": "2026-01-02T19:13:03.931Z",
+      "tenantId": "client_1767102086031"
+    }
+  ],
+  "locations": [],
+  "partners": [],
+  "stockOutHistory": [],
+  "purchaseOrders": [
+    {
+      "supplierId": "SUP-001",
+      "supplierName": "Test Supplier",
+      "date": "2026-01-02T19:08:45.699Z",
+      "status": "Brouillon",
+      "items": []
+    },
+    {
+      "supplierId": "SUP-001",
+      "supplierName": "Test Supplier",
+      "date": "2026-01-02T19:09:08.008Z",
+      "status": "Brouillon",
+      "items": []
+    },
+    {
+      "supplierId": "SUP-001",
+      "supplierName": "Test Supplier",
+      "date": "2026-01-02T19:09:55.695Z",
+      "status": "Brouillon",
+      "items": []
+    },
+    {
+      "supplierId": "SUP-001",
+      "supplierName": "Test Supplier",
+      "date": "2026-01-02T19:13:04.033Z",
+      "status": "Brouillon",
+      "items": [],
+      "tenantId": "client_1767102086031",
+      "id": "PO-1767381184035"
+    },
+    {
+      "id": "BC-2026-3263",
+      "supplierId": "supp_3",
+      "supplierName": "Cooper Pharma",
+      "date": "2026-01-02T19:20:00.735Z",
+      "status": "Brouillon",
+      "items": [
+        {
+          "productId": "PROD-2026-8346",
+          "orderedQty": 20,
+          "deliveredQty": 0
+        }
+      ],
+      "tenantId": "client_1767102086031"
+    }
+  ],
+  "deliveryNotes": [],
+  "serializedPacks": [],
+  "dispensations": [],
+  "suppliers": [
+    {
+      "name": "labo1",
+      "contactPerson": "dupont moretti",
+      "email": "dupont@gmail.com",
+      "phone": "0665487645",
+      "address": "30 rue hassan Azot",
+      "isActive": true,
+      "id": "SUP-1767302533870",
+      "createdAt": "2026-01-01T21:22:13.870Z",
+      "updatedAt": "2026-01-01T21:23:14.214Z",
+      "source": "TENANT",
+      "tenantId": "client_1767102086031"
+    },
+    {
+      "name": "labo test",
+      "contactPerson": "dupont",
+      "phone": "056878798",
+      "email": "",
+      "address": "",
+      "isActive": true,
+      "id": "SUP-1767370556625",
+      "createdAt": "2026-01-02T16:15:56.625Z",
+      "updatedAt": "2026-01-02T16:15:56.625Z",
+      "source": "TENANT",
+      "tenantId": "client_1767102086031"
+    }
+  ],
+  "replenishmentRequests": [],
+  "productVersions": []
+}

@@ -1,7 +1,10 @@
 import { Router } from 'express';
 import { getPatients, getAdmissions, getAppointments, getRooms, closeAdmission, createAdmission, createPatient, updatePatient, getPatient, getLocations, addLocation, updateLocation, deleteLocation } from '../controllers/emrController';
+import { authenticateToken } from '../middleware/authMiddleware';
 
 const router = Router();
+
+router.use(authenticateToken);
 
 router.get('/patients', getPatients);
 router.get('/admissions', getAdmissions);

@@ -12,6 +12,7 @@ export const ServiceStock: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
     const [selectedCategory, setSelectedCategory] = useState<ItemCategory | 'all'>('all');
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         loadData();
@@ -19,6 +20,7 @@ export const ServiceStock: React.FC = () => {
 
     const loadData = async () => {
         setLoading(true);
+        setError(null);
         try {
             const [inv, cat, packsData, locs] = await Promise.all([
                 api.getInventory(),
@@ -33,8 +35,13 @@ export const ServiceStock: React.FC = () => {
             setProducts(cat);
             setPacks(packsData);
             setLocations(locs);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to load service inventory", error);
+            if (error.message?.includes('403') || error.message?.toLowerCase().includes('forbidden')) {
+                 setError("Accès refusé : Vous n'avez pas les permissions nécessaires pour voir ce stock.");
+            } else {
+                 setError("Erreur lors du chargement du stock.");
+            }
         } finally {
             setLoading(false);
         }
@@ -114,8 +121,17 @@ export const ServiceStock: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="flex h-full items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="flex items-center justify-center p-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-600"></div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="p-6 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3 text-red-700">
+                <AlertTriangle className="h-5 w-5" />
+                <span>{error}</span>
             </div>
         );
     }

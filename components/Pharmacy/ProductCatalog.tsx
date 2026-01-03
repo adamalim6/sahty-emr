@@ -296,7 +296,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, suppli
             </div>
           </div>
 
-          {(formData.type === ProductType.DRUG || formData.type === 'Médicament') && (
+          {formData.type === ProductType.DRUG && (
             <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm animate-in fade-in">
               <h3 className="font-bold text-slate-800 mb-4 flex items-center">
                 <Stethoscope className="mr-2 text-purple-500" size={18} /> Données Pharmaceutiques
@@ -390,7 +390,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, suppli
                 // Prepare options for the searchable select with disabled state logic
                 const supplierOptions = globalSuppliers.map(gs => ({
                   value: gs.id,
-                  label: gs.name + (otherSelectedIds.includes(gs.id) ? ' (Déjà ajouté)' : ''),
+                  label: gs.name + (gs.source === 'GLOBAL' ? ' (Global)' : '') + (otherSelectedIds.includes(gs.id) ? ' (Déjà ajouté)' : ''),
                   disabled: otherSelectedIds.includes(gs.id)
                 }));
 

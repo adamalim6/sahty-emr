@@ -1,0 +1,158 @@
+[
+  {
+    "id": "user_publisher_admin",
+    "username": "admin",
+    "password_hash": "$2b$10$x9KF7wBaZtLnOyB427hmxOVWhS4G12sSaoY2tgsg3fRjVOcgbD6ze",
+    "nom": "System",
+    "prenom": "Admin",
+    "user_type": "PUBLISHER_SUPERADMIN",
+    "role_id": "role_super_admin",
+    "client_id": null
+  },
+  {
+    "id": "user_tenant_admin",
+    "username": "manager",
+    "password_hash": "$2b$10$2Fd3tX4vKNuIVlOsjPfToeuxjFp5YBRQxx6rm2s9oYv98gqIGW4Dm",
+    "nom": "Directeur",
+    "prenom": "Demo",
+    "user_type": "TENANT_SUPERADMIN",
+    "role_id": "role_admin_struct",
+    "client_id": "client_demo"
+  },
+  {
+    "id": "user_dsi_1767105320853",
+    "username": "hamid",
+    "password_hash": "$2b$10$mZHCB/2w8DQoFATU84z6cuTRmPK3DLI0et17O2GPcQt2NAZFfGUDC",
+    "nom": "Admin",
+    "prenom": "DSI",
+    "user_type": "TENANT_SUPERADMIN",
+    "role_id": "role_admin_struct",
+    "client_id": "client_1767102086031"
+  },
+  {
+    "id": "user_1767295352127",
+    "client_id": "client_1767102086031",
+    "username": "pharma1",
+    "password_hash": "$2b$10$CO2iHImSyxPFmCYTTmNgte432qSnWHQXUXqaBFI1bXbOfB6xyiVti",
+    "nom": "pharma1",
+    "prenom": "pharma1",
+    "user_type": "TENANT_USER",
+    "role_id": "role_pharmacien",
+    "INPE": "",
+    "service_ids": []
+  },
+  {
+    "id": "user_1767295371499",
+    "client_id": "client_1767102086031",
+    "username": "Med1",
+    "password_hash": "$2b$10$jM.n7FihYgElBQcPjl6uMOEJErDkQGPKsF7CDTwY0c17lRdhLF4JW",
+    "nom": "Med1",
+    "prenom": "Med1",
+    "user_type": "TENANT_USER",
+    "role_id": "role_medecin",
+    "INPE": "546789",
+    "service_ids": [
+      "svc_1767295432437"
+    ],
+    "active": true
+  },
+  {
+    "id": "user_1767295394116",
+    "client_id": "client_1767102086031",
+    "username": "inf1",
+    "password_hash": "$2b$10$2Ays0n5gZSi7L1t3hEz0zukXrsMfqHWOtD3JtBVaMLFUh7LmmLL6y",
+    "nom": "inf1",
+    "prenom": "inf1",
+    "user_type": "TENANT_USER",
+    "role_id": "role_infirmier",
+    "INPE": "",
+    "service_ids": [
+      "svc_1767295432437"
+    ],
+    "active": true
+  },
+  {
+    "id": "user_1767295656941",
+    "client_id": "client_1767102086031",
+    "username": "inf2",
+    "password_hash": "$2b$10$cndSfVd95oGffi7OwEYNNutd2sscnlFrHkXQe3E8iqZHztQXAWeLa",
+    "nom": "inf2",
+    "prenom": "inf2",
+    "user_type": "TENANT_USER",
+    "role_id": "role_infirmier",
+    "INPE": "",
+    "service_ids": [
+      "svc_1767295460199"
+    ],
+    "active": true
+  },
+  {
+    "id": "user_1767295680263",
+    "client_id": "client_1767102086031",
+    "username": "inf3",
+    "password_hash": "$2b$10$dlaeXeOgVHJDJFJSO1E13edQFhJ04mrNa7EpfM606aNr9DKXUCoFG",
+    "nom": "inf3",
+    "prenom": "inf3",
+    "user_type": "TENANT_USER",
+    "role_id": "role_infirmier",
+    "INPE": "",
+    "service_ids": [
+      "svc_1767295460199",
+      "svc_1767295432437"
+    ],
+    "active": true
+  },
+  {
+    "id": "user_1767295720878",
+    "client_id": "client_1767102086031",
+    "username": "Med2",
+    "password_hash": "$2b$10$0x5fr4YdHGltXZv5rAjAOOGnYAx75k.aqVZVf5yoSJG/zDe/Kzn9u",
+    "nom": "Med2",
+    "prenom": "Med2",
+    "user_type": "TENANT_USER",
+    "role_id": "role_medecin",
+    "INPE": "",
+    "service_ids": [
+      "svc_1767295460199"
+    ]
+  },
+  {
+    "id": "user_1767371467189",
+    "client_id": "client_demo",
+    "username": "pharma2",
+    "password_hash": "$2b$10$4DCWCWjmGUCJyzmQfx2K2.T6F/rE6gC3xrJsCQjuE3SYAJxXi1vuS",
+    "nom": "pharma2",
+    "prenom": "pharma2",
+    "user_type": "TENANT_USER",
+    "role_id": "role_pharmacien",
+    "INPE": "",
+    "service_ids": []
+  },
+  {
+    "id": "user_1767413101791",
+    "client_id": "client_demo",
+    "username": "med.demo",
+    "password_hash": "$2b$10$kgfTYw0TRCLOJBHxZ2NL8.mSCLaiOlHf.MvM1oUL/EC3616wd1IF6",
+    "nom": "med.demo",
+    "prenom": "med.demo",
+    "user_type": "TENANT_USER",
+    "role_id": "role_medecin",
+    "INPE": "345678",
+    "service_ids": [
+      "svc_1767371441934"
+    ]
+  },
+  {
+    "id": "user_1767417759124",
+    "client_id": "client_demo",
+    "username": "inf.demo",
+    "password_hash": "$2b$10$b3g3rGINMOhp6ADD5aDbzOoMXXcMhJPdaKJMz6MaTP3NYFbFUj6Ou",
+    "nom": "inf.demo",
+    "prenom": "inf.demo",
+    "user_type": "TENANT_USER",
+    "role_id": "role_infirmier",
+    "INPE": "",
+    "service_ids": [],
+    "active": true
+  }
+]

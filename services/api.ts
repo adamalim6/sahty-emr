@@ -1,246 +1,333 @@
+
 import { Patient, Admission, Appointment, Room } from '../types';
-import {
-    InventoryItem, ProductDefinition, StockLocation, PartnerInstitution,
-    StockOutTransaction, PurchaseOrder, DeliveryNote, PharmacySupplier,
-    SerializedPack, DispensedItem, PatientWithPrescriptions, ReplenishmentRequest, ReplenishmentStatus
-} from '../types/pharmacy';
-import { Dispensation } from '../types/serialized-pack';
-export type { PatientWithPrescriptions }; // Re-export it
+import { InventoryItem, ProductDefinition, StockLocation, PartnerInstitution, StockOutTransaction, SerializedPack } from '../types/pharmacy';
 import { FormData } from '../components/Prescription/types';
 
 const API_BASE_URL = 'http://localhost:3001/api';
 
 async function fetchJson<T>(endpoint: string, options?: RequestInit): Promise<T> {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+    const token = localStorage.getItem('token');
+    const headers = {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...options?.headers
+    };
+
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...options,
+        headers
+    });
+
     if (!response.ok) {
-        const errorBody = await response.text();
-        throw new Error(errorBody || response.statusText);
+        if (response.status === 401) {
+            // Token expired or invalid - This SHOULD trigger logout usually
+            localStorage.removeItem('token');
+            // window.location.href = '/login'; // Optional: Force redirect
+        }
+        
+        // 403 Forbidden - DO NOT LOGOUT the user. Just throw error.
+        
+        let errorMessage = response.statusText;
+        try {
+            const errorBody = await response.json();
+            if (errorBody && errorBody.error) {
+                errorMessage = errorBody.error;
+            } else if (errorBody && errorBody.message) {
+                 errorMessage = errorBody.message;
+            }
+        } catch (e) {
+            // Failed to parse error body, stick with status text
+        }
+
+        throw new Error(errorMessage);
     }
     return response.json();
 }
 
 export const api = {
-    // Patients
-    getPatients: () => fetchJson<Patient[]>('/emr/patients'),
-    getPatient: (id: string) => fetchJson<Patient>(`/emr/patients/${id}`),
-    createPatient: (patient: Omit<Patient, 'id'>) => fetchJson<Patient>('/emr/patients', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patient)
-    }),
-    updatePatient: (id: string, patient: Partial<Patient>) => fetchJson<Patient>(`/emr/patients/${id}`, {
+    // Actes Référentiel
+    getActes: (params?: any) => {
+        const query = new URLSearchParams(params).toString();
+        return fetchJson<any>(`/actes?${query}`);
+    },
+    updateActe: (code: string, data: any) => fetchJson<any>(`/actes/${code}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patient)
+        body: JSON.stringify(data)
     }),
 
-    // EMR Core
-    getAdmissions: () => fetchJson<Admission[]>('/emr/admissions'),
-    createAdmission: (admission: Omit<Admission, 'id'>) => fetchJson<Admission>('/emr/admissions', {
+    // Authentication
+    login: (credentials: any) => fetchJson<any>('/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(admission)
+        body: JSON.stringify(credentials)
     }),
-    updateAdmission: (id: string, updates: Partial<Admission>) => fetchJson<Admission>(`/emr/admissions/${id}`, {
-        method: 'PUT',
+
+    // EMR
+    getPatients: () => fetchJson<Patient[]>('/emr/patients'),
+    createPatient: (data: any) => fetchJson<Patient>('/emr/patients', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
+        body: JSON.stringify(data)
     }),
-    closeAdmission: (id: string) => fetchJson<Admission>(`/emr/admissions/${id}/close`, {
-        method: 'PUT'
+    getAdmissions: () => fetchJson<Admission[]>('/emr/admissions'),
+    createAdmission: (data: Admission) => fetchJson<Admission>('/emr/admissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
     }),
     getAppointments: () => fetchJson<Appointment[]>('/emr/appointments'),
     getRooms: () => fetchJson<Room[]>('/emr/rooms'),
 
-    // EMR Locations
-    getEmrLocations: () => fetchJson<StockLocation[]>('/emr/locations'),
-    createEmrLocation: (location: any) => fetchJson<StockLocation>('/emr/locations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(location)
-    }),
-    updateEmrLocation: (location: StockLocation) => fetchJson<StockLocation>(`/emr/locations`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(location)
-    }),
-    deleteEmrLocation: (id: string) => fetch(`${API_BASE_URL} /emr/locations / ${id} `, { method: 'DELETE' }).then(res => {
-        if (!res.ok) throw new Error('Delete failed');
-    }),
-
-    // Pharmacy Module
+    // Pharmacy
     getInventory: () => fetchJson<InventoryItem[]>('/pharmacy/inventory'),
     getCatalog: () => fetchJson<ProductDefinition[]>('/pharmacy/catalog'),
-    getLocations: () => fetchJson<StockLocation[]>('/pharmacy/locations'),
-
-    createLocation: (location: any) => fetchJson<StockLocation>('/pharmacy/locations', {
+    getLocations: (serviceId?: string, scope?: 'PHARMACY' | 'SERVICE') => fetchJson<StockLocation[]>(`/pharmacy/locations?serviceId=${serviceId || ''}&scope=${scope || ''}`),
+    createLocation: (data: any) => fetchJson<StockLocation>('/pharmacy/locations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(location)
+        body: JSON.stringify(data)
     }),
-    updateLocation: (location: StockLocation) => fetchJson<StockLocation>(`/pharmacy/locations/${location.id}`, {
+    updateLocation: (data: any) => fetchJson<StockLocation>(`/pharmacy/locations/${data.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(location)
+        body: JSON.stringify(data)
     }),
-    deleteLocation: (id: string) => fetch(`${API_BASE_URL} /pharmacy/locations / ${id} `, { method: 'DELETE' }).then(res => {
-        if (!res.ok) throw new Error('Delete failed');
+    deleteLocation: (id: string) => fetchJson<void>(`/pharmacy/locations/${id}`, {
+        method: 'DELETE'
     }),
-
-    // Suppliers
-    getSuppliers: () => fetchJson<PharmacySupplier[]>('/pharmacy/suppliers'),
-    createSupplier: (supplier: Partial<PharmacySupplier>) => fetchJson<PharmacySupplier>('/pharmacy/suppliers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(supplier)
-    }),
-    updateSupplier: (supplier: PharmacySupplier) => fetchJson<PharmacySupplier>(`/pharmacy/suppliers/${supplier.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(supplier)
-    }),
-    deleteSupplier: (id: string) => fetch(`${API_BASE_URL} /pharmacy/suppliers / ${id} `, { method: 'DELETE' }).then(res => {
-        if (!res.ok) throw new Error('Delete failed');
-    }),
-
     getPartners: () => fetchJson<PartnerInstitution[]>('/pharmacy/partners'),
+    createPartner: (data: any) => fetchJson<PartnerInstitution>('/pharmacy/partners', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    updatePartner: (data: any) => fetchJson<PartnerInstitution>(`/pharmacy/partners/${data.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    deletePartner: (id: string) => fetchJson<void>(`/pharmacy/partners/${id}`, {
+        method: 'DELETE'
+    }),
     getStockOutHistory: () => fetchJson<StockOutTransaction[]>('/pharmacy/stock-out-history'),
 
-    createProduct: (product: ProductDefinition) => fetchJson<ProductDefinition>('/pharmacy/catalog', {
+    // Prescriptions
+    getPrescriptions: (patientId: string) => fetchJson<any[]>(`/prescriptions/${patientId}`),
+    createPrescription: (patientId: string, data: FormData) =>
+        fetchJson<any>(`/prescriptions/${patientId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        }),
+    deletePrescription: (id: string) =>
+        fetchJson<any>(`/prescriptions/${id}`, {
+            method: 'DELETE'
+        }),
+
+    // Get all patients who have prescriptions
+    getPatientsWithPrescriptions: () =>
+        fetchJson<PatientWithPrescriptions[]>('/prescriptions/patients/with-prescriptions'),
+
+    // Super Admin
+    getClients: () => fetchJson<any[]>('/super-admin/clients'),
+    getClientDetails: (id: string) => fetchJson<any>(`/super-admin/clients/${id}`),
+    createClient: (data: any) => fetchJson<any>('/super-admin/clients', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(product)
+        body: JSON.stringify(data)
     }),
-    updateProduct: (product: ProductDefinition) => fetchJson<ProductDefinition>(`/pharmacy/catalog/${product.id}`, {
+    updateClient: (id: string, data: any) => fetchJson<any>(`/super-admin/clients/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(product)
+        body: JSON.stringify(data)
     }),
-
-    // Supply Chain
-    getPurchaseOrders: () => fetchJson<PurchaseOrder[]>('/pharmacy/orders'),
-    createPurchaseOrder: (po: PurchaseOrder) => fetchJson<PurchaseOrder>('/pharmacy/orders', {
+    updateClientDSI: (id: string, data: any) => fetchJson<any>(`/super-admin/clients/${id}/dsi`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    getOrganismes: () => fetchJson<any[]>('/super-admin/organismes'),
+    createOrganisme: (data: any) => fetchJson<any>('/super-admin/organismes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(po)
+        body: JSON.stringify(data)
     }),
-
-    getDeliveryNotes: () => fetchJson<DeliveryNote[]>('/pharmacy/deliveries'),
-    createDeliveryNote: (note: DeliveryNote) => fetchJson<DeliveryNote>('/pharmacy/deliveries', {
+    getRoles: () => fetchJson<any[]>('/super-admin/roles'),
+    getRole: (id: string) => fetchJson<any>(`/super-admin/roles/${id}`),
+    createRole: (data: any) => fetchJson<any>('/super-admin/roles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(note)
+        body: JSON.stringify(data)
+    }),
+    updateRole: (id: string, data: any) => fetchJson<any>(`/super-admin/roles/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
     }),
 
-    processQuarantine: (result: any) => fetchJson<any>('/pharmacy/quarantine/process', {
+    // Tenant Settings
+    getTenantUsers: () => fetchJson<any[]>('/settings/users'),
+    createTenantUser: (data: any) => fetchJson<any>('/settings/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(result)
+        body: JSON.stringify(data)
     }),
+    updateTenantUser: (id: string, data: any) => fetchJson<any>(`/settings/users/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    getGlobalRoles: () => fetchJson<any[]>('/settings/roles'),
 
-    // Prescriptions
-    getPrescriptions: (patientId?: string) => fetchJson<any[]>(patientId ? `/prescriptions/${patientId}` : '/prescriptions'),
-    createPrescription: (patientId: string, prescription: FormData) => fetchJson(`/prescriptions/${patientId}`, {
+    // Services
+    getServices: () => fetchJson<any[]>('/settings/services'),
+    getService: (id: string) => fetchJson<any>(`/settings/services/${id}`),
+    createService: (data: any) => fetchJson<any>('/settings/services', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(prescription)
+        body: JSON.stringify(data)
     }),
-    deletePrescription: (id: string) => fetchJson(`/prescriptions/${id}`, {
+    updateService: (id: string, data: any) => fetchJson<any>(`/settings/services/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    deleteService: (id: string) => fetchJson<any>(`/settings/services/${id}`, {
+        method: 'DELETE'
+    }),
+    
+    // Service Layout
+    getServiceUnits: (serviceId: string) => fetchJson<any[]>(`/settings/services/${serviceId}/units`),
+    createServiceUnit: (serviceId: string, data: any) => fetchJson<any>(`/settings/services/${serviceId}/units`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    deleteServiceUnit: (unitId: string) => fetchJson<any>(`/settings/services/units/${unitId}`, {
         method: 'DELETE'
     }),
 
-    // Prescription Executions
-    recordExecution: (prescriptionId: string, execution: any) => fetchJson<any>(`/prescriptions/${prescriptionId}/execute`, {
+    getTenantRooms: (params?: any) => {
+        const query = params ? `?${new URLSearchParams(params)}` : '';
+        return fetchJson<any[]>(`/settings/rooms${query}`);
+    },
+    createRoom: (data: any) => fetchJson<any>('/settings/rooms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(execution)
+        body: JSON.stringify(data)
     }),
-    getExecutions: (prescriptionId: string) => fetchJson<any[]>(`/prescriptions/${prescriptionId}/executions`),
+    updateRoom: (id: string, data: any) => fetchJson<any>(`/settings/rooms/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    deleteRoom: (id: string) => fetchJson<any>(`/settings/rooms/${id}`, {
+        method: 'DELETE'
+    }),
+    getPricing: () => fetchJson<any[]>('/settings/pricing'),
+    createPricing: (data: any) => fetchJson<any>('/settings/pricing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
 
-    // Serialization
+    // Pharmacy Extended
     getSerializedPacks: () => fetchJson<SerializedPack[]>('/pharmacy/packs'),
-
-    getSerializedPacksByProduct: (productId: string) => fetchJson<SerializedPack[]>(`/pharmacy/packs?productId=${productId}`),
-
-    // NOTE: This call might 404 if pack not found?
-    getSerializedPackById: (id: string) => fetchJson<SerializedPack>(`/pharmacy/packs/${id}`),
-
-    // Dispensation (Serialization aware)
-    dispenseWithFEFO: (params: {
-        productId: string,
-        quantity: number,
-        mode: 'UNIT' | 'FULL_PACK',
-        userId: string,
-        prescriptionId: string,
-        admissionId?: string, // Added admissionId
-        targetPackIds?: string[]
-    }) => fetchJson<DispensedItem[]>('/pharmacy/dispensations/fefo', {
+    getEmrLocations: () => fetchJson<StockLocation[]>('/pharmacy/locations?scope=SERVICE'), // EMR needs Service locations
+    createEmrLocation: (data: any) => fetchJson<StockLocation>('/pharmacy/locations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(params)
+        body: JSON.stringify(data)
     }),
-
-    getDispensationsByPrescription: (prescriptionId: string) => fetchJson<Dispensation[]>(`/pharmacy/dispensations/prescription/${prescriptionId}`),
-    getDispensationsByAdmission: (admissionId: string) => fetchJson<Dispensation[]>(`/pharmacy/dispensations/admission/${admissionId}`),
-
-    // New endpoint for PrescriptionManager
-    getPatientsWithPrescriptions: () => fetchJson<PatientWithPrescriptions[]>('/prescriptions/patients/with-prescriptions'),
+    updateEmrLocation: (data: any) => fetchJson<StockLocation>(`/pharmacy/locations/${data.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    deleteEmrLocation: (id: string) => fetchJson<void>(`/pharmacy/locations/${id}`, {
+        method: 'DELETE'
+    }),
 
     // Replenishment
-    getReplenishmentRequests: () => fetchJson<ReplenishmentRequest[]>('/pharmacy/replenishments'),
-    createReplenishmentRequest: (request: Partial<ReplenishmentRequest>) => fetchJson<ReplenishmentRequest>('/pharmacy/replenishments', {
+    getReplenishmentRequests: () => fetchJson<any[]>('/pharmacy/replenishments'),
+    createReplenishmentRequest: (data: any) => fetchJson<any>('/pharmacy/replenishments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(request)
+        body: JSON.stringify(data)
     }),
-    updateReplenishmentRequestStatus: (id: string, status: ReplenishmentStatus, processedRequest?: ReplenishmentRequest) => fetchJson<ReplenishmentRequest>(`/pharmacy/replenishments/${id}/status`, {
+
+    // Missing Pharmacy Methods
+    getPurchaseOrders: () => fetchJson<any[]>('/pharmacy/orders'),
+    createPurchaseOrder: (data: any) => fetchJson<any>('/pharmacy/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    getDeliveryNotes: () => fetchJson<any[]>('/pharmacy/deliveries'),
+    createDeliveryNote: (data: any) => fetchJson<any>('/pharmacy/deliveries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    getSuppliers: () => fetchJson<any[]>('/pharmacy/suppliers'),
+    createSupplier: (data: any) => fetchJson<any>('/pharmacy/suppliers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    updateSupplier: (data: any) => fetchJson<any>(`/pharmacy/suppliers/${data.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status, processedRequest })
+        body: JSON.stringify(data)
     }),
-
-    // Service Stock Exit
-    dispenseFromServiceStock: (params: {
-        admissionId: string;
-        serviceId: string;
-        items: {
-            productId: string;
-            quantity: number;
-            mode: 'BOX' | 'UNIT';
-            dispensedBatches?: { batchNumber: string; quantity: number }[];
-        }[];
-    }) => fetchJson<any>('/pharmacy/service-dispense', {
+    deleteSupplier: (id: string) => fetchJson<any>(`/pharmacy/suppliers/${id}`, {
+        method: 'DELETE'
+    }),
+    createProduct: (data: any) => fetchJson<any>('/pharmacy/catalog', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(params)
+        body: JSON.stringify(data)
     }),
-
-    // Returns
-    createReturnRequest: (params: {
-        admissionId: string;
-        items: any[];
-        destination: string;
-        userId?: string;
-        targetLocationId?: string;
-        serviceId?: string;
-    }) => fetchJson<any>('/pharmacy/returns', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(params)
-    }),
-
-    getReturns: () => fetchJson<any[]>('/pharmacy/returns'),
-    processReturn: (id: string, decision: string, userId?: string) => fetchJson<any>(`/pharmacy/returns/${id}/process`, {
+    updateProduct: (data: any) => fetchJson<any>(`/pharmacy/catalog/${data.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ decision, userId })
+        body: JSON.stringify(data)
     }),
-
-    processReturnSplit: (id: string, decisions: any[], userId?: string) => fetchJson<any>(`/pharmacy/returns/${id}/process-split`, {
+    processQuarantine: (data: any) => fetchJson<any>('/pharmacy/quarantine/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ decisions, userId })
+        body: JSON.stringify(data)
     }),
 
-    getReturnsByAdmission: (admissionId: string) => fetchJson<any[]>(`/pharmacy/returns/admission/${admissionId}`),
+    // Global Suppliers
+    getGlobalSuppliers: () => fetchJson<any[]>('/super-admin/suppliers'),
+    
+    createGlobalSupplier: (data: any) => fetchJson<any>('/super-admin/suppliers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+
+    updateGlobalSupplier: (id: string, data: any) => fetchJson<any>(`/super-admin/suppliers/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+
+    deleteGlobalSupplier: (id: string) => fetchJson<any>(`/super-admin/suppliers/${id}`, {
+        method: 'DELETE'
+    })
 };
+
+// Type for patient with prescription data
+export interface PatientWithPrescriptions {
+    id: string;
+    ipp: string;
+    firstName: string;
+    lastName: string;
+    gender: string;
+    dateOfBirth: string;
+    cin?: string;
+    prescriptionCount: number;
+}

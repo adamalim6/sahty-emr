@@ -13,7 +13,8 @@ export const getPatients = (req: Request, res: Response) => {
 
 export const getAdmissions = (req: Request, res: Response) => {
     try {
-        const admissions = emrService.getAllAdmissions();
+        const tenantId = (req as any).user?.client_id;
+        const admissions = emrService.getAllAdmissions(tenantId);
         res.json(admissions);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching admissions' });
@@ -55,7 +56,8 @@ export const closeAdmission = (req: Request, res: Response) => {
 
 export const createAdmission = (req: Request, res: Response) => {
     try {
-        const admissionData = req.body;
+        const tenantId = (req as any).user?.client_id;
+        const admissionData = { ...req.body, tenantId };
         const newAdmission = emrService.createAdmission(admissionData);
         res.status(201).json(newAdmission);
     } catch (error) {

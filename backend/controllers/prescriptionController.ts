@@ -1,3 +1,4 @@
+
 import { Request, Response } from 'express';
 import { prescriptionService } from '../services/prescriptionService';
 
@@ -14,14 +15,18 @@ export const prescriptionController = {
     },
 
     // POST /api/prescriptions/:patientId
-    createPrescription: (req: Request, res: Response) => {
+    createPrescription: (req: any, res: Response) => {
         try {
             const { patientId } = req.params;
             const prescriptionData = req.body;
+            const clientId = req.user?.client_id; // From Auth Middleware
+            const userName = req.user?.username || 'Unknown';
 
             const newPrescription = prescriptionService.createPrescription(
                 patientId,
-                prescriptionData
+                prescriptionData,
+                userName,
+                clientId || undefined
             );
 
             res.status(201).json(newPrescription);
@@ -47,9 +52,10 @@ export const prescriptionController = {
     },
 
     // GET /api/prescriptions/patients/with-prescriptions
-    getPatientsWithPrescriptions: (req: Request, res: Response) => {
+    getPatientsWithPrescriptions: (req: any, res: Response) => {
         try {
-            const patientsWithPrescriptions = prescriptionService.getPatientsWithPrescriptions();
+            const clientId = req.user?.client_id;
+            const patientsWithPrescriptions = prescriptionService.getPatientsWithPrescriptions(clientId || undefined);
             res.json(patientsWithPrescriptions);
         } catch (error) {
             res.status(500).json({ error: 'Failed to fetch patients with prescriptions' });

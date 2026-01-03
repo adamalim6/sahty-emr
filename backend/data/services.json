@@ -1,0 +1,23 @@
+[
+  {
+    "id": "svc_1767295432437",
+    "client_id": "client_1767102086031",
+    "name": "Hospitalisation",
+    "code": "HOSP",
+    "description": ""
+  },
+  {
+    "id": "svc_1767295460199",
+    "client_id": "client_1767102086031",
+    "name": "Imagerie",
+    "code": "IMG",
+    "description": ""
+  },
+  {
+    "id": "svc_1767371441934",
+    "client_id": "client_demo",
+    "name": "Cardiologie",
+    "code": "CARD",
+    "description": ""
+  }
+]

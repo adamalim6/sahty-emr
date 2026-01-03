@@ -1,24 +1,17 @@
 {
   "patients": [
     {
-      "id": "5371",
+      "id": "5864",
       "isProvisional": false,
       "firstName": "Adam",
-      "lastName": "ALIM",
+      "lastName": "ALEM",
       "dateOfBirth": "2002-08-30",
       "gender": "Homme",
-      "ipp": "UMAN-2025-329513",
-      "phone": "0635582822",
+      "ipp": "IPP-288244",
+      "phone": "",
       "cin": "AA103720",
-      "isPayant": true,
-      "emergencyContacts": [
-        {
-          "name": "",
-          "relationship": "Père",
-          "phone": ""
-        }
-      ],
-      "country": "Maroc",
+      "profession": "",
+      "bloodGroup": "",
       "nationality": "Marocaine",
       "address": "",
       "insurance": {
@@ -38,24 +31,17 @@
       }
     },
     {
-      "id": "1635",
+      "id": "5661",
       "isProvisional": false,
-      "firstName": "Lahlou",
-      "lastName": "KHADIJA",
+      "firstName": "khadija",
+      "lastName": "LAHLOU",
       "dateOfBirth": "1999-12-12",
       "gender": "Femme",
-      "ipp": "UMAN-2025-689402",
+      "ipp": "IPP-132639",
       "phone": "",
-      "cin": "456789",
-      "isPayant": true,
-      "emergencyContacts": [
-        {
-          "name": "",
-          "relationship": "Père",
-          "phone": ""
-        }
-      ],
-      "country": "Maroc",
+      "cin": "AA76890",
+      "profession": "",
+      "bloodGroup": "",
       "nationality": "Marocaine",
       "address": "",
       "insurance": {
@@ -77,54 +63,67 @@
   ],
   "admissions": [
     {
-      "id": "adm-1766272352667",
-      "nda": "NDA-2025-7658",
-      "patientId": "5371",
+      "id": "adm-1767413050658",
+      "nda": "NDA-2026-5041",
+      "patientId": "5864",
       "reason": "Chirurgie programmée",
-      "service": "Cardiologie",
-      "admissionDate": "2025-12-20T23:12:32.667Z",
-      "doctorName": "Dr. S. Alami",
-      "roomNumber": "103",
-      "bedLabel": "Lit A",
+      "service": "Hospitalisation",
+      "admissionDate": "2026-01-03T04:04:10.748Z",
+      "doctorName": "DR. M. MED1",
+      "roomNumber": "101",
+      "bedLabel": "LIT A",
       "status": "En cours",
       "type": "Hospitalisation complète",
-      "currency": "MAD (Dirham)"
+      "currency": "MAD (Dirham)",
+      "tenantId": "client_1767102086031"
     },
     {
-      "id": "adm-1766858447632",
-      "nda": "NDA-2025-2423",
-      "patientId": "1635",
-      "reason": "Chirurgie programmée",
-      "service": "Cardiologie",
-      "admissionDate": "2025-12-27T18:00:47.634Z",
-      "doctorName": "Dr. S. Alami",
-      "roomNumber": "102",
-      "bedLabel": "Lit B",
+      "id": "adm-1767414180215",
+      "nda": "NDA-2026-1427",
+      "patientId": "5864",
+      "reason": "Suivi post-op",
+      "service": "Imagerie",
+      "admissionDate": "2026-01-03T04:23:00.215Z",
+      "doctorName": "DR. M. MED2",
+      "roomNumber": "",
+      "bedLabel": "",
       "status": "En cours",
       "type": "Hospitalisation complète",
-      "currency": "MAD (Dirham)"
+      "currency": "MAD (Dirham)",
+      "tenantId": "client_1767102086031"
+    },
+    {
+      "id": "adm-1767414243464",
+      "nda": "NDA-2026-5015",
+      "patientId": "5661",
+      "reason": "Pathologie aiguë",
+      "service": "Imagerie",
+      "admissionDate": "2026-01-03T04:24:03.491Z",
+      "doctorName": "DR. M. MED2",
+      "roomNumber": "",
+      "bedLabel": "",
+      "status": "En cours",
+      "type": "Hospitalisation complète",
+      "currency": "MAD (Dirham)",
+      "tenantId": "client_1767102086031"
+    },
+    {
+      "id": "adm-1767414415716",
+      "nda": "NDA-2026-6366",
+      "patientId": "5661",
+      "reason": "Chirurgie programmée",
+      "service": "Imagerie",
+      "admissionDate": "2026-01-03T04:26:55.716Z",
+      "doctorName": "DR. M. MED1",
+      "roomNumber": "",
+      "bedLabel": "",
+      "status": "En cours",
+      "type": "Hospitalisation complète",
+      "currency": "MAD (Dirham)",
+      "tenantId": "client_1767102086031"
     }
   ],
   "appointments": [],
   "rooms": [],
-  "locations": [
-    {
-      "name": "armoire B",
-      "description": "",
-      "isActive": true,
-      "id": "LOC-EMR-1766277614022"
-    },
-    {
-      "name": "armoire A",
-      "description": "",
-      "isActive": true,
-      "id": "LOC-EMR-1766864447975"
-    },
-    {
-      "name": "placard 6",
-      "description": "",
-      "isActive": true,
-      "id": "LOC-EMR-1766864455985"
-    }
-  ]
+  "locations": []
 }

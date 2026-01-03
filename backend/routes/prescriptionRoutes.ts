@@ -1,9 +1,14 @@
+
 import { Router } from 'express';
 import { prescriptionController } from '../controllers/prescriptionController';
 import { getDispensationsByPrescription } from '../controllers/dispensationController';
 import { prescriptionService } from '../services/prescriptionService';
+import { authenticateToken } from '../middleware/authMiddleware';
 
 const router = Router();
+
+// Secure all routes
+router.use(authenticateToken);
 
 // Get all patients who have prescriptions (MUST be before /:patientId route)
 router.get('/patients/with-prescriptions', prescriptionController.getPatientsWithPrescriptions);

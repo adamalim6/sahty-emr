@@ -7,6 +7,7 @@ import {
    Download, FileCheck, User, X, Camera, ScanLine, Loader2, Check
 } from 'lucide-react';
 import { extractDeliveryNoteData } from '../../services/pharmacyGemini';
+import { useAuth } from '../../context/AuthContext';
 
 interface StockEntryProps {
    purchaseOrders: PurchaseOrder[];
@@ -25,6 +26,7 @@ export const StockEntry: React.FC<StockEntryProps> = ({
    onCreatePO,
    onReceiveDelivery
 }) => {
+   const { user } = useAuth();
    const [view, setView] = useState<'list' | 'create' | 'detail' | 'receive'>('list');
    const [activePO, setActivePO] = useState<PurchaseOrder | null>(null);
 
@@ -140,11 +142,11 @@ export const StockEntry: React.FC<StockEntryProps> = ({
       }
 
       const dn: DeliveryNote = {
-         id: deliveryNoteRef,
+         id: `BL-${Date.now().toString().slice(-6)}`,
          poId: activePO.id,
          date: new Date(),
-         createdBy: 'Utilisateur Actuel',
-         grnReference: `BL-${Date.now().toString().slice(-6)}`,
+         createdBy: user?.username || 'Utilisateur Inconnu',
+         grnReference: deliveryNoteRef,
          status: ProcessingStatus.PENDING,
          items: itemsToReceive
       };
@@ -250,7 +252,9 @@ export const StockEntry: React.FC<StockEntryProps> = ({
                   >
                      <option value="">-- Choisir Fournisseur --</option>
                      {suppliers.map(s => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
+                        <option key={s.id} value={s.id}>
+                           {s.name} {s.source === 'GLOBAL' ? '(Global)' : ''}
+                        </option>
                      ))}
                   </select>
                </div>
@@ -567,10 +571,7 @@ export const StockEntry: React.FC<StockEntryProps> = ({
                                     <User size={12} />
                                     <span>{note.createdBy || 'Utilisateur'}</span>
                                  </div>
-                                 <div className="flex justify-between items-end">
-                                    <div className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-mono">
-                                       {note.grnReference}
-                                    </div>
+                                 <div className="flex justify-end items-end">
                                     <span className="text-xs font-medium text-blue-600 group-hover:underline">Voir Détails</span>
                                  </div>
                               </div>
@@ -597,8 +598,8 @@ export const StockEntry: React.FC<StockEntryProps> = ({
                      <div className="p-6">
                         <div className="flex justify-between items-center mb-6 bg-blue-50 p-4 rounded-lg border border-blue-100">
                            <div>
-                              <div className="text-xs text-blue-600 uppercase font-bold mb-1">Réf. Interne</div>
-                              <div className="text-lg font-mono font-bold text-blue-900">{selectedDeliveryNote.grnReference}</div>
+                              <div className="text-xs text-blue-600 uppercase font-bold mb-1">N° Bon Livraison</div>
+                              <div className="text-lg font-mono font-bold text-blue-900">{selectedDeliveryNote.id}</div>
                            </div>
                            <button className="flex items-center space-x-2 bg-white text-blue-600 px-4 py-2 rounded border border-blue-200 hover:bg-blue-50 transition-colors shadow-sm">
                               <Download size={16} />

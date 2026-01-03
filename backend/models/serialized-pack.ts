@@ -20,6 +20,7 @@ export interface SerializedPack {
     batchNumber: string;
     expiryDate: string;
     locationId: string;
+    tenantId?: string; // Tenant Isolation
 
     status: PackStatus;
     unitsPerPack: number;

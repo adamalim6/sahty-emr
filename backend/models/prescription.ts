@@ -1,3 +1,4 @@
+
 export type PrescriptionType = 'frequency' | 'one-time' | 'punctual-frequency';
 export type DailySchedule = 'everyday' | 'specific-days' | 'every-other-day';
 export type ScheduleMode = 'cycle' | 'specific-time' | 'simple';
@@ -50,6 +51,7 @@ export interface Prescription {
     data: PrescriptionData;
     createdAt: Date;
     createdBy: string;
+    client_id?: string;
 }
 
 export type ExecutionStatus = 'planned' | 'administered' | 'not-administered' | 'late';

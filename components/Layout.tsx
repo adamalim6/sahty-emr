@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
@@ -14,11 +15,13 @@ import {
   LogOut,
   MapPin,
   Pill,
-  Package
+  Package,
+  FileText
 } from 'lucide-react';
 import { AIAssistant } from './AIAssistant';
-import { useAuth, UserRole } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { PAGE_REGISTRY } from '../constants/pageRegistry';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -27,20 +30,43 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const navigate = useNavigate();
 
-  const navItems = [
-    { to: '/', label: 'Patients', icon: Users, roles: [UserRole.DOCTOR, UserRole.NURSE] }, // Assuming default roles for existing items
-    { to: '/admissions', label: 'Admissions', icon: ClipboardList, roles: [UserRole.DOCTOR, UserRole.NURSE] },
+  // Helper to find page definition by ID
+  const getPageInfo = (pageId: string) => {
+    for (const module of PAGE_REGISTRY) {
+        const page = module.pages.find(p => p.id === pageId);
+        if (page) return page;
+    }
+    return null;
+  };
 
-    { to: '/replenishment', label: 'Réapprovisionnement', icon: ClipboardList, roles: [UserRole.DOCTOR, UserRole.NURSE] },
-    { to: '/service-stock', label: 'Stock Service', icon: Package, roles: [UserRole.DOCTOR, UserRole.NURSE] }, // New
-    { to: '/locations', label: 'Emplacements', icon: MapPin, roles: [UserRole.DOCTOR, UserRole.NURSE] },
-    { to: '/waiting-room', label: 'Salle d\'Attente', icon: Armchair, roles: [UserRole.DOCTOR, UserRole.NURSE] },
-    { to: '/map', label: 'Plan du Service', icon: Map, roles: [UserRole.DOCTOR, UserRole.NURSE] },
-    { to: '/settings', label: 'Paramètres', icon: Settings, roles: [UserRole.DOCTOR, UserRole.ADMIN] },
+  // Define navigation items with their Permission Key (Page ID)
+  const availableNavItems = [
+    { id: 'emr_patients', icon: Users, label: 'Patients', to: '/' },
+    { id: 'emr_admissions', icon: ClipboardList, label: 'Admissions', to: '/admissions' },
+    { id: 'emr_replenishment', icon: ClipboardList, label: 'Réapprovisionnement', to: '/replenishment' },
+    { id: 'emr_service_stock', icon: Package, label: 'Stock Service', to: '/service-stock' },
+    { id: 'emr_waiting_room', icon: Armchair, label: 'Salle d\'Attente', to: '/waiting-room' },
+    { id: 'emr_map', icon: Map, label: 'Plan du Service', to: '/map' },
+    { id: 'emr_calendar', icon: Calendar, label: 'Agenda', to: '/calendar' },
+    // Settings usually available to all logged in users, or guarded separately
+    { id: 'st_users', icon: Settings, label: 'Paramètres', to: '/profile' } // Using a safe default or mapped ID
   ];
+
+  // Filter based on user permissions
+  const filteredNavItems = availableNavItems.filter(item => {
+    if (!user) return false;
+    // Super Admin Bypass (optional, but good for testing)
+    if (user.user_type === 'PUBLISHER_SUPERADMIN') return true;
+    
+    // Check if user has the specific permission
+    // For 'Settings', we might allow it generically, but strict check is better
+    if (item.id === 'st_users') return true; // Profile/Settings usually open to self
+
+    return (user.permissions || []).includes(item.id);
+  });
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -69,9 +95,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
 
         <nav className="mt-6 px-4 space-y-2">
-          {navItems.map((item) => (
+          {filteredNavItems.map((item) => (
             <NavLink
-              key={item.to}
+              key={item.id}
               to={item.to}
               onClick={() => setSidebarOpen(false)}
               className={({ isActive }) => `
@@ -92,11 +118,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="bg-slate-800 rounded-xl p-4 flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="h-10 w-10 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold">
-                DR
+                {user?.prenom?.charAt(0) || 'U'}
               </div>
-              <div>
-                <p className="text-sm font-semibold">Dr. S. Alami</p>
-                <p className="text-xs text-slate-400">Cardiologue</p>
+              <div className="overflow-hidden">
+                <p className="text-sm font-semibold truncate">{user?.nom} {user?.prenom}</p>
+                <p className="text-xs text-slate-400 truncate">{user?.username}</p>
               </div>
             </div>
             <button

@@ -1,434 +1,286 @@
 {
   "inventory": [
     {
-      "id": "INV-1766271791866-9181",
-      "productId": "PROD-2025-6613",
-      "name": "Zamox",
+      "id": "INV-1767384191610-5599",
+      "productId": "PROD-2026-5715",
+      "name": "Amoxicillline 1000mg",
       "category": "Antibiotiques",
-      "location": "Zone picking",
+      "location": "Frigo 1",
       "batchNumber": "123",
-      "expiryDate": "2025-12-31",
-      "unitPrice": 6,
-      "theoreticalQty": 50,
+      "expiryDate": "2030-12-12",
+      "unitPrice": 0.3333333333333333,
+      "theoreticalQty": 120,
       "actualQty": null,
-      "lastUpdated": "2025-12-20T23:03:11.866Z"
+      "lastUpdated": "2026-01-02T20:03:11.610Z",
+      "tenantId": "client_1767102086031"
     },
     {
-      "id": "INV-1766271791866-815",
-      "productId": "PROD-2025-6613",
-      "name": "Zamox",
+      "id": "INV-1767399248230-4527",
+      "productId": "PROD-2026-5715",
+      "name": "Amoxicillline 1000mg",
       "category": "Antibiotiques",
-      "location": "Zone picking",
-      "batchNumber": "456",
-      "expiryDate": "2025-12-02",
-      "unitPrice": 6,
-      "theoreticalQty": 5,
+      "location": "Frigo 1",
+      "batchNumber": "346578",
+      "expiryDate": "2032-05-13",
+      "unitPrice": 0.3333333333333333,
+      "theoreticalQty": 180,
       "actualQty": null,
-      "lastUpdated": "2025-12-21T01:56:08.239Z"
+      "lastUpdated": "2026-01-03T00:14:08.240Z",
+      "tenantId": "client_1767102086031"
     },
     {
-      "id": "INV-1766271791866-3",
-      "productId": "PROD-2025-4540",
-      "name": "Doliprane 1000 mg",
+      "id": "INV-1767400903577-9425",
+      "productId": "PROD-2026-147",
+      "name": "Zyrtec 25mg",
       "category": "Antibiotiques",
-      "location": "Zone picking",
-      "batchNumber": "4567",
-      "expiryDate": "2025-12-31",
-      "unitPrice": 5,
-      "theoreticalQty": 95,
+      "location": "Frigo 1",
+      "batchNumber": "54678",
+      "expiryDate": "2037-01-23",
+      "unitPrice": 4,
+      "theoreticalQty": 100,
       "actualQty": null,
-      "lastUpdated": "2025-12-21T01:56:08.239Z"
+      "lastUpdated": "2026-01-03T00:41:43.577Z",
+      "tenantId": "client_1767102086031"
     },
     {
-      "id": "INV-SERV-1766277495922-685",
-      "serviceId": "SERVICE_DEFAULT",
-      "productId": "PROD-2025-6613",
-      "name": "Zamox",
+      "id": "INV-1767403387057-8951",
+      "productId": "PROD-2026-147",
+      "name": "Zyrtec 25mg",
       "category": "Antibiotiques",
-      "location": "LOC-URG-TEST",
-      "batchNumber": "456",
-      "expiryDate": "2025-12-02",
-      "unitPrice": 6,
-      "theoreticalQty": 0,
-      "actualQty": null,
-      "lastUpdated": "2025-12-21T01:12:56.911Z"
-    },
-    {
-      "id": "INV-SERV-1766277653707-663",
-      "serviceId": "Service Médecine",
-      "productId": "PROD-2025-4540",
-      "name": "Doliprane 1000 mg",
-      "category": "Antibiotiques",
-      "location": "LOC-EMR-1766277614022",
-      "batchNumber": "4567",
-      "expiryDate": "2025-12-31",
-      "unitPrice": 5,
-      "theoreticalQty": 15,
-      "actualQty": null,
-      "lastUpdated": "2025-12-21T01:56:08.239Z"
-    },
-    {
-      "id": "INV-SERV-1766277653708-263",
-      "serviceId": "Service Médecine",
-      "productId": "PROD-2025-6613",
-      "name": "Zamox",
-      "category": "Antibiotiques",
-      "location": "LOC-EMR-1766277614022",
-      "batchNumber": "456",
-      "expiryDate": "2025-12-02",
-      "unitPrice": 6,
-      "theoreticalQty": 8,
-      "actualQty": null,
-      "lastUpdated": "2025-12-21T01:56:08.239Z"
-    },
-    {
-      "id": "INV-SERV-1766281192031-882",
-      "serviceId": "SERVICE_TEST",
-      "productId": "PROD-2025-6613",
-      "name": "Zamox",
-      "category": "Antibiotiques",
-      "location": "LOC-RESERVE",
-      "batchNumber": "456",
-      "expiryDate": "2025-12-02",
-      "unitPrice": 6,
-      "theoreticalQty": 7,
-      "actualQty": null,
-      "lastUpdated": "2025-12-21T01:39:52.539Z"
-    },
-    {
-      "id": "INV-1766320578606-8696",
-      "productId": "PROD-2025-8584",
-      "name": "Zyrtec 5mg",
-      "category": "Antibiotiques",
-      "location": "Zone picking",
-      "batchNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "unitPrice": 1.6666666666666667,
-      "theoreticalQty": 78,
-      "actualQty": null,
-      "lastUpdated": "2025-12-29T10:43:59.424Z"
-    },
-    {
-      "id": "INV-SERV-1766320591870-27",
-      "serviceId": "Service Médecine",
-      "productId": "PROD-2025-8584",
-      "name": "Zyrtec 5mg",
-      "category": "Antibiotiques",
-      "location": "LOC-EMR-1766277614022",
-      "batchNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "unitPrice": 1.6666666666666667,
-      "theoreticalQty": 138,
-      "actualQty": null,
-      "lastUpdated": "2025-12-29T10:43:59.424Z"
-    },
-    {
-      "id": "INV-1766864414030-6198",
-      "productId": "PROD-2025-6607",
-      "name": "Antalgon",
-      "category": "Antibiotiques",
-      "location": "Zone picking",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "unitPrice": 16.666666666666668,
-      "theoreticalQty": 420,
-      "actualQty": null,
-      "lastUpdated": "2025-12-29T10:43:59.426Z"
-    },
-    {
-      "id": "INV-SERV-1766864807093-556",
-      "serviceId": "Service Médecine",
-      "productId": "PROD-2025-6607",
-      "name": "Antalgon",
-      "category": "Antibiotiques",
-      "location": "LOC-EMR-1766864455985",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "unitPrice": 16.666666666666668,
+      "location": "Frigo 1",
+      "batchNumber": "23344RT",
+      "expiryDate": "2026-01-30",
+      "unitPrice": 4,
       "theoreticalQty": 30,
       "actualQty": null,
-      "lastUpdated": "2025-12-27T21:03:21.964Z"
+      "lastUpdated": "2026-01-03T01:23:07.057Z",
+      "tenantId": "client_1767102086031"
     },
     {
-      "id": "INV-SERV-1766867134040-8362",
-      "productId": "PROD-2025-6607",
-      "name": "Antalgon",
+      "id": "INV-1767404533061-3347",
+      "productId": "PROD-2026-5715",
+      "name": "Amoxicillline 1000mg",
       "category": "Antibiotiques",
-      "location": "LOC-EMR-1766277614022",
-      "serviceId": "Cardiologie",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "unitPrice": 16.666666666666668,
-      "theoreticalQty": 0,
+      "location": "Frigo 1",
+      "batchNumber": "68R89",
+      "expiryDate": "2031-01-16",
+      "unitPrice": 0.3333333333333333,
+      "theoreticalQty": 90,
       "actualQty": null,
-      "lastUpdated": "2025-12-27T20:43:18.868Z"
+      "lastUpdated": "2026-01-03T01:42:13.064Z",
+      "tenantId": "client_1767102086031"
     },
     {
-      "id": "INV-SERV-1766868110930-2197",
-      "productId": "PROD-2025-6607",
-      "name": "Antalgon",
+      "id": "INV-1767405732450-6965",
+      "productId": "PROD-2026-147",
+      "name": "Zyrtec 25mg",
       "category": "Antibiotiques",
-      "location": "LOC-EMR-1766864447975",
-      "serviceId": "Cardiologie",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "unitPrice": 16.666666666666668,
-      "theoreticalQty": 0,
+      "location": "Frigo 1",
+      "batchNumber": "6G689",
+      "expiryDate": "2034-01-26",
+      "unitPrice": 4,
+      "theoreticalQty": 30,
       "actualQty": null,
-      "lastUpdated": "2025-12-27T20:41:50.930Z"
-    },
-    {
-      "id": "INV-SERV-1766869290014-343",
-      "serviceId": "Service Médecine",
-      "productId": "PROD-2025-6607",
-      "name": "Antalgon",
-      "category": "Antibiotiques",
-      "location": "LOC-EMR-1766277614022",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "unitPrice": 16.666666666666668,
-      "theoreticalQty": 420,
-      "actualQty": null,
-      "lastUpdated": "2025-12-29T10:43:59.426Z"
+      "lastUpdated": "2026-01-03T02:02:12.450Z",
+      "tenantId": "client_1767102086031"
     }
   ],
   "catalog": [
     {
-      "id": "PROD-2025-4540",
+      "id": "PROD-2026-5715",
       "type": "Médicament",
       "suppliers": [
         {
-          "id": "SUP-1766271535814",
-          "name": "Botu",
-          "purchasePrice": 100,
-          "isActive": true
-        },
-        {
-          "id": "SUP-1766271528597",
-          "name": "Bayerne",
-          "purchasePrice": 90,
-          "isActive": false
-        }
-      ],
-      "molecules": [
-        {
-          "id": "MOL-1766271512957",
-          "name": "Paracétamol"
-        }
-      ],
-      "profitMargin": 20,
-      "vatRate": 5.5,
-      "isSubdivisable": true,
-      "unitsPerPack": 20,
-      "createdAt": "2025-12-20T22:58:19.310Z",
-      "updatedAt": "2025-12-20T23:01:43.320Z",
-      "name": "Doliprane 1000 mg",
-      "dosage": 1000,
-      "therapeuticClass": "Analgésiques",
-      "subdivisionUnits": 20
-    },
-    {
-      "id": "PROD-2025-6613",
-      "type": "Médicament",
-      "suppliers": [
-        {
-          "id": "SUP-1766271528597",
-          "name": "Bayerne",
-          "purchasePrice": 60,
+          "id": "supp_1",
+          "name": "Laprophan",
+          "purchasePrice": 10,
           "isActive": true
         }
       ],
       "molecules": [
         {
-          "id": "MOL-1766271639175",
-          "name": "Moxinav"
-        }
-      ],
-      "profitMargin": 20,
-      "vatRate": 5.5,
-      "isSubdivisable": true,
-      "unitsPerPack": 10,
-      "createdAt": "2025-12-20T23:00:25.626Z",
-      "updatedAt": "2025-12-20T23:01:07.143Z",
-      "name": "Zamox",
-      "dosage": 25,
-      "therapeuticClass": "Antibiotiques",
-      "subdivisionUnits": 10
-    },
-    {
-      "id": "PROD-2025-8584",
-      "type": "Médicament",
-      "suppliers": [
-        {
-          "id": "SUP-1766271535814",
-          "name": "Botu",
-          "purchasePrice": 20,
-          "isActive": true
-        }
-      ],
-      "molecules": [
-        {
-          "id": "MOL-1766319986122",
-          "name": "Lévocétrizine dihydrochloride"
-        }
-      ],
-      "profitMargin": 20,
-      "vatRate": 5.5,
-      "isSubdivisable": true,
-      "unitsPerPack": 12,
-      "createdAt": "2025-12-21T12:26:04.140Z",
-      "updatedAt": "2025-12-21T12:27:22.309Z",
-      "name": "Zyrtec 5mg",
-      "dosage": 5,
-      "therapeuticClass": "Analgésiques",
-      "subdivisionUnits": 12
-    },
-    {
-      "id": "PROD-2025-6607",
-      "type": "Médicament",
-      "suppliers": [
-        {
-          "id": "SUP-1766271528597",
-          "name": "Bayerne",
-          "purchasePrice": 500,
-          "isActive": true
-        }
-      ],
-      "molecules": [
-        {
-          "id": "MOL-1766864292220",
-          "name": "atanna"
+          "id": "MOL-1767384000655",
+          "name": "Moxiclav"
         }
       ],
       "profitMargin": 0,
       "vatRate": 0,
       "isSubdivisable": false,
       "unitsPerPack": 30,
-      "createdAt": "2025-12-27T19:37:55.272Z",
-      "updatedAt": "2025-12-27T19:38:44.537Z",
-      "name": "Antalgon",
-      "dosage": 200,
-      "therapeuticClass": "Psychotropes",
-      "subdivisionUnits": 30
+      "createdAt": "2026-01-02T19:59:45.607Z",
+      "updatedAt": "2026-01-02T20:00:48.965Z",
+      "name": "Amoxicillline 1000mg",
+      "dosage": 1000,
+      "therapeuticClass": "Antibiotiques",
+      "subdivisionUnits": 30,
+      "tenantId": "client_1767102086031",
+      "currentStock": 0
+    },
+    {
+      "id": "PROD-2026-147",
+      "type": "Médicament",
+      "suppliers": [
+        {
+          "id": "supp_1",
+          "name": "Laprophan",
+          "purchasePrice": 40,
+          "isActive": true
+        }
+      ],
+      "molecules": [
+        {
+          "id": "MOL-1767384702910",
+          "name": "Corticoide"
+        }
+      ],
+      "profitMargin": 0,
+      "vatRate": 0,
+      "isSubdivisable": true,
+      "unitsPerPack": 10,
+      "createdAt": "2026-01-02T20:11:28.431Z",
+      "updatedAt": "2026-01-02T20:12:17.944Z",
+      "name": "Zyrtec 25mg",
+      "dosage": 25,
+      "therapeuticClass": "Analgésiques",
+      "subdivisionUnits": 10,
+      "tenantId": "client_1767102086031"
     }
   ],
   "locations": [
     {
-      "name": "Zone picking",
+      "name": "Frigo 1",
       "description": "",
       "type": "SHELF",
       "isActive": true,
-      "id": "LOC-1766271560233"
+      "scope": "PHARMACY",
+      "tenantId": "client_1767102086031",
+      "id": "LOC-1767384146588"
     },
     {
-      "name": "Picking PSL",
+      "name": "armoire 1",
       "description": "",
       "type": "SHELF",
       "isActive": true,
-      "id": "LOC-1766271568147"
+      "scope": "SERVICE",
+      "serviceId": "svc_1767295432437",
+      "tenantId": "client_1767102086031",
+      "id": "LOC-1767415934978"
+    },
+    {
+      "name": "armoire 2",
+      "description": "",
+      "type": "SHELF",
+      "isActive": true,
+      "scope": "SERVICE",
+      "serviceId": "svc_1767295432437",
+      "tenantId": "client_1767102086031",
+      "id": "LOC-1767416956782"
     }
   ],
-  "partners": [],
+  "partners": [
+    {
+      "id": "PART-1767408287262",
+      "name": "Clinique Les Orangers",
+      "type": "Clinique",
+      "contactPerson": "",
+      "phone": "",
+      "email": "",
+      "address": "",
+      "isActive": true,
+      "tenantId": "client_1767102086031"
+    }
+  ],
   "stockOutHistory": [],
   "purchaseOrders": [
     {
-      "id": "BC-2025-9001",
-      "supplierId": "SUP-1766271528597",
-      "supplierName": "Bayerne",
-      "date": "2025-12-20T23:02:00.146Z",
+      "id": "BC-2026-2034",
+      "supplierId": "supp_1",
+      "supplierName": "Laprophan",
+      "date": "2026-01-02T20:00:58.255Z",
+      "status": "Terminé",
+      "items": [
+        {
+          "productId": "PROD-2026-5715",
+          "orderedQty": 10,
+          "deliveredQty": 10
+        }
+      ],
+      "tenantId": "client_1767102086031"
+    },
+    {
+      "id": "BC-2026-4807",
+      "supplierId": "supp_1",
+      "supplierName": "Laprophan",
+      "date": "2026-01-02T20:12:42.928Z",
+      "status": "Terminé",
+      "items": [
+        {
+          "productId": "PROD-2026-147",
+          "orderedQty": 15,
+          "deliveredQty": 15
+        }
+      ],
+      "tenantId": "client_1767102086031"
+    },
+    {
+      "id": "BC-2026-150",
+      "supplierId": "supp_1",
+      "supplierName": "Laprophan",
+      "date": "2026-01-03T01:41:04.164Z",
+      "status": "Terminé",
+      "items": [
+        {
+          "productId": "PROD-2026-5715",
+          "orderedQty": 3,
+          "deliveredQty": 3
+        }
+      ],
+      "tenantId": "client_1767102086031"
+    },
+    {
+      "id": "BC-2026-1217",
+      "supplierId": "supp_1",
+      "supplierName": "Laprophan",
+      "date": "2026-01-03T01:49:13.519Z",
       "status": "Partiel",
       "items": [
         {
-          "productId": "PROD-2025-6613",
-          "orderedQty": 23,
-          "deliveredQty": 10
-        },
-        {
-          "productId": "PROD-2025-4540",
-          "orderedQty": 17,
-          "deliveredQty": 7
+          "productId": "PROD-2026-147",
+          "orderedQty": 12,
+          "deliveredQty": 5
         }
-      ]
-    },
-    {
-      "id": "BC-2025-822",
-      "supplierId": "SUP-1766271535814",
-      "supplierName": "Botu",
-      "date": "2025-12-21T12:35:30.011Z",
-      "status": "Terminé",
-      "items": [
-        {
-          "productId": "PROD-2025-8584",
-          "orderedQty": 23,
-          "deliveredQty": 23
-        }
-      ]
-    },
-    {
-      "id": "BC-2025-5984",
-      "supplierId": "SUP-1766271528597",
-      "supplierName": "Bayerne",
-      "date": "2025-12-27T19:39:21.071Z",
-      "status": "Terminé",
-      "items": [
-        {
-          "productId": "PROD-2025-6607",
-          "orderedQty": 35,
-          "deliveredQty": 35
-        }
-      ]
+      ],
+      "tenantId": "client_1767102086031"
     }
   ],
   "deliveryNotes": [
     {
-      "id": "56789",
-      "poId": "BC-2025-9001",
-      "date": "2025-12-20T23:02:26.762Z",
+      "id": "4567890",
+      "poId": "BC-2026-2034",
+      "date": "2026-01-02T20:01:09.322Z",
       "createdBy": "Utilisateur Actuel",
-      "grnReference": "BL-746762",
+      "grnReference": "BL-069322",
       "status": "Traité",
       "items": [
         {
-          "productId": "PROD-2025-6613",
-          "deliveredQty": 10
-        },
-        {
-          "productId": "PROD-2025-4540",
-          "deliveredQty": 7
+          "productId": "PROD-2026-5715",
+          "deliveredQty": 4
         }
       ],
+      "tenantId": "client_1767102086031",
       "processingResult": {
-        "noteId": "56789",
-        "processedDate": "2025-12-20T23:03:11.861Z",
+        "noteId": "4567890",
+        "processedDate": "2026-01-02T20:03:11.590Z",
         "items": [
           {
-            "productId": "PROD-2025-6613",
-            "deliveredQty": 10,
+            "productId": "PROD-2026-5715",
+            "deliveredQty": 4,
             "batches": [
               {
                 "batchNumber": "123",
-                "expiryDate": "2025-12-31",
-                "quantity": 5,
-                "locationId": "Zone picking"
-              },
-              {
-                "batchNumber": "456",
-                "expiryDate": "2025-12-02",
-                "quantity": 5,
-                "locationId": "Zone picking"
-              }
-            ],
-            "returns": []
-          },
-          {
-            "productId": "PROD-2025-4540",
-            "deliveredQty": 7,
-            "batches": [
-              {
-                "batchNumber": "4567",
-                "expiryDate": "2025-12-31",
-                "quantity": 7,
-                "locationId": "Zone picking"
+                "expiryDate": "2030-12-12",
+                "quantity": 4,
+                "locationId": "Frigo 1"
               }
             ],
             "returns": []
@@ -437,31 +289,32 @@
       }
     },
     {
-      "id": "25436U7",
-      "poId": "BC-2025-822",
-      "date": "2025-12-21T12:35:40.345Z",
+      "id": "46789",
+      "poId": "BC-2026-2034",
+      "date": "2026-01-02T20:04:37.675Z",
       "createdBy": "Utilisateur Actuel",
-      "grnReference": "BL-540345",
+      "grnReference": "BL-277675",
       "status": "Traité",
       "items": [
         {
-          "productId": "PROD-2025-8584",
-          "deliveredQty": 23
+          "productId": "PROD-2026-5715",
+          "deliveredQty": 6
         }
       ],
+      "tenantId": "client_1767102086031",
       "processingResult": {
-        "noteId": "25436U7",
-        "processedDate": "2025-12-21T12:36:18.596Z",
+        "noteId": "46789",
+        "processedDate": "2026-01-03T00:14:08.051Z",
         "items": [
           {
-            "productId": "PROD-2025-8584",
-            "deliveredQty": 23,
+            "productId": "PROD-2026-5715",
+            "deliveredQty": 6,
             "batches": [
               {
-                "batchNumber": "EZ54",
-                "expiryDate": "2025-12-31",
-                "quantity": 23,
-                "locationId": "Zone picking"
+                "batchNumber": "346578",
+                "expiryDate": "2032-05-13",
+                "quantity": 6,
+                "locationId": "Frigo 1"
               }
             ],
             "returns": []
@@ -470,34 +323,150 @@
       }
     },
     {
-      "id": "3456789",
-      "poId": "BC-2025-5984",
-      "date": "2025-12-27T19:39:49.887Z",
+      "id": "098",
+      "poId": "BC-2026-4807",
+      "date": "2026-01-02T20:13:16.029Z",
       "createdBy": "Utilisateur Actuel",
-      "grnReference": "BL-389887",
+      "grnReference": "BL-796029",
       "status": "Traité",
       "items": [
         {
-          "productId": "PROD-2025-6607",
-          "deliveredQty": 35
+          "productId": "PROD-2026-147",
+          "deliveredQty": 10
         }
       ],
+      "tenantId": "client_1767102086031",
       "processingResult": {
-        "noteId": "3456789",
-        "processedDate": "2025-12-27T19:40:14.020Z",
+        "noteId": "098",
+        "processedDate": "2026-01-03T00:41:43.460Z",
         "items": [
           {
-            "productId": "PROD-2025-6607",
-            "deliveredQty": 35,
+            "productId": "PROD-2026-147",
+            "deliveredQty": 10,
             "batches": [
               {
-                "batchNumber": "546789",
-                "expiryDate": "2029-12-12",
-                "quantity": 35,
-                "locationId": "Zone picking"
+                "batchNumber": "54678",
+                "expiryDate": "2037-01-23",
+                "quantity": 10,
+                "locationId": "Frigo 1"
               }
             ],
             "returns": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "67E69",
+      "poId": "BC-2026-4807",
+      "date": "2026-01-03T01:11:39.526Z",
+      "createdBy": "Utilisateur Actuel",
+      "grnReference": "BL-699526",
+      "status": "Traité",
+      "items": [
+        {
+          "productId": "PROD-2026-147",
+          "deliveredQty": 5
+        }
+      ],
+      "tenantId": "client_1767102086031",
+      "processingResult": {
+        "noteId": "67E69",
+        "processedDate": "2026-01-03T01:23:06.970Z",
+        "items": [
+          {
+            "productId": "PROD-2026-147",
+            "deliveredQty": 5,
+            "batches": [
+              {
+                "batchNumber": "23344RT",
+                "expiryDate": "2026-01-30",
+                "quantity": 3,
+                "locationId": "Frigo 1"
+              }
+            ],
+            "returns": [
+              {
+                "quantity": 2,
+                "reason": "Endommagé",
+                "notes": "boites tordues"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "BL-474814",
+      "poId": "BC-2026-150",
+      "date": "2026-01-03T01:41:14.814Z",
+      "createdBy": "Utilisateur Actuel",
+      "grnReference": "4321",
+      "status": "Traité",
+      "items": [
+        {
+          "productId": "PROD-2026-5715",
+          "deliveredQty": 3
+        }
+      ],
+      "tenantId": "client_1767102086031",
+      "processingResult": {
+        "noteId": "BL-474814",
+        "processedDate": "2026-01-03T01:42:12.937Z",
+        "items": [
+          {
+            "productId": "PROD-2026-5715",
+            "deliveredQty": 3,
+            "batches": [
+              {
+                "batchNumber": "68R89",
+                "expiryDate": "2031-01-16",
+                "quantity": 3,
+                "locationId": "Frigo 1"
+              }
+            ],
+            "returns": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "BL-967032",
+      "poId": "BC-2026-1217",
+      "date": "2026-01-03T01:49:27.032Z",
+      "createdBy": "Utilisateur Actuel",
+      "grnReference": "7589",
+      "status": "Traité",
+      "items": [
+        {
+          "productId": "PROD-2026-147",
+          "deliveredQty": 5
+        }
+      ],
+      "tenantId": "client_1767102086031",
+      "processingResult": {
+        "noteId": "BL-967032",
+        "processedDate": "2026-01-03T02:02:12.387Z",
+        "processedBy": "pharma1",
+        "items": [
+          {
+            "productId": "PROD-2026-147",
+            "deliveredQty": 5,
+            "batches": [
+              {
+                "batchNumber": "6G689",
+                "expiryDate": "2034-01-26",
+                "quantity": 3,
+                "locationId": "Frigo 1"
+              }
+            ],
+            "returns": [
+              {
+                "quantity": 2,
+                "reason": "Périmé",
+                "notes": ""
+              }
+            ]
           }
         ]
       }
@@ -505,2107 +474,522 @@
   ],
   "serializedPacks": [
     {
-      "id": "pack-1766271791865-2853-0",
-      "productId": "PROD-2025-6613",
-      "serialNumber": "SN-1766271791865-000001",
-      "lotNumber": "123",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
-      "status": "Dispensée",
-      "unitsPerPack": 10,
-      "remainingUnits": 10,
-      "sourceDeliveryNoteId": "56789",
-      "history": [
-        {
-          "date": "2025-12-22T12:03:45.459Z",
-          "action": "DISPENSATION",
-          "userId": "current-user",
-          "details": "Dispensation Prescription PRESC-1766404588207-7bvsfzlli"
-        }
-      ],
-      "createdAt": "2025-12-20T23:03:11.866Z"
-    },
-    {
-      "id": "pack-1766271791865-2853-1",
-      "productId": "PROD-2025-6613",
-      "serialNumber": "SN-1766271791866-000002",
-      "lotNumber": "123",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
-      "status": "Dispensée",
-      "unitsPerPack": 10,
-      "remainingUnits": 10,
-      "sourceDeliveryNoteId": "56789",
-      "history": [
-        {
-          "date": "2025-12-22T12:03:45.459Z",
-          "action": "DISPENSATION",
-          "userId": "current-user",
-          "details": "Dispensation Prescription PRESC-1766404588207-7bvsfzlli"
-        }
-      ],
-      "createdAt": "2025-12-20T23:03:11.866Z"
-    },
-    {
-      "id": "pack-1766271791865-2853-2",
-      "productId": "PROD-2025-6613",
-      "serialNumber": "SN-1766271791866-000003",
-      "lotNumber": "123",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
-      "status": "Dispensée",
-      "unitsPerPack": 10,
-      "remainingUnits": 10,
-      "sourceDeliveryNoteId": "56789",
-      "history": [
-        {
-          "date": "2025-12-29T10:35:20.346Z",
-          "action": "DISPENSATION",
-          "userId": "current-user",
-          "details": "Dispensation Prescription PRESC-1767004473086-zsjpfpwkw"
-        }
-      ],
-      "createdAt": "2025-12-20T23:03:11.866Z"
-    },
-    {
-      "id": "pack-1766271791865-2853-3",
-      "productId": "PROD-2025-6613",
-      "serialNumber": "SN-1766271791866-000004",
-      "lotNumber": "123",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
+      "id": "pack-1767384191609-5485-0",
+      "productId": "PROD-2026-5715",
+      "serialNumber": "SN-1767384191610-000001",
+      "batchNumber": "123",
+      "expiryDate": "2030-12-12",
+      "locationId": "Frigo 1",
       "status": "Scellée",
-      "unitsPerPack": 10,
-      "remainingUnits": 10,
-      "sourceDeliveryNoteId": "56789",
+      "unitsPerPack": 30,
+      "remainingUnits": 30,
+      "sourceDeliveryNoteId": "4567890",
       "history": [],
-      "createdAt": "2025-12-20T23:03:11.866Z"
+      "createdAt": "2026-01-02T20:03:11.610Z",
+      "tenantId": "client_1767102086031"
     },
     {
-      "id": "pack-1766271791865-2853-4",
-      "productId": "PROD-2025-6613",
-      "serialNumber": "SN-1766271791866-000005",
-      "lotNumber": "123",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
+      "id": "pack-1767384191609-5485-1",
+      "productId": "PROD-2026-5715",
+      "serialNumber": "SN-1767384191610-000002",
+      "batchNumber": "123",
+      "expiryDate": "2030-12-12",
+      "locationId": "Frigo 1",
       "status": "Scellée",
-      "unitsPerPack": 10,
-      "remainingUnits": 10,
-      "sourceDeliveryNoteId": "56789",
+      "unitsPerPack": 30,
+      "remainingUnits": 30,
+      "sourceDeliveryNoteId": "4567890",
       "history": [],
-      "createdAt": "2025-12-20T23:03:11.866Z"
+      "createdAt": "2026-01-02T20:03:11.610Z",
+      "tenantId": "client_1767102086031"
     },
     {
-      "id": "pack-1766271791866-7455-0",
-      "productId": "PROD-2025-6613",
-      "serialNumber": "SN-1766271791866-000006",
-      "lotNumber": "456",
-      "expiryDate": "2025-12-02",
-      "locationId": "Zone picking",
-      "status": "Dispensée",
-      "unitsPerPack": 10,
-      "remainingUnits": 10,
-      "sourceDeliveryNoteId": "56789",
-      "history": [
-        {
-          "date": "2025-12-20T23:14:55.200Z",
-          "action": "DISPENSATION",
-          "userId": "current-user",
-          "details": "Dispensation Prescription PRESC-1766272445849-woplqhnbc"
-        }
-      ],
-      "createdAt": "2025-12-20T23:03:11.866Z"
-    },
-    {
-      "id": "pack-1766271791866-7455-1",
-      "productId": "PROD-2025-6613",
-      "serialNumber": "SN-1766271791866-000007",
-      "lotNumber": "456",
-      "expiryDate": "2025-12-02",
-      "locationId": "Zone picking",
-      "status": "Dispensée",
-      "unitsPerPack": 10,
-      "remainingUnits": 10,
-      "sourceDeliveryNoteId": "56789",
-      "history": [
-        {
-          "date": "2025-12-22T11:57:16.939Z",
-          "action": "DISPENSATION",
-          "userId": "current-user",
-          "details": "Dispensation Prescription PRESC-1766404588207-7bvsfzlli"
-        }
-      ],
-      "createdAt": "2025-12-20T23:03:11.866Z"
-    },
-    {
-      "id": "pack-1766271791866-7455-2",
-      "productId": "PROD-2025-6613",
-      "serialNumber": "SN-1766271791866-000008",
-      "lotNumber": "456",
-      "expiryDate": "2025-12-02",
-      "locationId": "Zone picking",
+      "id": "pack-1767384191609-5485-2",
+      "productId": "PROD-2026-5715",
+      "serialNumber": "SN-1767384191610-000003",
+      "batchNumber": "123",
+      "expiryDate": "2030-12-12",
+      "locationId": "Frigo 1",
       "status": "Scellée",
-      "unitsPerPack": 10,
-      "remainingUnits": 10,
-      "sourceDeliveryNoteId": "56789",
+      "unitsPerPack": 30,
+      "remainingUnits": 30,
+      "sourceDeliveryNoteId": "4567890",
       "history": [],
-      "createdAt": "2025-12-20T23:03:11.866Z"
+      "createdAt": "2026-01-02T20:03:11.610Z",
+      "tenantId": "client_1767102086031"
     },
     {
-      "id": "pack-1766271791866-7455-3",
-      "productId": "PROD-2025-6613",
-      "serialNumber": "SN-1766271791866-000009",
-      "lotNumber": "456",
-      "expiryDate": "2025-12-02",
-      "locationId": "Zone picking",
+      "id": "pack-1767384191609-5485-3",
+      "productId": "PROD-2026-5715",
+      "serialNumber": "SN-1767384191610-000004",
+      "batchNumber": "123",
+      "expiryDate": "2030-12-12",
+      "locationId": "Frigo 1",
       "status": "Scellée",
-      "unitsPerPack": 10,
-      "remainingUnits": 10,
-      "sourceDeliveryNoteId": "56789",
+      "unitsPerPack": 30,
+      "remainingUnits": 30,
+      "sourceDeliveryNoteId": "4567890",
       "history": [],
-      "createdAt": "2025-12-20T23:03:11.866Z"
+      "createdAt": "2026-01-02T20:03:11.610Z",
+      "tenantId": "client_1767102086031"
     },
     {
-      "id": "pack-1766271791866-7455-4",
-      "productId": "PROD-2025-6613",
-      "serialNumber": "SN-1766271791866-000010",
-      "lotNumber": "456",
-      "expiryDate": "2025-12-02",
-      "locationId": "Zone picking",
+      "id": "pack-1767399248227-6345-0",
+      "productId": "PROD-2026-5715",
+      "serialNumber": "SN-1767399248229-000005",
+      "batchNumber": "346578",
+      "expiryDate": "2032-05-13",
+      "locationId": "Frigo 1",
+      "status": "Scellée",
+      "unitsPerPack": 30,
+      "remainingUnits": 30,
+      "sourceDeliveryNoteId": "46789",
+      "history": [],
+      "createdAt": "2026-01-03T00:14:08.229Z",
+      "tenantId": "client_1767102086031"
+    },
+    {
+      "id": "pack-1767399248227-6345-1",
+      "productId": "PROD-2026-5715",
+      "serialNumber": "SN-1767399248229-000006",
+      "batchNumber": "346578",
+      "expiryDate": "2032-05-13",
+      "locationId": "Frigo 1",
+      "status": "Scellée",
+      "unitsPerPack": 30,
+      "remainingUnits": 30,
+      "sourceDeliveryNoteId": "46789",
+      "history": [],
+      "createdAt": "2026-01-03T00:14:08.229Z",
+      "tenantId": "client_1767102086031"
+    },
+    {
+      "id": "pack-1767399248227-6345-2",
+      "productId": "PROD-2026-5715",
+      "serialNumber": "SN-1767399248229-000007",
+      "batchNumber": "346578",
+      "expiryDate": "2032-05-13",
+      "locationId": "Frigo 1",
+      "status": "Scellée",
+      "unitsPerPack": 30,
+      "remainingUnits": 30,
+      "sourceDeliveryNoteId": "46789",
+      "history": [],
+      "createdAt": "2026-01-03T00:14:08.229Z",
+      "tenantId": "client_1767102086031"
+    },
+    {
+      "id": "pack-1767399248227-6345-3",
+      "productId": "PROD-2026-5715",
+      "serialNumber": "SN-1767399248229-000008",
+      "batchNumber": "346578",
+      "expiryDate": "2032-05-13",
+      "locationId": "Frigo 1",
+      "status": "Scellée",
+      "unitsPerPack": 30,
+      "remainingUnits": 30,
+      "sourceDeliveryNoteId": "46789",
+      "history": [],
+      "createdAt": "2026-01-03T00:14:08.229Z",
+      "tenantId": "client_1767102086031"
+    },
+    {
+      "id": "pack-1767399248227-6345-4",
+      "productId": "PROD-2026-5715",
+      "serialNumber": "SN-1767399248229-000009",
+      "batchNumber": "346578",
+      "expiryDate": "2032-05-13",
+      "locationId": "Frigo 1",
+      "status": "Scellée",
+      "unitsPerPack": 30,
+      "remainingUnits": 30,
+      "sourceDeliveryNoteId": "46789",
+      "history": [],
+      "createdAt": "2026-01-03T00:14:08.230Z",
+      "tenantId": "client_1767102086031"
+    },
+    {
+      "id": "pack-1767399248227-6345-5",
+      "productId": "PROD-2026-5715",
+      "serialNumber": "SN-1767399248230-000010",
+      "batchNumber": "346578",
+      "expiryDate": "2032-05-13",
+      "locationId": "Frigo 1",
+      "status": "Scellée",
+      "unitsPerPack": 30,
+      "remainingUnits": 30,
+      "sourceDeliveryNoteId": "46789",
+      "history": [],
+      "createdAt": "2026-01-03T00:14:08.230Z",
+      "tenantId": "client_1767102086031"
+    },
+    {
+      "id": "pack-1767400903575-7987-0",
+      "productId": "PROD-2026-147",
+      "serialNumber": "SN-1767400903576-000011",
+      "batchNumber": "54678",
+      "expiryDate": "2037-01-23",
+      "locationId": "Frigo 1",
       "status": "Scellée",
       "unitsPerPack": 10,
       "remainingUnits": 10,
-      "sourceDeliveryNoteId": "56789",
+      "sourceDeliveryNoteId": "098",
       "history": [],
-      "createdAt": "2025-12-20T23:03:11.866Z"
+      "createdAt": "2026-01-03T00:41:43.576Z",
+      "tenantId": "client_1767102086031"
     },
     {
-      "id": "pack-1766271791866-8937-0",
-      "productId": "PROD-2025-4540",
-      "serialNumber": "SN-1766271791866-000011",
-      "lotNumber": "4567",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
-      "status": "Dispensée",
-      "unitsPerPack": 20,
-      "remainingUnits": 20,
-      "sourceDeliveryNoteId": "56789",
-      "history": [
-        {
-          "date": "2025-12-20T23:14:29.636Z",
-          "action": "DISPENSATION",
-          "userId": "current-user",
-          "details": "Dispensation Prescription PRESC-1766272403006-pkg4mhbul"
-        }
-      ],
-      "createdAt": "2025-12-20T23:03:11.866Z"
-    },
-    {
-      "id": "pack-1766271791866-8937-1",
-      "productId": "PROD-2025-4540",
-      "serialNumber": "SN-1766271791866-000012",
-      "lotNumber": "4567",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
-      "status": "Dispensée",
-      "unitsPerPack": 20,
+      "id": "pack-1767400903575-7987-1",
+      "productId": "PROD-2026-147",
+      "serialNumber": "SN-1767400903577-000012",
+      "batchNumber": "54678",
+      "expiryDate": "2037-01-23",
+      "locationId": "Frigo 1",
+      "status": "Scellée",
+      "unitsPerPack": 10,
       "remainingUnits": 10,
-      "sourceDeliveryNoteId": "56789",
-      "history": [
-        {
-          "date": "2025-12-20T23:20:36.051Z",
-          "action": "DISPENSATION_UNIT",
-          "userId": "current-user",
-          "details": "Dispensed 10 units"
-        },
-        {
-          "date": "2025-12-29T10:11:21.012Z",
-          "action": "DISPENSATION",
-          "userId": "current-user",
-          "details": "Dispensation Prescription PRESC-1767003039845-jl49ih604"
-        }
-      ],
-      "createdAt": "2025-12-20T23:03:11.866Z"
-    },
-    {
-      "id": "pack-1766271791866-8937-2",
-      "productId": "PROD-2025-4540",
-      "serialNumber": "SN-1766271791866-000013",
-      "lotNumber": "4567",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
-      "status": "Dispensée",
-      "unitsPerPack": 20,
-      "remainingUnits": 20,
-      "sourceDeliveryNoteId": "56789",
-      "history": [
-        {
-          "date": "2025-12-29T10:11:21.012Z",
-          "action": "DISPENSATION",
-          "userId": "current-user",
-          "details": "Dispensation Prescription PRESC-1767003039845-jl49ih604"
-        }
-      ],
-      "createdAt": "2025-12-20T23:03:11.866Z"
-    },
-    {
-      "id": "pack-1766271791866-8937-3",
-      "productId": "PROD-2025-4540",
-      "serialNumber": "SN-1766271791866-000014",
-      "lotNumber": "4567",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 20,
-      "remainingUnits": 20,
-      "sourceDeliveryNoteId": "56789",
+      "sourceDeliveryNoteId": "098",
       "history": [],
-      "createdAt": "2025-12-20T23:03:11.866Z"
+      "createdAt": "2026-01-03T00:41:43.577Z",
+      "tenantId": "client_1767102086031"
     },
     {
-      "id": "pack-1766271791866-8937-4",
-      "productId": "PROD-2025-4540",
-      "serialNumber": "SN-1766271791866-000015",
-      "lotNumber": "4567",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
+      "id": "pack-1767400903575-7987-2",
+      "productId": "PROD-2026-147",
+      "serialNumber": "SN-1767400903577-000013",
+      "batchNumber": "54678",
+      "expiryDate": "2037-01-23",
+      "locationId": "Frigo 1",
       "status": "Scellée",
-      "unitsPerPack": 20,
-      "remainingUnits": 20,
-      "sourceDeliveryNoteId": "56789",
+      "unitsPerPack": 10,
+      "remainingUnits": 10,
+      "sourceDeliveryNoteId": "098",
       "history": [],
-      "createdAt": "2025-12-20T23:03:11.866Z"
+      "createdAt": "2026-01-03T00:41:43.577Z",
+      "tenantId": "client_1767102086031"
     },
     {
-      "id": "pack-1766271791866-8937-5",
-      "productId": "PROD-2025-4540",
-      "serialNumber": "SN-1766271791866-000016",
-      "lotNumber": "4567",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
+      "id": "pack-1767400903575-7987-3",
+      "productId": "PROD-2026-147",
+      "serialNumber": "SN-1767400903577-000014",
+      "batchNumber": "54678",
+      "expiryDate": "2037-01-23",
+      "locationId": "Frigo 1",
       "status": "Scellée",
-      "unitsPerPack": 20,
-      "remainingUnits": 20,
-      "sourceDeliveryNoteId": "56789",
+      "unitsPerPack": 10,
+      "remainingUnits": 10,
+      "sourceDeliveryNoteId": "098",
       "history": [],
-      "createdAt": "2025-12-20T23:03:11.866Z"
+      "createdAt": "2026-01-03T00:41:43.577Z",
+      "tenantId": "client_1767102086031"
     },
     {
-      "id": "pack-1766271791866-8937-6",
-      "productId": "PROD-2025-4540",
-      "serialNumber": "SN-1766271791866-000017",
-      "lotNumber": "4567",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
-      "status": "Dispensée",
-      "unitsPerPack": 20,
-      "remainingUnits": 20,
-      "sourceDeliveryNoteId": "56789",
-      "history": [
-        {
-          "date": "2025-12-29T10:17:10.454Z",
-          "action": "DISPENSATION",
-          "userId": "current-user",
-          "details": "Dispensation Prescription PRESC-1767003039845-jl49ih604"
-        }
-      ],
-      "createdAt": "2025-12-20T23:03:11.866Z"
-    },
-    {
-      "id": "pack-1766320578606-7616-0",
-      "productId": "PROD-2025-8584",
-      "serialNumber": "SN-1766320578606-000001",
-      "batchNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
+      "id": "pack-1767400903575-7987-4",
+      "productId": "PROD-2026-147",
+      "serialNumber": "SN-1767400903577-000015",
+      "batchNumber": "54678",
+      "expiryDate": "2037-01-23",
+      "locationId": "Frigo 1",
       "status": "Scellée",
-      "unitsPerPack": 12,
-      "remainingUnits": 12,
-      "sourceDeliveryNoteId": "25436U7",
-      "history": [
-        {
-          "date": "2025-12-27T18:01:15.769Z",
-          "action": "DISPENSATION",
-          "userId": "current-user",
-          "details": "Dispensation Prescription PRESC-1766857331912-1dg091uc4"
-        }
-      ],
-      "createdAt": "2025-12-21T12:36:18.606Z"
-    },
-    {
-      "id": "pack-1766320578606-7616-1",
-      "productId": "PROD-2025-8584",
-      "serialNumber": "SN-1766320578606-000002",
-      "batchNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 12,
-      "remainingUnits": 12,
-      "sourceDeliveryNoteId": "25436U7",
+      "unitsPerPack": 10,
+      "remainingUnits": 10,
+      "sourceDeliveryNoteId": "098",
       "history": [],
-      "createdAt": "2025-12-21T12:36:18.606Z"
+      "createdAt": "2026-01-03T00:41:43.577Z",
+      "tenantId": "client_1767102086031"
     },
     {
-      "id": "pack-1766320578606-7616-2",
-      "productId": "PROD-2025-8584",
-      "serialNumber": "SN-1766320578606-000003",
-      "batchNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
+      "id": "pack-1767400903575-7987-5",
+      "productId": "PROD-2026-147",
+      "serialNumber": "SN-1767400903577-000016",
+      "batchNumber": "54678",
+      "expiryDate": "2037-01-23",
+      "locationId": "Frigo 1",
       "status": "Scellée",
-      "unitsPerPack": 12,
-      "remainingUnits": 12,
-      "sourceDeliveryNoteId": "25436U7",
+      "unitsPerPack": 10,
+      "remainingUnits": 10,
+      "sourceDeliveryNoteId": "098",
       "history": [],
-      "createdAt": "2025-12-21T12:36:18.606Z"
+      "createdAt": "2026-01-03T00:41:43.577Z",
+      "tenantId": "client_1767102086031"
     },
     {
-      "id": "pack-1766320578606-7616-3",
-      "productId": "PROD-2025-8584",
-      "serialNumber": "SN-1766320578606-000004",
-      "batchNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
+      "id": "pack-1767400903575-7987-6",
+      "productId": "PROD-2026-147",
+      "serialNumber": "SN-1767400903577-000017",
+      "batchNumber": "54678",
+      "expiryDate": "2037-01-23",
+      "locationId": "Frigo 1",
       "status": "Scellée",
-      "unitsPerPack": 12,
-      "remainingUnits": 12,
-      "sourceDeliveryNoteId": "25436U7",
+      "unitsPerPack": 10,
+      "remainingUnits": 10,
+      "sourceDeliveryNoteId": "098",
       "history": [],
-      "createdAt": "2025-12-21T12:36:18.606Z"
+      "createdAt": "2026-01-03T00:41:43.577Z",
+      "tenantId": "client_1767102086031"
     },
     {
-      "id": "pack-1766320578606-7616-4",
-      "productId": "PROD-2025-8584",
-      "serialNumber": "SN-1766320578606-000005",
-      "batchNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
+      "id": "pack-1767400903575-7987-7",
+      "productId": "PROD-2026-147",
+      "serialNumber": "SN-1767400903577-000018",
+      "batchNumber": "54678",
+      "expiryDate": "2037-01-23",
+      "locationId": "Frigo 1",
       "status": "Scellée",
-      "unitsPerPack": 12,
-      "remainingUnits": 12,
-      "sourceDeliveryNoteId": "25436U7",
+      "unitsPerPack": 10,
+      "remainingUnits": 10,
+      "sourceDeliveryNoteId": "098",
       "history": [],
-      "createdAt": "2025-12-21T12:36:18.606Z"
+      "createdAt": "2026-01-03T00:41:43.577Z",
+      "tenantId": "client_1767102086031"
     },
     {
-      "id": "pack-1766320578606-7616-5",
-      "productId": "PROD-2025-8584",
-      "serialNumber": "SN-1766320578606-000006",
-      "batchNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
+      "id": "pack-1767400903575-7987-8",
+      "productId": "PROD-2026-147",
+      "serialNumber": "SN-1767400903577-000019",
+      "batchNumber": "54678",
+      "expiryDate": "2037-01-23",
+      "locationId": "Frigo 1",
       "status": "Scellée",
-      "unitsPerPack": 12,
-      "remainingUnits": 12,
-      "sourceDeliveryNoteId": "25436U7",
+      "unitsPerPack": 10,
+      "remainingUnits": 10,
+      "sourceDeliveryNoteId": "098",
       "history": [],
-      "createdAt": "2025-12-21T12:36:18.606Z"
+      "createdAt": "2026-01-03T00:41:43.577Z",
+      "tenantId": "client_1767102086031"
     },
     {
-      "id": "pack-1766320578606-7616-6",
-      "productId": "PROD-2025-8584",
-      "serialNumber": "SN-1766320578606-000007",
-      "batchNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
+      "id": "pack-1767400903575-7987-9",
+      "productId": "PROD-2026-147",
+      "serialNumber": "SN-1767400903577-000020",
+      "batchNumber": "54678",
+      "expiryDate": "2037-01-23",
+      "locationId": "Frigo 1",
       "status": "Scellée",
-      "unitsPerPack": 12,
-      "remainingUnits": 12,
-      "sourceDeliveryNoteId": "25436U7",
+      "unitsPerPack": 10,
+      "remainingUnits": 10,
+      "sourceDeliveryNoteId": "098",
       "history": [],
-      "createdAt": "2025-12-21T12:36:18.606Z"
+      "createdAt": "2026-01-03T00:41:43.577Z",
+      "tenantId": "client_1767102086031"
     },
     {
-      "id": "pack-1766320578606-7616-7",
-      "productId": "PROD-2025-8584",
-      "serialNumber": "SN-1766320578606-000008",
-      "batchNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
+      "id": "pack-1767403387057-8486-0",
+      "productId": "PROD-2026-147",
+      "serialNumber": "SN-1767403387057-000021",
+      "batchNumber": "23344RT",
+      "expiryDate": "2026-01-30",
+      "locationId": "Frigo 1",
       "status": "Scellée",
-      "unitsPerPack": 12,
-      "remainingUnits": 12,
-      "sourceDeliveryNoteId": "25436U7",
+      "unitsPerPack": 10,
+      "remainingUnits": 10,
+      "sourceDeliveryNoteId": "67E69",
       "history": [],
-      "createdAt": "2025-12-21T12:36:18.606Z"
+      "createdAt": "2026-01-03T01:23:07.057Z",
+      "tenantId": "client_1767102086031"
     },
     {
-      "id": "pack-1766320578606-7616-8",
-      "productId": "PROD-2025-8584",
-      "serialNumber": "SN-1766320578606-000009",
-      "batchNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
+      "id": "pack-1767403387057-8486-1",
+      "productId": "PROD-2026-147",
+      "serialNumber": "SN-1767403387057-000022",
+      "batchNumber": "23344RT",
+      "expiryDate": "2026-01-30",
+      "locationId": "Frigo 1",
       "status": "Scellée",
-      "unitsPerPack": 12,
-      "remainingUnits": 12,
-      "sourceDeliveryNoteId": "25436U7",
+      "unitsPerPack": 10,
+      "remainingUnits": 10,
+      "sourceDeliveryNoteId": "67E69",
       "history": [],
-      "createdAt": "2025-12-21T12:36:18.606Z"
+      "createdAt": "2026-01-03T01:23:07.057Z",
+      "tenantId": "client_1767102086031"
     },
     {
-      "id": "pack-1766320578606-7616-9",
-      "productId": "PROD-2025-8584",
-      "serialNumber": "SN-1766320578606-000010",
-      "batchNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
+      "id": "pack-1767403387057-8486-2",
+      "productId": "PROD-2026-147",
+      "serialNumber": "SN-1767403387057-000023",
+      "batchNumber": "23344RT",
+      "expiryDate": "2026-01-30",
+      "locationId": "Frigo 1",
       "status": "Scellée",
-      "unitsPerPack": 12,
-      "remainingUnits": 12,
-      "sourceDeliveryNoteId": "25436U7",
+      "unitsPerPack": 10,
+      "remainingUnits": 10,
+      "sourceDeliveryNoteId": "67E69",
       "history": [],
-      "createdAt": "2025-12-21T12:36:18.606Z"
+      "createdAt": "2026-01-03T01:23:07.057Z",
+      "tenantId": "client_1767102086031"
     },
     {
-      "id": "pack-1766320578606-7616-10",
-      "productId": "PROD-2025-8584",
-      "serialNumber": "SN-1766320578606-000011",
-      "batchNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 12,
-      "remainingUnits": 12,
-      "sourceDeliveryNoteId": "25436U7",
-      "history": [],
-      "createdAt": "2025-12-21T12:36:18.606Z"
-    },
-    {
-      "id": "pack-1766320578606-7616-11",
-      "productId": "PROD-2025-8584",
-      "serialNumber": "SN-1766320578606-000012",
-      "batchNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 12,
-      "remainingUnits": 12,
-      "sourceDeliveryNoteId": "25436U7",
-      "history": [],
-      "createdAt": "2025-12-21T12:36:18.606Z"
-    },
-    {
-      "id": "pack-1766320578606-7616-12",
-      "productId": "PROD-2025-8584",
-      "serialNumber": "SN-1766320578606-000013",
-      "batchNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 12,
-      "remainingUnits": 12,
-      "sourceDeliveryNoteId": "25436U7",
-      "history": [],
-      "createdAt": "2025-12-21T12:36:18.606Z"
-    },
-    {
-      "id": "pack-1766320578606-7616-13",
-      "productId": "PROD-2025-8584",
-      "serialNumber": "SN-1766320578606-000014",
-      "batchNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 12,
-      "remainingUnits": 12,
-      "sourceDeliveryNoteId": "25436U7",
-      "history": [],
-      "createdAt": "2025-12-21T12:36:18.606Z"
-    },
-    {
-      "id": "pack-1766320578606-7616-14",
-      "productId": "PROD-2025-8584",
-      "serialNumber": "SN-1766320578606-000015",
-      "batchNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 12,
-      "remainingUnits": 12,
-      "sourceDeliveryNoteId": "25436U7",
-      "history": [],
-      "createdAt": "2025-12-21T12:36:18.606Z"
-    },
-    {
-      "id": "pack-1766320578606-7616-15",
-      "productId": "PROD-2025-8584",
-      "serialNumber": "SN-1766320578606-000016",
-      "batchNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 12,
-      "remainingUnits": 12,
-      "sourceDeliveryNoteId": "25436U7",
-      "history": [],
-      "createdAt": "2025-12-21T12:36:18.606Z"
-    },
-    {
-      "id": "pack-1766320578606-7616-16",
-      "productId": "PROD-2025-8584",
-      "serialNumber": "SN-1766320578606-000017",
-      "batchNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 12,
-      "remainingUnits": 12,
-      "sourceDeliveryNoteId": "25436U7",
-      "history": [],
-      "createdAt": "2025-12-21T12:36:18.606Z"
-    },
-    {
-      "id": "pack-1766320578606-7616-17",
-      "productId": "PROD-2025-8584",
-      "serialNumber": "SN-1766320578606-000018",
-      "batchNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 12,
-      "remainingUnits": 12,
-      "sourceDeliveryNoteId": "25436U7",
-      "history": [],
-      "createdAt": "2025-12-21T12:36:18.606Z"
-    },
-    {
-      "id": "pack-1766320578606-7616-18",
-      "productId": "PROD-2025-8584",
-      "serialNumber": "SN-1766320578606-000019",
-      "batchNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 12,
-      "remainingUnits": 12,
-      "sourceDeliveryNoteId": "25436U7",
-      "history": [],
-      "createdAt": "2025-12-21T12:36:18.606Z"
-    },
-    {
-      "id": "pack-1766320578606-7616-19",
-      "productId": "PROD-2025-8584",
-      "serialNumber": "SN-1766320578606-000020",
-      "batchNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 12,
-      "remainingUnits": 12,
-      "sourceDeliveryNoteId": "25436U7",
-      "history": [],
-      "createdAt": "2025-12-21T12:36:18.606Z"
-    },
-    {
-      "id": "pack-1766320578606-7616-20",
-      "productId": "PROD-2025-8584",
-      "serialNumber": "SN-1766320578606-000021",
-      "batchNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 12,
-      "remainingUnits": 12,
-      "sourceDeliveryNoteId": "25436U7",
-      "history": [],
-      "createdAt": "2025-12-21T12:36:18.606Z"
-    },
-    {
-      "id": "pack-1766320578606-7616-21",
-      "productId": "PROD-2025-8584",
-      "serialNumber": "SN-1766320578606-000022",
-      "batchNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 12,
-      "remainingUnits": 12,
-      "sourceDeliveryNoteId": "25436U7",
-      "history": [],
-      "createdAt": "2025-12-21T12:36:18.606Z"
-    },
-    {
-      "id": "pack-1766320578606-7616-22",
-      "productId": "PROD-2025-8584",
-      "serialNumber": "SN-1766320578606-000023",
-      "batchNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 12,
-      "remainingUnits": 12,
-      "sourceDeliveryNoteId": "25436U7",
-      "history": [],
-      "createdAt": "2025-12-21T12:36:18.606Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-0",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414029-000001",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
+      "id": "pack-1767404533060-1777-0",
+      "productId": "PROD-2026-5715",
+      "serialNumber": "SN-1767404533061-000024",
+      "batchNumber": "68R89",
+      "expiryDate": "2031-01-16",
+      "locationId": "Frigo 1",
       "status": "Scellée",
       "unitsPerPack": 30,
       "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
+      "sourceDeliveryNoteId": "BL-474814",
       "history": [],
-      "createdAt": "2025-12-27T19:40:14.029Z"
+      "createdAt": "2026-01-03T01:42:13.061Z",
+      "tenantId": "client_1767102086031"
     },
     {
-      "id": "pack-1766864414029-4242-1",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414029-000002",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
+      "id": "pack-1767404533060-1777-1",
+      "productId": "PROD-2026-5715",
+      "serialNumber": "SN-1767404533061-000025",
+      "batchNumber": "68R89",
+      "expiryDate": "2031-01-16",
+      "locationId": "Frigo 1",
       "status": "Scellée",
       "unitsPerPack": 30,
       "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
+      "sourceDeliveryNoteId": "BL-474814",
       "history": [],
-      "createdAt": "2025-12-27T19:40:14.029Z"
+      "createdAt": "2026-01-03T01:42:13.061Z",
+      "tenantId": "client_1767102086031"
     },
     {
-      "id": "pack-1766864414029-4242-2",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414029-000003",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
+      "id": "pack-1767404533060-1777-2",
+      "productId": "PROD-2026-5715",
+      "serialNumber": "SN-1767404533061-000026",
+      "batchNumber": "68R89",
+      "expiryDate": "2031-01-16",
+      "locationId": "Frigo 1",
       "status": "Scellée",
       "unitsPerPack": 30,
       "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
+      "sourceDeliveryNoteId": "BL-474814",
       "history": [],
-      "createdAt": "2025-12-27T19:40:14.029Z"
+      "createdAt": "2026-01-03T01:42:13.061Z",
+      "tenantId": "client_1767102086031"
     },
     {
-      "id": "pack-1766864414029-4242-3",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414029-000004",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
+      "id": "pack-1767405732450-8270-0",
+      "productId": "PROD-2026-147",
+      "serialNumber": "SN-1767405732450-000027",
+      "batchNumber": "6G689",
+      "expiryDate": "2034-01-26",
+      "locationId": "Frigo 1",
       "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
+      "unitsPerPack": 10,
+      "remainingUnits": 10,
+      "sourceDeliveryNoteId": "BL-967032",
       "history": [],
-      "createdAt": "2025-12-27T19:40:14.029Z"
+      "createdAt": "2026-01-03T02:02:12.450Z",
+      "tenantId": "client_1767102086031"
     },
     {
-      "id": "pack-1766864414029-4242-4",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414029-000005",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
+      "id": "pack-1767405732450-8270-1",
+      "productId": "PROD-2026-147",
+      "serialNumber": "SN-1767405732450-000028",
+      "batchNumber": "6G689",
+      "expiryDate": "2034-01-26",
+      "locationId": "Frigo 1",
       "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
+      "unitsPerPack": 10,
+      "remainingUnits": 10,
+      "sourceDeliveryNoteId": "BL-967032",
       "history": [],
-      "createdAt": "2025-12-27T19:40:14.029Z"
+      "createdAt": "2026-01-03T02:02:12.450Z",
+      "tenantId": "client_1767102086031"
     },
     {
-      "id": "pack-1766864414029-4242-5",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414029-000006",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
+      "id": "pack-1767405732450-8270-2",
+      "productId": "PROD-2026-147",
+      "serialNumber": "SN-1767405732450-000029",
+      "batchNumber": "6G689",
+      "expiryDate": "2034-01-26",
+      "locationId": "Frigo 1",
       "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
+      "unitsPerPack": 10,
+      "remainingUnits": 10,
+      "sourceDeliveryNoteId": "BL-967032",
       "history": [],
-      "createdAt": "2025-12-27T19:40:14.029Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-6",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414029-000007",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.029Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-7",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414029-000008",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.029Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-8",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414029-000009",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.029Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-9",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414029-000010",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.029Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-10",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414029-000011",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.029Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-11",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414030-000012",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.030Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-12",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414030-000013",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.030Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-13",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414030-000014",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.030Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-14",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414030-000015",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.030Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-15",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414030-000016",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.030Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-16",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414030-000017",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.030Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-17",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414030-000018",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.030Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-18",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414030-000019",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.030Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-19",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414030-000020",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.030Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-20",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414030-000021",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.030Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-21",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414030-000022",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.030Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-22",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414030-000023",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.030Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-23",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414030-000024",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.030Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-24",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414030-000025",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.030Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-25",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414030-000026",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.030Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-26",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414030-000027",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.030Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-27",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414030-000028",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.030Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-28",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414030-000029",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.030Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-29",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414030-000030",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.030Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-30",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414030-000031",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.030Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-31",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414030-000032",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.030Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-32",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414030-000033",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.030Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-33",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414030-000034",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.030Z"
-    },
-    {
-      "id": "pack-1766864414029-4242-34",
-      "productId": "PROD-2025-6607",
-      "serialNumber": "SN-1766864414030-000035",
-      "batchNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "locationId": "Zone picking",
-      "status": "Scellée",
-      "unitsPerPack": 30,
-      "remainingUnits": 30,
-      "sourceDeliveryNoteId": "3456789",
-      "history": [],
-      "createdAt": "2025-12-27T19:40:14.030Z"
+      "createdAt": "2026-01-03T02:02:12.450Z",
+      "tenantId": "client_1767102086031"
     }
   ],
-  "dispensations": [
-    {
-      "id": "DISP-1766272469637-0",
-      "prescriptionId": "PRESC-1766272403006-pkg4mhbul",
-      "admissionId": "adm-1766272352667",
-      "productId": "PROD-2025-4540",
-      "productName": "Doliprane 1000 mg",
-      "mode": "FULL_PACK",
-      "quantity": 1,
-      "serializedPackId": "pack-1766271791866-8937-0",
-      "lotNumber": "4567",
-      "expiryDate": "2025-12-31",
-      "serialNumber": "SN-1766271791866-000011",
-      "unitPriceExclVAT": 120,
-      "vatRate": 5.5,
-      "totalPriceInclVAT": 126.6,
-      "dispensedAt": "2025-12-20T23:14:29.637Z",
-      "dispensedBy": "current-user"
-    },
-    {
-      "id": "DISP-1766272495200-0",
-      "prescriptionId": "PRESC-1766272445849-woplqhnbc",
-      "admissionId": "adm-1766272352667",
-      "productId": "PROD-2025-6613",
-      "productName": "Zamox",
-      "mode": "FULL_PACK",
-      "quantity": 1,
-      "serializedPackId": "pack-1766271791866-7455-0",
-      "lotNumber": "456",
-      "expiryDate": "2025-12-02",
-      "serialNumber": "SN-1766271791866-000006",
-      "unitPriceExclVAT": 72,
-      "vatRate": 5.5,
-      "totalPriceInclVAT": 75.96,
-      "dispensedAt": "2025-12-20T23:14:55.200Z",
-      "dispensedBy": "current-user"
-    },
-    {
-      "id": "DISP-1766272836053-pack-1766271791866-8937-1",
-      "prescriptionId": "PRESC-1766272403006-pkg4mhbul",
-      "admissionId": "adm-1766272352667",
-      "productId": "PROD-2025-4540",
-      "productName": "Doliprane 1000 mg",
-      "mode": "UNIT",
-      "quantity": 10,
-      "serializedPackId": "pack-1766271791866-8937-1",
-      "lotNumber": "4567",
-      "expiryDate": "2025-12-31",
-      "serialNumber": "SN-1766271791866-000012",
-      "unitPriceExclVAT": 6,
-      "vatRate": 5.5,
-      "totalPriceInclVAT": 63.3,
-      "dispensedAt": "2025-12-20T23:20:36.053Z",
-      "dispensedBy": "current-user"
-    },
-    {
-      "id": "DISP-1766404636939-0",
-      "prescriptionId": "PRESC-1766404588207-7bvsfzlli",
-      "admissionId": "adm-1766272352667",
-      "productId": "PROD-2025-6613",
-      "productName": "Zamox",
-      "mode": "FULL_PACK",
-      "quantity": 1,
-      "serializedPackId": "pack-1766271791866-7455-1",
-      "expiryDate": "2025-12-02",
-      "serialNumber": "SN-1766271791866-000007",
-      "unitPriceExclVAT": 72,
-      "vatRate": 5.5,
-      "totalPriceInclVAT": 75.96,
-      "dispensedAt": "2025-12-22T11:57:16.939Z",
-      "dispensedBy": "current-user"
-    },
-    {
-      "id": "DISP-1766405025459-0",
-      "prescriptionId": "PRESC-1766404588207-7bvsfzlli",
-      "admissionId": "adm-1766272352667",
-      "productId": "PROD-2025-6613",
-      "productName": "Zamox",
-      "mode": "FULL_PACK",
-      "quantity": 1,
-      "serializedPackId": "pack-1766271791865-2853-0",
-      "expiryDate": "2025-12-31",
-      "serialNumber": "SN-1766271791865-000001",
-      "unitPriceExclVAT": 72,
-      "vatRate": 5.5,
-      "totalPriceInclVAT": 75.96,
-      "dispensedAt": "2025-12-22T12:03:45.459Z",
-      "dispensedBy": "current-user"
-    },
-    {
-      "id": "DISP-1766405025459-1",
-      "prescriptionId": "PRESC-1766404588207-7bvsfzlli",
-      "admissionId": "adm-1766272352667",
-      "productId": "PROD-2025-6613",
-      "productName": "Zamox",
-      "mode": "FULL_PACK",
-      "quantity": 1,
-      "serializedPackId": "pack-1766271791865-2853-1",
-      "expiryDate": "2025-12-31",
-      "serialNumber": "SN-1766271791866-000002",
-      "unitPriceExclVAT": 72,
-      "vatRate": 5.5,
-      "totalPriceInclVAT": 75.96,
-      "dispensedAt": "2025-12-22T12:03:45.459Z",
-      "dispensedBy": "current-user"
-    },
-    {
-      "id": "DISP-SERV-1766708008318-0.7581504856840584",
-      "prescriptionId": "SERVICE_EXIT",
-      "admissionId": "adm-1766272352667",
-      "productId": "PROD-2025-8584",
-      "productName": "Zyrtec 5mg",
-      "mode": "FULL_PACK",
-      "quantity": 1,
-      "serializedPackId": "unknown",
-      "lotNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "serialNumber": "BATCH-EXIT",
-      "unitPriceExclVAT": 1.6666666666666667,
-      "vatRate": 5.5,
-      "totalPriceInclVAT": 21.099999999999998,
-      "dispensedAt": "2025-12-26T00:13:28.318Z",
-      "dispensedBy": "Infirmier Service"
-    },
-    {
-      "id": "DISP-SERV-1766708200868-0.9361102136660444",
-      "prescriptionId": "SERVICE_EXIT",
-      "admissionId": "adm-1766272352667",
-      "productId": "PROD-2025-8584",
-      "productName": "Zyrtec 5mg",
-      "mode": "FULL_PACK",
-      "quantity": 1,
-      "serializedPackId": "unknown",
-      "lotNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "serialNumber": "BATCH-EXIT",
-      "unitPriceExclVAT": 1.6666666666666667,
-      "vatRate": 5.5,
-      "totalPriceInclVAT": 21.099999999999998,
-      "dispensedAt": "2025-12-26T00:16:40.868Z",
-      "dispensedBy": "Infirmier Service"
-    },
-    {
-      "id": "DISP-1766858475769-0",
-      "prescriptionId": "PRESC-1766857331912-1dg091uc4",
-      "admissionId": "adm-1766858447632",
-      "productId": "PROD-2025-8584",
-      "productName": "Zyrtec 5mg",
-      "mode": "FULL_PACK",
-      "quantity": 1,
-      "serializedPackId": "pack-1766320578606-7616-0",
-      "lotNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "serialNumber": "SN-1766320578606-000001",
-      "unitPriceExclVAT": 24,
-      "vatRate": 5.5,
-      "totalPriceInclVAT": 25.32,
-      "dispensedAt": "2025-12-27T18:01:15.769Z",
-      "dispensedBy": "current-user",
-      "status": "RETURNED"
-    },
-    {
-      "id": "DISP-TEST-123",
-      "prescriptionId": "PRESC-TEST",
-      "admissionId": "ADM-TEST",
-      "productId": "PROD-001",
-      "mode": "UNIT",
-      "quantity": 5,
-      "serializedPackId": "PACK-123",
-      "lotNumber": "LOT-123",
-      "expiryDate": "2025-12-27T18:57:42.026Z",
-      "serialNumber": "SERIAL-123",
-      "unitPriceExclVAT": 10,
-      "vatRate": 20,
-      "totalPriceInclVAT": 12,
-      "dispensedAt": "2025-12-27T18:57:42.027Z",
-      "dispensedBy": "TEST_USER",
-      "returnedQuantity": 5,
-      "status": "RETURNED"
-    },
-    {
-      "id": "DISP-SERV-1766862207675-0.9550461273189059",
-      "prescriptionId": "SERVICE_EXIT",
-      "admissionId": "adm-1766272352667",
-      "productId": "PROD-2025-8584",
-      "productName": "Zyrtec 5mg",
-      "mode": "FULL_PACK",
-      "quantity": 3,
-      "serializedPackId": "unknown",
-      "lotNumber": "EZ54",
-      "expiryDate": "2025-12-31",
-      "serialNumber": "BATCH-EXIT",
-      "unitPriceExclVAT": 1.6666666666666667,
-      "vatRate": 5.5,
-      "totalPriceInclVAT": 63.3,
-      "dispensedAt": "2025-12-27T19:03:27.675Z",
-      "dispensedBy": "Infirmier Service"
-    },
-    {
-      "id": "DISP-SERV-1766867113122-0.7367675123121296",
-      "prescriptionId": "SERVICE_EXIT",
-      "admissionId": "adm-1766858447632",
-      "productId": "PROD-2025-6607",
-      "productName": "Antalgon",
-      "mode": "FULL_PACK",
-      "quantity": 2,
-      "serializedPackId": "unknown",
-      "lotNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "serialNumber": "BATCH-EXIT",
-      "unitPriceExclVAT": 16.666666666666668,
-      "vatRate": 0,
-      "totalPriceInclVAT": 1000.0000000000001,
-      "dispensedAt": "2025-12-27T20:25:13.123Z",
-      "dispensedBy": "Infirmier Service",
-      "returnedQuantity": 30,
-      "status": "RETURNED"
-    },
-    {
-      "id": "DISP-SERV-1766868092850-0.466697509190675",
-      "prescriptionId": "SERVICE_EXIT",
-      "admissionId": "adm-1766272352667",
-      "productId": "PROD-2025-6607",
-      "productName": "Antalgon",
-      "mode": "FULL_PACK",
-      "quantity": 3,
-      "serializedPackId": "unknown",
-      "lotNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "serialNumber": "BATCH-EXIT",
-      "unitPriceExclVAT": 16.666666666666668,
-      "vatRate": 0,
-      "totalPriceInclVAT": 1500,
-      "dispensedAt": "2025-12-27T20:41:32.850Z",
-      "dispensedBy": "Infirmier Service",
-      "returnedQuantity": 30,
-      "status": "RETURNED"
-    },
-    {
-      "id": "DISP-SERV-1766868185002-0.35223358485628065",
-      "prescriptionId": "SERVICE_EXIT",
-      "admissionId": "adm-1766858447632",
-      "productId": "PROD-2025-6607",
-      "productName": "Antalgon",
-      "mode": "FULL_PACK",
-      "quantity": 2,
-      "serializedPackId": "unknown",
-      "lotNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "serialNumber": "BATCH-EXIT",
-      "unitPriceExclVAT": 16.666666666666668,
-      "vatRate": 0,
-      "totalPriceInclVAT": 1000.0000000000001,
-      "dispensedAt": "2025-12-27T20:43:05.002Z",
-      "dispensedBy": "Infirmier Service",
-      "returnedQuantity": 30,
-      "status": "RETURNED"
-    },
-    {
-      "id": "DISP-SERV-1766869229604-0.7259920123498617",
-      "prescriptionId": "SERVICE_EXIT",
-      "admissionId": "adm-1766858447632",
-      "productId": "PROD-2025-6607",
-      "productName": "Antalgon",
-      "mode": "FULL_PACK",
-      "quantity": 2,
-      "serializedPackId": "unknown",
-      "lotNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "serialNumber": "BATCH-EXIT",
-      "unitPriceExclVAT": 16.666666666666668,
-      "vatRate": 0,
-      "totalPriceInclVAT": 1000.0000000000001,
-      "dispensedAt": "2025-12-27T21:00:29.604Z",
-      "dispensedBy": "Infirmier Service"
-    },
-    {
-      "id": "DISP-SERV-1766869356476-0.07189945185154667",
-      "prescriptionId": "SERVICE_EXIT",
-      "admissionId": "adm-1766858447632",
-      "productId": "PROD-2025-6607",
-      "productName": "Antalgon",
-      "mode": "FULL_PACK",
-      "quantity": 1,
-      "serializedPackId": "unknown",
-      "lotNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "serialNumber": "BATCH-EXIT",
-      "unitPriceExclVAT": 16.666666666666668,
-      "vatRate": 0,
-      "totalPriceInclVAT": 500.00000000000006,
-      "dispensedAt": "2025-12-27T21:02:36.476Z",
-      "dispensedBy": "Infirmier Service"
-    },
-    {
-      "id": "DISP-SERV-1766869356476-0.1531954320792499",
-      "prescriptionId": "SERVICE_EXIT",
-      "admissionId": "adm-1766858447632",
-      "productId": "PROD-2025-6607",
-      "productName": "Antalgon",
-      "mode": "FULL_PACK",
-      "quantity": 4,
-      "serializedPackId": "unknown",
-      "lotNumber": "546789",
-      "expiryDate": "2029-12-12",
-      "serialNumber": "BATCH-EXIT",
-      "unitPriceExclVAT": 16.666666666666668,
-      "vatRate": 0,
-      "totalPriceInclVAT": 2000.0000000000002,
-      "dispensedAt": "2025-12-27T21:02:36.476Z",
-      "dispensedBy": "Infirmier Service",
-      "returnedQuantity": 30
-    },
-    {
-      "id": "DISP-1767003081012-0",
-      "prescriptionId": "PRESC-1767003039845-jl49ih604",
-      "admissionId": "adm-1766272352667",
-      "productId": "PROD-2025-4540",
-      "productName": "Doliprane 1000 mg",
-      "mode": "FULL_PACK",
-      "quantity": 1,
-      "serializedPackId": "pack-1766271791866-8937-1",
-      "expiryDate": "2025-12-31",
-      "serialNumber": "SN-1766271791866-000012",
-      "unitPriceExclVAT": 120,
-      "vatRate": 5.5,
-      "totalPriceInclVAT": 126.6,
-      "dispensedAt": "2025-12-29T10:11:21.012Z",
-      "dispensedBy": "current-user"
-    },
-    {
-      "id": "DISP-1767003081012-1",
-      "prescriptionId": "PRESC-1767003039845-jl49ih604",
-      "admissionId": "adm-1766272352667",
-      "productId": "PROD-2025-4540",
-      "productName": "Doliprane 1000 mg",
-      "mode": "FULL_PACK",
-      "quantity": 1,
-      "serializedPackId": "pack-1766271791866-8937-2",
-      "expiryDate": "2025-12-31",
-      "serialNumber": "SN-1766271791866-000013",
-      "unitPriceExclVAT": 120,
-      "vatRate": 5.5,
-      "totalPriceInclVAT": 126.6,
-      "dispensedAt": "2025-12-29T10:11:21.012Z",
-      "dispensedBy": "current-user"
-    },
-    {
-      "id": "DISP-1767003430454-0",
-      "prescriptionId": "PRESC-1767003039845-jl49ih604",
-      "admissionId": "adm-1766272352667",
-      "productId": "PROD-2025-4540",
-      "productName": "Doliprane 1000 mg",
-      "mode": "FULL_PACK",
-      "quantity": 1,
-      "serializedPackId": "pack-1766271791866-8937-6",
-      "expiryDate": "2025-12-31",
-      "serialNumber": "SN-1766271791866-000017",
-      "unitPriceExclVAT": 120,
-      "vatRate": 5.5,
-      "totalPriceInclVAT": 126.6,
-      "dispensedAt": "2025-12-29T10:17:10.454Z",
-      "dispensedBy": "current-user"
-    },
-    {
-      "id": "DISP-SERV-1767004152465-0.8247031583421429",
-      "prescriptionId": "SERVICE_EXIT",
-      "admissionId": "adm-1766272352667",
-      "productId": "PROD-2025-6613",
-      "productName": "Zamox",
-      "mode": "FULL_PACK",
-      "quantity": 1,
-      "serializedPackId": "unknown",
-      "lotNumber": "456",
-      "expiryDate": "2025-12-02",
-      "serialNumber": "BATCH-EXIT",
-      "unitPriceExclVAT": 6,
-      "vatRate": 5.5,
-      "totalPriceInclVAT": 63.3,
-      "dispensedAt": "2025-12-29T10:29:12.465Z",
-      "dispensedBy": "Infirmier Service"
-    },
-    {
-      "id": "DISP-1767004520346-0",
-      "prescriptionId": "PRESC-1767004473086-zsjpfpwkw",
-      "admissionId": "adm-1766858447632",
-      "productId": "PROD-2025-6613",
-      "productName": "Zamox",
-      "mode": "FULL_PACK",
-      "quantity": 1,
-      "serializedPackId": "pack-1766271791865-2853-2",
-      "expiryDate": "2025-12-31",
-      "serialNumber": "SN-1766271791866-000003",
-      "unitPriceExclVAT": 72,
-      "vatRate": 5.5,
-      "totalPriceInclVAT": 75.96,
-      "dispensedAt": "2025-12-29T10:35:20.346Z",
-      "dispensedBy": "current-user"
-    },
-    {
-      "id": "DISP-SERV-1767005154818-0.13210718459505932",
-      "prescriptionId": "SERVICE_EXIT",
-      "admissionId": "adm-1766272352667",
-      "productId": "PROD-2025-6613",
-      "productName": "Zamox",
-      "mode": "FULL_PACK",
-      "quantity": 1,
-      "serializedPackId": "unknown",
-      "lotNumber": "456",
-      "expiryDate": "2025-12-02",
-      "serialNumber": "BATCH-EXIT",
-      "unitPriceExclVAT": 6,
-      "vatRate": 5.5,
-      "totalPriceInclVAT": 63.3,
-      "dispensedAt": "2025-12-29T10:45:54.818Z",
-      "dispensedBy": "Infirmier Service"
-    }
-  ],
-  "suppliers": [
-    {
-      "name": "Bayerne",
-      "contactPerson": "",
-      "email": "",
-      "phone": "",
-      "address": "",
-      "isActive": true,
-      "id": "SUP-1766271528597",
-      "createdAt": "2025-12-20T22:58:48.597Z",
-      "updatedAt": "2025-12-20T22:58:48.597Z"
-    },
-    {
-      "name": "Botu",
-      "contactPerson": "",
-      "email": "",
-      "phone": "",
-      "address": "",
-      "isActive": true,
-      "id": "SUP-1766271535814",
-      "createdAt": "2025-12-20T22:58:55.814Z",
-      "updatedAt": "2025-12-20T22:58:55.814Z"
-    },
-    {
-      "name": "Astrazeneca",
-      "contactPerson": "",
-      "email": "",
-      "phone": "",
-      "address": "",
-      "isActive": true,
-      "id": "SUP-1766271545930",
-      "createdAt": "2025-12-20T22:59:05.930Z",
-      "updatedAt": "2025-12-20T22:59:05.930Z"
-    }
-  ],
+  "dispensations": [],
+  "suppliers": [],
   "replenishmentRequests": [
     {
-      "id": "REP-1766277495913",
-      "requesterId": "test-doc",
-      "requesterName": "Test Doctor and Verification Script",
-      "serviceName": "SERVICE_DEFAULT",
-      "status": "Approuvé",
-      "items": [
-        {
-          "productId": "PROD-2025-6613",
-          "productName": "Zamox",
-          "quantityRequested": 5,
-          "targetLocationId": "LOC-URG-TEST",
-          "dispensedBatches": [
-            {
-              "batchNumber": "456",
-              "quantity": 5,
-              "expiryDate": "2025-12-02"
-            }
-          ]
-        }
-      ],
-      "createdAt": "2025-12-21T00:38:15.913Z",
-      "updatedAt": "2025-12-21T00:38:15.922Z"
-    },
-    {
-      "id": "REP-1766277625051",
-      "requesterId": "CURRENT_USER",
-      "requesterName": "Infirmier EMR",
-      "serviceName": "Service Médecine",
-      "status": "Approuvé",
-      "items": [
-        {
-          "productId": "PROD-2025-4540",
-          "productName": "Doliprane 1000 mg",
-          "quantityRequested": 1,
-          "targetLocationId": "LOC-EMR-1766277614022",
-          "dispensedBatches": [
-            {
-              "batchNumber": "4567",
-              "quantity": 1,
-              "expiryDate": "2025-12-31"
-            }
-          ]
-        },
-        {
-          "productId": "PROD-2025-6613",
-          "productName": "Zamox",
-          "quantityRequested": 1,
-          "targetLocationId": "LOC-EMR-1766277614022",
-          "dispensedBatches": [
-            {
-              "batchNumber": "456",
-              "quantity": 1,
-              "expiryDate": "2025-12-02"
-            }
-          ]
-        }
-      ],
-      "createdAt": "2025-12-21T00:40:25.051Z",
-      "updatedAt": "2025-12-21T00:40:53.708Z"
-    },
-    {
-      "id": "REP-1766277870097",
-      "requesterId": "CURRENT_USER",
-      "requesterName": "Infirmier EMR",
-      "serviceName": "Service Médecine",
-      "status": "Approuvé",
-      "items": [
-        {
-          "productId": "PROD-2025-4540",
-          "productName": "Doliprane 1000 mg",
-          "quantityRequested": 1,
-          "targetLocationId": "LOC-EMR-1766277614022",
-          "dispensedBatches": [
-            {
-              "batchNumber": "4567",
-              "quantity": 1,
-              "expiryDate": "2025-12-31"
-            }
-          ]
-        },
-        {
-          "productId": "PROD-2025-6613",
-          "productName": "Zamox",
-          "quantityRequested": 1,
-          "targetLocationId": "LOC-EMR-1766277614022",
-          "dispensedBatches": [
-            {
-              "batchNumber": "456",
-              "quantity": 1,
-              "expiryDate": "2025-12-02"
-            }
-          ]
-        }
-      ],
-      "createdAt": "2025-12-21T00:44:30.097Z",
-      "updatedAt": "2025-12-21T00:44:53.211Z"
-    },
-    {
-      "id": "REP-1766279414956",
-      "requesterId": "test-doc",
-      "requesterName": "Test Doctor and Verification Script",
-      "serviceName": "SERVICE_DEFAULT",
-      "status": "Approuvé",
-      "items": [
-        {
-          "productId": "PROD-2025-6613",
-          "productName": "Zamox",
-          "quantityRequested": 5,
-          "targetLocationId": "LOC-URG-TEST",
-          "dispensedBatches": [
-            {
-              "batchNumber": "456",
-              "quantity": 5,
-              "expiryDate": "2025-12-02"
-            }
-          ]
-        }
-      ],
-      "createdAt": "2025-12-21T01:10:14.956Z",
-      "updatedAt": "2025-12-21T01:10:14.959Z"
-    },
-    {
-      "id": "REP-1766279466961",
-      "requesterId": "test-doc",
-      "requesterName": "Test Script",
-      "serviceName": "SERVICE_DEFAULT",
-      "status": "Approuvé",
-      "items": [
-        {
-          "productId": "PROD-2025-6613",
-          "productName": "Zamox",
-          "quantityRequested": 5,
-          "targetLocationId": "LOC-URG-TEST",
-          "dispensedBatches": [
-            {
-              "batchNumber": "456",
-              "quantity": 5,
-              "expiryDate": "2025-12-02"
-            }
-          ]
-        }
-      ],
-      "createdAt": "2025-12-21T01:11:06.961Z",
-      "updatedAt": "2025-12-21T01:11:06.964Z"
-    },
-    {
-      "id": "REP-1766279576909",
-      "requesterId": "test-doc",
-      "requesterName": "Test Script",
-      "serviceName": "SERVICE_DEFAULT",
-      "status": "Approuvé",
-      "items": [
-        {
-          "productId": "PROD-2025-6613",
-          "productName": "Zamox",
-          "quantityRequested": 5,
-          "targetLocationId": "LOC-URG-TEST",
-          "dispensedBatches": [
-            {
-              "batchNumber": "456",
-              "quantity": 5,
-              "expiryDate": "2025-12-02"
-            }
-          ]
-        }
-      ],
-      "createdAt": "2025-12-21T01:12:56.909Z",
-      "updatedAt": "2025-12-21T01:12:56.911Z"
-    },
-    {
-      "id": "REP-1766279713540",
-      "requesterId": "CURRENT_USER",
-      "requesterName": "Infirmier EMR",
-      "serviceName": "Service Médecine",
-      "status": "Approuvé",
-      "items": [
-        {
-          "productId": "PROD-2025-4540",
-          "productName": "Doliprane 1000 mg",
-          "quantityRequested": 16,
-          "targetLocationId": "LOC-EMR-1766277614022",
-          "quantityApproved": 11,
-          "dispensedBatches": [
-            {
-              "batchNumber": "4567",
-              "quantity": 11,
-              "expiryDate": "2025-12-31"
-            }
-          ]
-        },
-        {
-          "productId": "PROD-2025-6613",
-          "productName": "Zamox",
-          "quantityRequested": 16,
-          "targetLocationId": "LOC-EMR-1766277614022",
-          "quantityApproved": 5,
-          "dispensedBatches": [
-            {
-              "batchNumber": "456",
-              "quantity": 5,
-              "expiryDate": "2025-12-02"
-            }
-          ]
-        }
-      ],
-      "createdAt": "2025-12-21T01:15:13.540Z",
-      "updatedAt": "2025-12-21T01:21:48.130Z"
-    },
-    {
-      "id": "REP-1766281192028",
-      "requesterId": "script-tester",
-      "requesterName": "Auto Script",
-      "serviceName": "SERVICE_TEST",
-      "status": "Approuvé",
-      "items": [
-        {
-          "productId": "PROD-2025-6613",
-          "productName": "Zamox",
-          "quantityRequested": 10,
-          "targetLocationId": "LOC-TEST",
-          "quantityApproved": 7,
-          "dispensedBatches": [
-            {
-              "batchNumber": "456",
-              "quantity": 4,
-              "expiryDate": "2025-12-02"
-            },
-            {
-              "batchNumber": "456",
-              "quantity": 3,
-              "expiryDate": "2025-12-02"
-            }
-          ]
-        }
-      ],
-      "createdAt": "2025-12-21T01:39:52.028Z",
-      "updatedAt": "2025-12-21T01:39:52.539Z"
-    },
-    {
-      "id": "REP-1766281253378",
-      "requesterId": "CURRENT_USER",
-      "requesterName": "Infirmier EMR",
-      "serviceName": "Service Médecine",
-      "status": "Approuvé",
-      "items": [
-        {
-          "productId": "PROD-2025-4540",
-          "productName": "Doliprane 1000 mg",
-          "quantityRequested": 1,
-          "targetLocationId": "LOC-EMR-1766277614022",
-          "quantityApproved": 2,
-          "dispensedBatches": [
-            {
-              "batchNumber": "4567",
-              "quantity": 2,
-              "expiryDate": "2025-12-31"
-            }
-          ]
-        },
-        {
-          "productId": "PROD-2025-6613",
-          "productName": "Zamox",
-          "quantityRequested": 1,
-          "targetLocationId": "LOC-EMR-1766277614022",
-          "quantityApproved": 1,
-          "dispensedBatches": [
-            {
-              "batchNumber": "456",
-              "quantity": 1,
-              "expiryDate": "2025-12-02"
-            }
-          ]
-        }
-      ],
-      "createdAt": "2025-12-21T01:40:53.378Z",
-      "updatedAt": "2025-12-21T01:56:08.239Z"
-    },
-    {
-      "id": "REP-1766320063877",
-      "requesterId": "CURRENT_USER",
-      "requesterName": "Infirmier EMR",
-      "serviceName": "Service Médecine",
-      "status": "Approuvé",
-      "items": [
-        {
-          "productId": "PROD-2025-8584",
-          "productName": "Zyrtec 5mg",
-          "quantityRequested": 26,
-          "targetLocationId": "LOC-EMR-1766277614022",
-          "quantityApproved": 3,
-          "dispensedBatches": []
-        }
-      ],
-      "createdAt": "2025-12-21T12:27:43.877Z",
-      "updatedAt": "2025-12-21T12:28:23.084Z"
-    },
-    {
-      "id": "REP-1766320484501",
-      "requesterId": "CURRENT_USER",
-      "requesterName": "Infirmier EMR",
-      "serviceName": "Service Médecine",
-      "status": "Approuvé",
-      "items": [
-        {
-          "productId": "PROD-2025-8584",
-          "productName": "Zyrtec 5mg",
-          "quantityRequested": 10,
-          "targetLocationId": "LOC-EMR-1766277614022",
-          "quantityApproved": 3,
-          "dispensedBatches": [
-            {
-              "batchNumber": "EZ54",
-              "quantity": 3,
-              "expiryDate": "2025-12-31"
-            }
-          ]
-        }
-      ],
-      "createdAt": "2025-12-21T12:34:44.501Z",
-      "updatedAt": "2025-12-21T12:36:31.870Z"
-    },
-    {
-      "id": "REP-1766404867686",
-      "requesterId": "CURRENT_USER",
-      "requesterName": "Infirmier EMR",
-      "serviceName": "Service Médecine",
+      "id": "REP-1767417652883",
+      "requesterId": "unknown",
+      "requesterName": "Infirmier",
+      "serviceName": "Service",
       "status": "En Attente",
       "items": [
         {
-          "productId": "PROD-2025-4540",
-          "productName": "Doliprane 1000 mg",
-          "quantityRequested": 9,
-          "targetLocationId": "LOC-EMR-1766277614022"
+          "productId": "PROD-2026-5715",
+          "productName": "Amoxicillline 1000mg",
+          "quantity": 14,
+          "targetLocationId": "LOC-1767415934978"
         },
         {
-          "productId": "PROD-2025-6613",
-          "productName": "Zamox",
-          "quantityRequested": 11,
-          "targetLocationId": "LOC-EMR-1766277614022"
+          "productId": "PROD-2026-147",
+          "productName": "Zyrtec 25mg",
+          "quantity": 6,
+          "targetLocationId": "LOC-1767416956782"
+        }
+      ],
+      "createdAt": "2026-01-03T05:20:52.884Z",
+      "updatedAt": "2026-01-03T05:20:52.884Z",
+      "tenantId": "client_1767102086031",
+      "service_id": "svc_1767295432437",
+      "created_by": "user_1767295680263"
+    },
+    {
+      "id": "REP-1767418931542",
+      "requesterId": "user_1767295680263",
+      "requesterName": "Utilisateur",
+      "serviceName": "Hospitalisation",
+      "status": "En Attente",
+      "items": [
+        {
+          "productId": "PROD-2026-5715",
+          "productName": "Amoxicillline 1000mg",
+          "quantity": 16,
+          "targetLocationId": "LOC-1767415934978"
         },
         {
-          "productId": "PROD-2025-8584",
-          "productName": "Zyrtec 5mg",
-          "quantityRequested": 15,
-          "targetLocationId": "LOC-EMR-1766277614022"
+          "productId": "PROD-2026-147",
+          "productName": "Zyrtec 25mg",
+          "quantity": 7,
+          "targetLocationId": "LOC-1767416956782"
         }
       ],
-      "createdAt": "2025-12-22T12:01:07.686Z",
-      "updatedAt": "2025-12-22T12:01:07.686Z"
+      "createdAt": "2026-01-03T05:42:11.543Z",
+      "updatedAt": "2026-01-03T05:42:11.543Z",
+      "tenantId": "client_1767102086031",
+      "service_id": "svc_1767295432437",
+      "created_by": "user_1767295680263"
     },
     {
-      "id": "REP-1766702092691",
-      "requesterId": "CURRENT_USER",
-      "requesterName": "Infirmier EMR",
-      "serviceName": "Service Médecine",
-      "status": "Approuvé",
+      "id": "REP-1767419211195",
+      "requesterId": "user_1767295680263",
+      "requesterName": "inf3 inf3",
+      "serviceName": "Hospitalisation",
+      "status": "En Attente",
       "items": [
         {
-          "productId": "PROD-2025-8584",
-          "productName": "Zyrtec 5mg",
-          "quantityRequested": 20,
-          "targetLocationId": "LOC-EMR-1766277614022",
-          "quantityApproved": 171,
-          "dispensedBatches": [
-            {
-              "batchNumber": "EZ54",
-              "quantity": 10,
-              "expiryDate": "2025-12-31"
-            },
-            {
-              "batchNumber": "EZ54",
-              "quantity": 5,
-              "expiryDate": "2025-12-31"
-            },
-            {
-              "batchNumber": "EZ54",
-              "quantity": 36,
-              "expiryDate": "2025-12-31"
-            },
-            {
-              "batchNumber": "EZ54",
-              "quantity": 120,
-              "expiryDate": "2025-12-31"
-            }
-          ]
-        }
-      ],
-      "createdAt": "2025-12-25T22:34:52.692Z",
-      "updatedAt": "2025-12-25T22:48:16.103Z"
-    },
-    {
-      "id": "REP-1766864743252",
-      "requesterId": "CURRENT_USER",
-      "requesterName": "Infirmier EMR",
-      "serviceName": "Service Médecine",
-      "status": "Approuvé",
-      "items": [
-        {
-          "productId": "PROD-2025-6607",
-          "productName": "Antalgon",
-          "quantityRequested": 17,
-          "targetLocationId": "LOC-EMR-1766864455985",
-          "quantityApproved": 210,
-          "dispensedBatches": [
-            {
-              "batchNumber": "546789",
-              "quantity": 210,
-              "expiryDate": "2029-12-12"
-            }
-          ]
-        }
-      ],
-      "createdAt": "2025-12-27T19:45:43.252Z",
-      "updatedAt": "2025-12-27T19:46:47.094Z"
-    },
-    {
-      "id": "REP-1766869273119",
-      "requesterId": "CURRENT_USER",
-      "requesterName": "Infirmier EMR",
-      "serviceName": "Service Médecine",
-      "status": "Approuvé",
-      "items": [
-        {
-          "productId": "PROD-2025-6607",
-          "productName": "Antalgon",
-          "quantityRequested": 11,
-          "targetLocationId": "LOC-EMR-1766277614022",
-          "quantityApproved": 330,
-          "dispensedBatches": [
-            {
-              "batchNumber": "546789",
-              "quantity": 330,
-              "expiryDate": "2029-12-12"
-            }
-          ]
-        }
-      ],
-      "createdAt": "2025-12-27T21:01:13.119Z",
-      "updatedAt": "2025-12-27T21:01:30.015Z"
-    },
-    {
-      "id": "REP-1767004953382",
-      "requesterId": "CURRENT_USER",
-      "requesterName": "Infirmier EMR",
-      "serviceName": "Service Médecine",
-      "status": "Approuvé",
-      "items": [
-        {
-          "productId": "PROD-2025-8584",
-          "productName": "Zyrtec 5mg",
-          "quantityRequested": 18,
-          "targetLocationId": "LOC-EMR-1766277614022",
-          "quantityApproved": 24,
-          "dispensedBatches": [
-            {
-              "batchNumber": "EZ54",
-              "quantity": 24,
-              "expiryDate": "2025-12-31"
-            }
-          ]
+          "productId": "PROD-2026-5715",
+          "productName": "Amoxicillline 1000mg",
+          "quantity": 10,
+          "targetLocationId": "LOC-1767415934978"
         },
         {
-          "productId": "PROD-2025-6607",
-          "productName": "Antalgon",
-          "quantityRequested": 24,
-          "targetLocationId": "LOC-EMR-1766277614022",
-          "quantityApproved": 90,
-          "dispensedBatches": [
-            {
-              "batchNumber": "546789",
-              "quantity": 90,
-              "expiryDate": "2029-12-12"
-            }
-          ]
+          "productId": "PROD-2026-147",
+          "productName": "Zyrtec 25mg",
+          "quantity": 16,
+          "targetLocationId": "LOC-1767415934978"
         }
       ],
-      "createdAt": "2025-12-29T10:42:33.382Z",
-      "updatedAt": "2025-12-29T10:43:59.426Z"
+      "createdAt": "2026-01-03T05:46:51.195Z",
+      "updatedAt": "2026-01-03T05:46:51.195Z",
+      "tenantId": "client_1767102086031",
+      "service_id": "svc_1767295432437",
+      "created_by": "user_1767295680263"
     }
   ],
-  "productVersions": [
-    {
-      "id": "mjolzdd1zg8mdkh9zws",
-      "productId": "PROD-2025-8584",
-      "versionNumber": 1,
-      "isSubdivisable": true,
-      "unitsPerPack": 12,
-      "validFrom": "2025-12-27T18:03:04.934Z",
-      "createdAt": "2025-12-27T18:03:04.934Z",
-      "createdBy": "SYSTEM_MIGRATION"
-    },
-    {
-      "id": "mjonve6sdcyevn37am8",
-      "productId": "PROD-2025-4540",
-      "versionNumber": 1,
-      "isSubdivisable": true,
-      "unitsPerPack": 20,
-      "validFrom": "2025-12-27T18:55:58.612Z",
-      "createdAt": "2025-12-27T18:55:58.612Z",
-      "createdBy": "SYSTEM_MIGRATION"
-    },
-    {
-      "id": "mjoo4frqe6l7os217gv",
-      "productId": "PROD-2025-6613",
-      "versionNumber": 1,
-      "isSubdivisable": true,
-      "unitsPerPack": 10,
-      "validFrom": "2025-12-27T19:03:00.566Z",
-      "createdAt": "2025-12-27T19:03:00.566Z",
-      "createdBy": "SYSTEM_MIGRATION"
-    },
-    {
-      "id": "mjor2lw2jry3tlwsgcb",
-      "productId": "PROD-2025-6607",
-      "versionNumber": 1,
-      "isSubdivisable": false,
-      "unitsPerPack": 30,
-      "validFrom": "2025-12-27T20:25:34.034Z",
-      "createdAt": "2025-12-27T20:25:34.034Z",
-      "createdBy": "SYSTEM_MIGRATION"
-    }
-  ]
+  "productVersions": []
 }

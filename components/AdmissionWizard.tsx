@@ -49,57 +49,12 @@ interface WizardProps {
   onClose: () => void;
 }
 
-// --- MOCK DATA FOR STEP 2 ---
-const DOCTORS = ["Dr. S. Alami", "Dr. Y. Benjelloun", "Dr. K. Tazi", "Dr. M. Idrissi", "Dr. A. Mansouri", "Dr. F. Zahra"];
-const ADMISSION_TYPES = ["Hospitalisation complète", "Ambulatoire", "Hôpital de jour", "Urgence", "Séance de soins"];
-const CURRENCIES = ["MAD (Dirham)", "EUR (Euro)", "USD (Dollar)"];
-const ADMISSION_REASONS = ["Chirurgie programmée", "Bilan diagnostique", "Pathologie aiguë", "Suivi post-op", "Obstétrique"];
-const ARRIVAL_MODES = ["Marche", "Fauteuil roulant", "Brancard", "Ambulance", "SMUR"];
-const PROVENANCES = ["Domicile", "Urgences", "Consultation externe", "Transfert inter-hôpital", "Clinique privée"];
-const SERVICES = ["Cardiologie", "Chirurgie Générale", "Réanimation", "Pédiatrie", "Neurologie", "Gastro-entérologie"];
-
-// --- MOCK ROOMS MAPPED BY SERVICE ---
-const MOCK_ROOMS_BY_SERVICE: Record<string, any[]> = {
-  "Cardiologie": [
-    { id: 'c1', number: '101', type: 'Individuelle', beds: [{ id: 'c1-a', label: 'Lit A', status: 'available' }] },
-    { id: 'c2', number: '102', type: 'Double', beds: [{ id: 'c2-a', label: 'Lit A', status: 'occupied' }, { id: 'c2-b', label: 'Lit B', status: 'available' }] },
-    { id: 'c3', number: '103', type: 'Double', beds: [{ id: 'c3-a', label: 'Lit A', status: 'available' }, { id: 'c3-b', label: 'Lit B', status: 'available' }] },
-    { id: 'c4', number: '104', type: 'Individuelle', beds: [{ id: 'c4-a', label: 'Lit A', status: 'occupied' }] },
-  ],
-  "Chirurgie Générale": [
-    { id: 's1', number: '201', type: 'Individuelle', beds: [{ id: 's1-a', label: 'Lit A', status: 'available' }] },
-    { id: 's2', number: '202', type: 'Double', beds: [{ id: 's2-a', label: 'Lit A', status: 'available' }, { id: 's2-b', label: 'Lit B', status: 'available' }] },
-    { id: 's3', number: '203', type: 'Double', beds: [{ id: 's3-a', label: 'Lit A', status: 'occupied' }, { id: 's3-b', label: 'Lit B', status: 'occupied' }] },
-    { id: 's4', number: '204', type: 'Double', beds: [{ id: 's4-a', label: 'Lit A', status: 'available' }, { id: 's4-b', label: 'Lit B', status: 'available' }] },
-  ],
-  "Réanimation": [
-    { id: 'r1', number: 'REA-01', type: 'Individuelle', beds: [{ id: 'r1-a', label: 'Secteur A', status: 'available' }] },
-    { id: 'r2', number: 'REA-02', type: 'Individuelle', beds: [{ id: 'r2-a', label: 'Secteur A', status: 'occupied' }] },
-    { id: 'r3', number: 'REA-03', type: 'Individuelle', beds: [{ id: 'r3-a', label: 'Secteur A', status: 'available' }] },
-    { id: 'r4', number: 'REA-04', type: 'Individuelle', beds: [{ id: 'r4-a', label: 'Secteur A', status: 'available' }] },
-  ],
-  "Pédiatrie": [
-    { id: 'p1', number: 'PED-10', type: 'Double', beds: [{ id: 'p1-a', label: 'Lit A', status: 'available' }, { id: 'p1-b', label: 'Lit B', status: 'available' }] },
-    { id: 'p2', number: 'PED-11', type: 'Double', beds: [{ id: 'p2-a', label: 'Lit A', status: 'occupied' }, { id: 'p2-b', label: 'Lit B', status: 'available' }] },
-    { id: 'p3', number: 'PED-12', type: 'Individuelle', beds: [{ id: 'p3-a', label: 'Lit A', status: 'available' }] },
-    { id: 'p4', number: 'PED-13', type: 'Double', beds: [{ id: 'p4-a', label: 'Lit A', status: 'available' }, { id: 'p4-b', label: 'Lit B', status: 'available' }] },
-  ],
-  "Neurologie": [
-    { id: 'n1', number: '301', type: 'Individuelle', beds: [{ id: 'n1-a', label: 'Lit A', status: 'available' }] },
-    { id: 'n2', number: '302', type: 'Double', beds: [{ id: 'n2-a', label: 'Lit A', status: 'available' }, { id: 'n2-b', label: 'Lit B', status: 'available' }] },
-  ],
-  "Gastro-entérologie": [
-    { id: 'g1', number: '401', type: 'Double', beds: [{ id: 'g1-a', label: 'Lit A', status: 'available' }, { id: 'g1-b', label: 'Lit B', status: 'available' }] },
-  ]
-};
-
 // --- SEARCHABLE SELECT COMPONENT ---
-const SearchableSelect = ({ label, value, onChange, options, required = false, icon: Icon, placeholder = "Rechercher..." }: any) => {
+const SearchableSelect = ({ label, value, onChange, options, required = false, icon: Icon, placeholder = "Rechercher...", emptyMessage = "Aucun résultat" }: any) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Sync searchTerm with initial value if it exists
   useEffect(() => {
     setSearchTerm(value || '');
   }, [value]);
@@ -115,7 +70,6 @@ const SearchableSelect = ({ label, value, onChange, options, required = false, i
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsOpen(false);
-        // If closed without picking, reset to current value
         setSearchTerm(value || '');
       }
     };
@@ -155,8 +109,6 @@ const SearchableSelect = ({ label, value, onChange, options, required = false, i
           <ChevronDown size={14} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
         </div>
       </div>
-
-      {/* Dropdown Menu */}
       {isOpen && (
         <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-white border border-slate-200 rounded-xl shadow-2xl z-[150] overflow-hidden max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150">
           {filteredOptions.length > 0 ? (
@@ -171,7 +123,7 @@ const SearchableSelect = ({ label, value, onChange, options, required = false, i
               </button>
             ))
           ) : (
-            <div className="px-4 py-3 text-xs text-slate-400 italic text-center">Aucun résultat</div>
+            <div className="px-4 py-3 text-xs text-slate-400 italic text-center">{emptyMessage}</div>
           )}
         </div>
       )}
@@ -280,20 +232,59 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
   const [apiPatients, setApiPatients] = useState<Patient[]>([]);
   const navigate = useNavigate();
 
+  // --- DYNAMIC DATA FETCHING ---
+  const [doctorsList, setDoctorsList] = useState<string[]>([]);
+  const [servicesList, setServicesList] = useState<string[]>([]);
+  const [serviceMap, setServiceMap] = useState<Record<string, string>>({}); // Name -> ID
+  const [roomDefs, setRoomDefs] = useState<any[]>([]); // Room Definitions
+  const [dynamicRooms, setDynamicRooms] = useState<any[]>([]);
+  const [loadingRooms, setLoadingRooms] = useState(false);
+
+  // Fetch Initial Data
   useEffect(() => {
     // Load patients from API for search
     api.getPatients().then(setApiPatients).catch(console.error);
+
+    const loadData = async () => {
+      try {
+        // 1. Fetch Users (Doctors)
+        const users = await api.getTenantUsers();
+        // Assuming strict ID 'role_medecin' as per roles.json
+        const docs = users
+          .filter((u: any) => u.role_id === 'role_medecin')
+          .map((u: any) => `Dr. ${u.prenom?.charAt(0)}. ${u.nom}`.toUpperCase());
+        
+        setDoctorsList(docs);
+
+        // 2. Fetch Services
+        const services = await api.getServices();
+        const sList = services.map((s: any) => s.name);
+        const sMap: Record<string, string> = {};
+        services.forEach((s: any) => sMap[s.name] = s.id);
+        
+        setServicesList(sList);
+        setServiceMap(sMap);
+
+        // 3. Fetch Room Definitions (for bed counts)
+        const rooms = await api.getTenantRooms(); 
+        setRoomDefs(rooms);
+
+      } catch (err) {
+        console.error("Error loading dynamic data:", err);
+      }
+    };
+    loadData();
   }, []);
 
   const [patientData, setPatientData] = useState<Partial<Patient>>({
-    id: undefined, // Don't pre-set ID to allow creation detection
+    id: undefined, 
     ipp: generateIPP(), firstName: '', lastName: '', gender: Gender.Male, dateOfBirth: '', phone: '', cin: '', country: 'Maroc', city: '', zipCode: '', nationality: 'Marocaine', address: '', isPayant: false, profession: '', bloodGroup: '',
     insurance: { mainOrg: '', relationship: 'Lui-même', registrationNumber: '' }, emergencyContacts: [{ name: '', relationship: 'Père', phone: '' }],
     guardian: { firstName: '', lastName: '', phone: '', relationship: 'Père', idType: 'CIN', idNumber: '', address: '', habilitation: '' }
   });
 
   const [admissionData, setAdmissionData] = useState<any>({
-    type: '', // Initialized to empty for better searchable UX
+    type: '', 
     doctorName: '',
     reason: '',
     service: '',
@@ -302,10 +293,55 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
     provenance: ''
   });
 
-  const filteredRooms = useMemo(() => {
-    if (!admissionData.service) return [];
-    return MOCK_ROOMS_BY_SERVICE[admissionData.service] || [];
-  }, [admissionData.service]);
+  // Fetch Rooms when Service Changes
+  useEffect(() => {
+    const fetchServiceRooms = async () => {
+      setDynamicRooms([]);
+      if (!admissionData.service || !serviceMap[admissionData.service]) return;
+
+      setLoadingRooms(true);
+      try {
+        const serviceId = serviceMap[admissionData.service];
+        const units = await api.getServiceUnits(serviceId); // Get operational units
+        
+        // Map Units to UI Room Structure
+        const mapped = units.map((u: any) => {
+           const def = roomDefs.find((r: any) => r.id === u.unit_type_id);
+           if (!def || def.unit_category !== 'CHAMBRE') return null; 
+
+           // Generate Beds based on definition
+           const bedCount = def.number_of_beds || 1;
+           const beds = Array.from({ length: bedCount }, (_, i) => ({
+             id: `${u.id}-bed-${i+1}`,
+             label: bedCount > 1 ? `LIT ${String.fromCharCode(65 + i)}` : 'LIT', 
+             status: 'available' 
+           }));
+
+           return {
+             id: u.id,
+             number: u.name, 
+             type: def.unit_category === 'CHAMBRE' ? (def.number_of_beds === 1 ? 'Individuelle' : 'Double') : 'Autre',
+             beds
+           };
+        }).filter(Boolean);
+
+        setDynamicRooms(mapped);
+      } catch (err) {
+        console.error("Error fetching service rooms:", err);
+      } finally {
+        setLoadingRooms(false);
+      }
+    };
+
+    fetchServiceRooms();
+  }, [admissionData.service, serviceMap, roomDefs]);
+
+  // Constants
+  const ADMISSION_TYPES = ["Hospitalisation complète", "Ambulatoire", "Hôpital de jour", "Urgence", "Séance de soins"];
+  const CURRENCIES = ["MAD (Dirham)", "EUR (Euro)", "USD (Dollar)"];
+  const ADMISSION_REASONS = ["Chirurgie programmée", "Bilan diagnostique", "Pathologie aiguë", "Suivi post-op", "Obstétrique"];
+  const ARRIVAL_MODES = ["Marche", "Fauteuil roulant", "Brancard", "Ambulance", "SMUR"];
+  const PROVENANCES = ["Domicile", "Urgences", "Consultation externe", "Transfert inter-hôpital", "Clinique privée"];
 
   const handleServiceChange = (newService: string) => {
     setAdmissionData({ ...admissionData, service: newService });
@@ -352,7 +388,7 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
   };
 
   const handleCreateAdmission = async () => {
-    if (!admissionData.type || !admissionData.doctorName || !selectedBedId) return;
+    if (!admissionData.type || !admissionData.doctorName) return;
 
     // Build the admission object
     const newId = `adm-${Date.now()}`;
@@ -361,28 +397,13 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
     // Find the room and bed labels
     let roomNum = "";
     let bedLab = "";
-    filteredRooms.forEach(r => {
+    dynamicRooms.forEach((r: any) => {
       const bed = r.beds.find((b: any) => b.id === selectedBedId);
       if (bed) {
         roomNum = r.number;
         bedLab = bed.label;
       }
     });
-
-    const newAdmission: Admission = {
-      id: newId,
-      nda: newNDA,
-      patientId: patientData.id || "1",
-      reason: admissionData.reason,
-      service: admissionData.service,
-      admissionDate: new Date().toISOString(),
-      doctorName: admissionData.doctorName,
-      roomNumber: roomNum,
-      bedLabel: bedLab,
-      status: 'En cours',
-      type: admissionData.type,
-      currency: admissionData.currency
-    };
 
     try {
       let finalPatientId = patientData.id;
@@ -410,7 +431,7 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
       const newAdmission: Admission = {
         id: newId,
         nda: newNDA,
-        patientId: finalPatientId || "1", // Fallback should ideally not happen if createPatient works
+        patientId: finalPatientId || "1", 
         reason: admissionData.reason,
         service: admissionData.service,
         admissionDate: new Date().toISOString(),
@@ -583,18 +604,19 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm shrink-0">
                 <SearchableSelect label="Type d'admission" options={ADMISSION_TYPES} value={admissionData.type} onChange={(v: string) => setAdmissionData({ ...admissionData, type: v })} icon={Hospital} required />
                 <SearchableSelect label="Devise" options={CURRENCIES} value={admissionData.currency} onChange={(v: string) => setAdmissionData({ ...admissionData, currency: v })} icon={Coins} required />
-                <SearchableSelect label="Médecin traitant" options={DOCTORS} value={admissionData.doctorName} onChange={(v: string) => setAdmissionData({ ...admissionData, doctorName: v })} icon={Stethoscope} required />
+                <SearchableSelect label="Médecin traitant" options={doctorsList} value={admissionData.doctorName} onChange={(v: string) => setAdmissionData({ ...admissionData, doctorName: v })} icon={Stethoscope} required emptyMessage="Aucun médecin disponible pour ce client" />
                 <SearchableSelect label="Motif d'admission" options={ADMISSION_REASONS} value={admissionData.reason} onChange={(v: string) => setAdmissionData({ ...admissionData, reason: v })} icon={Hash} required />
                 <SearchableSelect label="Mode d'arrivée" options={ARRIVAL_MODES} value={admissionData.arrivalMode} onChange={(v: string) => setAdmissionData({ ...admissionData, arrivalMode: v })} icon={Truck} required />
                 <SearchableSelect label="Provenance" options={PROVENANCES} value={admissionData.provenance} onChange={(v: string) => setAdmissionData({ ...admissionData, provenance: v })} icon={MapPin} required />
                 <div className="md:col-span-2">
                   <SearchableSelect
                     label="Service Hospitalier"
-                    options={SERVICES}
+                    options={servicesList}
                     value={admissionData.service}
                     onChange={handleServiceChange}
                     icon={Building2}
                     required
+                    emptyMessage="Aucun service hospitalier configuré pour ce client"
                   />
                 </div>
               </div>
@@ -618,9 +640,15 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
                     </div>
                     <p className="text-sm font-bold uppercase tracking-widest">Veuillez d'abord sélectionner un service hospitalier</p>
                   </div>
+                ) : loadingRooms ? (
+                   <div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div></div>
+                ) : dynamicRooms.length === 0 ? (
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-8 text-center text-slate-400 font-medium italic">
+                        Aucune chambre configurée pour ce service.
+                    </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pb-10 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                    {filteredRooms.map(room => (
+                    {dynamicRooms.map(room => (
                       <div key={room.id} className={`bg-white rounded-2xl border transition-all overflow-hidden flex flex-col group ${selectedBedId?.startsWith(room.id) ? 'border-indigo-500 shadow-lg ring-1 ring-indigo-500/20' : 'border-slate-200 shadow-sm hover:border-indigo-300'}`}>
                         <div className={`px-4 py-2 border-b flex justify-between items-center transition-colors ${selectedBedId?.startsWith(room.id) ? 'bg-indigo-600 text-white' : 'bg-slate-50 border-slate-100 group-hover:bg-indigo-50/30'}`}>
                           <span className="text-[10px] font-black uppercase tracking-wider">CHAMBRE {room.number}</span>
@@ -666,7 +694,7 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
               </div>
             </div>
           )}
-        </div>
+      </div>
 
         {/* Footer */}
         <div className="px-8 py-5 bg-white border-t flex justify-between items-center shrink-0">
@@ -679,7 +707,7 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
                 ? isStep1Valid
                   ? 'bg-slate-900 text-white hover:bg-black shadow-slate-900/20'
                   : 'bg-slate-300 text-slate-100 cursor-not-allowed grayscale'
-                : (admissionData.type && admissionData.doctorName && selectedBedId)
+                : (admissionData.type && admissionData.doctorName)
                   ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-600/30'
                   : 'bg-slate-300 text-slate-100 cursor-not-allowed grayscale'
                 }`}
@@ -689,7 +717,7 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
             </button>
           </div>
         </div>
-      </div>
+    </div>
 
       {/* Duplicate Conflict Modal */}
       {duplicateConflict && (

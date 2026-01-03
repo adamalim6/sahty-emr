@@ -4,47 +4,70 @@ import { pharmacyService } from '../services/pharmacyService';
 import { returnService } from '../services/returnService';
 import { ReturnDestination } from '../models/return-request';
 
-export const getInventory = (req: Request, res: Response) => {
+export const getInventory = (req: any, res: Response) => {
     try {
-        const inventory = pharmacyService.getInventory();
+        const tenantId = req.user?.client_id;
+        const inventory = pharmacyService.getInventory(tenantId);
         res.json(inventory);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching inventory' });
     }
 };
 
-export const getCatalog = (req: Request, res: Response) => {
+export const getCatalog = (req: any, res: Response) => {
     try {
-        const catalog = pharmacyService.getCatalog();
+        const tenantId = req.user?.client_id;
+        console.log(`[API] getCatalog request from User: ${req.user?.username}, Tenant: ${tenantId}`);
+        const catalog = pharmacyService.getCatalog(tenantId);
+        console.log(`[API] Returning ${catalog.length} products dynamically calculated.`);
         res.json(catalog);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching catalog' });
     }
 };
 
-export const createProduct = (req: Request, res: Response) => {
+export const createProduct = (req: any, res: Response) => {
     try {
-        const product = pharmacyService.addProduct(req.body);
+        const tenantId = req.user?.client_id;
+        const product = pharmacyService.addProduct({ ...req.body, tenantId });
         res.status(201).json(product);
     } catch (error) {
         res.status(500).json({ message: 'Error creating product' });
     }
 };
 
-export const getLocations = (req: Request, res: Response) => {
+
+export const getSerializedPacks = (req: any, res: Response) => {
     try {
-        const locations = pharmacyService.getLocations();
+        const tenantId = req.user?.client_id;
+        const packs = pharmacyService.getSerializedPacks({ tenantId });
+        res.json(packs);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching packs' });
+    }
+};
+
+export const getLocations = (req: any, res: Response) => {
+    try {
+        const tenantId = req.user?.client_id;
+        const serviceId = req.query.serviceId as string;
+        const scope = req.query.scope as 'PHARMACY' | 'SERVICE';
+        const locations = pharmacyService.getLocations(tenantId, serviceId, scope);
         res.json(locations);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching locations' });
     }
 };
 
-export const createLocation = (req: Request, res: Response) => {
+export const createLocation = (req: any, res: Response) => {
     try {
-        const location = pharmacyService.addLocation(req.body);
+        const tenantId = req.user?.client_id;
+        // Body should contain serviceId
+        const locationData = { ...req.body, tenantId };
+        const location = pharmacyService.addLocation(locationData);
         res.status(201).json(location);
     } catch (error) {
+        console.error(error);
         res.status(500).json({ message: 'Error creating location' });
     }
 };
@@ -73,18 +96,20 @@ export const deleteLocation = (req: Request, res: Response) => {
 };
 
 // Supplier Handlers
-export const getSuppliers = (req: Request, res: Response) => {
+export const getSuppliers = (req: any, res: Response) => {
     try {
-        const suppliers = pharmacyService.getSuppliers();
+        const tenantId = req.user?.client_id;
+        const suppliers = pharmacyService.getSuppliers(tenantId);
         res.json(suppliers);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching suppliers' });
     }
 };
 
-export const createSupplier = (req: Request, res: Response) => {
+export const createSupplier = (req: any, res: Response) => {
     try {
-        const supplier = pharmacyService.addSupplier(req.body);
+        const tenantId = req.user?.client_id;
+        const supplier = pharmacyService.addSupplier({ ...req.body, tenantId });
         res.status(201).json(supplier);
     } catch (error) {
         res.status(500).json({ message: 'Error creating supplier' });
@@ -115,9 +140,10 @@ export const deleteSupplier = (req: Request, res: Response) => {
 
 // Product Updates
 
-export const updateProduct = (req: Request, res: Response) => {
+export const updateProduct = (req: any, res: Response) => {
     try {
-        const product = req.body;
+        const tenantId = req.user?.client_id;
+        const product = { ...req.body, tenantId };
         const updated = pharmacyService.updateProduct(product);
         res.json(updated);
     } catch (error) {
@@ -127,10 +153,45 @@ export const updateProduct = (req: Request, res: Response) => {
 
 export const getPartners = (req: Request, res: Response) => {
     try {
-        const partners = pharmacyService.getPartners();
+        const tenantId = (req as any).user?.client_id;
+        const partners = pharmacyService.getPartners(tenantId);
         res.json(partners);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching partners' });
+    }
+};
+
+export const createPartner = (req: Request, res: Response) => {
+    try {
+        const tenantId = (req as any).user?.client_id;
+        const partner = pharmacyService.addPartner({ ...req.body, tenantId });
+        res.status(201).json(partner);
+    } catch (error) {
+        res.status(500).json({ message: 'Error creating partner' });
+    }
+};
+
+export const updatePartner = (req: Request, res: Response) => {
+    try {
+        const tenantId = (req as any).user?.client_id;
+        const partner = { ...req.body, tenantId }; // Pass tenantId for verification
+        if (req.params.id && partner.id !== req.params.id) {
+            partner.id = req.params.id;
+        }
+        const updated = pharmacyService.updatePartner(partner);
+        res.json(updated);
+    } catch (error: any) {
+        res.status(403).json({ message: error.message || 'Error updating partner' });
+    }
+};
+
+export const deletePartner = (req: Request, res: Response) => {
+    try {
+        const tenantId = (req as any).user?.client_id;
+        pharmacyService.deletePartner(req.params.id, tenantId);
+        res.status(204).send();
+    } catch (error: any) {
+        res.status(403).json({ message: error.message || 'Error deleting partner' });
     }
 };
 
@@ -147,7 +208,8 @@ export const getStockOutSafety = (req: Request, res: Response) => {
 
 export const getPurchaseOrders = (req: Request, res: Response) => {
     try {
-        const pos = pharmacyService.getPurchaseOrders();
+        const tenantId = (req as any).user?.client_id;
+        const pos = pharmacyService.getPurchaseOrders(tenantId);
         res.json(pos);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching POs' });
@@ -156,7 +218,8 @@ export const getPurchaseOrders = (req: Request, res: Response) => {
 
 export const createPurchaseOrder = (req: Request, res: Response) => {
     try {
-        const po = pharmacyService.createPurchaseOrder(req.body);
+        const tenantId = (req as any).user?.client_id;
+        const po = pharmacyService.createPurchaseOrder({ ...req.body, tenantId });
         res.status(201).json(po);
     } catch (error) {
         res.status(500).json({ message: 'Error creating PO' });
@@ -165,7 +228,8 @@ export const createPurchaseOrder = (req: Request, res: Response) => {
 
 export const getDeliveryNotes = (req: Request, res: Response) => {
     try {
-        const notes = pharmacyService.getDeliveryNotes();
+        const tenantId = (req as any).user?.client_id;
+        const notes = pharmacyService.getDeliveryNotes(tenantId);
         res.json(notes);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching deliveries' });
@@ -174,7 +238,8 @@ export const getDeliveryNotes = (req: Request, res: Response) => {
 
 export const createDeliveryNote = (req: Request, res: Response) => {
     try {
-        const note = pharmacyService.createDeliveryNote(req.body);
+        const tenantId = (req as any).user?.client_id;
+        const note = pharmacyService.createDeliveryNote({ ...req.body, tenantId });
         res.status(201).json(note);
     } catch (error) {
         res.status(500).json({ message: 'Error creating delivery note' });
@@ -194,7 +259,8 @@ export const processQuarantine = (req: Request, res: Response) => {
 // Replenishment Endpoints
 export const getReplenishmentRequests = (req: Request, res: Response) => {
     try {
-        const requests = pharmacyService.getReplenishmentRequests();
+        const tenantId = (req as any).user?.client_id;
+        const requests = pharmacyService.getReplenishmentRequests(tenantId);
         res.json(requests);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching replenishment requests' });
@@ -203,7 +269,8 @@ export const getReplenishmentRequests = (req: Request, res: Response) => {
 
 export const createReplenishmentRequest = (req: Request, res: Response) => {
     try {
-        const request = pharmacyService.createReplenishmentRequest(req.body);
+        const tenantId = (req as any).user?.client_id;
+        const request = pharmacyService.createReplenishmentRequest({ ...req.body, tenantId });
         res.status(201).json(request);
     } catch (error) {
         res.status(500).json({ message: 'Error creating replenishment request' });

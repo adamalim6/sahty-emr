@@ -1,3 +1,4 @@
+
 import { Prescription, PrescriptionData, PrescriptionExecution } from '../models/prescription';
 import { emrService } from './emrService';
 import * as fs from 'fs';
@@ -16,9 +17,6 @@ export class PrescriptionService {
 
     constructor() {
         this.loadData();
-        if (this.prescriptions.length === 0) {
-            // this.initializeMockData(); // Disabled to allow clean manual entry
-        }
     }
 
     private loadData() {
@@ -39,58 +37,20 @@ export class PrescriptionService {
         fs.writeFileSync(DB_FILE, JSON.stringify(this.prescriptions, null, 2));
     }
 
-    private initializeMockData() {
-        // Mock Prescription for Adam Alimi
-        const mock: Prescription = {
-            id: 'PRESC-MOCK-001',
-            patientId: 'PAT-001',
-            createdAt: new Date(),
-            createdBy: 'Dr. System',
-            data: {
-                molecule: 'Amoxicilline',
-                commercialName: 'Amoxil',
-                qty: '1',
-                unit: 'g',
-                route: 'Orale',
-                adminMode: 'instant',
-                adminDuration: '',
-                type: 'frequency',
-                dilutionRequired: false,
-                databaseMode: 'hospital',
-                schedule: {
-                    dailySchedule: 'everyday',
-                    mode: 'simple',
-                    interval: '',
-                    isCustomInterval: false,
-                    startDateTime: new Date().toISOString(),
-                    durationValue: '5',
-                    durationUnit: 'days',
-                    selectedDays: [],
-                    specificTimes: [],
-                    simpleCount: '3',
-                    simplePeriod: 'day',
-                    intervalDuration: ''
-                },
-                substitutable: true
-            }
-        };
-        this.prescriptions.push(mock);
-        this.saveData();
-    }
-
     // Get all prescriptions for a specific patient
     getPrescriptionsByPatient(patientId: string): Prescription[] {
         return this.prescriptions.filter(p => p.patientId === patientId);
     }
 
     // Create a new prescription
-    createPrescription(patientId: string, data: PrescriptionData, createdBy: string = 'Current User'): Prescription {
+    createPrescription(patientId: string, data: PrescriptionData, createdBy: string = 'Current User', clientId?: string): Prescription {
         const newPrescription: Prescription = {
             id: `PRESC-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             patientId,
             data,
             createdAt: new Date(),
-            createdBy
+            createdBy,
+            client_id: clientId
         };
 
         this.prescriptions.push(newPrescription);
@@ -115,9 +75,14 @@ export class PrescriptionService {
     }
 
     // Get all patients who have prescriptions with their info, EXCLUDING biology prescriptions
-    getPatientsWithPrescriptions() {
+    // Filter by clientId if provided (for Multi-tenant Pharmacy View)
+    getPatientsWithPrescriptions(clientId?: string) {
         // Filter out biology prescriptions for Pharmacy view
-        const pharmacyPrescriptions = this.prescriptions.filter(p => p.data.prescriptionType !== 'biology');
+        const pharmacyPrescriptions = this.prescriptions.filter(p => {
+             const isMed = p.data.prescriptionType !== 'biology';
+             const matchClient = clientId ? (p.client_id === clientId) : true;
+             return isMed && matchClient;
+        });
 
         // Get unique patient IDs from relevant prescriptions
         const patientIdsWithPrescriptions = [...new Set(pharmacyPrescriptions.map(p => p.patientId))];

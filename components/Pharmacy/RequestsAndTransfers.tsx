@@ -50,38 +50,6 @@ export const RequestsAndTransfers: React.FC<RequestsAndTransfersProps> = ({ onVi
         }
     };
 
-    const handleValidate = async (request: ReplenishmentRequest) => {
-        // Simple auto-validation for demo (assuming preparation done or strict match)
-        // In a real flow, a Preparation Modal would allow selecting batches.
-        // For this MVP step, we will implement a basic "Auto-Prepare" logic in the backend service 
-        // OR simply mark as APPROVED which triggers the FIFO logic we wrote in the service.
-        // The service's processReplenishmentStockTransfer uses item.dispensedBatches.
-        // If empty, it falls back to finding stock? 
-        // Wait, my service implementation requires `dispensedBatches` to contain data for `decrementPharmacyStock`.
-        // So I MUST implement the preparation logic here to populate `dispensedBatches`.
-
-        // Let's implement a simple "Auto-Fill" for now to save UI complexity, 
-        // seeing as the user asked for "Preparation... FEFO". 
-        // I can do this by fetching the suggested batches first.
-
-        // HACK: I will just call update status to APPROVED. 
-        // My service logic `decrementPharmacyStock` has a fallback:
-        // "if item found... else dispenseSerializedPacksByBatch" 
-        // The loop for `processReplenishmentStockTransfer` iterates `batches`.
-        // If `batches` is empty, it does nothing?
-        // Ah, correct. If I send empty batches, nothing moves.
-
-        // So I need to PREPARE the batches.
-        alert("La fonctionnalité de préparation détaillée (sélection des lots) sera implémentée dans la prochaine étape. Pour l'instant, le statut sera mis à jour.");
-
-        try {
-            await api.updateReplenishmentRequestStatus(request.id, ReplenishmentStatus.APPROVED);
-            loadData();
-        } catch (e) {
-            alert("Erreur lors de la validation");
-        }
-    };
-
     if (loading) return <div className="p-8 text-center text-slate-500">Chargement...</div>;
 
     return (
@@ -96,43 +64,31 @@ export const RequestsAndTransfers: React.FC<RequestsAndTransfersProps> = ({ onVi
                             <th className="p-4">Service</th>
                             <th className="p-4">Demandé par</th>
                             <th className="p-4">Statut</th>
-                            <th className="p-4">Articles</th>
-                            <th className="p-4 text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {requests.map(req => (
-                            <tr key={req.id} className="hover:bg-slate-50 transition-colors">
-                                <td className="p-4 text-sm text-slate-600">
+                            <tr 
+                                key={req.id} 
+                                className="hover:bg-indigo-50/50 transition-colors cursor-pointer group"
+                                onClick={() => onViewDetails ? onViewDetails(req) : setSelectedRequest(req)}
+                            >
+                                <td className="p-4 text-sm text-slate-600 font-mono">
                                     {new Date(req.createdAt).toLocaleDateString()}
                                 </td>
-                                <td className="p-4 font-medium text-slate-900">{req.serviceName}</td>
-                                <td className="p-4 text-sm text-slate-600">{req.requesterName}</td>
+                                <td className="p-4 font-bold text-slate-900 text-base">{req.serviceName}</td>
+                                <td className="p-4 text-sm text-slate-600 flex items-center">
+                                    <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center mr-3 text-xs font-bold text-slate-500">
+                                        {req.requesterName.charAt(0)}
+                                    </div>
+                                    {req.requesterName}
+                                </td>
                                 <td className="p-4">
                                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
                                         ${req.status === ReplenishmentStatus.PENDING ? 'bg-amber-100 text-amber-800' :
                                             req.status === ReplenishmentStatus.APPROVED ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-800'}`}>
                                         {req.status}
                                     </span>
-                                </td>
-                                <td className="p-4 text-sm text-slate-600">
-                                    {req.items.length} références
-                                </td>
-                                <td className="p-4 text-right space-x-2">
-                                    <button
-                                        className="text-blue-600 hover:text-blue-800 font-medium text-sm"
-                                        onClick={() => onViewDetails ? onViewDetails(req) : setSelectedRequest(req)}
-                                    >
-                                        Détails
-                                    </button>
-                                    {req.status === ReplenishmentStatus.PENDING && (
-                                        <button
-                                            className="text-green-600 hover:text-green-800 font-medium text-sm"
-                                            onClick={() => handleValidate(req)}
-                                        >
-                                            Valider
-                                        </button>
-                                    )}
                                 </td>
                             </tr>
                         ))}
@@ -145,8 +101,8 @@ export const RequestsAndTransfers: React.FC<RequestsAndTransfersProps> = ({ onVi
                 )}
             </div>
 
-            {/* Preparation Modal (Placeholder for now) */}
-            {selectedRequest && (
+            {/* Simple Detail Modal (Fallback if onViewDetails not provided) */}
+            {selectedRequest && !onViewDetails && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full m-4 max-h-[80vh] overflow-y-auto">
                         <div className="p-6 border-b border-slate-100 flex justify-between items-center">

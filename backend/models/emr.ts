@@ -67,6 +67,7 @@ export interface Admission {
     type?: string;
     status: 'En cours' | 'Sorti' | 'Annulé';
     currency?: string;
+    tenantId?: string;
 }
 
 export interface Appointment {

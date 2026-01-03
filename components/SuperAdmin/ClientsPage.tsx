@@ -1,0 +1,206 @@
+
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { api } from '../../services/api';
+import { Plus, Search, Building2 } from 'lucide-react';
+
+export const ClientsPage: React.FC = () => {
+    const navigate = useNavigate();
+    const [clients, setClients] = useState<any[]>([]);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    
+    // Form State
+    const [formData, setFormData] = useState({
+        type: 'HOPITAL',
+        designation: '',
+        siege_social: '',
+        representant_legal: '',
+        admin_username: '',
+        admin_password: '', // Should be generated or input
+        admin_nom: '',
+        admin_prenom: ''
+    });
+
+    useEffect(() => {
+        loadClients();
+    }, []);
+
+    const loadClients = async () => {
+        try {
+            const data = await api.getClients();
+            setClients(data);
+        } catch (e) {
+            console.error('Failed to load clients', e);
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            await api.createClient(formData);
+            setIsModalOpen(false);
+            loadClients();
+        } catch (e) {
+            alert('Failed to create client');
+        }
+    };
+
+    return (
+        <div className="p-8 max-w-7xl mx-auto">
+            <div className="flex justify-between items-center mb-8">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-800">Gestion des Clients</h1>
+                    <p className="text-slate-500">Ajouter et gérer les établissements de santé</p>
+                </div>
+                <button 
+                    onClick={() => setIsModalOpen(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+                >
+                    <Plus size={20} />
+                    <span>Nouveau Client</span>
+                </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {clients.map(client => (
+                    <div 
+                        key={client.id} 
+                        onClick={() => navigate(`/super-admin/clients/${client.id}`)}
+                        className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                    >
+                        <div className="flex items-start justify-between mb-4">
+                            <div className="p-3 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
+                                <Building2 className="text-blue-600" size={24} />
+                            </div>
+                            <span className="px-3 py-1 bg-slate-100 text-slate-600 text-xs font-semibold rounded-full">
+                                {client.type}
+                            </span>
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-800 mb-1 group-hover:text-blue-600 transition-colors">{client.designation}</h3>
+                        <p className="text-sm text-slate-500 mb-4">{client.siege_social}</p>
+                        
+                        <div className="border-t border-slate-100 pt-4 mt-4">
+                            <p className="text-xs text-slate-400 uppercase font-semibold mb-2">Représentant Légal</p>
+                            <div className="flex items-center space-x-2">
+                                <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
+                                    {client.representant_legal?.charAt(0)}
+                                </div>
+                                <span className="text-sm text-slate-700">{client.representant_legal}</span>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Modal */}
+            {isModalOpen && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="p-6 border-b border-slate-100">
+                            <h2 className="text-xl font-bold text-slate-800">Nouveau Client</h2>
+                        </div>
+                        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                            {/* Client Info */}
+                            <div className="space-y-4">
+                                <h3 className="text-sm font-bold text-blue-600 uppercase tracking-wider">Information Structure</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Type</label>
+                                        <select 
+                                            className="w-full border rounded-lg p-2"
+                                            value={formData.type}
+                                            onChange={e => setFormData({...formData, type: e.target.value})}
+                                        >
+                                            <option value="HOPITAL">Hôpital</option>
+                                            <option value="CLINIQUE">Clinique</option>
+                                            <option value="CABINET">Cabinet</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Désignation</label>
+                                        <input 
+                                            type="text" className="w-full border rounded-lg p-2" required
+                                            value={formData.designation}
+                                            onChange={e => setFormData({...formData, designation: e.target.value})}
+                                        />
+                                    </div>
+                                    <div className="col-span-2">
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Siège Social</label>
+                                        <input 
+                                            type="text" className="w-full border rounded-lg p-2" required
+                                            value={formData.siege_social}
+                                            onChange={e => setFormData({...formData, siege_social: e.target.value})}
+                                        />
+                                    </div>
+                                    <div className="col-span-2">
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Représentant Légal</label>
+                                        <input 
+                                            type="text" className="w-full border rounded-lg p-2" required
+                                            value={formData.representant_legal}
+                                            onChange={e => setFormData({...formData, representant_legal: e.target.value})}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Tenant Admin Info */}
+                            <div className="space-y-4 pt-4 border-t border-slate-100">
+                                <h3 className="text-sm font-bold text-blue-600 uppercase tracking-wider">Administrateur Tenant (DSI)</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Nom</label>
+                                        <input 
+                                            type="text" className="w-full border rounded-lg p-2" required
+                                            value={formData.admin_nom}
+                                            onChange={e => setFormData({...formData, admin_nom: e.target.value})}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Prénom</label>
+                                        <input 
+                                            type="text" className="w-full border rounded-lg p-2" required
+                                            value={formData.admin_prenom}
+                                            onChange={e => setFormData({...formData, admin_prenom: e.target.value})}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Nom d'utilisateur</label>
+                                        <input 
+                                            type="text" className="w-full border rounded-lg p-2" required
+                                            value={formData.admin_username}
+                                            onChange={e => setFormData({...formData, admin_username: e.target.value})}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Mot de passe</label>
+                                        <input 
+                                            type="password" className="w-full border rounded-lg p-2" required
+                                            value={formData.admin_password}
+                                            onChange={e => setFormData({...formData, admin_password: e.target.value})}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end space-x-3 pt-6 border-t border-slate-100">
+                                <button 
+                                    type="button"
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+                                >
+                                    Annuler
+                                </button>
+                                <button 
+                                    type="submit"
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                >
+                                    Créer Client & Admin
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};

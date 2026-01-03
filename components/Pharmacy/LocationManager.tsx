@@ -10,7 +10,7 @@ interface LocationManagerProps {
   onUpdateLocations: (locations: StockLocation[]) => void;
 }
 
-export const LocationManager: React.FC<LocationManagerProps> = ({ locations, inventoryItems, onUpdateLocations }) => {
+export const LocationManager: React.FC<LocationManagerProps & { serviceId?: string, scope?: 'PHARMACY' | 'SERVICE' }> = ({ locations, inventoryItems, onUpdateLocations, serviceId, scope = 'PHARMACY' }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -67,7 +67,9 @@ export const LocationManager: React.FC<LocationManagerProps> = ({ locations, inv
           name: formData.name,
           description: formData.description || '',
           type: 'SHELF',
-          isActive: formData.isActive
+          isActive: formData.isActive,
+          scope: scope, 
+          serviceId: scope === 'SERVICE' ? serviceId : undefined
         };
 
         const newLoc = await api.createLocation(payload);
@@ -75,9 +77,13 @@ export const LocationManager: React.FC<LocationManagerProps> = ({ locations, inv
         onUpdateLocations(newLocations);
         setIsModalOpen(false);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      setError("Erreur lors de l'enregistrement");
+      if (e.message?.includes('403') || e.message?.toLowerCase().includes('forbidden')) {
+        setError("Accès refusé : Vous n'avez pas la permission de modifier cet emplacement.");
+      } else {
+        setError("Erreur lors de l'enregistrement");
+      }
     }
   };
 
@@ -95,8 +101,12 @@ export const LocationManager: React.FC<LocationManagerProps> = ({ locations, inv
         await api.deleteLocation(id);
         const newLocations = locations.filter(l => l.id !== id);
         onUpdateLocations(newLocations);
-      } catch (e) {
-        alert("Erreur lors de la suppression de l'emplacement");
+      } catch (e: any) {
+        if (e.message?.includes('403') || e.message?.toLowerCase().includes('forbidden')) {
+           alert("Accès refusé : Vous n'avez pas la permission de supprimer cet emplacement.");
+        } else {
+           alert("Erreur lors de la suppression de l'emplacement");
+        }
       }
     }
   };

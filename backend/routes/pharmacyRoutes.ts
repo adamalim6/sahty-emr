@@ -4,15 +4,20 @@ import { prescriptionService } from '../services/prescriptionService';
 import * as pharmacyController from '../controllers/pharmacyController';
 import { dispenseWithFEFO, getDispensationsByPrescription, getDispensationsByAdmission } from '../controllers/dispensationController';
 
+import { authenticateToken } from '../middleware/authMiddleware';
+
 const router = Router();
 
-
+// Protect ALL routes with authentication
+router.use(authenticateToken);
 
 // Config & Catalog
 router.get('/inventory', pharmacyController.getInventory);
 router.get('/catalog', pharmacyController.getCatalog);
 router.post('/catalog', pharmacyController.createProduct);
 router.put('/catalog/:id', pharmacyController.updateProduct);
+router.get('/packs', pharmacyController.getSerializedPacks);
+
 // Locations
 router.get('/locations', pharmacyController.getLocations);
 router.post('/locations', pharmacyController.createLocation);
@@ -26,6 +31,9 @@ router.put('/suppliers/:id', pharmacyController.updateSupplier);
 router.delete('/suppliers/:id', pharmacyController.deleteSupplier);
 
 router.get('/partners', pharmacyController.getPartners);
+router.post('/partners', pharmacyController.createPartner);
+router.put('/partners/:id', pharmacyController.updatePartner);
+router.delete('/partners/:id', pharmacyController.deletePartner);
 router.get('/stock-out-history', pharmacyController.getStockOutSafety);
 
 // Workflow Routes

@@ -107,8 +107,9 @@ export class EmrService {
         return this.patients.find(p => p.id === id);
     }
 
-    getAllAdmissions(): Admission[] {
-        return this.admissions;
+    getAllAdmissions(tenantId?: string): Admission[] {
+        if (!tenantId) return [];
+        return this.admissions.filter(a => a.tenantId === tenantId);
     }
 
     getAllAppointments(): Appointment[] {
@@ -142,6 +143,9 @@ export class EmrService {
     }
 
     createAdmission(data: Admission): Admission {
+        if (!data.tenantId) {
+            throw new Error("Critical Security: Cannot create admission without tenantId");
+        }
         const newAdmission = { ...data };
         this.admissions.push(newAdmission);
 

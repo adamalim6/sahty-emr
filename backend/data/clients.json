@@ -1,0 +1,20 @@
+[
+  {
+    "id": "client_demo",
+    "type": "HOPITAL",
+    "designation": "Hôpital Demo Central",
+    "siege_social": "123 Rue de la Santé, Casablanca",
+    "representant_legal": "Dr. Directeur"
+  },
+  {
+    "id": "client_1767102086031",
+    "type": "HOPITAL",
+    "designation": "UMAN",
+    "siege_social": "3 rue de la pitié",
+    "representant_legal": "Jaafar Bouhouch",
+    "admin_username": "mellaouzi",
+    "admin_password": "mellaouzi",
+    "admin_nom": "Mohamed",
+    "admin_prenom": "Ellauzi"
+  }
+]

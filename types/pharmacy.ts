@@ -13,6 +13,7 @@ export interface StockLocation {
   name: string;
   description?: string;
   isActive: boolean;
+  tenantId?: string;
 }
 
 export interface InventoryItem {
@@ -28,6 +29,7 @@ export interface InventoryItem {
   theoreticalQty: number;
   actualQty: number | null;
   lastUpdated?: Date;
+  tenantId?: string;
 }
 
 export enum InventoryStatus {
@@ -70,6 +72,8 @@ export interface PharmacySupplier {
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+  source?: 'GLOBAL' | 'TENANT';
+  tenantId?: string;
 }
 
 export interface Molecule {
@@ -169,6 +173,7 @@ export interface ProductProcessData {
 export interface QuarantineSessionResult {
   noteId: string;
   processedDate: Date;
+  processedBy?: string; // NOUVEAU: Nom de l'utilisateur ayant validé
   items: ProductProcessData[];
 }
 
@@ -181,6 +186,7 @@ export interface PartnerInstitution {
   email: string;
   address: string;
   isActive: boolean;
+  tenantId?: string;
 }
 
 export enum StockOutType {
@@ -248,6 +254,7 @@ export interface SerializedPack {
   remainingUnits: number;
   history: PackHistoryEvent[];
   createdAt: string;
+  tenantId?: string;
 }
 
 export interface DispensedItem {
@@ -308,4 +315,5 @@ export interface ReplenishmentRequest {
   }[];
   createdAt: string; // JSON date string
   updatedAt: string;
+  tenantId?: string;
 }

@@ -13,6 +13,9 @@ export interface StockLocation {
     name: string;
     description?: string;
     isActive: boolean;
+    tenantId?: string; // New: Tenant Isolation
+    serviceId?: string; // Linked to Service
+    scope?: 'PHARMACY' | 'SERVICE'; // Strict Scope Enforcement
 }
 
 export interface InventoryItem {
@@ -20,7 +23,7 @@ export interface InventoryItem {
     productId: string;
     name: string;
     category: ItemCategory;
-    serviceId?: string; // Optional: If present, belongs to a Service Stock (Replenishment target)
+    serviceId?: string; 
     location: string;
     batchNumber: string;
     expiryDate: string;
@@ -28,6 +31,7 @@ export interface InventoryItem {
     theoreticalQty: number;
     actualQty: number | null;
     lastUpdated?: Date;
+    tenantId?: string; // New: Tenant Isolation
 }
 
 export enum InventoryStatus {
@@ -70,11 +74,15 @@ export interface PharmacySupplier {
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
+    source?: 'GLOBAL' | 'TENANT';
+    tenantId?: string;
 }
 
 export interface Molecule {
     id: string;
     name: string;
+    dosage?: number;
+    dosageUnit?: DosageUnit;
 }
 
 export type DosageUnit = 'g' | 'mg' | 'ml';
@@ -95,6 +103,7 @@ export interface ProductDefinition {
     therapeuticClass?: string;
     createdAt: Date;
     updatedAt: Date;
+    tenantId?: string;
 }
 
 export enum POStatus {
@@ -116,6 +125,7 @@ export interface PurchaseOrder {
     date: Date;
     status: POStatus;
     items: POItem[];
+    tenantId?: string;
 }
 
 export interface DeliveryNoteItem {
@@ -137,6 +147,7 @@ export interface DeliveryNote {
     status: ProcessingStatus;
     items: DeliveryNoteItem[];
     processingResult?: QuarantineSessionResult;
+    tenantId?: string;
 }
 
 export enum ReturnReason {
@@ -182,6 +193,7 @@ export interface PartnerInstitution {
     email: string;
     address: string;
     isActive: boolean;
+    tenantId?: string;
 }
 
 export enum StockOutType {
@@ -248,6 +260,7 @@ export interface ReplenishmentRequest {
     targetServiceId?: string; // Optional: Service ID (if multiple services supported in future)
     createdAt: Date;
     updatedAt: Date;
+    tenantId?: string;
 }
 
 export enum PackStatus {
@@ -276,5 +289,5 @@ export interface SerializedPack {
     status: PackStatus;
     history: PackHistoryEvent[];
     createdAt: string;
+    tenantId?: string;
 }
-

@@ -1,50 +1,82 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
 
-export enum UserRole {
-    DOCTOR = 'DOCTOR',
-    PHARMACIST = 'PHARMACIST',
-    NURSE = 'NURSE',
-    ADMIN = 'ADMIN'
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { api } from '../services/api';
+
+export enum UserType {
+    PUBLISHER_SUPERADMIN = 'PUBLISHER_SUPERADMIN',
+    TENANT_SUPERADMIN = 'TENANT_SUPERADMIN',
+    TENANT_USER = 'TENANT_USER'
 }
 
 export interface User {
-    name: string;
-    role: UserRole;
-    email?: string;
-    id?: string;
+    id: string;
+    username: string;
+    nom: string;
+    prenom: string;
+    user_type: UserType;
+    role_id: string;
+    client_id?: string | null;
+    permissions?: string[];
 }
 
 interface AuthContextType {
     user: User | null;
-    login: (role: UserRole) => void;
+    login: (credentials: any) => Promise<User>;
     logout: () => void;
     isAuthenticated: boolean;
+    loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [user, setUser] = useState<User | null>(() => {
-        const stored = localStorage.getItem('sahty_user');
-        return stored ? JSON.parse(stored) : null;
-    });
+    const [user, setUser] = useState<User | null>(null);
+    const [loading, setLoading] = useState(true);
 
-    const login = (role: UserRole) => {
-        const newUser: User = role === UserRole.DOCTOR
-            ? { id: 'u1', name: 'Dr. S. Alami', role: UserRole.DOCTOR, email: 'dr.alami@hospital.com' }
-            : { id: 'u2', name: 'Pharmacien Chef', role: UserRole.PHARMACIST, email: 'pharmacy@hospital.com' };
+    useEffect(() => {
+        const initAuth = async () => {
+            const token = localStorage.getItem('token');
+            if (token) {
+                try {
+                    const response = await fetch('http://localhost:3001/api/auth/me', {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    
+                    if (response.ok) {
+                        const userData = await response.json();
+                        setUser(userData);
+                    } else {
+                        console.warn(`[AuthContext] Token invalid (Status ${response.status}). Logging out.`);
+                        // Only logout on 401/403
+                        if (response.status === 401 || response.status === 403) {
+                             localStorage.removeItem('token');
+                        }
+                    }
+                } catch (e: any) {
+                    console.error("[AuthContext] Session check failed (Network):", e);
+                    // Do NOT logout on network error, keep token for retry
+                }
+            }
+            setLoading(false);
+        };
+        initAuth();
+    }, []);
 
-        setUser(newUser);
-        localStorage.setItem('sahty_user', JSON.stringify(newUser));
+    const login = async (credentials: any) => {
+        const { token, user } = await api.login(credentials);
+        localStorage.setItem('token', token);
+        setUser(user);
+        return user;
     };
 
     const logout = () => {
         setUser(null);
-        localStorage.removeItem('sahty_user');
+        localStorage.removeItem('token');
+        window.location.href = '/login';
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user }}>
+        <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user, loading }}>
             {children}
         </AuthContext.Provider>
     );

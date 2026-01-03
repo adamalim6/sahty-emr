@@ -1,52 +1,79 @@
 
-import * as http from 'http';
+import axios from 'axios';
+import jwt from 'jsonwebtoken';
 
 const BASE_URL = 'http://localhost:3001/api';
+const JWT_SECRET = 'super-secret-key-change-in-prod'; 
 
-const endpoints = [
-    '/pharmacy/inventory',
-    '/pharmacy/catalog',
-    '/pharmacy/locations',
-    '/pharmacy/partners',
-    '/pharmacy/stock-out-history',
-    '/pharmacy/orders',
-    '/pharmacy/deliveries',
-    '/pharmacy/suppliers'
-];
+// 1. Pharma2 (Demo)
+const userDemo = {
+    id: "user_1767371467189",
+    username: "pharma2",
+    user_type: "TENANT_USER",
+    role_id: "role_pharmacien",
+    client_id: "client_demo"
+};
 
-function fetch(url: string): Promise<{ status: number, statusText: string, data: any }> {
-    return new Promise((resolve, reject) => {
-        http.get(url, (res) => {
-            let data = '';
-            res.on('data', (chunk) => data += chunk);
-            res.on('end', () => {
-                try {
-                    const parsed = JSON.parse(data);
-                    resolve({ status: res.statusCode || 0, statusText: res.statusMessage || '', data: parsed });
-                } catch (e) {
-                    resolve({ status: res.statusCode || 0, statusText: res.statusMessage || '', data: data });
-                }
-            });
-        }).on('error', (err) => reject(err));
-    });
-}
+// 2. Pharma1 (UMAN)
+const userUMAN = {
+    id: "user_1767295352127",
+    username: "pharma1",
+    user_type: "TENANT_USER",
+    role_id: "role_pharmacien",
+    client_id: "client_1767102086031"
+};
 
-async function checkEndpoints() {
-    console.log('Checking endpoints...');
-    for (const endpoint of endpoints) {
-        try {
-            const res = await fetch(`${BASE_URL}${endpoint}`);
-            if (res.status >= 200 && res.status < 300) {
-                console.log(`✅ ${endpoint} - ${res.status}`);
-                console.log(`   Items: ${Array.isArray(res.data) ? res.data.length : 'Object'}`);
-            } else {
-                console.error(`❌ ${endpoint} - ${res.status} ${res.statusText}`);
-                console.error('   Error:', res.data);
-            }
-        } catch (error: any) {
-            console.error(`❌ ${endpoint} - FAILED`, error.message);
-        }
+const tokenDemo = jwt.sign(userDemo, JWT_SECRET, { expiresIn: '1h' });
+const tokenUMAN = jwt.sign(userUMAN, JWT_SECRET, { expiresIn: '1h' });
+
+async function verify() {
+    console.log("🔒 Starting Product Isolation Verification...\n");
+    const testProductId = `PROD-TEST-${Date.now()}`;
+
+    // --- STEP 1: Create Product as Demo Client ---
+    console.log("--- Step 1: Client Demo (pharma2) creates a product ---");
+    try {
+        await axios.post(`${BASE_URL}/pharmacy/products`, {
+            id: testProductId,
+            name: "Secret Demo Product",
+            type: "Médicament",
+            suppliers: [],
+            profitMargin: 20,
+            vatRate: 5.5,
+            isSubdivisable: false,
+            unitsPerPack: 10,
+            createdAt: new Date(),
+            updatedAt: new Date()
+        }, { headers: { Authorization: `Bearer ${tokenDemo}` } });
+        console.log(`✅ Product Created: ${testProductId}`);
+    } catch (e: any) {
+        console.error(`❌ Creation Failed: ${e.response?.data?.message || e.message}`);
+        return;
+    }
+
+    // --- STEP 2: Verify Visibility for Demo Client ---
+    console.log("\n--- Step 2: Client Demo checks catalog ---");
+    try {
+        const res = await axios.get(`${BASE_URL}/pharmacy/catalog`, { headers: { Authorization: `Bearer ${tokenDemo}` } });
+        const found = res.data.find((p: any) => p.id === testProductId);
+        if (found) console.log(`✅ Success: Product is visible to creator.`);
+        else console.error(`❌ Failure: Product NOT found for creator!`);
+    } catch (e: any) {
+        console.error(`❌ Fetch Failed: ${e.message}`);
+    }
+
+    // --- STEP 3: Verify INVISIBILITY for UMAN Client ---
+    console.log("\n--- Step 3: Client UMAN (pharma1) checks catalog ---");
+    try {
+        const res = await axios.get(`${BASE_URL}/pharmacy/catalog`, { headers: { Authorization: `Bearer ${tokenUMAN}` } });
+        const found = res.data.find((p: any) => p.id === testProductId);
+        if (found) console.error(`❌ SECURITY FAILURE: UMAN client can see Demo product!`);
+        else console.log(`✅ Success: Product is HIDDEN from UMAN client.`);
+        
+        console.log(`\n(UMAN Catalog Size: ${res.data.length} items)`);
+    } catch (e: any) {
+        console.error(`❌ Fetch Failed: ${e.message}`);
     }
 }
 
-checkEndpoints();
+verify();
