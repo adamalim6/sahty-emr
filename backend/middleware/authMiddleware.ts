@@ -11,6 +11,7 @@ export interface AuthRequest extends Request {
         user_type: string;
         role_id: string;
         client_id: string | null;
+        service_ids?: string[];
     };
 }
 

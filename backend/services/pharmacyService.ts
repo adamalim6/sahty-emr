@@ -1245,7 +1245,11 @@ export class PharmacyService {
             requesterName: request.requesterName || 'Infirmier',
             serviceName: request.serviceName || 'Service',
             status: ReplenishmentStatus.PENDING,
-            items: request.items || [],
+            items: (request.items || []).map((item: any) => ({
+                ...item,
+                quantityRequested: item.quantity || item.quantityRequested, 
+                quantityApproved: 0
+            })),
             createdAt: new Date(),
             updatedAt: new Date(),
             tenantId: request.tenantId, // Store Tenant ID
@@ -1589,6 +1593,129 @@ export class PharmacyService {
 
         return product;
     }
+
+    public dispenseItem(params: {
+        requestId: string,
+        itemProductId: string,
+        dispensedProductId: string,
+        quantity: number,
+        batches: { batchNumber: string, quantity: number, expiryDate: string }[],
+        targetLocationId?: string,
+        unitType?: 'BOX' | 'UNIT'
+    }) {
+        const { requestId, itemProductId, dispensedProductId, quantity, batches, targetLocationId, unitType } = params;
+
+        // 1. Fetch Request
+        const request = this.replenishmentRequests.find(r => r.id === requestId);
+        if (!request) throw new Error("Request not found");
+
+        const requestItem = request.items.find(i => i.productId === itemProductId);
+        if (!requestItem) throw new Error("Item not found in request");
+
+        // 2. Process Stock Movement (Atomic per batch)
+        batches.forEach(batch => {
+            // A. Decrement Pharmacy Stock
+            // Find BEST matching inventory line
+            let sourceItem = this.inventory.find(i => 
+                i.productId === dispensedProductId && 
+                i.batchNumber === batch.batchNumber && 
+                (!i.serviceId || i.serviceId === null) &&
+                i.theoreticalQty >= batch.quantity
+            );
+            
+            if (!sourceItem) {
+                 // Try find ANY line even if distinct location
+                 sourceItem = this.inventory.find(i => 
+                    i.productId === dispensedProductId && 
+                    i.batchNumber === batch.batchNumber && 
+                    (!i.serviceId)
+                );
+            }
+
+            if (sourceItem) {
+                sourceItem.theoreticalQty -= batch.quantity;
+                sourceItem.lastUpdated = new Date();
+            } else {
+                 console.warn(`[PharmacyService] Stock source mismatch for batch ${batch.batchNumber}. Decrementing anyway if found, otherwise skipping strict check for dev.`);
+            }
+
+            // B. Increment Service Stock
+            // Target Location: Either from Request Item or Default Service Location
+            const finalLocationId = targetLocationId || requestItem.targetLocationId;
+            
+            // Find or Create Service Inventory Line
+            const existingServiceItem = this.inventory.find(i => 
+                i.productId === dispensedProductId &&
+                i.batchNumber === batch.batchNumber &&
+                i.location === finalLocationId &&
+                i.serviceId === request.serviceId
+            );
+
+            if (existingServiceItem) {
+                existingServiceItem.theoreticalQty += batch.quantity;
+                existingServiceItem.lastUpdated = new Date();
+            } else {
+                // Get product details for metadata
+                const productDef = this.catalog.find(p => p.id === dispensedProductId);
+                
+                // Map ProductType to ItemCategory
+                let category = ItemCategory.CONSUMABLES;
+                if (productDef?.type === ProductType.DRUG) {
+                    category = ItemCategory.ANTIBIOTICS; // Default fallback
+                }
+
+                // Helper to generate ID within class context if needed, or just manual
+                const id = `INV-SERV-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+                
+                this.inventory.push({
+                    id: id,
+                    productId: dispensedProductId,
+                    name: productDef?.name || 'Unknown',
+                    category: category,
+                    location: finalLocationId || 'DEFAULT_LOC', // Fallback
+                    batchNumber: batch.batchNumber,
+                    expiryDate: batch.expiryDate,
+                    theoreticalQty: batch.quantity,
+                    actualQty: null,
+                    serviceId: request.serviceId, // Scoped to Service
+                    tenantId: request.tenantId,   // Scoped to Tenant
+                    lastUpdated: new Date(),
+                    unitPrice: sourceItem?.unitPrice || 0
+                });
+            }
+        });
+
+        // 3. Update Request State
+        if (!requestItem.dispensedBatches) requestItem.dispensedBatches = [];
+        
+        batches.forEach(b => {
+            requestItem.dispensedBatches?.push({
+                batchNumber: b.batchNumber,
+                quantity: b.quantity,
+                expiryDate: b.expiryDate
+            });
+        });
+
+        // Update Approved/Dispensed Quantity (Accumulative)
+        requestItem.quantityApproved = (requestItem.quantityApproved || 0) + quantity;
+        
+        // If substitution
+        if (dispensedProductId !== itemProductId) {
+             requestItem.productDispensedId = dispensedProductId;
+             const subProduct = this.catalog.find(p => p.id === dispensedProductId);
+             requestItem.productDispensedName = subProduct?.name;
+        }
+
+       this.saveData();
+       
+       return { 
+           success: true, 
+           requestItem, 
+           updatedInventory: this.getInventory(request.tenantId) 
+       };
+    }
+
+
 }
 
 export const pharmacyService = new PharmacyService();

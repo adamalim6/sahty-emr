@@ -7,7 +7,22 @@ import { ReturnDestination } from '../models/return-request';
 export const getInventory = (req: any, res: Response) => {
     try {
         const tenantId = req.user?.client_id;
-        const inventory = pharmacyService.getInventory(tenantId);
+        const serviceId = req.query.serviceId as string;
+        
+        // Strict Service Scoping
+        if (serviceId) {
+            const userServices = req.user?.service_ids || [];
+            if (!userServices.includes(serviceId) && req.user?.user_type !== 'TENANT_SUPERADMIN') { // Superadmin might bypass? Or strict? Let's be strict for now or allow superadmin.
+                 // Actually, let's stick to the plan: "If serviceId is provided but not in req.user.service_ids -> Return 403"
+                 // Assuming req.user has service_ids. If not, we might need to fetch them. 
+                 // But for now let's implement the check.
+                 if (!userServices.includes(serviceId)) {
+                     return res.status(403).json({ message: "Accès refusé : Vous n'êtes pas affecté à ce service." });
+                 }
+            }
+        }
+        
+        const inventory = pharmacyService.getInventory(tenantId, serviceId);
         res.json(inventory);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching inventory' });
@@ -17,9 +32,9 @@ export const getInventory = (req: any, res: Response) => {
 export const getCatalog = (req: any, res: Response) => {
     try {
         const tenantId = req.user?.client_id;
-        console.log(`[API] getCatalog request from User: ${req.user?.username}, Tenant: ${tenantId}`);
+        // console.log(`[API] getCatalog request from User: ${req.user?.username}, Tenant: ${tenantId}`);
         const catalog = pharmacyService.getCatalog(tenantId);
-        console.log(`[API] Returning ${catalog.length} products dynamically calculated.`);
+        // console.log(`[API] Returning ${catalog.length} products dynamically calculated.`);
         res.json(catalog);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching catalog' });
@@ -52,6 +67,15 @@ export const getLocations = (req: any, res: Response) => {
         const tenantId = req.user?.client_id;
         const serviceId = req.query.serviceId as string;
         const scope = req.query.scope as 'PHARMACY' | 'SERVICE';
+        
+        // Strict Service Authorization for Locations
+        if (serviceId) {
+             const userServices = req.user?.service_ids || [];
+              if (!userServices.includes(serviceId) && req.user?.user_type !== 'TENANT_SUPERADMIN') { // Allow superadmin to see all locations?
+                  return res.status(403).json({ message: "Accès refusé : Vous n'êtes pas affecté à ce service." });
+              }
+        }
+
         const locations = pharmacyService.getLocations(tenantId, serviceId, scope);
         res.json(locations);
     } catch (error) {
@@ -285,6 +309,20 @@ export const updateReplenishmentRequestStatus = (req: Request, res: Response) =>
         res.json(updated);
     } catch (error) {
         res.status(500).json({ message: 'Error updating request status' });
+    }
+};
+
+export const dispenseItem = (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const result = pharmacyService.dispenseItem({
+            requestId: id,
+            ...req.body
+        });
+        res.json(result);
+    } catch (error: any) {
+        console.error('Error dispensing item:', error);
+        res.status(500).json({ message: error.message || 'Error dispensing item' });
     }
 };
 

@@ -1,51 +1,82 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { InventoryItem, ItemCategory, ProductDefinition, SerializedPack, PackStatus } from '../types/pharmacy';
 import { Search, Filter, AlertTriangle, Package, ChevronDown, ChevronRight, Droplets, Pill, Syringe, FileText, Hash, MapPin, Calendar, BoxSelect, Boxes, LayoutGrid } from 'lucide-react';
 
 export const ServiceStock: React.FC = () => {
+    const { user } = useAuth();
     const [inventory, setInventory] = useState<InventoryItem[]>([]);
     const [products, setProducts] = useState<ProductDefinition[]>([]);
     const [packs, setPacks] = useState<SerializedPack[]>([]);
-    const [locations, setLocations] = useState<any[]>([]); // New State
-    const [loading, setLoading] = useState(true);
+    const [locations, setLocations] = useState<any[]>([]); 
+    const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
     const [selectedCategory, setSelectedCategory] = useState<ItemCategory | 'all'>('all');
     const [error, setError] = useState<string | null>(null);
+    const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+    const [userServices, setUserServices] = useState<any[]>([]); // {id, name}
 
+    // Load User Services and Set Default
     useEffect(() => {
-        loadData();
-    }, []);
+        const fetchUserServices = async () => {
+             try {
+                const allServices = await api.getServices();
+                const allowed = allServices.filter((s: any) => user?.service_ids?.includes(s.id));
+                setUserServices(allowed);
+                
+                // Default Selection: First available
+                if (allowed.length > 0 && !selectedServiceId) {
+                    setSelectedServiceId(allowed[0].id);
+                }
+             } catch (e) {
+                 console.error("Failed to load services", e);
+             }
+        };
 
-    const loadData = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const [inv, cat, packsData, locs] = await Promise.all([
-                api.getInventory(),
-                api.getCatalog(),
-                api.getSerializedPacks(),
-                api.getEmrLocations()
-            ]);
-
-            // Filter for ANY service stock (items with a serviceId)
-            const serviceItems = inv.filter(i => !!i.serviceId);
-            setInventory(serviceItems);
-            setProducts(cat);
-            setPacks(packsData);
-            setLocations(locs);
-        } catch (error: any) {
-            console.error("Failed to load service inventory", error);
-            if (error.message?.includes('403') || error.message?.toLowerCase().includes('forbidden')) {
-                 setError("Accès refusé : Vous n'avez pas les permissions nécessaires pour voir ce stock.");
-            } else {
-                 setError("Erreur lors du chargement du stock.");
-            }
-        } finally {
-            setLoading(false);
+        if (user?.service_ids && user.service_ids.length > 0) {
+            fetchUserServices();
         }
-    };
+    }, [user]);
+
+    // Fetch Stock when Service Selection Changes
+    useEffect(() => {
+        if (!selectedServiceId) {
+             setInventory([]);
+             return; 
+        }
+
+        const loadStock = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                const [inv, cat, packsData, locs] = await Promise.all([
+                    api.getInventory(selectedServiceId), // Pass Service ID
+                    api.getCatalog(),
+                    api.getSerializedPacks(),
+                    // Use scoped locations
+                    api.getLocations(selectedServiceId, 'SERVICE') 
+                ]);
+                
+                setInventory(inv);
+                setProducts(cat);
+                setPacks(packsData);
+                setLocations(locs);
+            } catch (error: any) {
+                console.error("Failed to load service inventory", error);
+                if (error.message?.includes('403') || error.message?.toLowerCase().includes('forbidden')) {
+                     setError("Accès refusé : Vous n'avez pas les permissions nécessaires pour voir ce stock.");
+                } else {
+                     setError("Erreur lors du chargement du stock.");
+                }
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadStock();
+    }, [selectedServiceId]);
 
     const getLocationName = (locId: string) => {
         const loc = locations.find(l => l.id === locId);
@@ -76,7 +107,6 @@ export const ServiceStock: React.FC = () => {
         const groups: Record<string, {
             productId: string;
             name: string;
-            // category: ItemCategory; // Derived from product def preferably
             totalQuantity: number;
             items: InventoryItem[];
             locations: Set<string>;
@@ -119,48 +149,73 @@ export const ServiceStock: React.FC = () => {
 
     const categories = Object.values(ItemCategory);
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center p-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-600"></div>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="p-6 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3 text-red-700">
-                <AlertTriangle className="h-5 w-5" />
-                <span>{error}</span>
-            </div>
-        );
-    }
-
     return (
         <div className="p-6 h-full flex flex-col bg-slate-50">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-slate-800">Stock du Service</h1>
-                <div className="flex gap-4">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-                        <input
-                            type="text"
-                            placeholder="Rechercher (Nom, Lot, Emplacement)..."
-                            className="pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
+            <div className="flex flex-col space-y-4 mb-6">
+                <div className="flex justify-between items-center">
+                    <h1 className="text-2xl font-bold text-slate-800">Stock du Service</h1>
+                    <div className="flex gap-4 items-center">
+                         {/* Service Selector */}
+                         <div className="relative">
+                            <select
+                                value={selectedServiceId || ''}
+                                onChange={(e) => setSelectedServiceId(e.target.value)}
+                                className="pl-4 pr-10 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-700 w-64 appearance-none"
+                            >
+                                <option value="" disabled>Sélectionner un service</option>
+                                {userServices.map(s => (
+                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                ))}
+                            </select>
+                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 pointer-events-none" />
+                        </div>
+
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                            <input
+                                type="text"
+                                placeholder="Rechercher (Nom, Lot, Emplacement)..."
+                                className="pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-4">
-                {stockGroups.length === 0 ? (
-                    <div className="p-12 text-center text-slate-400 border border-dashed border-slate-300 rounded-xl bg-white">
-                        Aucun stock trouvé pour ce service.
+            {/* Error State */}
+            {error && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3 text-red-700">
+                    <AlertTriangle className="h-5 w-5" />
+                    <span>{error}</span>
+                </div>
+            )}
+            
+            {/* No Selection State */}
+            {!selectedServiceId && !loading && !error && (
+                 <div className="flex-1 flex flex-col items-center justify-center text-center p-12 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50">
+                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                        <LayoutGrid className="w-8 h-8 text-slate-400" />
                     </div>
-                ) : (
-                    stockGroups.map(group => {
+                    <h3 className="text-lg font-medium text-slate-900">Aucun service sélectionné</h3>
+                    <p className="text-slate-500 max-w-sm mt-1">Veuillez sélectionner un service dans le menu déroulant ci-dessus pour afficher son stock.</p>
+                 </div>
+            )}
+
+            {/* Content */}
+            {selectedServiceId && (
+                <div className="flex-1 overflow-y-auto space-y-4">
+                    {loading ? (
+                         <div className="flex items-center justify-center p-24">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-600"></div>
+                        </div>
+                    ) : stockGroups.length === 0 ? (
+                        <div className="p-12 text-center text-slate-400 border border-dashed border-slate-300 rounded-xl bg-white">
+                            Aucun stock trouvé pour ce service.
+                        </div>
+                    ) : (
+                        stockGroups.map(group => {
                         const isExpanded = expandedGroups.has(group.productId);
                         const productDef = products.find(p => p.id === group.productId);
                         const unitsPerPack = productDef?.unitsPerPack || 1;
@@ -189,14 +244,13 @@ export const ServiceStock: React.FC = () => {
                             const openedCount = openedPacks.length;
                             
                             const sealedUnits = sealedCount * unitsPerPack;
-                            const openedUnitsRemaining = openedPacks.reduce((acc, p) => acc + (p.remainingUnits || 0), 0);
                             
                             const totalStockUnits = item.theoreticalQty || 0;
-                            const looseUnits = Math.max(0, totalStockUnits - sealedUnits - openedUnitsRemaining);
+                            const looseUnits = Math.max(0, totalStockUnits - sealedUnits);
 
                             if (!locationGroups[item.location]) {
                                 locationGroups[item.location] = {
-                                    name: getLocationName(item.location), // Use helper for name resolution
+                                    name: getLocationName(item.location),
                                     items: [],
                                     stats: { sealed: 0, opened: 0, loose: 0, totalQty: 0 }
                                 };
@@ -204,7 +258,7 @@ export const ServiceStock: React.FC = () => {
 
                             locationGroups[item.location].items.push(item);
                             locationGroups[item.location].stats.sealed += sealedCount;
-                            locationGroups[item.location].stats.opened += openedCount;
+                            locationGroups[item.location].stats.opened += openedCount; 
                             locationGroups[item.location].stats.loose += looseUnits;
                             locationGroups[item.location].stats.totalQty += totalStockUnits;
 
@@ -225,13 +279,6 @@ export const ServiceStock: React.FC = () => {
                             }
                         }
 
-                        // Normalized value calculation (per unit if subdivisable)
-                        const unitValue = productDef ? (
-                            (productDef.suppliers?.[0]?.purchasePrice || 0) * (1 + (productDef.profitMargin || 0) / 100) * (1 + (productDef.vatRate || 0) / 100)
-                        ) : 0;
-                        const finalUnitValue = (unitsPerPack > 1) ? (unitValue / unitsPerPack) : unitValue;
-                        const totalValue = group.totalQuantity * finalUnitValue; // Total based on all items
-
                         return (
                             <div key={group.productId} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                                 <div
@@ -250,9 +297,6 @@ export const ServiceStock: React.FC = () => {
                                                     <span className={`px-2 py-0.5 rounded textxs font-bold uppercase tracking-wide ${classColor}`}>
                                                         {displayClass}
                                                     </span>
-                                                    <span className="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-medium">
-                                                        IDs: {Array.from(group.serviceIds).join(', ')}
-                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
@@ -264,18 +308,13 @@ export const ServiceStock: React.FC = () => {
                                             </div>
                                             <div className="w-px h-8 bg-slate-200"></div>
                                             <div className="flex flex-col items-center">
-                                                 <span className="text-[10px] uppercase text-slate-400 font-bold">Boites Entamées</span>
-                                                 <span className="font-bold text-lg text-slate-800">{productStats.opened}</span>
-                                            </div>
-                                            <div className="w-px h-8 bg-slate-200"></div>
-                                            <div className="flex flex-col items-center">
                                                  <span className="text-[10px] uppercase text-slate-400 font-bold">Unités en Vrac</span>
                                                  <span className="font-bold text-lg text-slate-800">{productStats.loose}</span>
                                             </div>
-                                            <div className="w-px h-8 bg-slate-200 md:hidden"></div>
-                                            <div className="flex flex-col items-center md:items-end px-4 md:px-0 hidden md:flex">
-                                                <div className="text-[10px] uppercase text-slate-400 font-bold">Total Val</div>
-                                                <div className="text-lg font-bold text-slate-800">€{totalValue.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
+                                            <div className="w-px h-8 bg-slate-200"></div>
+                                            <div className="flex flex-col items-center">
+                                                <span className="text-[10px] uppercase text-slate-400 font-bold">Tot. Unités</span>
+                                                <span className="font-bold text-lg text-slate-800">{productStats.totalQty}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -293,9 +332,9 @@ export const ServiceStock: React.FC = () => {
                                                     <div className="flex items-center space-x-4 text-xs font-medium text-slate-600 bg-white px-3 py-1.5 rounded-full border border-slate-100 shadow-sm">
                                                         <span>Scellés: <b>{locGroup.stats.sealed}</b></span>
                                                         <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-                                                        <span>Entamés: <b>{locGroup.stats.opened}</b></span>
-                                                        <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
                                                         <span>Vrac: <b>{locGroup.stats.loose}</b></span>
+                                                        <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                                                        <span className="text-blue-600">Tot: <b>{locGroup.stats.totalQty}</b></span>
                                                     </div>
                                                 </div>
                                                 
@@ -309,67 +348,41 @@ export const ServiceStock: React.FC = () => {
                                                          );
                                                          
                                                          const sealedPacks = locationPacks.filter(p => p.status === PackStatus.SEALED);
-                                                         const openedPacks = locationPacks.filter(p => p.status === PackStatus.OPENED);
-                                                         
                                                          const sealedCount = sealedPacks.length;
-                                                         const openedCount = openedPacks.length;
-                                                         const sealedUnits = sealedCount * unitsPerPack;
-                                                         const openedUnitsRemaining = openedPacks.reduce((acc, p) => acc + (p.remainingUnits || 0), 0);
-                                                         const totalStockUnits = item.theoreticalQty || 0;
-                                                         const looseUnits = Math.max(0, totalStockUnits - sealedUnits - openedUnitsRemaining);
-
-                                                         // Item Value
-                                                         const itemVal = totalStockUnits * finalUnitValue;
                                                          
+                                                         const sealedUnits = sealedCount * unitsPerPack;
+                                                         const totalStockUnits = item.theoreticalQty || 0;
+                                                         const looseUnits = Math.max(0, totalStockUnits - sealedUnits);
+
                                                          return (
                                                             <div key={item.id} className="bg-slate-900 text-white p-4 rounded-lg shadow-lg relative overflow-hidden">
-                                                                <div className="flex justify-between items-start mb-4 border-b border-slate-700 pb-3">
-                                                                    <div>
-                                                                        <div className="text-[10px] uppercase text-slate-400 font-bold mb-1">Lot / Batch</div>
-                                                                        <div className="font-mono font-bold text-lg text-white">{item.batchNumber}</div>
+                                                                <div className="flex justify-between items-start mb-3 border-b border-slate-700 pb-2">
+                                                                    <div className="flex-1">
+                                                                        <div className="text-[10px] uppercase text-slate-400 font-bold mb-0.5">Lot / Batch</div>
+                                                                        <div className="font-mono font-bold text-base text-white">{item.batchNumber}</div>
                                                                     </div>
-                                                                    <div className="text-right">
-                                                                        <div className="text-[10px] uppercase text-slate-400 font-bold mb-1">Expiration</div>
-                                                                        <div className={`font-medium ${new Date(item.expiryDate) < new Date() ? 'text-red-400' : 'text-slate-300'}`}>
+                                                                    <div className="text-right flex-1">
+                                                                        <div className="text-[10px] uppercase text-slate-400 font-bold mb-0.5">Expiration</div>
+                                                                        <div className={`font-medium text-sm ${new Date(item.expiryDate) < new Date() ? 'text-red-400' : 'text-slate-300'}`}>
                                                                             {new Date(item.expiryDate).toLocaleDateString()}
                                                                         </div>
                                                                     </div>
                                                                 </div>
                                                                 
-                                                                <div className="space-y-3">
-                                                                    {/* Boites Scelles */}
-                                                                    <div className="bg-slate-800 rounded p-2 flex justify-between items-center">
-                                                                        <span className="text-xs text-slate-400 font-medium">Boites scellés</span>
-                                                                        <span className="font-bold text-white">: {sealedCount}</span>
+                                                                <div className="space-y-2">
+                                                                    <div className="bg-slate-800 rounded px-2 py-1.5 flex justify-between items-center text-xs">
+                                                                        <span className="text-slate-300">Boites scellés</span>
+                                                                        <span className="font-bold text-white text-sm">: {sealedCount}</span>
                                                                     </div>
                                                                     
-                                                                    {/* Boites Entames */}
-                                                                    <div className="bg-slate-800 rounded p-2">
-                                                                        <div className="flex justify-between items-center mb-1">
-                                                                            <span className="text-xs text-slate-400 font-medium">Boites entamnés</span>
-                                                                            <span className="font-bold text-white">: {openedCount}</span>
-                                                                        </div>
-                                                                        {openedCount > 0 && (
-                                                                            <div className="space-y-1 mt-2 pl-2 border-l-2 border-slate-600">
-                                                                                {openedPacks.map(p => (
-                                                                                    <div key={p.id} className="flex justify-between text-[10px] bg-indigo-900/50 px-2 py-1 rounded">
-                                                                                        <span className="font-mono text-indigo-300">{p.serialNumber}</span>
-                                                                                        <span className="text-white">Reste : {p.remainingUnits}</span>
-                                                                                    </div>
-                                                                                ))}
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                    
-                                                                    {/* Unites en Vrac */}
-                                                                    <div className="bg-slate-800 rounded p-2 flex justify-between items-center">
-                                                                        <span className="text-xs text-slate-400 font-medium">Unités en vrac</span>
-                                                                        <span className="font-bold text-white">: {looseUnits}</span>
+                                                                    <div className="bg-slate-800 rounded px-2 py-1.5 flex justify-between items-center text-xs">
+                                                                        <span className="text-slate-300">Unités Vrac</span>
+                                                                        <span className="font-bold text-white text-sm">: {looseUnits}</span>
                                                                     </div>
 
-                                                                    <div className="pt-2 border-t border-slate-700 flex justify-between items-center">
-                                                                        <span className="text-[10px] text-slate-500 uppercase">Val estimée</span>
-                                                                        <span className="font-mono text-sm font-bold text-emerald-400">€{itemVal.toFixed(0)}</span>
+                                                                    <div className="pt-2 border-t border-slate-700 flex justify-between items-center mt-1">
+                                                                        <span className="text-[10px] font-bold uppercase text-slate-500">Total UNITÉS</span>
+                                                                        <span className="font-mono text-lg font-bold text-blue-400">{item.theoreticalQty}</span>
                                                                     </div>
                                                                 </div>
                                                             </div> 
@@ -383,8 +396,9 @@ export const ServiceStock: React.FC = () => {
                             </div>
                         );
                     })
-                )}
-            </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 };

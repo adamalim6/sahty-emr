@@ -130,7 +130,7 @@
       "molecules": [
         {
           "id": "MOL-1767384702910",
-          "name": "Corticoide"
+          "name": "Cétirizine"
         }
       ],
       "profitMargin": 0,
@@ -138,9 +138,39 @@
       "isSubdivisable": true,
       "unitsPerPack": 10,
       "createdAt": "2026-01-02T20:11:28.431Z",
-      "updatedAt": "2026-01-02T20:12:17.944Z",
+      "updatedAt": "2026-01-03T22:42:24.382Z",
       "name": "Zyrtec 25mg",
       "dosage": 25,
+      "therapeuticClass": "Analgésiques",
+      "subdivisionUnits": 10,
+      "tenantId": "client_1767102086031",
+      "currentStock": 16
+    },
+    {
+      "id": "PROD-2026-1673",
+      "type": "Médicament",
+      "suppliers": [
+        {
+          "id": "supp_29",
+          "name": "Maropharm",
+          "purchasePrice": 10,
+          "isActive": true
+        }
+      ],
+      "molecules": [
+        {
+          "id": "MOL-1767491038882",
+          "name": "Cétrizine"
+        }
+      ],
+      "profitMargin": 20,
+      "vatRate": 5.5,
+      "isSubdivisable": true,
+      "unitsPerPack": 10,
+      "createdAt": "2026-01-04T01:42:59.682Z",
+      "updatedAt": "2026-01-04T01:44:51.167Z",
+      "name": "Xyzall 30 mg Cmp",
+      "dosage": 30,
       "therapeuticClass": "Analgésiques",
       "subdivisionUnits": 10,
       "tenantId": "client_1767102086031"
@@ -175,6 +205,16 @@
       "serviceId": "svc_1767295432437",
       "tenantId": "client_1767102086031",
       "id": "LOC-1767416956782"
+    },
+    {
+      "name": "Zone 1",
+      "description": "",
+      "type": "SHELF",
+      "isActive": true,
+      "scope": "SERVICE",
+      "serviceId": "svc_1767295460199",
+      "tenantId": "client_1767102086031",
+      "id": "LOC-1767480518378"
     }
   ],
   "partners": [
@@ -986,6 +1026,76 @@
       ],
       "createdAt": "2026-01-03T05:46:51.195Z",
       "updatedAt": "2026-01-03T05:46:51.195Z",
+      "tenantId": "client_1767102086031",
+      "service_id": "svc_1767295432437",
+      "created_by": "user_1767295680263"
+    },
+    {
+      "id": "REP-1767491132009",
+      "requesterId": "user_1767295680263",
+      "requesterName": "inf3 inf3",
+      "serviceName": "Hospitalisation",
+      "status": "En Attente",
+      "items": [
+        {
+          "productId": "PROD-2026-1673",
+          "productName": "Xyzall 30 mg Cmp",
+          "quantity": 10,
+          "targetLocationId": "LOC-1767415934978",
+          "unitType": "BOX"
+        },
+        {
+          "productId": "PROD-2026-147",
+          "productName": "Zyrtec 25mg",
+          "quantity": 20,
+          "targetLocationId": "LOC-1767415934978",
+          "unitType": "BOX"
+        }
+      ],
+      "createdAt": "2026-01-04T01:45:32.009Z",
+      "updatedAt": "2026-01-04T01:45:32.009Z",
+      "tenantId": "client_1767102086031",
+      "service_id": "svc_1767295432437",
+      "created_by": "user_1767295680263"
+    },
+    {
+      "id": "REP-1767491544772",
+      "requesterId": "user_1767295680263",
+      "requesterName": "inf3",
+      "serviceName": "Hospitalisation",
+      "status": "En Attente",
+      "items": [
+        {
+          "productId": "PROD-2026-1673",
+          "productName": "Xyzall 30 mg Cmp",
+          "quantity": 8,
+          "targetLocationId": "LOC-1767415934978",
+          "unitType": "BOX"
+        }
+      ],
+      "createdAt": "2026-01-04T01:52:24.772Z",
+      "updatedAt": "2026-01-04T01:52:24.772Z",
+      "tenantId": "client_1767102086031",
+      "service_id": "svc_1767295432437",
+      "created_by": "user_1767295680263"
+    },
+    {
+      "id": "REP-1767491624385",
+      "requesterId": "user_1767295680263",
+      "requesterName": "inf3 inf3",
+      "serviceName": "Hospitalisation",
+      "status": "En Attente",
+      "items": [
+        {
+          "productId": "PROD-2026-147",
+          "productName": "Zyrtec 25mg",
+          "quantity": 12,
+          "targetLocationId": "LOC-1767415934978",
+          "unitType": "BOX"
+        }
+      ],
+      "createdAt": "2026-01-04T01:53:44.386Z",
+      "updatedAt": "2026-01-04T01:53:44.386Z",
       "tenantId": "client_1767102086031",
       "service_id": "svc_1767295432437",
       "created_by": "user_1767295680263"

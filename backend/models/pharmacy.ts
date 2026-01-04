@@ -258,6 +258,7 @@ export interface ReplenishmentRequest {
         }[];
     }[];
     targetServiceId?: string; // Optional: Service ID (if multiple services supported in future)
+    serviceId?: string; // ID of the requesting service
     createdAt: Date;
     updatedAt: Date;
     tenantId?: string;

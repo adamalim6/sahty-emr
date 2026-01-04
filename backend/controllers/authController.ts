@@ -35,7 +35,8 @@ export const login = (req: Request, res: Response) => {
             username: user.username, 
             user_type: user.user_type, 
             role_id: user.role_id,
-            client_id: user.client_id 
+            client_id: user.client_id,
+            service_ids: user.service_ids || [] 
         }, 
         JWT_SECRET, 
         { expiresIn: '8h' }

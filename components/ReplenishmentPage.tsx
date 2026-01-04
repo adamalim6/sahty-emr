@@ -11,7 +11,7 @@ interface Service {
 interface Product {
   id: string;
   name: string;
-  code: string;
+  code?: string;
   quantity: number; 
 }
 
@@ -25,7 +25,10 @@ interface RequestItem {
   productName: string;
   quantity: number;
   targetLocationId: string;
+  unitType: 'BOX' | 'UNIT'; // ADDED
 }
+
+
 
 export const ReplenishmentPage: React.FC = () => {
   const { user } = useAuth();
@@ -81,8 +84,12 @@ export const ReplenishmentPage: React.FC = () => {
       setRequestItems([]);
 
       try {
-        const catalog = await api.getCatalog();
-        setProducts(catalog);
+        const catalog: any[] = await api.getCatalog();
+        setProducts(catalog.map(p => ({
+            ...p,
+            code: p.id,
+            quantity: p.currentStock || 0
+        })));
 
         const locs = await api.getLocations(selectedServiceId, 'SERVICE');
         setServiceLocations(locs);
@@ -125,7 +132,8 @@ export const ReplenishmentPage: React.FC = () => {
               productId: id,
               productName: product?.name || 'Inconnu',
               quantity: 1, // Default
-              targetLocationId: '' // User must select
+              targetLocationId: '', // User must select
+              unitType: 'BOX' // Default
           };
       });
 
@@ -136,7 +144,7 @@ export const ReplenishmentPage: React.FC = () => {
   const filteredProducts = useMemo(() => {
       return products.filter(p => 
           p.name.toLowerCase().includes(modalSearch.toLowerCase()) || 
-          p.code.toLowerCase().includes(modalSearch.toLowerCase())
+          (p.code || p.id).toLowerCase().includes(modalSearch.toLowerCase())
       );
   }, [products, modalSearch]);
 
@@ -310,16 +318,32 @@ export const ReplenishmentPage: React.FC = () => {
                                  <div className="text-xs text-slate-500">ID: {item.productId}</div>
                              </div>
 
-                             {/* Quantity */}
-                             <div className="w-full md:w-32">
+                             {/* Quantity & Unit Type */}
+                             <div className="w-full md:w-56 flex flex-col space-y-1">
                                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Quantité</label>
-                                 <input 
-                                     type="number" 
-                                     min="1"
-                                     value={item.quantity}
-                                     onChange={(e) => updateItem(idx, 'quantity', parseInt(e.target.value))}
-                                     className="w-full rounded-lg border-slate-300 font-medium text-slate-900 focus:border-indigo-500 focus:ring-indigo-500"
-                                 />
+                                 <div className="flex items-center space-x-2">
+                                   <input 
+                                       type="number" 
+                                       min="1"
+                                       value={item.quantity}
+                                       onChange={(e) => updateItem(idx, 'quantity', parseInt(e.target.value))}
+                                       className="w-24 rounded-lg border-slate-300 font-medium text-slate-900 focus:border-indigo-500 focus:ring-indigo-500"
+                                   />
+                                   <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+                                       <button
+                                           onClick={() => updateItem(idx, 'unitType', 'BOX')}
+                                           className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${item.unitType === 'BOX' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                       >
+                                           Boites
+                                       </button>
+                                       <button
+                                           onClick={() => updateItem(idx, 'unitType', 'UNIT')}
+                                           className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all ${item.unitType === 'UNIT' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                       >
+                                           Unités
+                                       </button>
+                                   </div>
+                                 </div>
                              </div>
 
                              {/* Destination */}
@@ -480,7 +504,7 @@ export const ReplenishmentPage: React.FC = () => {
                                            <div className="flex-1">
                                                <div className={`font-semibold ${isAlreadyAdded ? 'text-slate-500' : 'text-slate-800'}`}>{p.name}</div>
                                                <div className="text-xs text-slate-400 flex items-center space-x-2">
-                                                   <span>Code: {p.code}</span>
+                                                   <span>Code: {p.code || p.id}</span>
                                                    {isAlreadyAdded && <span className="bg-slate-200 text-slate-600 px-1.5 rounded text-[10px] font-bold">DÉJÀ AJOUTÉ</span>}
                                                </div>
                                            </div>

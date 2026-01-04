@@ -80,7 +80,10 @@ export const api = {
     getRooms: () => fetchJson<Room[]>('/emr/rooms'),
 
     // Pharmacy
-    getInventory: () => fetchJson<InventoryItem[]>('/pharmacy/inventory'),
+    getInventory: (serviceId?: string) => {
+        const query = serviceId ? `?serviceId=${serviceId}` : '';
+        return fetchJson<InventoryItem[]>(`/pharmacy/inventory${query}`);
+    },
     getCatalog: () => fetchJson<ProductDefinition[]>('/pharmacy/catalog'),
     getLocations: (serviceId?: string, scope?: 'PHARMACY' | 'SERVICE') => fetchJson<StockLocation[]>(`/pharmacy/locations?serviceId=${serviceId || ''}&scope=${scope || ''}`),
     createLocation: (data: any) => fetchJson<StockLocation>('/pharmacy/locations', {
@@ -252,6 +255,16 @@ export const api = {
     // Replenishment
     getReplenishmentRequests: () => fetchJson<any[]>('/pharmacy/replenishments'),
     createReplenishmentRequest: (data: any) => fetchJson<any>('/pharmacy/replenishments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    updateReplenishmentRequestStatus: (id: string, status: string, processedRequest?: any) => fetchJson<any>(`/pharmacy/replenishments/${id}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, processedRequest })
+    }),
+    dispenseReplenishmentItem: (requestId: string, data: any) => fetchJson<any>(`/pharmacy/replenishments/${requestId}/dispense`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)

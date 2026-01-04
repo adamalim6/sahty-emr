@@ -1,1 +1,50 @@
-[]
+[
+  {
+    "id": "PRESC-1767479498041-hkoowbl55",
+    "patientId": "5864",
+    "data": {
+      "molecule": "Amoxicilline",
+      "commercialName": "Amoxil",
+      "qty": "300",
+      "unit": "mg",
+      "route": "Orale",
+      "adminMode": "instant",
+      "adminDuration": "",
+      "type": "frequency",
+      "dilutionRequired": false,
+      "substitutable": true,
+      "solvent": {
+        "molecule": "",
+        "commercialName": "",
+        "qty": "--",
+        "unit": "mL"
+      },
+      "databaseMode": "hospital",
+      "schedule": {
+        "dailySchedule": "everyday",
+        "mode": "cycle",
+        "interval": "6",
+        "isCustomInterval": false,
+        "startDateTime": "2026-01-03T23:30",
+        "durationValue": "2",
+        "durationUnit": "days",
+        "selectedDays": [],
+        "specificTimes": [],
+        "simpleCount": "1",
+        "simplePeriod": "day",
+        "intervalDuration": ""
+      },
+      "conditionComment": "",
+      "prescriptionType": "medication",
+      "skippedDoses": [
+        "2026-01-04T04:30:00.000Z"
+      ],
+      "manualDoseAdjustments": {
+        "2026-01-04T16:30:00.000Z": "2026-01-04T22:25:00.000Z"
+      }
+    },
+    "createdAt": "2026-01-03T22:31:38.041Z",
+    "createdBy": "Med1",
+    "client_id": "client_1767102086031"
+  }
+]

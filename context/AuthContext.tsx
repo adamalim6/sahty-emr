@@ -17,6 +17,7 @@ export interface User {
     role_id: string;
     client_id?: string | null;
     permissions?: string[];
+    service_ids?: string[]; // ADDED
 }
 
 interface AuthContextType {

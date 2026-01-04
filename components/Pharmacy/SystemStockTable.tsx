@@ -89,32 +89,6 @@ export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, produ
                 const salePriceHT = calculateSalePriceHT(activePrice, productDef.profitMargin || 0);
                 const priceTTC = calculatePriceTTC(salePriceHT, productDef.vatRate || 0);
 
-                // If the product is subdivisable, the stock quantity is in UNITS (pill/ampoule)
-                // But the PriceTTC is usually per BOX.
-                // We need to determine if we should multiply by Box Price or Unit Price.
-
-                // However, usually 'currentStock' in product definition is tracked in Boxes or Units?
-                // In InventoryItem, 'theoreticalQty' is usually the count of the smallest unit for subdivisable items?
-                // Let's verify:
-                // In ProductCatalog:
-                // "Prix Unitaire (10 unités) = 0.023 / unité"
-                // "Prix Public (TTC) = 0.23" (Per Box presumably)
-
-                // If I have 7 boxes (which is 7 * unitsPerPack units)...
-                // The user screenshot says: "7 Btes (140)". So 140 units.
-                // And "Doliprane 1000" => 7 * 126.60 = 886.20.
-                // This means the user wants (Boxes Count * Box Price TTC).
-
-                // We need to convert `qty` (which is likely in units for subdivisable) back to boxes?
-                // Or is `qty` just boxes if not subdivisable?
-
-                // Look at the display logic below:
-                // `${Math.floor(group.totalQty / productDef.unitsPerPack)} Btes (${group.totalQty})`
-                // This confirms `group.totalQty` is in UNITS.
-
-                // So Value = (TotalUnits / UnitsPerPack) * BoxPriceTTC
-                // OR Value = TotalUnits * UnitPriceTTC
-
                 if (productDef.isSubdivisable && productDef.unitsPerPack > 0) {
                     const pricePerUnit = priceTTC / productDef.unitsPerPack;
                     unitValue = pricePerUnit;
@@ -154,10 +128,10 @@ export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, produ
                 const locationGroups: Record<string, {
                     name: string;
                     items: InventoryItem[];
-                    stats: { sealed: number; opened: number; loose: number; totalQty: number };
+                    stats: { sealed: number; loose: number; totalQty: number };
                 }> = {};
 
-                let productStats = { sealed: 0, opened: 0, loose: 0, totalQty: 0 };
+                let productStats = { sealed: 0, loose: 0, totalQty: 0 };
 
                 group.items.forEach(item => {
                     const normalize = (s: string) => s?.trim().toLowerCase() || '';
@@ -168,33 +142,32 @@ export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, produ
                     );
 
                     const sealedPacks = locationPacks.filter(p => p.status === PackStatus.SEALED);
-                    const openedPacks = locationPacks.filter(p => p.status === PackStatus.OPENED);
+                    // We treat OPENED packs as part of the loose stock basically, or just ignore them as packs 
+                    // and calculate loose based on Total - Sealed
                     
                     const sealedCount = sealedPacks.length;
-                    const openedCount = openedPacks.length;
                     
                     const sealedUnits = sealedCount * unitsPerPack;
-                    const openedUnitsRemaining = openedPacks.reduce((acc, p) => acc + (p.remainingUnits || 0), 0);
-                    
                     const totalStockUnits = item.theoreticalQty || 0;
-                    const looseUnits = Math.max(0, totalStockUnits - sealedUnits - openedUnitsRemaining);
+                    
+                    // Loose units = Total - (Sealed Boxes * Units/Box)
+                    // This naturally absorbs any "Opened" boxes into the loose count
+                    const looseUnits = Math.max(0, totalStockUnits - sealedUnits);
 
                     if (!locationGroups[item.location]) {
                         locationGroups[item.location] = {
                             name: item.location,
                             items: [],
-                            stats: { sealed: 0, opened: 0, loose: 0, totalQty: 0 }
+                            stats: { sealed: 0, loose: 0, totalQty: 0 }
                         };
                     }
 
                     locationGroups[item.location].items.push(item);
                     locationGroups[item.location].stats.sealed += sealedCount;
-                    locationGroups[item.location].stats.opened += openedCount;
                     locationGroups[item.location].stats.loose += looseUnits;
                     locationGroups[item.location].stats.totalQty += totalStockUnits;
 
                     productStats.sealed += sealedCount;
-                    productStats.opened += openedCount;
                     productStats.loose += looseUnits;
                     productStats.totalQty += totalStockUnits;
                 });
@@ -228,7 +201,7 @@ export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, produ
                                         <h3 className="font-bold text-slate-900 text-lg">{group.name}</h3>
                                         <div className="flex items-center space-x-3 mt-1 text-sm">
                                             <span className="text-slate-500 font-mono">Réf: {group.productId}</span>
-                                            <span className={`px-2 py-0.5 rounded textxs font-bold uppercase tracking-wide ${classColor}`}>
+                                            <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide ${classColor}`}>
                                                 {displayClass}
                                             </span>
                                         </div>
@@ -242,13 +215,13 @@ export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, produ
                                     </div>
                                     <div className="w-px h-8 bg-slate-200"></div>
                                     <div className="flex flex-col items-center">
-                                         <span className="text-[10px] uppercase text-slate-400 font-bold">Boites Entamées</span>
-                                         <span className="font-bold text-lg text-slate-800">{productStats.opened}</span>
+                                         <span className="text-[10px] uppercase text-slate-400 font-bold">Unités Vrac</span>
+                                         <span className="font-bold text-lg text-slate-800">{productStats.loose}</span>
                                     </div>
                                     <div className="w-px h-8 bg-slate-200"></div>
                                     <div className="flex flex-col items-center">
-                                         <span className="text-[10px] uppercase text-slate-400 font-bold">Unités en Vrac</span>
-                                         <span className="font-bold text-lg text-slate-800">{productStats.loose}</span>
+                                         <span className="text-[10px] uppercase text-slate-400 font-bold">Tot. Unités</span>
+                                         <span className="font-bold text-lg text-slate-800">{productStats.totalQty}</span>
                                     </div>
                                 </div>
                             </div>
@@ -266,9 +239,9 @@ export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, produ
                                             <div className="flex items-center space-x-4 text-xs font-medium text-slate-600 bg-white px-3 py-1.5 rounded-full border border-slate-100 shadow-sm">
                                                 <span>Scellés: <b>{locGroup.stats.sealed}</b></span>
                                                 <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-                                                <span>Entamés: <b>{locGroup.stats.opened}</b></span>
-                                                <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
                                                 <span>Vrac: <b>{locGroup.stats.loose}</b></span>
+                                                <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                                                <span className="text-blue-600">Tot: <b>{locGroup.stats.totalQty}</b></span>
                                             </div>
                                         </div>
                                         
@@ -282,64 +255,40 @@ export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, produ
                                                  );
                                                  
                                                  const sealedPacks = locationPacks.filter(p => p.status === PackStatus.SEALED);
-                                                 const openedPacks = locationPacks.filter(p => p.status === PackStatus.OPENED);
-                                                 
                                                  const sealedCount = sealedPacks.length;
-                                                 const openedCount = openedPacks.length;
                                                  const sealedUnits = sealedCount * unitsPerPack;
-                                                 const openedUnitsRemaining = openedPacks.reduce((acc, p) => acc + (p.remainingUnits || 0), 0);
                                                  const totalStockUnits = item.theoreticalQty || 0;
-                                                 const looseUnits = Math.max(0, totalStockUnits - sealedUnits - openedUnitsRemaining);
+                                                 const looseUnits = Math.max(0, totalStockUnits - sealedUnits);
                                                  
                                                  return (
                                                     <div key={item.id} className="bg-slate-900 text-white p-4 rounded-lg shadow-lg relative overflow-hidden">
-                                                        <div className="flex justify-between items-start mb-4 border-b border-slate-700 pb-3">
-                                                            <div>
-                                                                <div className="text-[10px] uppercase text-slate-400 font-bold mb-1">Lot / Batch</div>
-                                                                <div className="font-mono font-bold text-lg text-white">{item.batchNumber}</div>
+                                                        <div className="flex justify-between items-start mb-3 border-b border-slate-700 pb-2">
+                                                            <div className="flex-1">
+                                                                <div className="text-[10px] uppercase text-slate-400 font-bold mb-0.5">Lot / Batch</div>
+                                                                <div className="font-mono font-bold text-base text-white">{item.batchNumber}</div>
                                                             </div>
-                                                            <div className="text-right">
-                                                                <div className="text-[10px] uppercase text-slate-400 font-bold mb-1">Expiration</div>
-                                                                <div className={`font-medium ${new Date(item.expiryDate) < new Date() ? 'text-red-400' : 'text-slate-300'}`}>
+                                                            <div className="text-right flex-1">
+                                                                <div className="text-[10px] uppercase text-slate-400 font-bold mb-0.5">Expiration</div>
+                                                                <div className={`font-medium text-sm ${new Date(item.expiryDate) < new Date() ? 'text-red-400' : 'text-slate-300'}`}>
                                                                     {new Date(item.expiryDate).toLocaleDateString()}
                                                                 </div>
                                                             </div>
                                                         </div>
                                                         
-                                                        <div className="space-y-3">
-                                                            {/* Boites Scelles */}
-                                                            <div className="bg-slate-800 rounded p-2 flex justify-between items-center">
-                                                                <span className="text-xs text-slate-400 font-medium">Boites scellés</span>
-                                                                <span className="font-bold text-white">: {sealedCount}</span>
+                                                        <div className="space-y-2">
+                                                            <div className="bg-slate-800 rounded px-2 py-1.5 flex justify-between items-center text-xs">
+                                                                <span className="text-slate-300">Boites scellés</span>
+                                                                <span className="font-bold text-white text-sm">: {sealedCount}</span>
                                                             </div>
                                                             
-                                                            {/* Boites Entames */}
-                                                            <div className="bg-slate-800 rounded p-2">
-                                                                <div className="flex justify-between items-center mb-1">
-                                                                    <span className="text-xs text-slate-400 font-medium">Boites entamnés</span>
-                                                                    <span className="font-bold text-white">: {openedCount}</span>
-                                                                </div>
-                                                                {openedCount > 0 && (
-                                                                    <div className="space-y-1 mt-2 pl-2 border-l-2 border-slate-600">
-                                                                        {openedPacks.map(p => (
-                                                                            <div key={p.id} className="flex justify-between text-[10px] bg-indigo-900/50 px-2 py-1 rounded">
-                                                                                <span className="font-mono text-indigo-300">{p.serialNumber}</span>
-                                                                                <span className="text-white">Reste : {p.remainingUnits}</span>
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                            
-                                                            {/* Unites en Vrac */}
-                                                            <div className="bg-slate-800 rounded p-2 flex justify-between items-center">
-                                                                <span className="text-xs text-slate-400 font-medium">Unités en vrac</span>
-                                                                <span className="font-bold text-white">: {looseUnits}</span>
+                                                            <div className="bg-slate-800 rounded px-2 py-1.5 flex justify-between items-center text-xs">
+                                                                <span className="text-slate-300">Unités Vrac</span>
+                                                                <span className="font-bold text-white text-sm">: {looseUnits}</span>
                                                             </div>
 
-                                                            <div className="pt-2 border-t border-slate-700 flex justify-between items-center">
-                                                                <span className="text-[10px] text-slate-500 uppercase">Total Unités</span>
-                                                                <span className="font-mono text-sm font-bold text-blue-400">{item.theoreticalQty}</span>
+                                                            <div className="pt-2 border-t border-slate-700 flex justify-between items-center mt-1">
+                                                                <span className="text-[10px] font-bold uppercase text-slate-500">Total UNITÉS</span>
+                                                                <span className="font-mono text-lg font-bold text-blue-400">{item.theoreticalQty}</span>
                                                             </div>
                                                         </div>
                                                     </div> 
