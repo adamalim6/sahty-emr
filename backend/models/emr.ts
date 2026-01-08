@@ -110,3 +110,19 @@ export interface StockLocation {
     description?: string;
     isActive: boolean;
 }
+
+export interface AdmissionMedicationConsumption {
+    id: string;
+    admissionId: string;
+    productId: string;
+    productName: string;
+    quantity: number;
+    mode: 'BOX' | 'UNIT';
+    lotNumber: string;
+    batchNumber: string;
+    dispensedAt: string;
+    dispensedBy: string;
+    sourcePharmacyLocationId?: string;
+    source?: 'PHARMACY' | 'SERVICE_STOCK';
+    prescriptionId?: string;
+}

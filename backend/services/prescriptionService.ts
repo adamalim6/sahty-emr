@@ -43,14 +43,17 @@ export class PrescriptionService {
     }
 
     // Create a new prescription
-    createPrescription(patientId: string, data: PrescriptionData, createdBy: string = 'Current User', clientId?: string): Prescription {
+    createPrescription(patientId: string, data: PrescriptionData, createdBy: string = 'Current User', clientId?: string, author?: { id: string, tenantId: string, role: string }): Prescription {
         const newPrescription: Prescription = {
             id: `PRESC-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             patientId,
             data,
             createdAt: new Date(),
             createdBy,
-            client_id: clientId
+            client_id: clientId,
+            authorId: author?.id || 'unknown',
+            authorTenantId: author?.tenantId || clientId || 'unknown', // Fallback to client_id if author missing (migration support)
+            authorRole: author?.role || 'unknown'
         };
 
         this.prescriptions.push(newPrescription);
@@ -78,9 +81,12 @@ export class PrescriptionService {
     // Filter by clientId if provided (for Multi-tenant Pharmacy View)
     getPatientsWithPrescriptions(clientId?: string) {
         // Filter out biology prescriptions for Pharmacy view
+        // AND enforce Tenant Isolation via Author Tenant ID
         const pharmacyPrescriptions = this.prescriptions.filter(p => {
              const isMed = p.data.prescriptionType !== 'biology';
-             const matchClient = clientId ? (p.client_id === clientId) : true;
+             // If Author Tenant is known, match it. Fallback to client_id (Patient Tenant) only if author is not set (legacy)
+             const authorTenant = p.authorTenantId || p.client_id; 
+             const matchClient = clientId ? (authorTenant === clientId) : true;
              return isMed && matchClient;
         });
 

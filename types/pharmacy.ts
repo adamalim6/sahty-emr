@@ -99,6 +99,7 @@ export interface ProductDefinition {
   therapeuticClass?: string;
   createdAt: Date;
   updatedAt: Date;
+  currentStock?: number;
 }
 
 export enum POStatus {
@@ -311,9 +312,22 @@ export interface ReplenishmentRequest {
       batchNumber: string;
       quantity: number;
       expiryDate: string;
+      productId?: string;
+      productName?: string;
     }[];
   }[];
   createdAt: string; // JSON date string
   updatedAt: string;
   tenantId?: string;
+  serviceId?: string;
+}
+
+export interface LooseUnitItem {
+    id: string;
+    productId: string;
+    batchNumber: string;
+    expiryDate: string;
+    locationId: string;
+    quantity: number;
+    tenantId?: string;
 }

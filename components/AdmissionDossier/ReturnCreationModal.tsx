@@ -72,9 +72,17 @@ export const ReturnCreationModal: React.FC<ReturnCreationModalProps> = ({
 
     if (!isOpen || !dispensation) return null;
 
-    // Fix mode check with explicit cast if needed or string comparison
-    const isBoxMode = (dispensation.mode as any) === 'FULL_PACK' || dispensation.mode === 'Boîte Complète';
+    // Fix mode check with explicit cast (Handle all variations)
+    const isBoxMode = (dispensation.mode as any) === 'FULL_PACK' || dispensation.mode === 'Boîte Complète' || dispensation.mode === 'BOX';
     const maxQty = dispensation.quantity;
+
+    // Resolve Product Name safely
+    const productName = product?.name || dispensation.productName || 'Médicament Inconnu';
+    
+    // Safety Date
+    const expiryDateDisplay = dispensation.expiryDate && !isNaN(new Date(dispensation.expiryDate).getTime())
+        ? new Date(dispensation.expiryDate).toLocaleDateString()
+        : 'Date Invalide';
 
     const handleSubmit = async () => {
         if (!admissionId) return;
@@ -161,8 +169,8 @@ export const ReturnCreationModal: React.FC<ReturnCreationModalProps> = ({
                     <div className="mb-6 p-3 bg-blue-50 border border-blue-100 rounded-xl flex items-start">
                         <Package className="text-blue-500 mt-1 mr-3 flex-shrink-0" size={20} />
                         <div>
-                            <div className="font-bold text-blue-900 text-sm">{dispensation.productName}</div>
-                            <div className="text-xs text-blue-700 mt-1">Lot: {dispensation.lotNumber} • Exp: {new Date(dispensation.expiryDate).toLocaleDateString()}</div>
+                            <div className="font-bold text-blue-900 text-sm">{productName}</div>
+                            <div className="text-xs text-blue-700 mt-1">Lot: {dispensation.lotNumber} • Exp: {expiryDateDisplay}</div>
                             {isBoxMode && isOpened && (
                                 <div className="text-xs text-amber-600 font-bold mt-1">
                                     Retour partiel (Unités restantes sur {unitsPerPack})

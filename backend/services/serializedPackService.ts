@@ -7,14 +7,40 @@ class SerializedPackService {
     private packCounter = 1;
 
     constructor() {
-        this.initializeMockPacks();
+        // Data is now injected from PharmacyService (Single Source of Truth)
     }
 
     /**
-     * Initialise des boîtes mockées pour la démo
+     * Inject persistent data
      */
-    private initializeMockPacks() {
-        // Mock data removed
+    setPacks(packs: SerializedPack[]) {
+        this.packs = packs; // Reference or Copy? 
+        // Better to use a copy to avoid side-effects if pharmacyService modifies its array?
+        // But we want to be the manager.
+        // Let's copy.
+        this.packs = [...packs];
+    }
+    
+    // Removed initializeMockPacks as we rely on DB injection
+    private initializeMockPacks() {}
+
+    private addMockBatch(pid: string, batch: string, count: number, loc: string, units: number) {
+        for (let i = 0; i < count; i++) {
+             this.packs.push({
+                id: `pack-${pid}-${batch}-${i}`,
+                productId: pid,
+                serialNumber: `SN-${batch}-${i}`,
+                batchNumber: batch,
+                expiryDate: '2030-01-01',
+                locationId: loc,
+                status: PackStatus.SEALED,
+                unitsPerPack: units,
+                remainingUnits: units,
+                sourceDeliveryNoteId: 'MOCK-DELIVERY',
+                history: [],
+                createdAt: new Date()
+            });
+        }
     }
 
     /**
@@ -28,40 +54,53 @@ class SerializedPackService {
         reason?: string;
         userId?: string;
     }): SerializedPack[] {
+        const pid = params.productId.trim();
+        const batch = params.batchNumber.trim();
+
         // 1. Find sealed packs in pharmacy (no specific location filter, or main pharmacy)
         // We assume packs available for transfer are SEALED or OPENED and not in a service location yet?
         // Actually simplest is to find packs matching batch and product that are NOT already dispensed
 
         const candidatePacks = this.packs.filter(p =>
-            p.productId === params.productId &&
-            p.batchNumber === params.batchNumber &&
+            p.productId.trim() === pid &&
+            p.batchNumber.trim() === batch &&
             (p.status === PackStatus.SEALED || p.status === PackStatus.OPENED)
         ).sort((a, b) => {
-            // Prioritize packs already in toLocation (merging?) No, we are moving TO there.
-            // Prioritize packs that are OPENED to move them first? Or SEALED? Use standard FIFO on ID/Creation
+            // Prioritize SEALED packs over OPENED packs to avoid transferring partial units as full boxes
+            if (a.status === PackStatus.SEALED && b.status !== PackStatus.SEALED) return -1;
+            if (a.status !== PackStatus.SEALED && b.status === PackStatus.SEALED) return 1;
+            
+            // Then sort by ID (FIFO equivalent if IDs are time-based/sequential)
             return a.id.localeCompare(b.id);
         });
 
         if (candidatePacks.length < params.quantity) {
-            console.warn(`[TransferPacks] Not enough serialized packs found for ${params.productId} batch ${params.batchNumber}. Requested: ${params.quantity}, Found: ${candidatePacks.length}`);
-            // We transfer what we can found
+             const msg = `CRITICAL: Attempted to transfer ${params.quantity} packs of ${pid} batch ${batch} but only found ${candidatePacks.length}. Aborting to preserve inventory integrity.`;
+             console.error(msg);
+             throw new Error(msg);
         }
 
         const packsToTransfer = candidatePacks.slice(0, params.quantity);
+        // console.log(`[TransferPacks] Moving ${packsToTransfer.length} packs to ${params.toLocationId}. IDs: ${packsToTransfer.map(p => p.id).join(', ')}`);
+        
         const transferred: SerializedPack[] = [];
 
         packsToTransfer.forEach(pack => {
-            pack.locationId = params.toLocationId;
-            pack.history.push({
-                date: new Date().toISOString(),
-                action: 'TRANSFER',
-                userId: params.userId || 'system',
-                details: params.reason || `Transfer to ${params.toLocationId}`
-            });
-            transferred.push(pack);
+            // Update the pack in the main array explicitly to be safe
+            const mainIndex = this.packs.findIndex(p => p.id === pack.id);
+            if (mainIndex !== -1) {
+                // console.log(`[DEBUG] Updating Pack ${pack.id} Loc: ${this.packs[mainIndex].locationId} -> ${params.toLocationId}`);
+                this.packs[mainIndex].locationId = params.toLocationId;
+                this.packs[mainIndex].history.push({
+                    date: new Date().toISOString(),
+                    action: 'TRANSFER',
+                    userId: params.userId || 'system',
+                    details: params.reason || `Transfer to ${params.toLocationId}`
+                });
+                transferred.push(this.packs[mainIndex]);
+            }
         });
 
-        return transferred;
         return transferred;
     }
 

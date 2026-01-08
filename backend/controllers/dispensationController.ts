@@ -9,10 +9,14 @@ export const dispenseWithFEFO = async (req: Request, res: Response) => {
         if (!prescriptionId || !admissionId || !productId || !mode || !quantity || !userId) {
             return res.status(400).json({ message: 'Champs manquants' });
         }
+        
+        if (parseInt(quantity) <= 0) {
+            return res.status(400).json({ message: 'La quantité doit être positive.' });
+        }
 
         // Effectuer la dispensation
         // Note: PharmacyService throws errors for stock/validation issues which we catch below
-        const dispensations = pharmacyService.dispenseWithFEFO({
+        const dispensations = await pharmacyService.dispenseWithFEFO({
             prescriptionId,
             admissionId,
             productId,

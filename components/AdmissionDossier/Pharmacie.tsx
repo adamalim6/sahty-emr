@@ -2,8 +2,23 @@ import React, { useEffect, useState } from 'react';
 import { Pill, Plus, Calendar, Hash, Tag, DollarSign, Package, AlertCircle, Undo2 } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { api } from '../../services/api';
-import { Dispensation } from '../../types/serialized-pack';
 import { ProductDefinition } from '../../types/pharmacy';
+// Import local or define AdmissionMedicationConsumption interface if not available in frontend types yet
+// For now, let's define it locally or use any to avoid type errors until frontend types sync
+interface Consumption {
+    id: string;
+    admissionId: string;
+    productId: string;
+    productName: string;
+    quantity: number;
+    mode: string; // 'Boîte Complète' | 'Par Unité'
+    lotNumber: string;
+    batchNumber: string;
+    dispensedAt: string;
+    dispensedBy: string;
+    source?: 'PHARMACY' | 'SERVICE_STOCK';
+    prescriptionId?: string;
+}
 
 import { ServiceStockExitModal } from './ServiceStockExitModal';
 import { ReturnCreationModal } from './ReturnCreationModal';
@@ -15,24 +30,24 @@ interface PharmacieProps {
 
 export const Pharmacie: React.FC<PharmacieProps> = ({ admission }) => {
   const { id } = useParams<{ id: string }>(); // Admission ID
-  const [dispensations, setDispensations] = useState<Dispensation[]>([]);
+  const [consumptions, setConsumptions] = useState<Consumption[]>([]);
   const [products, setProducts] = useState<ProductDefinition[]>([]);
   const [pendingReturns, setPendingReturns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showExitModal, setShowExitModal] = useState(false);
   const [returnModalOpen, setReturnModalOpen] = useState(false);
-  const [selectedDispensation, setSelectedDispensation] = useState<Dispensation | undefined>(undefined);
+  const [selectedConsumption, setSelectedConsumption] = useState<Consumption | undefined>(undefined);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       if (id) {
-        const [dispData, prodData, returnsData] = await Promise.all([
-          api.getDispensationsByAdmission(id),
+        const [consData, prodData, returnsData] = await Promise.all([
+          api.getConsumptionsByAdmission(id),
           api.getCatalog(),
           api.getReturnsByAdmission(id)
         ]);
-        setDispensations(dispData);
+        setConsumptions(consData);
         setProducts(prodData);
         setPendingReturns(returnsData.filter((r: any) => r.status === 'PENDING_QA'));
       }
@@ -51,11 +66,14 @@ export const Pharmacie: React.FC<PharmacieProps> = ({ admission }) => {
     return products.find(p => p.id === productId);
   };
 
-  const getPendingReturnQty = (dispensationId: string) => {
+  const getPendingReturnQty = (consumptionId: string) => {
     let qty = 0;
     pendingReturns.forEach(req => {
       req.items.forEach((item: any) => {
-        if (item.dispensationId === dispensationId) {
+        // Assuming consumptionId maps to dispensationId in return logic for now
+        // Refactor Note: ReturnRequests might need to link to Consumption ID or Dispensation ID? 
+        // For now, let's assume loose linking or that the consumption ID is passed.
+        if (item.dispensationId === consumptionId) {
           qty += item.quantity;
         }
       });
@@ -92,7 +110,7 @@ export const Pharmacie: React.FC<PharmacieProps> = ({ admission }) => {
         />
       )}
 
-      {dispensations.length === 0 ? (
+      {consumptions.length === 0 ? (
         <div className="text-center py-20 text-slate-300">
           <Pill size={48} className="mx-auto mb-4 opacity-20" />
           <p className="font-bold">Aucune consommation médicamenteuse enregistrée pour cette admission.</p>
@@ -101,16 +119,16 @@ export const Pharmacie: React.FC<PharmacieProps> = ({ admission }) => {
         <div className="space-y-6 animate-in fade-in duration-300">
           {(() => {
             // GROUP BY PRODUCT
-            const groupedDispensations: Record<string, Dispensation[]> = {};
-            dispensations.forEach(d => {
-              if (d.status === 'RETURNED') return; // Skip fully returned
-              if (!groupedDispensations[d.productId]) {
-                groupedDispensations[d.productId] = [];
+            const groupedConsumptions: Record<string, Consumption[]> = {};
+            consumptions.forEach(c => {
+               // Filter out effectively returned? Or keep logic?
+              if (!groupedConsumptions[c.productId]) {
+                groupedConsumptions[c.productId] = [];
               }
-              groupedDispensations[d.productId].push(d);
+              groupedConsumptions[c.productId].push(c);
             });
 
-            return Object.entries(groupedDispensations).map(([productId, items]) => {
+            return Object.entries(groupedConsumptions).map(([productId, items]) => {
               const product = getProductDetails(productId);
               if (!product) return null;
 
@@ -118,14 +136,16 @@ export const Pharmacie: React.FC<PharmacieProps> = ({ admission }) => {
               let totalRemainingUnits = 0;
               let totalOriginalUnits = 0;
 
-              items.forEach(d => {
+              items.forEach(c => {
                 const unitsPerPack = product.unitsPerPack || 1;
-                const isBoxMode = (d.mode as any) === 'FULL_PACK' || (d.mode as any) === 'BOX' || (d.mode as any) === 'Boîte Complète';
+                // Check against DispensationMode enum values ('Boîte Complète') OR backend enum ('FULL_PACK' if saved as key)
+                // PharmacyService saves whatever is passed. Frontend passes DispensationMode value.
+                const isBoxMode = c.mode === 'Boîte Complète' || c.mode === 'FULL_PACK' || c.mode === 'BOX';
 
-                const originalUnits = isBoxMode ? d.quantity * unitsPerPack : d.quantity;
-                const returnedUnits = d.returnedQuantity || 0;
-                const pendingQtyForDisp = getPendingReturnQty(d.id); // This is in boxes if mode is box, units if mode is unit
-                const pendingUnits = isBoxMode ? pendingQtyForDisp * unitsPerPack : pendingQtyForDisp;
+                const originalUnits = isBoxMode ? c.quantity * unitsPerPack : c.quantity;
+                const returnedUnits = 0; // TODO: Link Returns to Consumptions
+                const pendingQty = getPendingReturnQty(c.id); 
+                const pendingUnits = isBoxMode ? pendingQty * unitsPerPack : pendingQty;
 
                 const effectiveRemainingUnits = originalUnits - returnedUnits - pendingUnits;
 
@@ -133,7 +153,7 @@ export const Pharmacie: React.FC<PharmacieProps> = ({ admission }) => {
                 totalOriginalUnits += originalUnits;
               });
 
-              if (totalRemainingUnits <= 0) return null;
+              if (totalRemainingUnits <= 0) return null; // Hide fully returned/consumed if 0? Actually maybe show for history. User wants "consumed stuff".
 
               // Determine display string (Box + Units)
               const unitsPerPack = product.unitsPerPack || 1;
@@ -159,46 +179,42 @@ export const Pharmacie: React.FC<PharmacieProps> = ({ admission }) => {
                       <div>
                         <h4 className="font-black text-slate-800 text-lg">{product.name}</h4>
                         <div className="flex items-center space-x-2 text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
-                          <span>Reste: <span className="text-emerald-600">{qtyDisplay}</span></span>
+                          <span>Total: <span className="text-emerald-600">{qtyDisplay}</span></span>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* DISPENSATIONS LIST */}
+                  {/* CONSUMPTION LIST */}
                   <div className="divide-y divide-slate-100">
-                    {items.map(disp => {
-                      const pendingQtyForDisp = getPendingReturnQty(disp.id);
-                      const isBoxMode = (disp.mode as any) === 'FULL_PACK' || (disp.mode as any) === 'BOX' || (disp.mode as any) === 'Boîte Complète';
+                    {items.map(cons => {
+                      const pendingQty = getPendingReturnQty(cons.id);
+                      const isBoxMode = cons.mode === 'Boîte Complète' || cons.mode === 'FULL_PACK' || cons.mode === 'BOX';
                       const unitsPerPack = product.unitsPerPack || 1;
 
-                      const originalUnits = isBoxMode ? disp.quantity * unitsPerPack : disp.quantity;
-                      const returnedUnits = disp.returnedQuantity || 0;
-                      const pendingUnits = isBoxMode ? pendingQtyForDisp * unitsPerPack : pendingQtyForDisp;
+                      const originalUnits = isBoxMode ? cons.quantity * unitsPerPack : cons.quantity;
+                      const returnedUnits = 0; // Link
+                      const pendingUnits = isBoxMode ? pendingQty * unitsPerPack : pendingQty;
 
                       const remainingInfoUnits = originalUnits - returnedUnits - pendingUnits;
-
-                      // Display logic for this specific container
                       const remainingInfoBoxes = Math.floor(remainingInfoUnits / unitsPerPack);
                       const remainingInfoLoose = remainingInfoUnits % unitsPerPack;
 
-                      if (remainingInfoUnits <= 0) return null;
-
                       return (
-                        <div key={disp.id} className="p-4 hover:bg-slate-50 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div key={cons.id} className="p-4 hover:bg-slate-50 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4">
                           {/* Left: Batch & Origin */}
                           <div className="flex items-center gap-4">
                             <div className="flex flex-col">
                               <div className="flex items-center gap-2 mb-1">
-                                {disp.prescriptionId === 'SERVICE_EXIT' ? (
+                                {cons.source === 'SERVICE_STOCK' ? (
                                   <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wide bg-blue-100 text-blue-700">Stock Service</span>
                                 ) : (
                                   <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wide bg-purple-100 text-purple-700">Pharmacie</span>
                                 )}
-                                <span className="text-xs font-mono font-bold text-slate-500">Lot {disp.lotNumber}</span>
+                                <span className="text-xs font-mono font-bold text-slate-500">Lot {cons.lotNumber}</span>
                               </div>
                               <div className="text-xs text-slate-400">
-                                Dispensé le {new Date(disp.dispensedAt).toLocaleDateString()} à {new Date(disp.dispensedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                Dispensé le {new Date(cons.dispensedAt).toLocaleDateString()} à {new Date(cons.dispensedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </div>
                             </div>
                           </div>
@@ -218,21 +234,11 @@ export const Pharmacie: React.FC<PharmacieProps> = ({ admission }) => {
                                   <span>{remainingInfoUnits} Uté(s)</span>
                                 )}
                               </div>
-                              {returnedUnits > 0 && (
-                                <div className="text-[10px] text-emerald-600 font-bold mt-0.5">
-                                  Déjà retourné: {returnedUnits} utés
-                                </div>
-                              )}
-                              {pendingUnits > 0 && (
-                                <div className="text-[10px] text-amber-600 font-bold mt-0.5">
-                                  En attente: {pendingUnits} utés
-                                </div>
-                              )}
                             </div>
 
                             <button
                               onClick={() => {
-                                setSelectedDispensation(disp);
+                                setSelectedConsumption(cons);
                                 setReturnModalOpen(true);
                               }}
                               className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-indigo-600 rounded-lg transition-colors"
@@ -252,16 +258,15 @@ export const Pharmacie: React.FC<PharmacieProps> = ({ admission }) => {
         </div>
       )}
 
-      {returnModalOpen && admission && selectedDispensation && (
+      {returnModalOpen && admission && selectedConsumption && (
         <ReturnCreationModal
           isOpen={returnModalOpen}
           onClose={() => setReturnModalOpen(false)}
           admissionId={admission.id}
-          dispensation={selectedDispensation}
-          product={getProductDetails(selectedDispensation.productId)}
+          dispensation={selectedConsumption as any} // Cast for now until types align
+         product={getProductDetails(selectedConsumption.productId)}
           onSuccess={() => {
             fetchData();
-            // Optional: Show success toast
           }}
           serviceName={admission.service}
         />

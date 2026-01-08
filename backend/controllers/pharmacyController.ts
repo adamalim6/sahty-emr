@@ -12,6 +12,7 @@ export const getInventory = (req: any, res: Response) => {
         // Strict Service Scoping
         if (serviceId) {
             const userServices = req.user?.service_ids || [];
+            
             if (!userServices.includes(serviceId) && req.user?.user_type !== 'TENANT_SUPERADMIN') { // Superadmin might bypass? Or strict? Let's be strict for now or allow superadmin.
                  // Actually, let's stick to the plan: "If serviceId is provided but not in req.user.service_ids -> Return 403"
                  // Assuming req.user has service_ids. If not, we might need to fetch them. 
@@ -55,10 +56,39 @@ export const createProduct = (req: any, res: Response) => {
 export const getSerializedPacks = (req: any, res: Response) => {
     try {
         const tenantId = req.user?.client_id;
-        const packs = pharmacyService.getSerializedPacks({ tenantId });
+        const productId = req.query.productId as string;
+        const packs = pharmacyService.getSerializedPacks({ tenantId, productId });
         res.json(packs);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching packs' });
+    }
+};
+
+export const getLooseUnits = (req: any, res: Response) => {
+    try {
+        const tenantId = req.user?.client_id;
+        const productId = req.query.productId as string;
+        // Assuming getLooseUnits in service handles tenant filtering if passed, 
+        // OR we filter here. Current service method implementation (seen earlier) 
+        // doesn't seem to filter by tenant in the snippet I saw (lines 230-236).
+        // I should check if I need to filter manually or if service handles it.
+        // For now, I'll fetch and filter if service doesn't.
+        // But let's assume service might need update or I filter here.
+        // Waiting... The service code snippet I saw was:
+        // getLooseUnits(productId?: string) { if (productId) ... return this.looseUnits; }
+        // It returns ALL loose units if no productId.
+        // I should filter by tenantId here if present.
+        const serviceId = req.query.serviceId as string;
+        
+        // Pass serviceId to service method
+        let units = pharmacyService.getLooseUnits(productId, serviceId);
+        
+        if (tenantId) {
+            units = units.filter(u => !u.tenantId || u.tenantId === tenantId);
+        }
+        res.json(units);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching loose units' });
     }
 };
 

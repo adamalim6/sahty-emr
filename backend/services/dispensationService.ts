@@ -2,6 +2,7 @@
 import { Dispensation, DispensationMode, SerializedPack, PackStatus } from '../models/serialized-pack';
 import { ProductDefinition } from '../models/pharmacy';
 import { serializedPackService } from './serializedPackService';
+import { PharmacyService } from './pharmacyService';
 
 interface DispenseParams {
     prescriptionId: string;
@@ -30,7 +31,10 @@ class DispensationService {
         mode: DispensationMode,
         quantity: number
     ): StockCheckResult {
-        const statuses = mode === DispensationMode.FULL_PACK
+        if (quantity <= 0) {
+             return { available: false, details: "La quantité doit être positive." };
+        }
+        const statuses = (mode === DispensationMode.FULL_PACK || (mode as any) === 'FULL_PACK')
             ? [PackStatus.SEALED]
             : [PackStatus.OPENED, PackStatus.SEALED];
 
@@ -39,7 +43,7 @@ class DispensationService {
             status: undefined
         }).filter(p => statuses.includes(p.status));
 
-        if (mode === DispensationMode.FULL_PACK) {
+        if (mode === DispensationMode.FULL_PACK || (mode as any) === 'FULL_PACK') {
             const availablePacks = packs.filter(p =>
                 p.status === PackStatus.SEALED &&
                 p.remainingUnits === p.unitsPerPack
@@ -80,116 +84,194 @@ class DispensationService {
      * Dispense avec logique FEFO + priorité OPENED
      */
     async dispense(params: DispenseParams, product: ProductDefinition): Promise<Dispensation[]> {
-        // 1. Vérifier subdivisibilité
-        if (params.mode === DispensationMode.UNIT && !product.isSubdivisable) {
-            throw new Error('Ce produit n\'est pas subdivisible. Utilisez le mode "Boîte Complète".');
+        // 1. Validation de l'Admission
+        if (!params.admissionId) {
+             throw new Error("Admission ID is required for dispensation.");
         }
+        if (params.quantity <= 0) throw new Error("La quantité doit être positive.");
 
-        // 2. Sélectionner les boîtes avec FEFO + priorité OPENED
-        const statuses = params.mode === DispensationMode.FULL_PACK
-            ? [PackStatus.SEALED]
-            : [PackStatus.OPENED, PackStatus.SEALED];
-
-        let packs = serializedPackService.getPacks({
-            productId: params.productId
-        }).filter(p => statuses.includes(p.status));
-
-        // Manual Selection Filter
-        if (params.targetPackIds && params.targetPackIds.length > 0) {
-            packs = packs.filter(p => params.targetPackIds!.includes(p.id));
-            if (packs.length < params.targetPackIds.length) {
-                // Warning: some requested packs might not be available/valid status
-                console.warn("Some requested packs were not found or not available.");
-            }
-        }
-
-        // Tri FEFO avec priorité OPENED
-        packs.sort((a, b) => {
-            // Priorité 1: OPENED avant SEALED
-            if (a.status === PackStatus.OPENED && b.status !== PackStatus.OPENED) return -1;
-            if (b.status === PackStatus.OPENED && a.status !== PackStatus.OPENED) return 1;
-
-            // Priorité 2: Date de péremption (FEFO)
-            const dateA = new Date(a.expiryDate).getTime();
-            const dateB = new Date(b.expiryDate).getTime();
-            if (dateA !== dateB) return dateA - dateB;
-
-            // Priorité 3: Date de création
-            return a.createdAt.getTime() - b.createdAt.getTime();
-        });
-
-        // 3. Prélever les unités
-        let remainingToDispense = params.quantity;
         const dispensations: Dispensation[] = [];
 
-        for (const pack of packs) {
-            if (remainingToDispense <= 0) break;
+        if (params.mode === DispensationMode.FULL_PACK || (params.mode as any) === 'FULL_PACK') {
+            // --- BOX CONSUMPTION MODE ---
+            // Mark packs as DISPENSED (Sink)
+            
+            let packsToDispense: SerializedPack[] = [];
 
-            let toTake: number;
-
-            if (params.mode === DispensationMode.FULL_PACK) {
-                // Mode boîte complète
-                if (pack.status === PackStatus.SEALED && pack.remainingUnits === pack.unitsPerPack) {
-                    toTake = pack.unitsPerPack;
-                } else {
-                    continue;
+            if (params.targetPackIds && params.targetPackIds.length > 0) {
+                // MANUAL SELECTION
+                packsToDispense = params.targetPackIds
+                    .map(id => serializedPackService.getPackById(id))
+                    .filter(p => p !== null && p.status === PackStatus.SEALED) as SerializedPack[];
+                
+                if (packsToDispense.length !== params.targetPackIds.length) {
+                    throw new Error("Certains lots sélectionnés ne sont plus disponibles ou scellés.");
                 }
             } else {
-                // Mode unité
-                toTake = Math.min(pack.remainingUnits, remainingToDispense);
+                // AUTO FEFO SELECTION
+                const availablePacks = serializedPackService.getPacks({ 
+                    productId: params.productId,
+                    status: PackStatus.SEALED
+                }).sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime());
+
+                if (availablePacks.length < params.quantity) {
+                    throw new Error(`Stock insuffisant. ${availablePacks.length} boîtes disponibles sur ${params.quantity} demandées.`);
+                }
+                packsToDispense = availablePacks.slice(0, params.quantity);
             }
 
-            // Mettre à jour la boîte
-            pack.remainingUnits -= toTake;
+            // CONSUME PACKS
+            packsToDispense.forEach(pack => {
+                // Update Pack State
+                pack.status = PackStatus.DISPENSED;
+                pack.locationId = `CONSUMED_BY_ADMISSION:${params.admissionId}`; // Logical Sink Trace
+                pack.history.push({
+                    date: new Date().toISOString(),
+                    action: 'DISPENSE',
+                    userId: params.userId,
+                    details: `Dispensed to Admission ${params.admissionId}`
+                });
+                serializedPackService.updatePack(pack);
 
-            if (pack.status === PackStatus.SEALED && toTake > 0) {
-                pack.status = PackStatus.OPENED;
-                pack.openedAt = new Date();
-                pack.openedByUserId = params.userId;
-            }
+                // Create Dispensation Record
+                const dispensation: Dispensation = {
+                    id: `disp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                    prescriptionId: params.prescriptionId,
+                    admissionId: params.admissionId,
+                    productId: params.productId,
+                    productName: product.name, // Ensure Product Name
+                    mode: params.mode,
+                    quantity: 1, // 1 Box
+                    serializedPackId: pack.id,
+                    lotNumber: pack.batchNumber,
+                    expiryDate: pack.expiryDate,
+                    serialNumber: pack.serialNumber,
+                    unitPriceExclVAT: (product.suppliers[0]?.purchasePrice || 0) * (1 + product.profitMargin / 100),
+                    vatRate: product.vatRate,
+                    totalPriceInclVAT: 0,
+                    dispensedAt: new Date(),
+                    dispensedBy: params.userId
+                };
+                // Calculate Total Price (Quantity is Boxes, UnitPrice is Box Price)
+                dispensation.totalPriceInclVAT = dispensation.unitPriceExclVAT * dispensation.quantity * (1 + product.vatRate / 100);
+                
+                dispensations.push(dispensation);
+                this.dispensations.push(dispensation);
+            });
 
-            if (pack.remainingUnits === 0) {
-                pack.status = PackStatus.EMPTY;
-            }
+        } else {
+             // --- UNIT MODE ---
+             // Reuse existing unit logic
+             return this.dispenseUnitsLegacy(params, product);
+        }
 
-            serializedPackService.updatePack(pack);
+        return dispensations;
+    }
 
-            // Calculer les prix
-            const supplier = product.suppliers[0]; // Prendre le premier fournisseur
-            const purchasePrice = supplier?.purchasePrice || 0;
-            const priceWithMargin = purchasePrice * (1 + product.profitMargin / 100);
-            const unitPriceExclVAT = priceWithMargin;
-            const totalPriceInclVAT = unitPriceExclVAT * toTake * (1 + product.vatRate / 100);
+    // 3-TIER FEFO DISPENSATION LOGIC (Global Standard)
+    private async dispenseUnitsLegacy(params: DispenseParams, product: ProductDefinition): Promise<Dispensation[]> {
+        const dispensations: Dispensation[] = [];
+        let remaining = params.quantity;
+        const svc = PharmacyService.getInstance();
 
-            // Créer la dispensation
+        // 1. CONSUME LOOSE UNITS (Priority #1)
+        const looseUnits = svc.getLooseUnits(params.productId)
+            .sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime());
+
+        for (const unit of looseUnits) {
+            if (remaining <= 0) break;
+            
+            const take = Math.min(remaining, unit.quantity);
+            svc.removeLooseUnits(params.productId, take); // This handles the actual reduction/removal logic inside service
+            
+            // Create Dispensation (Loose)
             const dispensation: Dispensation = {
                 id: `disp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                 prescriptionId: params.prescriptionId,
                 admissionId: params.admissionId,
                 productId: params.productId,
+                productName: product.name,
                 mode: params.mode,
-                quantity: toTake,
-                serializedPackId: pack.id,
-                lotNumber: pack.lotNumber,
-                expiryDate: pack.expiryDate,
-                serialNumber: pack.serialNumber,
-                unitPriceExclVAT,
+                quantity: take,
+                serializedPackId: 'LOOSE_UNIT', // Marker
+                lotNumber: unit.batchNumber,
+                expiryDate: unit.expiryDate,
+                serialNumber: 'VRAC',
+                unitPriceExclVAT: ((product.suppliers[0]?.purchasePrice || 0) / product.unitsPerPack) * (1 + product.profitMargin / 100),
                 vatRate: product.vatRate,
-                totalPriceInclVAT,
+                totalPriceInclVAT: 0,
                 dispensedAt: new Date(),
                 dispensedBy: params.userId
             };
-
+            dispensation.totalPriceInclVAT = dispensation.unitPriceExclVAT * take * (1 + product.vatRate / 100);
             dispensations.push(dispensation);
             this.dispensations.push(dispensation);
-            remainingToDispense -= toTake;
+
+            remaining -= take;
         }
 
-        // 4. Vérifier succès
-        if (remainingToDispense > 0) {
-            throw new Error(`Stock insuffisant. ${remainingToDispense} unité(s) manquante(s).`);
+        if (remaining <= 0) return dispensations;
+
+        // 2. CONSUME OPEN PACKS (Priority #2)
+        // 3. CONSUME SEALED PACKS (Priority #3) (Auto-Open)
+        
+        let packs = serializedPackService.getPacks({ productId: params.productId })
+            .filter(p => p.status === PackStatus.OPENED || p.status === PackStatus.SEALED);
+            
+        // Strict Sort: OPENED first, then by Expiry
+        packs.sort((a, b) => {
+             if (a.status === PackStatus.OPENED && b.status !== PackStatus.OPENED) return -1;
+             if (b.status === PackStatus.OPENED && a.status !== PackStatus.OPENED) return 1;
+             const dateA = new Date(a.expiryDate).getTime();
+             const dateB = new Date(b.expiryDate).getTime();
+             return dateA - dateB;
+        });
+
+        for (const pack of packs) {
+            if (remaining <= 0) break;
+            
+            const availableInPack = pack.remainingUnits;
+            const take = Math.min(remaining, availableInPack);
+            
+            // Consume
+            pack.remainingUnits -= take;
+            if (pack.status === PackStatus.SEALED) {
+                pack.status = PackStatus.OPENED;
+                pack.openedAt = new Date();
+                pack.openedByUserId = params.userId;
+            }
+            if (pack.remainingUnits <= 0) {
+                 pack.status = PackStatus.DISPENSED; // Fully consumed
+            }
+            serializedPackService.updatePack(pack);
+            
+            const dispensation: Dispensation = {
+                id: `disp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                prescriptionId: params.prescriptionId,
+                admissionId: params.admissionId,
+                productId: params.productId,
+                productName: product.name,
+                mode: params.mode,
+                quantity: take,
+                serializedPackId: pack.id,
+                lotNumber: pack.batchNumber,
+                expiryDate: pack.expiryDate,
+                serialNumber: pack.serialNumber,
+                unitPriceExclVAT: ((product.suppliers[0]?.purchasePrice || 0) / product.unitsPerPack) * (1 + product.profitMargin / 100),
+                vatRate: product.vatRate,
+                totalPriceInclVAT: 0,
+                dispensedAt: new Date(),
+                dispensedBy: params.userId
+            };
+            dispensation.totalPriceInclVAT = dispensation.unitPriceExclVAT * take * (1 + product.vatRate / 100);
+            
+            dispensations.push(dispensation);
+            this.dispensations.push(dispensation);
+            
+            remaining -= take;
         }
 
+        if (remaining > 0) throw new Error(`Stock insuffisant. Manque ${remaining} unités.`);
         return dispensations;
     }
 

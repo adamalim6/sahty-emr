@@ -1,5 +1,5 @@
 
-import { Patient, Admission, Appointment, Room, Gender, UserSettings, StockLocation } from '../models/emr';
+import { Patient, Admission, Appointment, Room, Gender, UserSettings, StockLocation, AdmissionMedicationConsumption } from '../models/emr';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -17,6 +17,7 @@ export class EmrService {
     private appointments: Appointment[] = [];
     private rooms: Room[] = [];
     private locations: StockLocation[] = [];
+    private consumptions: AdmissionMedicationConsumption[] = [];
 
     constructor() {
         this.loadData();
@@ -40,9 +41,9 @@ export class EmrService {
                 this.patients = data.patients || [];
                 this.admissions = data.admissions || [];
                 this.appointments = data.appointments || [];
-                this.appointments = data.appointments || [];
                 if (data.rooms && data.rooms.length > 0) this.rooms = data.rooms;
                 this.locations = data.locations || [];
+                this.consumptions = data.consumptions || [];
             } catch (error) {
                 console.error("Failed to load EMR DB", error);
             }
@@ -55,7 +56,8 @@ export class EmrService {
             admissions: this.admissions,
             appointments: this.appointments,
             rooms: this.rooms,
-            locations: this.locations
+            locations: this.locations,
+            consumptions: this.consumptions
         };
         fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
     }
@@ -214,6 +216,17 @@ export class EmrService {
     deleteLocation(id: string): void {
         this.locations = this.locations.filter(l => l.id !== id);
         this.saveData();
+    }
+
+    // Medication Consumption
+
+    addMedicationConsumption(consumption: AdmissionMedicationConsumption) {
+        this.consumptions.push(consumption);
+        this.saveData();
+    }
+
+    getConsumptionsByAdmission(admissionId: string): AdmissionMedicationConsumption[] {
+        return this.consumptions.filter(c => c.admissionId === admissionId);
     }
 }
 

@@ -52,6 +52,9 @@ export interface Prescription {
     createdAt: Date;
     createdBy: string;
     client_id?: string;
+    authorId?: string;
+    authorTenantId?: string;
+    authorRole?: string;
 }
 
 export type ExecutionStatus = 'planned' | 'administered' | 'not-administered' | 'late';

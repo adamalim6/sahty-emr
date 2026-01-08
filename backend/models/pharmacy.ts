@@ -255,6 +255,9 @@ export interface ReplenishmentRequest {
             batchNumber: string;
             expiryDate: string;
             quantity: number;
+            productId?: string;
+            productName?: string;
+            dispensedAs?: 'BOX' | 'UNIT'; // MANDATORY: Track how it was dispensed
         }[];
     }[];
     targetServiceId?: string; // Optional: Service ID (if multiple services supported in future)

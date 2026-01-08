@@ -48,7 +48,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, suppli
       profitMargin: 20,
       vatRate: 5.5,
       isSubdivisable: false,
-      unitsPerPack: 30, // Default meaningful value
+      unitsPerPack: 1, // Default to 1 as requested
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -546,31 +546,34 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, suppli
               <label htmlFor="subdiv" className="font-bold text-slate-800 cursor-pointer select-none">Produit Subdivisable</label>
             </div>
 
-            {formData.isSubdivisable && (
-              <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Unités par Boîte</label>
-                  <input
-                    type="number"
-                    value={formData.unitsPerPack || ''}
-                    onChange={(e) => setFormData({ ...formData, unitsPerPack: parseInt(e.target.value) })}
-                    className="w-full bg-white border border-slate-300 rounded px-3 py-2 text-black outline-none focus:border-blue-400"
-                    placeholder="ex: 30"
-                    min="1"
-                    onKeyDown={(e) => {
-                      if (e.key === '-' || e.key === 'e') {
-                        e.preventDefault();
-                      }
-                    }}
-                  />
-                </div>
+            <div className="space-y-4 animate-in fade-in slide-in-from-top-2 mt-4 pt-4 border-t border-slate-100">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Unités par Boîte (Min. 1)</label>
+                <input
+                  type="number"
+                  value={formData.unitsPerPack || ''}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    setFormData({ ...formData, unitsPerPack: isNaN(val) ? 0 : val });
+                  }}
+                  className="w-full bg-white border border-slate-300 rounded px-3 py-2 text-black outline-none focus:border-blue-400"
+                  placeholder="ex: 30"
+                  min="1"
+                  onKeyDown={(e) => {
+                    if (e.key === '-' || e.key === 'e') {
+                      e.preventDefault();
+                    }
+                  }}
+                />
+              </div>
 
+              {formData.isSubdivisable && (
                 <div className="bg-slate-50 p-3 rounded border border-slate-100 flex justify-between items-center">
                   <span className="text-sm text-slate-500">Prix Unitaire (TTC)</span>
                   <span className="font-bold text-slate-800 font-mono">€{unitPriceTTC.toFixed(3)}</span>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>

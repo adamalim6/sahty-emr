@@ -84,6 +84,7 @@ export const api = {
         const query = serviceId ? `?serviceId=${serviceId}` : '';
         return fetchJson<InventoryItem[]>(`/pharmacy/inventory${query}`);
     },
+    getLooseUnits: (serviceId?: string) => fetchJson<any[]>(`/pharmacy/loose-units${serviceId ? `?serviceId=${serviceId}` : ''}`),
     getCatalog: () => fetchJson<ProductDefinition[]>('/pharmacy/catalog'),
     getLocations: (serviceId?: string, scope?: 'PHARMACY' | 'SERVICE') => fetchJson<StockLocation[]>(`/pharmacy/locations?serviceId=${serviceId || ''}&scope=${scope || ''}`),
     createLocation: (data: any) => fetchJson<StockLocation>('/pharmacy/locations', {
@@ -237,6 +238,7 @@ export const api = {
 
     // Pharmacy Extended
     getSerializedPacks: () => fetchJson<SerializedPack[]>('/pharmacy/packs'),
+    getSerializedPacksByProduct: (productId: string) => fetchJson<SerializedPack[]>(`/pharmacy/packs?productId=${productId}`),
     getEmrLocations: () => fetchJson<StockLocation[]>('/pharmacy/locations?scope=SERVICE'), // EMR needs Service locations
     createEmrLocation: (data: any) => fetchJson<StockLocation>('/pharmacy/locations', {
         method: 'POST',
@@ -265,6 +267,22 @@ export const api = {
         body: JSON.stringify({ status, processedRequest })
     }),
     dispenseReplenishmentItem: (requestId: string, data: any) => fetchJson<any>(`/pharmacy/replenishments/${requestId}/dispense`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+
+    // Dispensation
+    dispenseWithFEFO: (data: any) => fetchJson<any>('/pharmacy/dispensations/fefo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    getDispensationsByAdmission: (admissionId: string) => fetchJson<any[]>(`/pharmacy/dispensations/admission/${admissionId}`),
+    getDispensationsByPrescription: (prescriptionId: string) => fetchJson<any[]>(`/pharmacy/dispensations/prescription/${prescriptionId}`),
+    getConsumptionsByAdmission: (admissionId: string) => fetchJson<any[]>(`/emr/admissions/${admissionId}/consumptions`),
+    getReturnsByAdmission: (admissionId: string) => fetchJson<any[]>(`/pharmacy/returns/admission/${admissionId}`),
+    createReturnRequest: (data: any) => fetchJson<any>('/pharmacy/returns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)

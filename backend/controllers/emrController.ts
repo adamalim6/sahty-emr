@@ -145,3 +145,13 @@ export const deleteLocation = (req: Request, res: Response) => {
         res.status(500).json({ message: 'Error deleting location' });
     }
 };
+
+export const getConsumptionsByAdmission = (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const consumptions = emrService.getConsumptionsByAdmission(id);
+        res.json(consumptions);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching consumptions' });
+    }
+};

@@ -38,6 +38,17 @@ export interface SerializedPack {
     createdAt: Date;
 }
 
+export interface LooseUnitItem {
+    id: string; // Internal tracking ID
+    productId: string;
+    batchNumber: string; // Derived from source or manual
+    expiryDate: string;
+    locationId: string;
+    quantity: number;
+    tenantId?: string;
+    serviceId?: string;
+}
+
 export enum DispensationMode {
     FULL_PACK = 'Boîte Complète',
     UNIT = 'Par Unité'

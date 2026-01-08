@@ -13,7 +13,7 @@ import {
   InventoryItem, ItemCategory, InventorySession, InventoryStatus,
   ProductDefinition, PurchaseOrder, DeliveryNote, POStatus,
   StockLocation, QuarantineSessionResult, ProcessingStatus, ProductType,
-  PartnerInstitution, StockOutTransaction, PharmacySupplier, SerializedPack
+  PartnerInstitution, StockOutTransaction, PharmacySupplier, SerializedPack, LooseUnitItem
 } from '../../types/pharmacy';
 import { StatCard } from './StatCard';
 import { InventoryTable } from './InventoryTable';
@@ -62,6 +62,7 @@ export const PharmacyModule: React.FC = () => {
   const [stockOutHistory, setStockOutHistory] = useState<StockOutTransaction[]>([]);
   const [suppliers, setSuppliers] = useState<PharmacySupplier[]>([]);
   const [allPacks, setAllPacks] = useState<SerializedPack[]>([]);
+  const [looseUnits, setLooseUnits] = useState<LooseUnitItem[]>([]);
 
   const [loading, setLoading] = useState(true);
   
@@ -78,8 +79,14 @@ export const PharmacyModule: React.FC = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      // Fetch for views that need live stock data
+      const needsStockData = ['stock', 'inventory', 'dashboard', 'returns', 'entry'].includes(view);
+      
+      if (!needsStockData && !loading) return; 
+
       try {
-        const [inv, cat, loc, part, hist, pos, notes, sups, packs] = await Promise.all([
+        // console.log("Refreshing Pharmacy Data...");
+        const [inv, cat, loc, part, hist, pos, notes, sups, packs, loose] = await Promise.all([
           api.getInventory(),
           api.getCatalog(),
           api.getLocations(),
@@ -88,7 +95,8 @@ export const PharmacyModule: React.FC = () => {
           api.getPurchaseOrders(),
           api.getDeliveryNotes(),
           api.getSuppliers(),
-          api.getSerializedPacks()
+          api.getSerializedPacks(),
+          api.getLooseUnits()
         ]);
         setSystemItems(inv);
         setProductCatalog(cat);
@@ -100,6 +108,7 @@ export const PharmacyModule: React.FC = () => {
         setDeliveryNotes(notes.map(n => ({ ...n, date: new Date(n.date) })));
         setSuppliers(sups);
         setAllPacks(packs);
+        setLooseUnits(loose);
         setLoading(false);
       } catch (error) {
         console.error("Failed to load pharmacy data", error);
@@ -107,29 +116,15 @@ export const PharmacyModule: React.FC = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [view]);
 
-  // Refetch Inventory when switching to Stock view to ensure fresh data after dispensations
+  // Handle redundant side-effects for non-stock views (Catalog, Suppliers)
   useEffect(() => {
-    if (view === 'stock' || view === 'dashboard') {
-      api.getInventory().then(setSystemItems).catch(console.error);
-      if (view === 'stock') {
-        api.getSerializedPacks().then(setAllPacks).catch(console.error);
-      }
-    }
     if (view === 'suppliers' || view === 'catalog' || view === 'entry') {
-         console.log(`View switched to ${view}. Fetching fresh list of suppliers...`);
-         api.getSuppliers().then(sups => {
-             console.log(`Fetched ${sups.length} suppliers (Frontend).`);
-             setSuppliers(sups);
-         }).catch(console.error);
-         
-         if (view === 'catalog') {
-            console.log("View is catalog. Fetching products...");
-            api.getCatalog().then(cat => {
-                console.log(`[PharmacyModule] Fetched ${cat.length} products dynamically.`);
-                setProductCatalog(cat);
-            }).catch(e => console.error("Error fetching catalog in effect:", e));
+         // These are handled by specific logic or the main fetch above
+         // Keeping logging or minor specific updates if needed
+         if (view === 'catalog' && productCatalog.length === 0) {
+             api.getCatalog().then(setProductCatalog).catch(console.error);
          }
     }
   }, [view]);
@@ -520,7 +515,7 @@ export const PharmacyModule: React.FC = () => {
           </>
         ) : (
           <div className="space-y-4">
-            <SystemStockTable items={systemItems} products={productCatalog} filter={searchTerm} packs={allPacks} />
+            <SystemStockTable items={systemItems} products={productCatalog} filter={searchTerm} packs={allPacks} looseUnits={looseUnits} />
           </div>
         )}
 

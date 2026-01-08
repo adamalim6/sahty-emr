@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
-import { InventoryItem, ItemCategory, ProductDefinition, SerializedPack, PackStatus } from '../../types/pharmacy';
+import { InventoryItem, ItemCategory, ProductDefinition, SerializedPack, PackStatus, LooseUnitItem } from '../../types/pharmacy';
 import { ChevronDown, ChevronRight, Hash, MapPin, Calendar, Package, BoxSelect, Boxes } from 'lucide-react';
 
 interface SystemStockTableProps {
@@ -8,6 +8,7 @@ interface SystemStockTableProps {
     products: ProductDefinition[];
     filter: string;
     packs?: SerializedPack[];
+    looseUnits?: LooseUnitItem[];
 }
 
 interface StockGroup {
@@ -20,7 +21,7 @@ interface StockGroup {
     totalValue: number;
 }
 
-export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, products, filter, packs = [] }) => {
+export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, products, filter, packs = [], looseUnits = [] }) => {
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
     const toggleGroup = (productId: string) => {
@@ -77,8 +78,25 @@ export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, produ
 
             const group = groups[item.productId];
             group.items.push(item);
+            
+            // DYNAMIC CALCULATION (SSOT: Physical State)
+            const itemPacks = packs.filter(p => 
+                p.productId === item.productId &&
+                p.batchNumber === item.batchNumber &&
+                p.locationId === item.location
+            );
+            
+            const sealedQty = itemPacks.filter(p => p.status === PackStatus.SEALED).length * (productDef?.unitsPerPack || 1);
+            const openQty = itemPacks.filter(p => p.status === PackStatus.OPENED).reduce((acc, p) => acc + (p.remainingUnits || 0), 0);
+            
+            const itemLoose = looseUnits.filter(u => 
+                u.productId === item.productId &&
+                u.batchNumber === item.batchNumber &&
+                u.locationId === item.location
+            ).reduce((acc, u) => acc + u.quantity, 0);
 
-            const qty = item.theoreticalQty ?? 0;
+            const qty = sealedQty + openQty + itemLoose;
+            
             group.totalQty += qty;
 
             // Calculate value based on Public Price (TTC) as requested
@@ -128,10 +146,10 @@ export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, produ
                 const locationGroups: Record<string, {
                     name: string;
                     items: InventoryItem[];
-                    stats: { sealed: number; loose: number; totalQty: number };
+                    stats: { sealed: number; open: number; loose: number; totalQty: number };
                 }> = {};
 
-                let productStats = { sealed: 0, loose: 0, totalQty: 0 };
+                let productStats = { sealed: 0, open: 0, loose: 0, totalQty: 0 };
 
                 group.items.forEach(item => {
                     const normalize = (s: string) => s?.trim().toLowerCase() || '';
@@ -142,33 +160,41 @@ export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, produ
                     );
 
                     const sealedPacks = locationPacks.filter(p => p.status === PackStatus.SEALED);
-                    // We treat OPENED packs as part of the loose stock basically, or just ignore them as packs 
-                    // and calculate loose based on Total - Sealed
+                    const openPacks = locationPacks.filter(p => p.status === PackStatus.OPENED);
                     
                     const sealedCount = sealedPacks.length;
+                    const openCount = openPacks.length;
                     
                     const sealedUnits = sealedCount * unitsPerPack;
-                    const totalStockUnits = item.theoreticalQty || 0;
+                    const openUnits = openPacks.reduce((acc, p) => acc + (p.remainingUnits || 0), 0);
                     
-                    // Loose units = Total - (Sealed Boxes * Units/Box)
-                    // This naturally absorbs any "Opened" boxes into the loose count
-                    const looseUnits = Math.max(0, totalStockUnits - sealedUnits);
+                    // Loose units calculation from Physical State (SSOT)
+                    const batchLooseItems = looseUnits.filter(u => 
+                        u.productId === item.productId &&
+                        u.batchNumber === item.batchNumber &&
+                        u.locationId === item.location
+                    );
+                    const looseQty = batchLooseItems.reduce((acc, u) => acc + u.quantity, 0);
+
+                    const totalStockUnits = sealedUnits + openUnits + looseQty;
 
                     if (!locationGroups[item.location]) {
                         locationGroups[item.location] = {
                             name: item.location,
                             items: [],
-                            stats: { sealed: 0, loose: 0, totalQty: 0 }
+                            stats: { sealed: 0, open: 0, loose: 0, totalQty: 0 }
                         };
                     }
 
                     locationGroups[item.location].items.push(item);
                     locationGroups[item.location].stats.sealed += sealedCount;
-                    locationGroups[item.location].stats.loose += looseUnits;
+                    locationGroups[item.location].stats.open += openCount;
+                    locationGroups[item.location].stats.loose += looseQty;
                     locationGroups[item.location].stats.totalQty += totalStockUnits;
 
                     productStats.sealed += sealedCount;
-                    productStats.loose += looseUnits;
+                    productStats.open += openCount;
+                    productStats.loose += looseQty;
                     productStats.totalQty += totalStockUnits;
                 });
 
@@ -215,6 +241,11 @@ export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, produ
                                     </div>
                                     <div className="w-px h-8 bg-slate-200"></div>
                                     <div className="flex flex-col items-center">
+                                         <span className="text-[10px] uppercase text-slate-400 font-bold">Boites Ouvertes</span>
+                                         <span className="font-bold text-lg text-slate-800">{productStats.open}</span>
+                                    </div>
+                                    <div className="w-px h-8 bg-slate-200"></div>
+                                    <div className="flex flex-col items-center">
                                          <span className="text-[10px] uppercase text-slate-400 font-bold">Unités Vrac</span>
                                          <span className="font-bold text-lg text-slate-800">{productStats.loose}</span>
                                     </div>
@@ -239,6 +270,8 @@ export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, produ
                                             <div className="flex items-center space-x-4 text-xs font-medium text-slate-600 bg-white px-3 py-1.5 rounded-full border border-slate-100 shadow-sm">
                                                 <span>Scellés: <b>{locGroup.stats.sealed}</b></span>
                                                 <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                                                <span className="text-amber-600">Ouverts: <b>{locGroup.stats.open}</b></span>
+                                                <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
                                                 <span>Vrac: <b>{locGroup.stats.loose}</b></span>
                                                 <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
                                                 <span className="text-blue-600">Tot: <b>{locGroup.stats.totalQty}</b></span>
@@ -255,10 +288,24 @@ export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, produ
                                                  );
                                                  
                                                  const sealedPacks = locationPacks.filter(p => p.status === PackStatus.SEALED);
+                                                 const openPacks = locationPacks.filter(p => p.status === PackStatus.OPENED);
+                                                 
                                                  const sealedCount = sealedPacks.length;
+                                                 const openCount = openPacks.length;
+                                                 
                                                  const sealedUnits = sealedCount * unitsPerPack;
-                                                 const totalStockUnits = item.theoreticalQty || 0;
-                                                 const looseUnits = Math.max(0, totalStockUnits - sealedUnits);
+                                                 const openUnits = openPacks.reduce((acc, p) => acc + (p.remainingUnits || 0), 0);
+                                                 
+
+                                                 
+                                                 const batchLooseItems = looseUnits.filter(u => 
+                                                     u.productId === item.productId &&
+                                                     u.batchNumber === item.batchNumber &&
+                                                     u.locationId === item.location
+                                                 );
+                                                 const looseUnitsQty = batchLooseItems.reduce((acc, u) => acc + u.quantity, 0);
+
+                                                 const totalStockUnits = sealedUnits + openUnits + looseUnitsQty;
                                                  
                                                  return (
                                                     <div key={item.id} className="bg-slate-900 text-white p-4 rounded-lg shadow-lg relative overflow-hidden">
@@ -280,15 +327,18 @@ export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, produ
                                                                 <span className="text-slate-300">Boites scellés</span>
                                                                 <span className="font-bold text-white text-sm">: {sealedCount}</span>
                                                             </div>
-                                                            
+                                                            <div className="bg-slate-800 rounded px-2 py-1.5 flex justify-between items-center text-xs border border-slate-700">
+                                                                <span className="text-amber-400 font-bold">Boites ouvertes</span>
+                                                                <span className="font-bold text-white text-sm">: {openCount}</span>
+                                                            </div>
                                                             <div className="bg-slate-800 rounded px-2 py-1.5 flex justify-between items-center text-xs">
                                                                 <span className="text-slate-300">Unités Vrac</span>
-                                                                <span className="font-bold text-white text-sm">: {looseUnits}</span>
+                                                                <span className="font-bold text-white text-sm">: {looseUnitsQty}</span>
                                                             </div>
 
                                                             <div className="pt-2 border-t border-slate-700 flex justify-between items-center mt-1">
                                                                 <span className="text-[10px] font-bold uppercase text-slate-500">Total UNITÉS</span>
-                                                                <span className="font-mono text-lg font-bold text-blue-400">{item.theoreticalQty}</span>
+                                                                <span className="font-mono text-lg font-bold text-blue-400">{totalStockUnits}</span>
                                                             </div>
                                                         </div>
                                                     </div> 

@@ -9,7 +9,7 @@ import { authenticateToken } from '../middleware/authMiddleware';
 const router = Router();
 
 // Protect ALL routes with authentication
-router.use(authenticateToken);
+router.use(authenticateToken); // Re-enabled for proper access control
 
 // Config & Catalog
 router.get('/inventory', pharmacyController.getInventory);
@@ -17,6 +17,7 @@ router.get('/catalog', pharmacyController.getCatalog);
 router.post('/catalog', pharmacyController.createProduct);
 router.put('/catalog/:id', pharmacyController.updateProduct);
 router.get('/packs', pharmacyController.getSerializedPacks);
+router.get('/loose-units', pharmacyController.getLooseUnits);
 
 // Locations
 router.get('/locations', pharmacyController.getLocations);

@@ -9,7 +9,10 @@ interface CartItem {
     targetLocationId: string;
 }
 
+import { useAuth } from '../../context/AuthContext';
+
 export const ReplenishmentPage: React.FC = () => {
+    const { user } = useAuth();
     const [catalog, setCatalog] = useState<ProductDefinition[]>([]);
     const [locations, setLocations] = useState<StockLocation[]>([]);
     const [cart, setCart] = useState<CartItem[]>([]);
@@ -17,20 +20,30 @@ export const ReplenishmentPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
+    const [serviceName, setServiceName] = useState('');
 
     useEffect(() => {
-        loadData();
-    }, []);
+        if (user) {
+            loadData();
+        }
+    }, [user]);
 
     const loadData = async () => {
         setLoading(true);
         try {
-            const [catalogData, locationsData] = await Promise.all([
+            const [catalogData, locationsData, servicesData] = await Promise.all([
                 api.getCatalog(),
-                api.getEmrLocations()
+                api.getEmrLocations(),
+                api.getServices()
             ]);
             setCatalog(catalogData);
             setLocations(locationsData);
+            
+            // Resolve Service Name if user has service_ids
+            if (user?.service_ids && user.service_ids.length > 0) {
+                 const myService = servicesData.find((s: any) => s.id === user.service_ids?.[0]);
+                 if (myService) setServiceName(myService.name);
+            }
         } catch (error) {
             console.error("Failed to load data", error);
         } finally {
@@ -66,9 +79,10 @@ export const ReplenishmentPage: React.FC = () => {
         setSubmitting(true);
         try {
             const request: Partial<ReplenishmentRequest> = {
-                requesterId: 'CURRENT_USER', // TODO: Get from context
-                requesterName: 'Infirmier EMR', // TODO: Get from context
-                serviceName: 'Service Médecine', // TODO: Get from context
+                requesterId: user?.id || 'unknown',
+                requesterName: user ? `${user.prenom} ${user.nom}` : 'Infirmier EMR',
+                serviceName: serviceName || 'Service Inconnu',
+                serviceId: user?.service_ids?.[0], // Critical for Inventory Scoping
                 status: ReplenishmentStatus.PENDING,
                 items: cart.map(item => ({
                     productId: item.product.id,

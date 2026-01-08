@@ -82,6 +82,15 @@ export const DispensationHistory: React.FC<DispensationHistoryProps> = ({ prescr
                                 </div>
                             </div>
 
+                            <div className="flex items-center gap-3 mb-2 text-[10px] text-slate-500">
+                                <div className="flex items-center" title="Dispensé par">
+                                    <User size={10} className="mr-1"/>{disp.dispensedBy}
+                                </div>
+                                <div className="flex items-center" title="Date de péremption">
+                                    <Calendar size={10} className="mr-1"/>Exp: {new Date(disp.expiryDate).toLocaleDateString()}
+                                </div>
+                            </div>
+
                             <div className="flex items-center justify-between">
                                 <span className="text-xl font-black text-slate-700">{disp.quantity} <span className="text-xs font-normal text-slate-500">{disp.mode === 'UNIT' ? 'unt' : 'bte'}</span></span>
                                 <div className="text-right">
@@ -133,19 +142,19 @@ export const DispensationHistory: React.FC<DispensationHistoryProps> = ({ prescr
                             </div>
 
                             <div className="flex justify-between items-end pt-3 border-t border-slate-200/50">
-                                <div className="flex items-center gap-3">
-                                    <div className="flex items-center text-xs text-slate-400" title="Dispensé par">
-                                        <User size={12} className="mr-1" />
-                                        {disp.dispensedBy}
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex items-center text-xs text-slate-400" title="Dispensé par">
+                                            <User size={12} className="mr-1" />
+                                            <span className="font-medium text-slate-600">{disp.dispensedBy}</span>
+                                        </div>
+                                        <div className="flex items-center text-xs text-slate-400" title="Date de péremption">
+                                            <Calendar size={12} className="mr-1" />
+                                            Exp: {new Date(disp.expiryDate).toLocaleDateString()}
+                                        </div>
                                     </div>
-                                    <div className="flex items-center text-xs text-slate-400">
-                                        <Calendar size={12} className="mr-1" />
-                                        {new Date(disp.dispensedAt).toLocaleDateString() + ' ' + new Date(disp.dispensedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    <div className="text-emerald-600 font-bold text-sm bg-emerald-50 px-2 py-1 rounded-md">
+                                        {disp.totalPriceInclVAT.toFixed(2)}€
                                     </div>
-                                </div>
-                                <div className="text-emerald-600 font-bold text-sm bg-emerald-50 px-2 py-1 rounded-md">
-                                    {disp.totalPriceInclVAT.toFixed(2)}€
-                                </div>
                             </div>
                         </div>
                     </div>

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getPatients, getAdmissions, getAppointments, getRooms, closeAdmission, createAdmission, createPatient, updatePatient, getPatient, getLocations, addLocation, updateLocation, deleteLocation } from '../controllers/emrController';
+import { getPatients, getAdmissions, getAppointments, getRooms, closeAdmission, createAdmission, createPatient, updatePatient, getPatient, getLocations, addLocation, updateLocation, deleteLocation, getConsumptionsByAdmission } from '../controllers/emrController';
 import { authenticateToken } from '../middleware/authMiddleware';
 
 const router = Router();
@@ -11,6 +11,7 @@ router.get('/admissions', getAdmissions);
 router.get('/appointments', getAppointments);
 router.get('/rooms', getRooms);
 router.put('/admissions/:id/close', closeAdmission);
+router.get('/admissions/:id/consumptions', getConsumptionsByAdmission);
 
 // Create new admission
 router.post('/admissions', createAdmission);

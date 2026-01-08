@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, ArrowLeft, Loader2, Package, Scan, Box, AlertCircle, FileText } from 'lucide-react';
 import { api } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import { SerializedPack, PackStatus } from '../../types/serialized-pack';
 
 interface DispensationFormProps {
@@ -11,6 +12,27 @@ interface DispensationFormProps {
 }
 
 export const DispensationForm: React.FC<DispensationFormProps> = ({ prescription, product: initialProduct, onSuccess }) => {
+    const { user } = useAuth();
+
+    // Helper for safe date handling
+    const safeGetTime = (dateStr: string | undefined): number => {
+        if (!dateStr) return 0;
+        const d = new Date(dateStr);
+        return isNaN(d.getTime()) ? 0 : d.getTime();
+    };
+
+    const safeFormatDate = (dateStr: string | undefined): string => {
+        if (!dateStr) return 'N/A';
+        const d = new Date(dateStr);
+        return isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString();
+    };
+
+    const safeDateString = (dateStr: string | undefined): string => {
+        if (!dateStr) return 'Invalid';
+        const d = new Date(dateStr);
+        return isNaN(d.getTime()) ? 'Invalid' : d.toDateString();
+    };
+
     // UI State
     const [view, setView] = useState<'SEARCH' | 'DISPENSE'>('SEARCH');
     const [selectedProduct, setSelectedProduct] = useState<any>(initialProduct);
@@ -86,7 +108,7 @@ export const DispensationForm: React.FC<DispensationFormProps> = ({ prescription
                     const sorted = active.sort((a, b) => {
                         if (a.status === PackStatus.OPENED && b.status !== PackStatus.OPENED) return -1;
                         if (b.status === PackStatus.OPENED && a.status !== PackStatus.OPENED) return 1;
-                        return new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime();
+                        return safeGetTime(a.expiryDate) - safeGetTime(b.expiryDate);
                     });
                     // Deduplicate packs by ID to prevent weird UI linking
                     const uniquePacks = Array.from(new Map(sorted.map(p => [p.id, p])).values());
@@ -120,6 +142,13 @@ export const DispensationForm: React.FC<DispensationFormProps> = ({ prescription
         setManualSelectedPackIds([]);
     }, [dispenseMode, selectionMode]);
 
+    // Force BOX mode if product is not subdivisable
+    useEffect(() => {
+        if (selectedProduct && selectedProduct.isSubdivisable === false) {
+            setDispenseMode('BOX');
+        }
+    }, [selectedProduct]);
+
 
     const handleDispense = async () => {
         if (!selectedAdmission) return setError("Aucune admission sélectionnée");
@@ -140,7 +169,7 @@ export const DispensationForm: React.FC<DispensationFormProps> = ({ prescription
                 productId: selectedProduct.id,
                 mode: dispenseMode === 'BOX' ? 'FULL_PACK' : 'UNIT',
                 quantity: selectionMode === 'MANUAL' ? manualSelectedPackIds.length : quantity,
-                userId: 'current-user', // Should be real user ID
+                userId: user ? `${user.prenom} ${user.nom}`.trim() || user.username : 'unknown', 
                 targetPackIds: selectionMode === 'MANUAL' ? manualSelectedPackIds : undefined
             });
 
@@ -158,7 +187,7 @@ export const DispensationForm: React.FC<DispensationFormProps> = ({ prescription
                     (pharmacyLocationIds.includes(p.locationId) || pharmacyLocationNames.includes(p.locationId))
                 );
                 // re-sort
-                active.sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime());
+                active.sort((a, b) => safeGetTime(a.expiryDate) - safeGetTime(b.expiryDate));
                 setAvailablePacks(active);
             });
 
@@ -180,11 +209,11 @@ export const DispensationForm: React.FC<DispensationFormProps> = ({ prescription
         }> = {};
 
         availablePacks.forEach(pack => {
-            const key = `${pack.lotNumber}-${pack.locationId || 'Stock'}-${new Date(pack.expiryDate).toDateString()}`;
+            const key = `${pack.batchNumber}-${pack.locationId || 'Stock'}-${safeDateString(pack.expiryDate)}`;
             if (!groups[key]) {
                 groups[key] = {
                     id: key,
-                    lotNumber: pack.lotNumber,
+                    lotNumber: pack.batchNumber,
                     expiryDate: pack.expiryDate,
                     locationId: pack.locationId || 'Stock',
                     packs: []
@@ -192,7 +221,7 @@ export const DispensationForm: React.FC<DispensationFormProps> = ({ prescription
             }
             groups[key].packs.push(pack);
         });
-        return Object.values(groups).sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime());
+        return Object.values(groups).sort((a, b) => safeGetTime(a.expiryDate) - safeGetTime(b.expiryDate));
     }, [availablePacks]);
 
     const handleGroupQuantityChange = (groupPacks: SerializedPack[], newQty: number) => {
@@ -358,6 +387,47 @@ export const DispensationForm: React.FC<DispensationFormProps> = ({ prescription
 
             <div className="flex-1 overflow-y-auto p-6 space-y-8">
 
+
+                {/* 0. Admission Context */}
+                <div className={`p-4 rounded-xl border ${activeAdmissions.length === 0 ? 'bg-red-50 border-red-200' : 'bg-indigo-50 border-indigo-100'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                         <span className={`text-xs font-bold uppercase tracking-widest ${activeAdmissions.length === 0 ? 'text-red-500' : 'text-indigo-500'}`}>
+                             Contexte Admission
+                         </span>
+                         {activeAdmissions.length > 1 && (
+                             <span className="text-[10px] bg-white px-2 py-1 rounded border border-indigo-100 text-indigo-600 font-bold">
+                                 {activeAdmissions.length} Actives
+                             </span>
+                         )}
+                    </div>
+                    
+                    {activeAdmissions.length === 0 ? (
+                         <div className="flex items-center text-red-600 font-medium text-sm">
+                             <AlertCircle size={18} className="mr-2" />
+                             Aucune admission active pour ce patient. Dispensation bloquée.
+                         </div>
+                    ) : (
+                        activeAdmissions.length === 1 ? (
+                            <div className="font-bold text-slate-700 text-sm flex items-center">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 mr-2"></div>
+                                Admission du {safeFormatDate(activeAdmissions[0].admissionDate)} ({activeAdmissions[0].id})
+                            </div>
+                        ) : (
+                            <select 
+                                value={selectedAdmission || ''}
+                                onChange={(e) => setSelectedAdmission(e.target.value)}
+                                className="w-full mt-1 p-2 rounded-lg border border-indigo-200 bg-white text-sm font-medium text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            >
+                                {activeAdmissions.map(adm => (
+                                    <option key={adm.id} value={adm.id}>
+                                        Admission du {safeFormatDate(adm.admissionDate)} - {adm.serviceId || 'Service Inconnu'}
+                                    </option>
+                                ))}
+                            </select>
+                        )
+                    )}
+                </div>
+
                 {/* 1. Mode Selector (Box/Unit) */}
                 <div className="bg-slate-50 p-1.5 rounded-xl flex shadow-inner">
                     <button
@@ -372,9 +442,14 @@ export const DispensationForm: React.FC<DispensationFormProps> = ({ prescription
                     </button>
                     <button
                         onClick={() => setDispenseMode('UNIT')}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all ${dispenseMode === 'UNIT'
-                            ? 'bg-white text-amber-600 shadow-sm ring-1 ring-slate-100'
-                            : 'text-slate-400 hover:text-slate-600'
+                        disabled={selectedProduct?.isSubdivisable === false}
+                        title={selectedProduct?.isSubdivisable === false ? "Ce produit n'est pas subdivisable" : ""}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all ${
+                            selectedProduct?.isSubdivisable === false
+                                ? 'opacity-50 cursor-not-allowed text-slate-300'
+                                : dispenseMode === 'UNIT'
+                                    ? 'bg-white text-amber-600 shadow-sm ring-1 ring-slate-100'
+                                    : 'text-slate-400 hover:text-slate-600' 
                             }`}
                     >
                         <Scan size={16} />
@@ -461,7 +536,7 @@ export const DispensationForm: React.FC<DispensationFormProps> = ({ prescription
                                     <span className="text-xs font-bold text-slate-500 uppercase">Lots pré-sélectionnés</span>
                                     {availablePacks[0] && (
                                         <span className="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 font-medium">
-                                            Expiration la plus proche: {new Date(availablePacks[0].expiryDate).toLocaleDateString()}
+                                            Expiration la plus proche: {safeFormatDate(availablePacks[0].expiryDate)}
                                         </span>
                                     )}
                                 </div>
@@ -470,8 +545,8 @@ export const DispensationForm: React.FC<DispensationFormProps> = ({ prescription
                                     .map((pack) => (
                                         <div key={pack.id} className="bg-white border-l-4 border-l-emerald-500 rounded-r-lg p-3 shadow-sm flex justify-between items-center animate-in fade-in slide-in-from-right-2">
                                             <div>
-                                                <div className="font-bold text-slate-800 text-sm">Lot {pack.lotNumber}</div>
-                                                <div className="text-xs text-slate-400">Exp: {new Date(pack.expiryDate).toLocaleDateString()}</div>
+                                                <div className="font-bold text-slate-800 text-sm">Lot {pack.batchNumber}</div>
+                                                <div className="text-xs text-slate-400">Exp: {safeFormatDate(pack.expiryDate)}</div>
                                             </div>
                                             <div className="text-right">
                                                 <div className="text-xs font-black text-slate-700">{pack.locationId || 'Stock'}</div>
@@ -517,24 +592,24 @@ export const DispensationForm: React.FC<DispensationFormProps> = ({ prescription
                                             <div>
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-bold text-slate-800 text-sm">Lot {group.lotNumber}</span>
-                                                    {new Date(group.expiryDate) < new Date() && (
+                                                    {safeGetTime(group.expiryDate) < Date.now() && (
                                                         <span className="px-1.5 py-0.5 bg-red-100 text-red-600 text-[10px] uppercase font-bold rounded">Expiré</span>
                                                     )}
                                                 </div>
-                                                <div className="text-xs text-slate-500 mt-1">Exp: {new Date(group.expiryDate).toLocaleDateString()}</div>
+                                                <div className="text-xs text-slate-500 mt-1">Exp: {safeFormatDate(group.expiryDate)}</div>
                                                 <div className="text-xs text-purple-600 font-medium mt-1">{group.locationId}</div>
                                             </div>
                                             <div className="text-right flex flex-col items-end">
                                                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Dispo</span>
-                                                <span className={`text-lg font-black ${new Date(group.expiryDate) < new Date() ? 'text-slate-400' : 'text-slate-700'}`}>
+                                                <span className={`text-lg font-black ${safeGetTime(group.expiryDate) < Date.now() ? 'text-slate-400' : 'text-slate-700'}`}>
                                                     {maxAvailable}
                                                 </span>
                                             </div>
                                         </div>
 
-                                        <div className={`flex items-center justify-between rounded-lg p-2 bg-slate-50 ${new Date(group.expiryDate) < new Date() ? 'opacity-50' : ''}`}>
+                                        <div className={`flex items-center justify-between rounded-lg p-2 bg-slate-50 ${safeGetTime(group.expiryDate) < Date.now() ? 'opacity-50' : ''}`}>
                                             <span className="text-xs font-bold text-slate-500 uppercase tracking-wide pl-1">
-                                                {new Date(group.expiryDate) < new Date() ? 'Expiré' : 'Sélection'}
+                                                {safeGetTime(group.expiryDate) < Date.now() ? 'Expiré' : 'Sélection'}
                                             </span>
                                             <div className="flex items-center gap-3">
                                                 <button
@@ -551,12 +626,12 @@ export const DispensationForm: React.FC<DispensationFormProps> = ({ prescription
                                                     {selectedCount}
                                                 </span>
                                                 <button
-                                                    onClick={() => !(new Date(group.expiryDate) < new Date()) && handleGroupQuantityChange(group.packs, Math.min(maxAvailable, selectedCount + 1))}
-                                                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${!isFullySelected && !(new Date(group.expiryDate) < new Date())
+                                                    onClick={() => !(safeGetTime(group.expiryDate) < Date.now()) && handleGroupQuantityChange(group.packs, Math.min(maxAvailable, selectedCount + 1))}
+                                                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${!isFullySelected && !(safeGetTime(group.expiryDate) < Date.now())
                                                         ? 'bg-white border border-slate-200 text-indigo-600 hover:border-indigo-300 shadow-sm'
                                                         : 'bg-slate-100 text-slate-300 cursor-not-allowed'
                                                         }`}
-                                                    disabled={isFullySelected || new Date(group.expiryDate) < new Date()}
+                                                    disabled={isFullySelected || safeGetTime(group.expiryDate) < Date.now()}
                                                 >
                                                     +
                                                 </button>

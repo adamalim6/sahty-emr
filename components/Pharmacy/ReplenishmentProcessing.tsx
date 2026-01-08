@@ -19,15 +19,16 @@ export const ReplenishmentProcessing: React.FC<ReplenishmentProcessingProps> = (
     const loadData = async () => {
         try {
             setLoading(true);
-            const [inv, cat, reqs, locs] = await Promise.all([
+            const [inv, cat, reqs, pharmLocs, serviceLocs] = await Promise.all([
                 api.getInventory(),
                 api.getCatalog(),
                 api.getReplenishmentRequests(),
-                api.getLocations()
+                api.getLocations(),
+                api.getEmrLocations()
             ]);
             setInventory(inv);
             setCatalog(cat);
-            setLocations(locs);
+            setLocations([...pharmLocs, ...serviceLocs]);
 
             let target: ReplenishmentRequest | undefined;
             if (requestIdStr) {

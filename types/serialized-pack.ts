@@ -16,7 +16,7 @@ export interface SerializedPack {
     serialNumber: string;              // Auto-généré ou scanné
     externalSerial?: string;           // GS1/DataMatrix (futur)
 
-    lotNumber: string;
+    batchNumber: string;
     expiryDate: string;
     locationId: string;
 

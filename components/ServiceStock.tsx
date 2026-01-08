@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { InventoryItem, ItemCategory, ProductDefinition, SerializedPack, PackStatus } from '../types/pharmacy';
+import { InventoryItem, ItemCategory, ProductDefinition, SerializedPack, PackStatus, LooseUnitItem } from '../types/pharmacy';
 import { Search, Filter, AlertTriangle, Package, ChevronDown, ChevronRight, Droplets, Pill, Syringe, FileText, Hash, MapPin, Calendar, BoxSelect, Boxes, LayoutGrid } from 'lucide-react';
 
 export const ServiceStock: React.FC = () => {
@@ -9,6 +9,7 @@ export const ServiceStock: React.FC = () => {
     const [inventory, setInventory] = useState<InventoryItem[]>([]);
     const [products, setProducts] = useState<ProductDefinition[]>([]);
     const [packs, setPacks] = useState<SerializedPack[]>([]);
+    const [looseUnits, setLooseUnits] = useState<LooseUnitItem[]>([]);
     const [locations, setLocations] = useState<any[]>([]); 
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -51,21 +52,23 @@ export const ServiceStock: React.FC = () => {
             setLoading(true);
             setError(null);
             try {
-                const [inv, cat, packsData, locs] = await Promise.all([
+                const [inv, cat, packsData, locs, loose] = await Promise.all([
                     api.getInventory(selectedServiceId), // Pass Service ID
                     api.getCatalog(),
                     api.getSerializedPacks(),
                     // Use scoped locations
-                    api.getLocations(selectedServiceId, 'SERVICE') 
+                    api.getLocations(selectedServiceId, 'SERVICE'),
+                    api.getLooseUnits(selectedServiceId)
                 ]);
                 
                 setInventory(inv);
                 setProducts(cat);
                 setPacks(packsData);
                 setLocations(locs);
+                setLooseUnits(loose);
             } catch (error: any) {
                 console.error("Failed to load service inventory", error);
-                if (error.message?.includes('403') || error.message?.toLowerCase().includes('forbidden')) {
+                if (error.message?.includes('403') || error.message?.toLowerCase().includes('forbidden') || error.message?.includes('Accès refusé')) {
                      setError("Accès refusé : Vous n'avez pas les permissions nécessaires pour voir ce stock.");
                 } else {
                      setError("Erreur lors du chargement du stock.");
@@ -139,7 +142,30 @@ export const ServiceStock: React.FC = () => {
                 };
             }
             groups[item.productId].items.push(item);
-            groups[item.productId].totalQuantity += (item.theoreticalQty || 0);
+
+            // DYNAMIC CALCULATION (SSOT: Physical State)
+            const unitsPerPack = productDef?.unitsPerPack || 1;
+            
+            // Filter packs for this item (Batch/Loc)
+            const itemPacks = packs.filter(p => 
+                p.productId === item.productId &&
+                p.batchNumber === item.batchNumber &&
+                (p.locationId === item.location || p.locationId === selectedServiceId) // Handle both granular location and service scope
+            );
+            const sealedQty = itemPacks.filter(p => p.status === PackStatus.SEALED).length * unitsPerPack;
+            const openQty = itemPacks.filter(p => p.status === PackStatus.OPENED).reduce((acc, p) => acc + (p.remainingUnits || 0), 0);
+            
+            // Filter loose units
+            const itemLoose = looseUnits.filter(u => 
+                u.productId === item.productId &&
+                u.batchNumber === item.batchNumber &&
+                (u.locationId === item.location || u.locationId === selectedServiceId)
+            ).reduce((acc, u) => acc + u.quantity, 0);
+
+            const qty = sealedQty + openQty + itemLoose;
+            
+            groups[item.productId].totalQuantity += qty;
+
             groups[item.productId].locations.add(item.location);
             if (item.serviceId) groups[item.productId].serviceIds.add(item.serviceId);
         });
@@ -234,7 +260,7 @@ export const ServiceStock: React.FC = () => {
                             const locationPacks = packs.filter(p =>
                                 p.productId === item.productId &&
                                 p.batchNumber === item.batchNumber &&
-                                normalize(p.locationId) === normalize(item.location)
+                                (normalize(p.locationId) === normalize(item.location) || p.locationId === selectedServiceId)
                             );
 
                             const sealedPacks = locationPacks.filter(p => p.status === PackStatus.SEALED);
@@ -244,9 +270,17 @@ export const ServiceStock: React.FC = () => {
                             const openedCount = openedPacks.length;
                             
                             const sealedUnits = sealedCount * unitsPerPack;
+                            const openUnits = openedPacks.reduce((acc, p) => acc + (p.remainingUnits || 0), 0);
                             
-                            const totalStockUnits = item.theoreticalQty || 0;
-                            const looseUnits = Math.max(0, totalStockUnits - sealedUnits);
+                            // Loose units calculation from Physical State (SSOT)
+                            const batchLooseItems = looseUnits.filter(u => 
+                                u.productId === item.productId &&
+                                u.batchNumber === item.batchNumber &&
+                                (u.locationId === item.location || u.locationId === selectedServiceId)
+                            );
+                            const looseQty = batchLooseItems.reduce((acc, u) => acc + u.quantity, 0);
+
+                            const totalStockUnits = sealedUnits + openUnits + looseQty;
 
                             if (!locationGroups[item.location]) {
                                 locationGroups[item.location] = {
@@ -259,12 +293,12 @@ export const ServiceStock: React.FC = () => {
                             locationGroups[item.location].items.push(item);
                             locationGroups[item.location].stats.sealed += sealedCount;
                             locationGroups[item.location].stats.opened += openedCount; 
-                            locationGroups[item.location].stats.loose += looseUnits;
+                            locationGroups[item.location].stats.loose += looseQty;
                             locationGroups[item.location].stats.totalQty += totalStockUnits;
 
                             productStats.sealed += sealedCount;
                             productStats.opened += openedCount;
-                            productStats.loose += looseUnits;
+                            productStats.loose += looseQty;
                             productStats.totalQty += totalStockUnits;
                         });
 
@@ -308,6 +342,11 @@ export const ServiceStock: React.FC = () => {
                                             </div>
                                             <div className="w-px h-8 bg-slate-200"></div>
                                             <div className="flex flex-col items-center">
+                                                 <span className="text-[10px] uppercase text-slate-400 font-bold">Boites Ouvertes</span>
+                                                 <span className="font-bold text-lg text-slate-800">{productStats.opened}</span>
+                                            </div>
+                                            <div className="w-px h-8 bg-slate-200"></div>
+                                            <div className="flex flex-col items-center">
                                                  <span className="text-[10px] uppercase text-slate-400 font-bold">Unités en Vrac</span>
                                                  <span className="font-bold text-lg text-slate-800">{productStats.loose}</span>
                                             </div>
@@ -332,6 +371,8 @@ export const ServiceStock: React.FC = () => {
                                                     <div className="flex items-center space-x-4 text-xs font-medium text-slate-600 bg-white px-3 py-1.5 rounded-full border border-slate-100 shadow-sm">
                                                         <span>Scellés: <b>{locGroup.stats.sealed}</b></span>
                                                         <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                                                        <span>Ouverts: <b>{locGroup.stats.opened}</b></span>
+                                                        <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
                                                         <span>Vrac: <b>{locGroup.stats.loose}</b></span>
                                                         <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
                                                         <span className="text-blue-600">Tot: <b>{locGroup.stats.totalQty}</b></span>
@@ -344,15 +385,18 @@ export const ServiceStock: React.FC = () => {
                                                          const locationPacks = packs.filter(p =>
                                                             p.productId === item.productId &&
                                                             p.batchNumber === item.batchNumber &&
-                                                            normalize(p.locationId) === normalize(item.location)
+                                                            (normalize(p.locationId) === normalize(item.location) || p.locationId === selectedServiceId)
                                                          );
                                                          
                                                          const sealedPacks = locationPacks.filter(p => p.status === PackStatus.SEALED);
+                                                         const openedPacks = locationPacks.filter(p => p.status === PackStatus.OPENED);
                                                          const sealedCount = sealedPacks.length;
+                                                         const openedCount = openedPacks.length;
                                                          
                                                          const sealedUnits = sealedCount * unitsPerPack;
+                                                         const openUnits = openedPacks.reduce((acc, p) => acc + (p.remainingUnits || 0), 0);
                                                          const totalStockUnits = item.theoreticalQty || 0;
-                                                         const looseUnits = Math.max(0, totalStockUnits - sealedUnits);
+                                                         const looseUnits = Math.max(0, totalStockUnits - sealedUnits - openUnits);
 
                                                          return (
                                                             <div key={item.id} className="bg-slate-900 text-white p-4 rounded-lg shadow-lg relative overflow-hidden">
@@ -360,6 +404,7 @@ export const ServiceStock: React.FC = () => {
                                                                     <div className="flex-1">
                                                                         <div className="text-[10px] uppercase text-slate-400 font-bold mb-0.5">Lot / Batch</div>
                                                                         <div className="font-mono font-bold text-base text-white">{item.batchNumber}</div>
+
                                                                     </div>
                                                                     <div className="text-right flex-1">
                                                                         <div className="text-[10px] uppercase text-slate-400 font-bold mb-0.5">Expiration</div>
@@ -372,7 +417,12 @@ export const ServiceStock: React.FC = () => {
                                                                 <div className="space-y-2">
                                                                     <div className="bg-slate-800 rounded px-2 py-1.5 flex justify-between items-center text-xs">
                                                                         <span className="text-slate-300">Boites scellés</span>
-                                                                        <span className="font-bold text-white text-sm">: {sealedCount}</span>
+                                                                         <span className="font-bold text-white text-sm">: {sealedCount}</span>
+                                                                    </div>
+
+                                                                    <div className="bg-slate-800 rounded px-2 py-1.5 flex justify-between items-center text-xs">
+                                                                         <span className="text-amber-400 font-bold">Boites ouvertes</span>
+                                                                         <span className="font-bold text-white text-sm">: {openedCount}</span>
                                                                     </div>
                                                                     
                                                                     <div className="bg-slate-800 rounded px-2 py-1.5 flex justify-between items-center text-xs">
