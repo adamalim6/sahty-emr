@@ -52,7 +52,7 @@ router.get('/dispensations/admission/:admissionId', getDispensationsByAdmission)
 router.get('/replenishments', pharmacyController.getReplenishmentRequests);
 router.post('/replenishments', pharmacyController.createReplenishmentRequest);
 router.put('/replenishments/:id/status', pharmacyController.updateReplenishmentRequestStatus);
-router.post('/replenishments/:id/dispense', pharmacyController.dispenseItem);
+
 router.post('/service-dispense', pharmacyController.dispenseFromServiceStock);
 
 // Returns

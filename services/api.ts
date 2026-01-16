@@ -45,6 +45,14 @@ async function fetchJson<T>(endpoint: string, options?: RequestInit): Promise<T>
 }
 
 export const api = {
+    async getATCTree() {
+        return fetchJson<any>('/global/atc/tree');
+    },
+
+    async getEMDNTree() {
+        return fetchJson<any>('/global/emdn/tree');
+    },
+
     // Actes Référentiel
     getActes: (params?: any) => {
         const query = new URLSearchParams(params).toString();
@@ -58,6 +66,12 @@ export const api = {
 
     // Authentication
     login: (credentials: any) => fetchJson<any>('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials)
+    }),
+
+    loginSuperAdmin: (credentials: any) => fetchJson<any>('/super-admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(credentials)
@@ -172,7 +186,9 @@ export const api = {
 
     // Tenant Settings
     getTenantUsers: () => fetchJson<any[]>('/settings/users'),
+    getSettingsRole: (id: string) => fetchJson<any>(`/settings/roles/${id}`), // NEW
     createTenantUser: (data: any) => fetchJson<any>('/settings/users', {
+
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -266,11 +282,7 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status, processedRequest })
     }),
-    dispenseReplenishmentItem: (requestId: string, data: any) => fetchJson<any>(`/pharmacy/replenishments/${requestId}/dispense`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    }),
+
 
     // Dispensation
     dispenseWithFEFO: (data: any) => fetchJson<any>('/pharmacy/dispensations/fefo', {
@@ -347,6 +359,39 @@ export const api = {
     }),
 
     deleteGlobalSupplier: (id: string) => fetchJson<any>(`/super-admin/suppliers/${id}`, {
+        method: 'DELETE'
+    }),
+
+    // Global Products
+    getGlobalProducts: () => fetchJson<ProductDefinition[]>('/global/products'),
+    getGlobalProduct: (id: string) => fetchJson<ProductDefinition>(`/global/products/${id}`),
+    createGlobalProduct: (data: any) => fetchJson<ProductDefinition>('/global/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    updateGlobalProduct: (id: string, data: any) => fetchJson<ProductDefinition>(`/global/products/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    deleteGlobalProduct: (id: string) => fetchJson<void>(`/global/products/${id}`, {
+        method: 'DELETE'
+    }),
+
+    // Global DCI
+    getGlobalDCIs: () => fetchJson<any[]>('/global/dci'),
+    createGlobalDCI: (data: any) => fetchJson<any>('/global/dci', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    updateGlobalDCI: (id: string, data: any) => fetchJson<any>(`/global/dci/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    deleteGlobalDCI: (id: string) => fetchJson<void>(`/global/dci/${id}`, {
         method: 'DELETE'
     })
 };

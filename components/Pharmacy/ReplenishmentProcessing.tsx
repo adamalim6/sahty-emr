@@ -14,35 +14,45 @@ export const ReplenishmentProcessing: React.FC<ReplenishmentProcessingProps> = (
     const [inventory, setInventory] = useState<InventoryItem[]>([]);
     const [catalog, setCatalog] = useState<ProductDefinition[]>([]);
     const [locations, setLocations] = useState<StockLocation[]>([]);
+    const [packs, setPacks] = useState<any[]>([]); // SerializedPack[]
+    const [looseUnits, setLooseUnits] = useState<any[]>([]); // LooseUnitItem[]
     const [loading, setLoading] = useState(true);
 
-    const loadData = async () => {
+    const loadData = async (silent = false) => {
         try {
-            setLoading(true);
-            const [inv, cat, reqs, pharmLocs, serviceLocs] = await Promise.all([
+            if (!silent) setLoading(true);
+            const [inv, cat, reqs, pharmLocs, serviceLocs, allPacks, allLoose] = await Promise.all([
                 api.getInventory(),
                 api.getCatalog(),
                 api.getReplenishmentRequests(),
                 api.getLocations(),
-                api.getEmrLocations()
+                api.getEmrLocations(),
+                api.getSerializedPacks(),
+                api.getLooseUnits()
             ]);
             setInventory(inv);
             setCatalog(cat);
             setLocations([...pharmLocs, ...serviceLocs]);
+            setPacks(allPacks);
+            setLooseUnits(allLoose);
 
+            // Re-bind current request to the latest version from server
             let target: ReplenishmentRequest | undefined;
-            if (requestIdStr) {
-                target = reqs.find(r => r.id === requestIdStr);
+            if (requestIdStr && (!request || request.id === requestIdStr)) { // Keep same request if ID matches
+                 target = reqs.find(r => r.id === requestIdStr);
+            } else if (request) {
+                 target = reqs.find(r => r.id === request.id);
             } else {
                 target = reqs.find(r => r.status === 'En Attente');
             }
+            
             if (target) {
                 setRequest(target);
             }
         } catch (e) {
             console.error("Failed to load replenishment data", e);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
@@ -53,33 +63,56 @@ export const ReplenishmentProcessing: React.FC<ReplenishmentProcessingProps> = (
     const handleDispenseItem = async (data: any) => {
         if (!request) return;
         try {
-            const result = await api.dispenseReplenishmentItem(request.id, data);
-            if (result.success) {
-                // Update Local State Optimistically or via Result
-                // Result contains updated requestItem and updatedInventory
-                
-                // 1. Update Inventory
-                if (result.updatedInventory) {
-                    setInventory(result.updatedInventory);
-                }
+            // New logic: Construct the updated request object locally and send it whole
+            const updatedRequest = JSON.parse(JSON.stringify(request)); // Deep clone
+            const targetItem = updatedRequest.items.find((i: ReplenishmentRequest['items'][0]) => i.productId === data.itemProductId);
+            
+            if (!targetItem) throw new Error("Item not found in current request state");
 
-                // 2. Update Request Item in State
-                setRequest(prev => {
-                    if (!prev) return null;
-                    const newItems = prev.items.map(item => {
-                        if (item.productId === result.requestItem.productId) {
-                            return result.requestItem;
-                        }
-                        return item;
-                    });
-                    return { ...prev, items: newItems };
+            // 1. Update Batches
+            if (!targetItem.dispensedBatches) targetItem.dispensedBatches = [];
+            
+            // Resolve names (optional, backend might re-validate but good for optimistic UI)
+            const productDef = catalog.find(p => p.id === data.dispensedProductId);
+            const productName = productDef?.name || 'Unknown';
+
+            data.batches.forEach((b: any) => {
+                targetItem.dispensedBatches.push({
+                    batchNumber: b.batchNumber,
+                    quantity: b.quantity,
+                    expiryDate: b.expiryDate,
+                    productId: data.dispensedProductId,
+                    productName: productName,
+                    dispensedAs: data.unitType || 'BOX'
                 });
+            });
+
+            // 2. Update Totals
+            targetItem.quantityApproved = (targetItem.quantityApproved || 0) + data.quantity;
+            
+            // 3. Substitution info
+            if (data.dispensedProductId !== data.itemProductId) {
+                targetItem.productDispensedId = data.dispensedProductId;
+                targetItem.productDispensedName = productName;
             }
+
+            // 4. Send Update
+            // We use 'EN_COURS' or keep current status to indicate active processing
+            const result = await api.updateReplenishmentRequestStatus(
+                request.id, 
+                ReplenishmentStatus.IN_PROGRESS, // Or keep current? Usually implies partial progress.
+                updatedRequest
+            );
+
+            // 5. Refresh
+            await loadData(true); 
+
         } catch (error) {
             console.error("Dispense Processing Error", error);
-            throw error; // Re-throw to let Card handle alert or loading state
+            throw error; 
         }
     };
+
 
     const handleFinalize = async () => {
         if (!request) return;
@@ -147,6 +180,8 @@ export const ReplenishmentProcessing: React.FC<ReplenishmentProcessingProps> = (
                             inventory={inventory}
                             catalog={catalog}
                             locations={locations}
+                            packs={packs}
+                            looseUnits={looseUnits}
                             onDispense={handleDispenseItem}
                         />
                     ))}

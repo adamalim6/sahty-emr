@@ -99,9 +99,10 @@ export const createClient = (req: Request, res: Response) => {
     const clients = readJson('clients.json');
     const users = readJson('users.json');
     
+    // Use a simpler timestamp for ID to avoid filesystem issues with long names if any
     const clientId = `client_${Date.now()}`;
     
-    // Create Client
+    // 1. Create Client in SuperAdmin Registry
     const newClient = { 
         id: clientId, 
         type: req.body.type,
@@ -111,21 +112,80 @@ export const createClient = (req: Request, res: Response) => {
     };
     clients.push(newClient);
     
-    // Create DSI User
-    const newDSI = {
+    // 2. Create DSI User in SuperAdmin Registry (Legacy/View purposes)
+    const newDSI_Global = {
         id: `user_dsi_${Date.now()}`,
         username: req.body.admin_username,
         password_hash: bcrypt.hashSync(req.body.admin_password, 10),
         nom: req.body.admin_nom || 'Directeur',
         prenom: req.body.admin_prenom || 'Admin',
         user_type: 'TENANT_SUPERADMIN',
-        role_id: 'role_admin_struct', // Default role for DSI
+        role_id: 'role_admin_struct', 
         client_id: clientId
     };
-    users.push(newDSI);
+    users.push(newDSI_Global);
     
     writeJson('clients.json', clients);
     writeJson('users.json', users);
+
+    // 3. INITIALIZE TENANT REALM (CRITICAL FOR LOGIN)
+    // We must create tenants/<clientId>/settings.json and seed the admin user there
+    try {
+        const { TenantStore } = require('../utils/tenantStore'); // Lazy import to avoid circular dep issues in some envs
+        const store = new TenantStore(clientId);
+        
+        // Define default roles for the new tenant
+        // Copying from SEED_ROLES logic or consistent default
+        const defaultRoles = [
+          {
+            "id": "role_super_admin",
+            "name": "Super Admin Global",
+            "code": "SUPER_ADMIN",
+            "permissions": ["sa_clients", "sa_organismes", "sa_roles", "sa_actes"]
+          },
+          {
+            "id": "role_admin_struct",
+            "name": "Administrateur Structure",
+            "code": "ADMIN_STRUCTURE",
+            "permissions": ["st_users", "st_services", "st_rooms", "st_pricing", "st_roles"],
+            "modules": ["SETTINGS", "PHARMACY", "EMR"] // Give DSI access to all modules
+          },
+          // Add other default roles if needed, or keep it minimal for now
+        ];
+
+        // Create the actual tenant user for authentication
+        const tenantUser = {
+            id: newDSI_Global.id,
+            client_id: clientId,
+            username: newDSI_Global.username,
+            password_hash: newDSI_Global.password_hash,
+            nom: newDSI_Global.nom,
+            prenom: newDSI_Global.prenom,
+            user_type: 'TENANT_SUPERADMIN', // CORRECTED: Must match App.tsx ProtectedRoute
+            role_id: 'role_admin_struct',
+            active: true
+        };
+
+        const settings = {
+            users: [tenantUser],
+            roles: defaultRoles,
+            services: [],
+            unitTypes: [],
+            serviceUnits: [],
+            pricing: [],
+            rooms: []
+        };
+
+        store.save('settings', settings);
+        
+        // Initialize other modules empty
+        store.save('pharmacy', { inventory: [], catalog: [], locations: [], partners: [], stockOutHistory: [], replenishmentRequests: [] });
+        store.save('emr_admissions', { admissions: [], appointments: [], consumptions: [] });
+        
+    } catch (e: any) {
+        console.error("Failed to initialize tenant realm:", e);
+        // Should we rollback? For now just log.
+    }
     
     res.json(newClient);
 };
@@ -179,13 +239,17 @@ export const createOrganisme = (req: Request, res: Response) => {
 
 // --- Roles ---
 export const getRoles = (req: Request, res: Response) => {
-    const roles = readJson('roles.json');
+    // Read from global/roles.json
+    const filePath = path.join(DATA_DIR, 'global', 'roles.json');
+    if (!fs.existsSync(filePath)) return res.json([]);
+    const roles = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
     res.json(roles);
 };
 
 export const getRole = (req: Request, res: Response) => {
     const { id } = req.params;
-    const roles = readJson('roles.json');
+    const filePath = path.join(DATA_DIR, 'global', 'roles.json');
+    const roles = fs.existsSync(filePath) ? JSON.parse(fs.readFileSync(filePath, 'utf-8')) : [];
     const role = roles.find((r: any) => r.id === id);
     if (!role) {
         return res.status(404).json({ error: 'Role not found' });
@@ -194,7 +258,8 @@ export const getRole = (req: Request, res: Response) => {
 };
 
 export const createRole = (req: Request, res: Response) => {
-    const roles = readJson('roles.json');
+    const filePath = path.join(DATA_DIR, 'global', 'roles.json');
+    const roles = fs.existsSync(filePath) ? JSON.parse(fs.readFileSync(filePath, 'utf-8')) : [];
     const { name, description } = req.body;
     
     if (!name) {
@@ -209,13 +274,16 @@ export const createRole = (req: Request, res: Response) => {
     };
 
     roles.push(newRole);
-    writeJson('roles.json', roles);
+
+    // writeJson('roles.json', roles); // Old
+    fs.writeFileSync(filePath, JSON.stringify(roles, null, 2));
     res.json(newRole);
 };
 
 export const updateRole = (req: Request, res: Response) => {
     const { id } = req.params;
-    let roles = readJson('roles.json');
+    const filePath = path.join(DATA_DIR, 'global', 'roles.json');
+    let roles = fs.existsSync(filePath) ? JSON.parse(fs.readFileSync(filePath, 'utf-8')) : [];
     const index = roles.findIndex((r: any) => r.id === id);
 
     if (index === -1) {
@@ -230,8 +298,8 @@ export const updateRole = (req: Request, res: Response) => {
         description: description !== undefined ? description : roles[index].description,
         permissions: permissions || roles[index].permissions || []
     };
-
-    writeJson('roles.json', roles);
+    
+    fs.writeFileSync(filePath, JSON.stringify(roles, null, 2));
     res.json(roles[index]);
 };
 

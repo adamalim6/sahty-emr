@@ -1,7 +1,8 @@
 import express from 'express';
 import { 
     getMyUsers, createMyUser,
-    getGlobalRoles,
+
+    getGlobalRoles, getGlobalRole,
     
     // Services
     getServices, getService, createService, updateService, deleteService,
@@ -31,6 +32,7 @@ router.get('/users', getMyUsers);
 router.post('/users', createMyUser);
 router.put('/users/:id', updateTenantUser);
 router.get('/roles', getGlobalRoles);
+router.get('/roles/:id', getGlobalRole);
 
 // Services
 router.get('/services', getServices);

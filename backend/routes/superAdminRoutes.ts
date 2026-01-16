@@ -6,32 +6,38 @@ import {
     getRoles, getRole, createRole, updateRole,
     getGlobalSuppliers, createGlobalSupplier, updateGlobalSupplier, deleteGlobalSupplier // Updated imports
 } from '../controllers/superAdminController';
-import { authenticateToken, requireRole } from '../middleware/authMiddleware';
+import { loginGlobalAdmin } from '../controllers/globalAuthController';
+import { authenticateGlobalAdmin } from '../middleware/globalAuthMiddleware';
 
 const router = express.Router();
 
+// Global Login
+router.post('/login', loginGlobalAdmin);
+
 // Clients
-router.get('/clients', authenticateToken, getClients);
-router.post('/clients', authenticateToken, requireRole(['PUBLISHER_SUPERADMIN']), createClient);
-router.get('/clients/:id', authenticateToken, getClientDetails); // New
-router.put('/clients/:id', authenticateToken, requireRole(['PUBLISHER_SUPERADMIN']), updateClient);
-router.put('/clients/:id/dsi', authenticateToken, requireRole(['PUBLISHER_SUPERADMIN']), updateClientDSI); // New
-router.delete('/clients/:id', authenticateToken, requireRole(['PUBLISHER_SUPERADMIN']), deleteClient);
+router.get('/clients', authenticateGlobalAdmin, getClients);
+router.post('/clients', authenticateGlobalAdmin, createClient);
+router.get('/clients/:id', authenticateGlobalAdmin, getClientDetails);
+router.put('/clients/:id', authenticateGlobalAdmin, updateClient);
+router.put('/clients/:id/dsi', authenticateGlobalAdmin, updateClientDSI);
+router.delete('/clients/:id', authenticateGlobalAdmin, deleteClient);
 
 // Organismes
-router.get('/organismes', authenticateToken, getOrganismes);
-router.post('/organismes', authenticateToken, createOrganisme);
+router.get('/organismes', authenticateGlobalAdmin, getOrganismes);
+router.post('/organismes', authenticateGlobalAdmin, createOrganisme);
 
 // Roles
-router.get('/roles', authenticateToken, getRoles); // Allow Tenants to read
-router.get('/roles/:id', authenticateToken, getRole); // Allow Tenants to read
-router.post('/roles', authenticateToken, requireRole(['PUBLISHER_SUPERADMIN']), createRole); // New
-router.put('/roles/:id', authenticateToken, requireRole(['PUBLISHER_SUPERADMIN']), updateRole); // New
+// Note: Roles can be read by tenants via settings, these are likely managing GLOBAL templates if any? 
+// Or managing tenant roles as superadmin.
+router.get('/roles', authenticateGlobalAdmin, getRoles);
+router.get('/roles/:id', authenticateGlobalAdmin, getRole);
+router.post('/roles', authenticateGlobalAdmin, createRole);
+router.put('/roles/:id', authenticateGlobalAdmin, updateRole);
 
 // Global Suppliers
-router.get('/suppliers', authenticateToken, getGlobalSuppliers);
-router.post('/suppliers', authenticateToken, requireRole(['PUBLISHER_SUPERADMIN']), createGlobalSupplier);
-router.put('/suppliers/:id', authenticateToken, requireRole(['PUBLISHER_SUPERADMIN']), updateGlobalSupplier);
-router.delete('/suppliers/:id', authenticateToken, requireRole(['PUBLISHER_SUPERADMIN']), deleteGlobalSupplier);
+router.get('/suppliers', authenticateGlobalAdmin, getGlobalSuppliers);
+router.post('/suppliers', authenticateGlobalAdmin, createGlobalSupplier);
+router.put('/suppliers/:id', authenticateGlobalAdmin, updateGlobalSupplier);
+router.delete('/suppliers/:id', authenticateGlobalAdmin, deleteGlobalSupplier);
 
 export default router;

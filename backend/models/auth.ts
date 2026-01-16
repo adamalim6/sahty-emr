@@ -1,6 +1,7 @@
 
 export enum UserType {
     PUBLISHER_SUPERADMIN = 'PUBLISHER_SUPERADMIN',
+    SUPER_ADMIN = 'SUPER_ADMIN', // Added for Global Realm
     TENANT_SUPERADMIN = 'TENANT_SUPERADMIN',
     TENANT_USER = 'TENANT_USER'
 }
@@ -13,9 +14,12 @@ export interface User {
     prenom: string;
     user_type: UserType;
     role_id: string;
+    role_code?: string; // Added for safety checks
     client_id: string | null; // Null for Publisher
     INPE?: string;
     active?: boolean;
+    permissions?: string[];
+    modules?: string[]; // Added for Unified Routing
     service_ids?: string[];
 }
 

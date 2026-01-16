@@ -28,6 +28,7 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
     });
 };
 
+
 export const requireRole = (allowedTypes: string[]) => {
     return (req: AuthRequest, res: Response, next: NextFunction) => {
         if (!req.user || !allowedTypes.includes(req.user.user_type)) {
@@ -35,4 +36,26 @@ export const requireRole = (allowedTypes: string[]) => {
         }
         next();
     };
+};
+
+/**
+ * Middleware to enforce Tenant Context.
+ * Rejects requests if the user is not associated with a tenant (client_id is null).
+ */
+export const requireTenant = (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user || !req.user.client_id) {
+        return res.status(403).json({ error: 'Tenant Context Required. Access Denied.' });
+    }
+    next();
+};
+
+/**
+ * Helper to safely extract tenantId from request.
+ * Should only be used after requireTenant middleware.
+ */
+export const getTenantId = (req: AuthRequest): string => {
+    // Check both standard 'client_id' and potential legacy 'tenantId' from token
+    const id = req.user?.client_id || (req.user as any)?.tenantId;
+    if (!id) throw new Error("Critical: TenantId missing in protected route");
+    return id;
 };

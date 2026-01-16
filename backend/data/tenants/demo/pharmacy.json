@@ -1,0 +1,18 @@
+{
+  "inventory": [],
+  "locations": [],
+  "partners": [],
+  "stockOutHistory": [],
+  "productVersions": [],
+  "purchaseOrders": [],
+  "deliveryNotes": [],
+  "serializedPacks": [],
+  "looseUnits": [],
+  "dispensations": [],
+  "replenishmentRequests": [],
+  "pharmacyLedger": [],
+  "serviceLedgers": {},
+  "movementLogs": [],
+  "returnRequests": [],
+  "containers": []
+}

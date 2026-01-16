@@ -31,6 +31,9 @@ export const UsersPage: React.FC = () => {
             const restrictedRoles = ['role_super_admin', 'role_admin_struct'];
             const allowedRoles = rolesData.filter((r: any) => !restrictedRoles.includes(r.id));
             
+            console.log('Users:', usersData);
+            console.log('Roles (Raw):', rolesData);
+
             setRoles(allowedRoles);
             if (allowedRoles.length > 0) {
                 // Role handling moved to Modal or default state if needed

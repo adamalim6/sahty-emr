@@ -1,0 +1,50 @@
+{
+  "users": [
+    {
+      "id": "user_dsi_1768230020156",
+      "client_id": "client_1768230020156",
+      "username": "house",
+      "password_hash": "$2b$10$y95wdJSUyZgZfSc32KP/iuOw3AKfM7q1/3KpRYIM2web4Cd4ou4/W",
+      "nom": "house",
+      "prenom": "house",
+      "user_type": "TENANT_USER",
+      "role_id": "role_admin_struct",
+      "active": true
+    }
+  ],
+  "roles": [
+    {
+      "id": "role_super_admin",
+      "name": "Super Admin Global",
+      "code": "SUPER_ADMIN",
+      "permissions": [
+        "sa_clients",
+        "sa_organismes",
+        "sa_roles",
+        "sa_actes"
+      ]
+    },
+    {
+      "id": "role_admin_struct",
+      "name": "Administrateur Structure",
+      "code": "ADMIN_STRUCTURE",
+      "permissions": [
+        "st_users",
+        "st_services",
+        "st_rooms",
+        "st_pricing",
+        "st_roles"
+      ],
+      "modules": [
+        "SETTINGS",
+        "PHARMACY",
+        "EMR"
+      ]
+    }
+  ],
+  "services": [],
+  "unitTypes": [],
+  "serviceUnits": [],
+  "pricing": [],
+  "rooms": []
+}

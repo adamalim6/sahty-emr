@@ -14,6 +14,8 @@ export interface StockLocation {
   description?: string;
   isActive: boolean;
   tenantId?: string;
+  scope?: 'PHARMACY' | 'SERVICE';
+  serviceId?: string;
 }
 
 export interface InventoryItem {
@@ -76,30 +78,88 @@ export interface PharmacySupplier {
   tenantId?: string;
 }
 
+export interface DCI {
+    id: string;
+    name: string;
+    atc_code?: string;
+    synonyms?: string[];
+    therapeutic_class?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
 export interface Molecule {
   id: string;
   name: string;
 }
 
-export type DosageUnit = 'g' | 'mg' | 'ml';
+export type DosageUnit = 
+  | 'ng' | 'mcg' | 'mg' | 'g' | 'kg'
+  | 'IU' | 'mIU' | 'kIU' | 'U' | 'mU' | 'kU'
+  | 'ng/mL' | 'mcg/mL' | 'mg/mL' | 'g/L' | 'g/mL' | 'IU/mL' | 'mIU/mL' | 'U/mL' | 'mmol/L' | 'µmol/L' | 'mEq/L'
+  | 'mol' | 'mmol' | 'µmol' | 'nmol'
+  | '%'
+  | 'mg/kg' | 'mcg/kg' | 'IU/kg' | 'mg/kg/day' | 'mcg/kg/day'
+  | 'mg/m²' | 'mcg/m²'
+  | 'mcg/dose' | 'mg/dose' | 'g/dose' | 'mL/dose'
+  | 'ml';
+
+export enum UnitType {
+  BOX = 'Boîte',
+  UNIT = 'Unité'
+}
+
+export interface ProductDCIComponent {
+  dciId: string;
+  dosage: number;
+  unit: DosageUnit;
+  // For complex dosages like "15mg / 5ml"
+  // dosage would be 3, unit 'mg/mL'
+  presentation?: {
+    numerator: number;       // 15
+    numeratorUnit: string;   // 'mg'
+    denominator: number;     // 5
+    denominatorUnit: string; // 'ml'
+  };
+}
 
 export interface ProductDefinition {
   id: string;
+  sahtyCode: string;  // NOUVEAU: Code généré automatiquement par le système
+  code?: string;      // CIP/EAN/GTIN - Désormais optionnel
   name: string;
   type: ProductType;
+  unit: UnitType;       // 'Boîte' or 'Unité'
+  unitsPerBox: number;  // Standard packing
+  description?: string; // Optional, removed from UI
+  
+  // Nouveaux champs pour import Maroc
+  form?: string;          // Forme Galénique
+  presentation?: string;  // Conditionnement (ex: "BOITE DE 30")
+  brandName?: string;     // Spécialité (Nom commercial)
+  marketInfo?: {
+    ppv?: number;
+    ph?: number;
+    pfht?: number;
+  };
+
+  manufacturer?: string;
   suppliers: ProductSupplier[];
   profitMargin: number;
   vatRate: number;
   isSubdivisable: boolean;
-  subdivisionUnits?: number;          // DEPRECATED: use unitsPerPack
-  unitsPerPack: number;               // NOUVEAU: nombre d'unités par boîte (obligatoire)
-  molecules?: Molecule[];
+  subdivisionUnits?: number;          // DEPRECATED
+  dciIds?: string[];                  // DEPRECATED? Keep for backward compat?
+  dciComposition?: ProductDCIComponent[]; // NEW: Detailed composition
+  molecules?: never;                  // DEPRECATED/REMOVED
   dosage?: number;
   dosageUnit?: DosageUnit;
   therapeuticClass?: string;
   createdAt: Date;
   updatedAt: Date;
   currentStock?: number;
+  isEnabled?: boolean; // Merged flag
+  tenantId?: string;   // Merged flag
 }
 
 export enum POStatus {
@@ -289,6 +349,7 @@ export interface PatientWithPrescriptions {
 
 export enum ReplenishmentStatus {
   PENDING = 'En Attente',
+  IN_PROGRESS = 'En Cours',
   APPROVED = 'Approuvé',
   REJECTED = 'Rejeté',
   COMPLETED = 'Terminé'

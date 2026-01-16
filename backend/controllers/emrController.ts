@@ -1,67 +1,21 @@
 
 import { Request, Response } from 'express';
 import { emrService } from '../services/emrService';
+import { getTenantId } from '../middleware/authMiddleware';
 
+const getContext = (req: Request) => {
+    const tenantId = getTenantId(req as any);
+    return { tenantId, user: (req as any).user };
+};
+
+// GLOBAL (Patients)
 export const getPatients = (req: Request, res: Response) => {
     try {
+        // Patients are Global, but we require auth (handled by middleware)
         const patients = emrService.getAllPatients();
         res.json(patients);
-    } catch (error) {
-        res.status(500).json({ message: 'Error fetching patients' });
-    }
-};
-
-export const getAdmissions = (req: Request, res: Response) => {
-    try {
-        const tenantId = (req as any).user?.client_id;
-        const admissions = emrService.getAllAdmissions(tenantId);
-        res.json(admissions);
-    } catch (error) {
-        res.status(500).json({ message: 'Error fetching admissions' });
-    }
-};
-
-export const getAppointments = (req: Request, res: Response) => {
-    try {
-        const appointments = emrService.getAllAppointments();
-        res.json(appointments);
-    } catch (error) {
-        res.status(500).json({ message: 'Error fetching appointments' });
-    }
-};
-
-export const getRooms = (req: Request, res: Response) => {
-    try {
-        const rooms = emrService.getAllRooms();
-        res.json(rooms);
-    } catch (error) {
-        res.status(500).json({ message: 'Error fetching rooms' });
-    }
-};
-
-export const closeAdmission = (req: Request, res: Response) => {
-    try {
-        const { id } = req.params;
-        const admission = emrService.closeAdmission(id);
-
-        if (!admission) {
-            return res.status(404).json({ message: 'Admission not found' });
-        }
-
-        res.json(admission);
-    } catch (error) {
-        res.status(500).json({ message: 'Error closing admission' });
-    }
-};
-
-export const createAdmission = (req: Request, res: Response) => {
-    try {
-        const tenantId = (req as any).user?.client_id;
-        const admissionData = { ...req.body, tenantId };
-        const newAdmission = emrService.createAdmission(admissionData);
-        res.status(201).json(newAdmission);
-    } catch (error) {
-        res.status(500).json({ message: 'Error creating admission' });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -70,8 +24,8 @@ export const createPatient = (req: Request, res: Response) => {
         const patientData = req.body;
         const newPatient = emrService.createPatient(patientData);
         res.status(201).json(newPatient);
-    } catch (error) {
-        res.status(500).json({ message: 'Error creating patient' });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -86,8 +40,8 @@ export const updatePatient = (req: Request, res: Response) => {
         }
 
         res.json(updatedPatient);
-    } catch (error) {
-        res.status(500).json({ message: 'Error updating patient' });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -101,57 +55,79 @@ export const getPatient = (req: Request, res: Response) => {
         }
 
         res.json(patient);
-    } catch (error) {
-        res.status(500).json({ message: 'Error fetching patient' });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
     }
 };
 
-// Location Endpoints
-export const getLocations = (req: Request, res: Response) => {
+// TENANT SCOPED (Admissions, Appointments, Rooms, Consumptions)
+
+export const getAdmissions = (req: Request, res: Response) => {
     try {
-        const locations = emrService.getLocations();
-        res.json(locations);
-    } catch (error) {
-        res.status(500).json({ message: 'Error fetching locations' });
+        const { tenantId } = getContext(req);
+        const admissions = emrService.getAllAdmissions(tenantId);
+        res.json(admissions);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
     }
 };
 
-export const addLocation = (req: Request, res: Response) => {
+export const createAdmission = (req: Request, res: Response) => {
     try {
-        const location = req.body;
-        const newLocation = emrService.addLocation(location);
-        res.status(201).json(newLocation);
-    } catch (error) {
-        res.status(500).json({ message: 'Error adding location' });
+        const { tenantId } = getContext(req);
+        const admissionData = { ...req.body }; // tenantId injected by service or we pass it
+        const newAdmission = emrService.createAdmission(tenantId, admissionData);
+        res.status(201).json(newAdmission);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
     }
 };
 
-export const updateLocation = (req: Request, res: Response) => {
+export const closeAdmission = (req: Request, res: Response) => {
     try {
-        const location = req.body;
-        const updatedLocation = emrService.updateLocation(location);
-        res.json(updatedLocation);
-    } catch (error) {
-        res.status(404).json({ message: 'Location not found' });
-    }
-};
-
-export const deleteLocation = (req: Request, res: Response) => {
-    try {
+        const { tenantId } = getContext(req);
         const { id } = req.params;
-        emrService.deleteLocation(id);
-        res.status(204).send();
-    } catch (error) {
-        res.status(500).json({ message: 'Error deleting location' });
+        const admission = emrService.closeAdmission(tenantId, id);
+
+        if (!admission) {
+            return res.status(404).json({ message: 'Admission not found' });
+        }
+
+        res.json(admission);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const getAppointments = (req: Request, res: Response) => {
+    try {
+        const { tenantId } = getContext(req);
+        const appointments = emrService.getAllAppointments(tenantId);
+        res.json(appointments);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const getRooms = (req: Request, res: Response) => {
+    try {
+        const { tenantId } = getContext(req);
+        const rooms = emrService.getAllRooms(tenantId);
+        res.json(rooms);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
     }
 };
 
 export const getConsumptionsByAdmission = (req: Request, res: Response) => {
     try {
+        const { tenantId } = getContext(req);
         const { id } = req.params;
-        const consumptions = emrService.getConsumptionsByAdmission(id);
+        const consumptions = emrService.getConsumptionsByAdmission(tenantId, id);
         res.json(consumptions);
-    } catch (error) {
-        res.status(500).json({ message: 'Error fetching consumptions' });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
     }
 };
+
+// Legacy Location Endpoints removed (should use Pharmacy or Settings)

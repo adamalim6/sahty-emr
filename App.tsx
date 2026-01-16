@@ -4,6 +4,9 @@ import { Layout } from './components/Layout';
 import { PatientList } from './components/PatientList';
 import { AdmissionList } from './components/AdmissionList';
 import { CalendarView } from './components/CalendarView';
+import { ReturnsReception } from './components/Pharmacy/ReturnsReception';
+import { ATCSandboxPage } from './components/SuperAdmin/ATCSandboxPage';
+import { Toaster } from 'react-hot-toast';
 import { WaitingRoom } from './components/WaitingRoom';
 import { WardMap } from './components/WardMap';
 import { Settings } from './components/Settings';
@@ -28,12 +31,15 @@ import { ReadOnlyRoleDetailPage } from './components/Settings/ReadOnlyRoleDetail
 // Correct import for Super Admin
 import { RolesPage as SuperAdminRolesPage } from './components/SuperAdmin/RolesPage';
 import { SuppliersPage } from './components/SuperAdmin/SuppliersPage';
+import { GlobalProductManager } from './components/SuperAdmin/GlobalProductManager';
+import { GlobalDCIManager } from './components/SuperAdmin/GlobalDCIManager';
+import { EMDNSandboxPage } from './components/SuperAdmin/EMDNSandboxPage';
 import { RoleDetailPage } from './components/SuperAdmin/RoleDetailPage';
 import { ServiceStock } from './components/ServiceStock';
 import { ReplenishmentPage } from './components/ReplenishmentPage';
 import { EmrLocationManager } from './components/EmrLocationManager';
 
-const ProtectedRoute = ({ role, children }: { role: string | UserType, children: React.ReactNode }) => {
+const ProtectedRoute = ({ role, permission, children }: { role?: string | UserType, permission?: string, children: React.ReactNode }) => {
   const { user, isAuthenticated, loading } = useAuth();
 
   if (loading) {
@@ -42,13 +48,19 @@ const ProtectedRoute = ({ role, children }: { role: string | UserType, children:
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   
-  // Simple check: if role is one of UserType, check user_type. Else check role_id.
-  const hasRole = Object.values(UserType).includes(role as UserType) 
-    ? user?.user_type === role
-    : user?.role_id === role || (role === 'DOCTOR' && user?.user_type === UserType.TENANT_USER); // Fallback for DOCTOR if it maps to TENANT_USER
+  // 1. Permission Check (Strongest)
+  if (permission) {
+      const hasPermission = user?.permissions?.includes(permission);
+      if (!hasPermission) return <Navigate to="/login" replace />;
+  }
 
-  if (!hasRole) {
-     return <Navigate to="/login" replace />;
+  // 2. Role Check (Legacy/Fallback)
+  if (role) {
+      const hasRole = Object.values(UserType).includes(role as UserType) 
+        ? user?.user_type === role
+        : user?.role_id === role || (role === 'DOCTOR' && user?.user_type === UserType.TENANT_USER); 
+      
+      if (!hasRole) return <Navigate to="/login" replace />;
   }
 
   return <>{children}</>;
@@ -61,9 +73,9 @@ const App: React.FC = () => {
         <Routes>
           <Route path="/login" element={<Login />} />
 
-          {/* Doctor / EMR Routes */}
+          {/* Doctor / EMR Routes - PROTECTED BY PERMISSION */}
           <Route path="/" element={
-            <ProtectedRoute role="DOCTOR">
+            <ProtectedRoute permission="emr_patients">
               <Layout>
                 <Outlet />
               </Layout>
@@ -75,8 +87,6 @@ const App: React.FC = () => {
             <Route path="admission/:id" element={<AdmissionDossier />} />
             <Route path="calendar" element={<CalendarView />} />
             <Route path="waiting-room" element={<WaitingRoom />} />
-            <Route path="waiting-room" element={<WaitingRoom />} />
-            <Route path="map" element={<WardMap />} />
             <Route path="map" element={<WardMap />} />
             <Route path="service-stock" element={<ServiceStock />} />
             <Route path="replenishment" element={<ReplenishmentPage />} />
@@ -109,11 +119,10 @@ const App: React.FC = () => {
 
           {/* Super Admin Routes */}
           <Route path="/super-admin/*" element={
-            <ProtectedRoute role={UserType.PUBLISHER_SUPERADMIN}>
+            <ProtectedRoute role={UserType.SUPER_ADMIN}>
               <SuperAdminLayout />
             </ProtectedRoute>
           }>
-             <Route path="clients" element={<ClientsPage />} />
              <Route path="clients" element={<ClientsPage />} />
              <Route path="clients/:id" element={<ClientDetailPage />} />
              <Route path="organismes" element={<OrganismesPage />} />
@@ -121,12 +130,16 @@ const App: React.FC = () => {
              <Route path="roles" element={<SuperAdminRolesPage />} />
              <Route path="roles/:id" element={<RoleDetailPage />} />
              <Route path="suppliers" element={<SuppliersPage />} />
+             <Route path="products" element={<GlobalProductManager />} />
+             <Route path="dci" element={<GlobalDCIManager />} />
+             <Route path="atc-sandbox" element={<ATCSandboxPage />} />
+             <Route path="emdn" element={<EMDNSandboxPage />} />
              <Route index element={<Navigate to="clients" replace />} />
           </Route>
 
-          {/* Pharmacist / Pharmacy Routes */}
+          {/* Pharmacist / Pharmacy Routes - PROTECTED BY PERMISSION */}
           <Route path="/pharmacy/*" element={
-            <ProtectedRoute role="role_pharmacien">
+            <ProtectedRoute permission="ph_dashboard">
               <PharmacyModule />
             </ProtectedRoute>
           } />

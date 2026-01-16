@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, Settings, Shield, LogOut, Building, Truck } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Settings, Shield, LogOut, Building, Truck, Package } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export const SuperAdminLayout: React.FC = () => {
@@ -39,6 +39,31 @@ export const SuperAdminLayout: React.FC = () => {
                     <NavLink to="/super-admin/suppliers" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
                         <Truck size={20} />
                         <span>Fournisseurs</span>
+                    </NavLink>
+                    <NavLink to="/super-admin/products" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+                        <Package size={20} />
+                        <span>Produits</span>
+                    </NavLink>
+                    <NavLink to="/super-admin/dci" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+                        <div className="w-5 h-5 flex items-center justify-center">
+                            {/* Using flask icon or similar */}
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 2v7.31"/><path d="M14 2v7.31"/><path d="M8.5 2h7"/><path d="M7 16h10"/><path d="M20 22a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2l2.4-9.6A2 2 0 0 1 8.35 11h7.3a2 2 0 0 1 1.95 1.4z"/></svg> 
+                        </div>
+                        <span>Référentiel DCI</span>
+                    </NavLink>
+                    <NavLink to="/super-admin/atc-sandbox" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+                    {/* Network / Hierarchy icon */}
+                        <div className="w-5 h-5 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        </div>
+                        <span>Classification ATC</span>
+                    </NavLink>
+                    <NavLink to="/super-admin/emdn" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+                        <div className="w-5 h-5 flex items-center justify-center">
+                            {/* DNA / Structure icon */}
+                           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M7 12a1 1 0 0 0-1-1H3v2h3a1 1 0 0 0 1-1Z"></path><path d="M17 12a1 1 0 0 1 1-1h3v2h-3a1 1 0 0 1-1-1Z"></path><path d="M12 7a1 1 0 0 1-1-1V3h2v3a1 1 0 0 1-1 1Z"></path><path d="M12 17a1 1 0 0 0-1 1v3h2v-3a1 1 0 0 0-1-1Z"></path></svg>
+                        </div>
+                        <span>Classification EMDN</span>
                     </NavLink>
                 </nav>
 

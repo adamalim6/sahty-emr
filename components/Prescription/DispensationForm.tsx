@@ -57,6 +57,7 @@ export const DispensationForm: React.FC<DispensationFormProps> = ({ prescription
     const [error, setError] = useState<string | null>(null);
 
     const [locations, setLocations] = useState<any[]>([]);
+    const [looseUnits, setLooseUnits] = useState<any[]>([]);
 
     // Initial Load: Admissions & Locations
     useEffect(() => {
@@ -116,6 +117,14 @@ export const DispensationForm: React.FC<DispensationFormProps> = ({ prescription
                 })
                 .catch(err => console.error("Stock load error", err))
                 .finally(() => setIsLoadingStock(false));
+            
+            // Fetch Loose Units
+            api.getLooseUnits()
+                .then(units => {
+                    const productLoose = units.filter((u: any) => u.productId === selectedProduct.id);
+                    setLooseUnits(productLoose);
+                })
+                .catch(err => console.error("Loose units load error", err));
         }
     }, [selectedProduct, view]);
 
@@ -490,12 +499,50 @@ export const DispensationForm: React.FC<DispensationFormProps> = ({ prescription
                             </button>
                         </div>
 
-                        <div className="mt-4 flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-full">
-                            <div className={`w-2 h-2 rounded-full ${isLoadingStock ? 'bg-slate-400 animate-pulse' : totalAvailable > 0 ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
-                            <span className="text-xs font-bold text-slate-600">
-                                Stock dispo: {isLoadingStock ? '...' : totalAvailable} {dispenseMode === 'BOX' ? 'bte' : 'unt'}
-                            </span>
-                        </div>
+                            <div className="mt-6 flex flex-wrap justify-center gap-3">
+                                {(() => {
+                                    const sealedCount = availablePacks.filter(p => p.status === PackStatus.SEALED).length;
+                                    const openCount = availablePacks.filter(p => p.status === PackStatus.OPENED).length;
+                                    const looseCount = looseUnits.reduce((acc, u) => acc + u.quantity, 0);
+                                    const unitsInOpen = availablePacks.filter(p => p.status === PackStatus.OPENED).reduce((acc, p) => acc + (p.remainingUnits || 0), 0);
+                                    const totalUnits = (sealedCount * (selectedProduct?.unitsPerPack || 1)) + unitsInOpen + looseCount;
+                                    
+                                    return (
+                                        <>
+                                            <div className="flex items-center space-x-2 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">
+                                                <span className="w-4 h-4 rounded bg-emerald-200 flex items-center justify-center text-[10px] text-emerald-800 font-bold">B</span>
+                                                <div className="flex flex-col leading-none">
+                                                    <span className="text-[10px] text-emerald-600 font-bold uppercase">Scellées</span>
+                                                    <span className="font-bold text-emerald-900">{sealedCount}</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center space-x-2 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-100">
+                                                <span className="w-4 h-4 rounded bg-amber-200 flex items-center justify-center text-[10px] text-amber-800 font-bold">O</span>
+                                                <div className="flex flex-col leading-none">
+                                                    <span className="text-[10px] text-amber-600 font-bold uppercase">Ouvertes</span>
+                                                    <span className="font-bold text-amber-900">{openCount}</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center space-x-2 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">
+                                                <span className="w-4 h-4 rounded bg-blue-200 flex items-center justify-center text-[10px] text-blue-800 font-bold">U</span>
+                                                <div className="flex flex-col leading-none">
+                                                    <span className="text-[10px] text-blue-600 font-bold uppercase">Vrac</span>
+                                                    <span className="font-bold text-blue-900">{looseCount}</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center space-x-2 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+                                                <div className="flex flex-col leading-none text-right min-w-[60px]">
+                                                    <span className="text-[10px] text-slate-500 font-bold uppercase">Total Unités</span>
+                                                    <span className="font-bold text-slate-900">{totalUnits}</span>
+                                                </div>
+                                            </div>
+                                        </>
+                                    );
+                                })()}
+                            </div>
                     </div>
                 )}
 

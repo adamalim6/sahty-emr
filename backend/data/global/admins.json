@@ -1,0 +1,14 @@
+[
+  {
+    "id": "global_admin",
+    "client_id": "GLOBAL",
+    "username": "admin",
+    "password_hash": "$2b$10$ESpazZoh48EE8YnPm5XhluQOTN27lST75edZMEyAaaLbw2qcjD0Zq",
+    "nom": "SuperAdmin",
+    "prenom": "Global",
+    "user_type": "SUPER_ADMIN",
+    "role_code": "SUPER_ADMIN",
+    "role_id": "role_super_admin",
+    "active": true
+  }
+]

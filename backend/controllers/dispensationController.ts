@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { pharmacyService } from '../services/pharmacyService';
+import { AuthRequest, getTenantId } from '../middleware/authMiddleware';
 
 export const dispenseWithFEFO = async (req: Request, res: Response) => {
     try {
@@ -16,7 +17,9 @@ export const dispenseWithFEFO = async (req: Request, res: Response) => {
 
         // Effectuer la dispensation
         // Note: PharmacyService throws errors for stock/validation issues which we catch below
+        const tenantId = getTenantId(req as any);
         const dispensations = await pharmacyService.dispenseWithFEFO({
+            tenantId,
             prescriptionId,
             admissionId,
             productId,
@@ -36,7 +39,8 @@ export const dispenseWithFEFO = async (req: Request, res: Response) => {
 export const getDispensationsByPrescription = (req: Request, res: Response) => {
     try {
         const { prescriptionId } = req.params;
-        const dispensations = pharmacyService.getDispensationsByPrescription(prescriptionId);
+        const tenantId = getTenantId(req as any);
+        const dispensations = pharmacyService.getDispensationsByPrescription(tenantId, prescriptionId);
         res.json(dispensations);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching dispensations' });
@@ -46,7 +50,8 @@ export const getDispensationsByPrescription = (req: Request, res: Response) => {
 export const getDispensationsByAdmission = (req: Request, res: Response) => {
     try {
         const { admissionId } = req.params;
-        const dispensations = pharmacyService.getDispensationsByAdmission(admissionId);
+        const tenantId = getTenantId(req as any);
+        const dispensations = pharmacyService.getDispensationsByAdmission(tenantId, admissionId);
         res.json(dispensations);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching dispensations' });

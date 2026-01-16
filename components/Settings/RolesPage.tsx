@@ -15,7 +15,7 @@ export const RolesPage: React.FC = () => {
 
     const loadRoles = async () => {
         try {
-            const data = await api.getRoles();
+            const data = await api.getGlobalRoles();
             setRoles(data);
         } catch (e) {
             console.error('Failed to load roles', e);

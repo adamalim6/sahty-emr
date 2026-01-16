@@ -17,7 +17,7 @@ export const ReadOnlyRoleDetailPage: React.FC = () => {
 
     const loadRole = async (roleId: string) => {
         try {
-            const data = await api.getRole(roleId);
+            const data = await api.getSettingsRole(roleId);
             setRole(data);
         } catch (e) {
             console.error('Failed to load role', e);

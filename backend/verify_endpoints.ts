@@ -1,5 +1,4 @@
 
-import axios from 'axios';
 import jwt from 'jsonwebtoken';
 
 const BASE_URL = 'http://localhost:3001/api';
@@ -33,29 +32,46 @@ async function verify() {
     // --- STEP 1: Create Product as Demo Client ---
     console.log("--- Step 1: Client Demo (pharma2) creates a product ---");
     try {
-        await axios.post(`${BASE_URL}/pharmacy/products`, {
-            id: testProductId,
-            name: "Secret Demo Product",
-            type: "Médicament",
-            suppliers: [],
-            profitMargin: 20,
-            vatRate: 5.5,
-            isSubdivisable: false,
-            unitsPerPack: 10,
-            createdAt: new Date(),
-            updatedAt: new Date()
-        }, { headers: { Authorization: `Bearer ${tokenDemo}` } });
+        const res = await fetch(`${BASE_URL}/pharmacy/products`, {
+            method: 'POST',
+            headers: { 
+                'Authorization': `Bearer ${tokenDemo}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                id: testProductId,
+                name: "Secret Demo Product",
+                type: "Médicament",
+                suppliers: [],
+                profitMargin: 20,
+                vatRate: 5.5,
+                isSubdivisable: false,
+                unitsPerPack: 10,
+                createdAt: new Date(),
+                updatedAt: new Date()
+            })
+        });
+
+        if (!res.ok) {
+             const err = await res.json();
+             throw new Error(err.message || res.statusText);
+        }
+
         console.log(`✅ Product Created: ${testProductId}`);
     } catch (e: any) {
-        console.error(`❌ Creation Failed: ${e.response?.data?.message || e.message}`);
-        return;
+        console.error(`❌ Creation Failed: ${e.message}`);
+        // Continue? If creation fails, step 2 will fail.
     }
 
     // --- STEP 2: Verify Visibility for Demo Client ---
     console.log("\n--- Step 2: Client Demo checks catalog ---");
     try {
-        const res = await axios.get(`${BASE_URL}/pharmacy/catalog`, { headers: { Authorization: `Bearer ${tokenDemo}` } });
-        const found = res.data.find((p: any) => p.id === testProductId);
+        const res = await fetch(`${BASE_URL}/pharmacy/catalog`, { 
+            headers: { 'Authorization': `Bearer ${tokenDemo}` } 
+        });
+        const data = await res.json() as any[];
+        
+        const found = data.find((p: any) => p.id === testProductId);
         if (found) console.log(`✅ Success: Product is visible to creator.`);
         else console.error(`❌ Failure: Product NOT found for creator!`);
     } catch (e: any) {
@@ -65,12 +81,16 @@ async function verify() {
     // --- STEP 3: Verify INVISIBILITY for UMAN Client ---
     console.log("\n--- Step 3: Client UMAN (pharma1) checks catalog ---");
     try {
-        const res = await axios.get(`${BASE_URL}/pharmacy/catalog`, { headers: { Authorization: `Bearer ${tokenUMAN}` } });
-        const found = res.data.find((p: any) => p.id === testProductId);
+        const res = await fetch(`${BASE_URL}/pharmacy/catalog`, { 
+            headers: { 'Authorization': `Bearer ${tokenUMAN}` } 
+        });
+        const data = await res.json() as any[];
+
+        const found = data.find((p: any) => p.id === testProductId);
         if (found) console.error(`❌ SECURITY FAILURE: UMAN client can see Demo product!`);
         else console.log(`✅ Success: Product is HIDDEN from UMAN client.`);
         
-        console.log(`\n(UMAN Catalog Size: ${res.data.length} items)`);
+        console.log(`\n(UMAN Catalog Size: ${data.length} items)`);
     } catch (e: any) {
         console.error(`❌ Fetch Failed: ${e.message}`);
     }

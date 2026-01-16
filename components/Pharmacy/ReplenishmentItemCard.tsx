@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, LayoutGrid, AlertTriangle, Check, History, Search, Scan, RefreshCw, X, Package } from 'lucide-react';
-import { ReplenishmentRequest, InventoryItem, ProductDefinition, StockLocation } from '../../types/pharmacy';
+import { ReplenishmentRequest, InventoryItem, ProductDefinition, StockLocation, PackStatus } from '../../types/pharmacy';
 import { api } from '../../services/api';
 
 interface ReplenishmentItemCardProps {
@@ -9,11 +9,13 @@ interface ReplenishmentItemCardProps {
     inventory: InventoryItem[];
     catalog: ProductDefinition[];
     locations: StockLocation[];
+    packs?: any[]; // SerializedPack[]
+    looseUnits?: any[]; // LooseUnitItem[]
     onDispense: (data: any) => Promise<void>;
 }
 
 export const ReplenishmentItemCard: React.FC<ReplenishmentItemCardProps> = ({
-    item, request, inventory, catalog, locations, onDispense
+    item, request, inventory, catalog, locations, packs = [], looseUnits = [], onDispense
 }) => {
     // 1. Dispensation State
     const [substitutedProductId, setSubstitutedProductId] = useState<string | undefined>(undefined);
@@ -50,12 +52,43 @@ export const ReplenishmentItemCard: React.FC<ReplenishmentItemCardProps> = ({
     const activeProduct = catalog.find(p => p.id === activeProductId);
     const requestedProduct = catalog.find(p => p.id === item.productId);
 
-    // Filter Inventory for Active Product (Strict Pharmacy Scope)
+    // Filter Inventory for Active Product (Strict Pharmacy Scope for display total)
+    // We keep using inventory for FEFO logic as it's the current working model
     const availableStock = inventory
         .filter(i => i.productId === activeProductId && !i.serviceId && i.theoreticalQty > 0)
         .sort((a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime()); // FEFO sort
 
-    const totalStockUnits = availableStock.reduce((acc, i) => acc + i.theoreticalQty, 0);
+    // Detailed Stock Calculation for Header
+    // We use the passed packs/looseUnits if available, falling back to simple inventory math if not
+    
+    // Filter for Pharmacy Locations only
+    // Robustness: Some packs might store location Name instead of ID due to legacy/bug
+    const pharmacyLocations = locations.filter(l => l.scope === 'PHARMACY' || !l.scope);
+    const pharmacyLocationIds = pharmacyLocations.map(l => l.id);
+    const pharmacyLocationNames = pharmacyLocations.map(l => l.name);
+
+    const activePacks = packs.filter(p => 
+        p.productId === activeProductId && 
+        [PackStatus.SEALED, PackStatus.OPENED].includes(p.status) &&
+        (pharmacyLocationIds.includes(p.locationId) || pharmacyLocationNames.includes(p.locationId))
+    );
+    const activeLoose = looseUnits.filter(u => 
+        u.productId === activeProductId &&
+        (pharmacyLocationIds.includes(u.locationId) || pharmacyLocationNames.includes(u.locationId))
+    );
+
+    const sealedCount = activePacks.filter(p => p.status === PackStatus.SEALED).length;
+    const openCount = activePacks.filter(p => p.status === PackStatus.OPENED).length;
+    // For open boxes, they contribute to total units but are displayed as "Boîtes ouvertes"
+    const unitsInOpen = activePacks.filter(p => p.status === PackStatus.OPENED).reduce((acc, p) => acc + (p.remainingUnits || 0), 0);
+    const looseCount = activeLoose.reduce((acc, u) => acc + u.quantity, 0);
+
+    const useDetailedDisplay = packs.length > 0;
+    
+    // If we have detailed packs, use them for total. Else fallback to inventory sum.
+    const totalStockUnits = useDetailedDisplay 
+        ? (sealedCount * (activeProduct?.unitsPerPack || 1)) + unitsInOpen + looseCount
+        : availableStock.reduce((acc, i) => acc + i.theoreticalQty, 0);
 
     // Focus Management for Scan Mode
     useEffect(() => {
@@ -225,12 +258,22 @@ export const ReplenishmentItemCard: React.FC<ReplenishmentItemCardProps> = ({
         setScannedPacks(prev => prev.filter(p => p.serializedPackId !== packId));
     };
 
+    // Error State
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+    // Clear error when user changes inputs
+    useEffect(() => {
+        if (errorMessage) setErrorMessage(null);
+    }, [selectedBatches, quantityToAdd, unitType]);
+
     // 3. Handle Dispense Action
     const handleDispenseClick = async () => {
         const totalQty = selectedBatches.reduce((a, b) => a + b.quantity, 0);
         if (totalQty <= 0) return;
         
         setIsDispensing(true);
+        setErrorMessage(null); // Clear previous errors
+
         try {
             await onDispense({
                 requestId: request.id,
@@ -246,9 +289,15 @@ export const ReplenishmentItemCard: React.FC<ReplenishmentItemCardProps> = ({
             setSelectedBatches([]);
             setScannedPacks([]);
             setSelectionMode('FEFO'); // Reset mode
-        } catch (error) {
+        } catch (error: any) {
             console.error("Dispense Error", error);
-            alert("Erreur lors de la dispensation");
+            // Extract Error Message
+            let msg = "Erreur inconnue lors de la dispensation.";
+            if (error instanceof Error) msg = error.message;
+            if (typeof error === 'string') msg = error;
+            
+            setErrorMessage(msg);
+            // Do NOT use alert()
         } finally {
             setIsDispensing(false);
         }
@@ -385,11 +434,19 @@ export const ReplenishmentItemCard: React.FC<ReplenishmentItemCardProps> = ({
                                 <>
                                     <div className="flex items-center space-x-2">
                                         <span className="w-4 h-4 rounded bg-emerald-100 flex items-center justify-center text-[10px] text-emerald-700 font-bold">B</span>
-                                        <span>Boîtes scellées: <span className="font-bold">{Math.floor(totalStockUnits / activeProduct.unitsPerPack)}</span></span>
+                                        <span>Boîtes scellées: <span className="font-bold">{useDetailedDisplay ? sealedCount : Math.floor(totalStockUnits / activeProduct.unitsPerPack)}</span></span>
                                     </div>
+                                    
+                                    {useDetailedDisplay && (
+                                        <div className="flex items-center space-x-2">
+                                            <span className="w-4 h-4 rounded bg-amber-100 flex items-center justify-center text-[10px] text-amber-700 font-bold">O</span>
+                                            <span>Boîtes ouvertes: <span className="font-bold">{openCount}</span></span>
+                                        </div>
+                                    )}
+
                                     <div className="flex items-center space-x-2">
                                         <span className="w-4 h-4 rounded bg-blue-100 flex items-center justify-center text-[10px] text-blue-700 font-bold">U</span>
-                                        <span>Unités en vrac: <span className="font-bold">{totalStockUnits % activeProduct.unitsPerPack}</span></span>
+                                        <span>Unités en vrac: <span className="font-bold">{useDetailedDisplay ? looseCount : totalStockUnits % activeProduct.unitsPerPack}</span></span>
                                     </div>
                                     <div className="flex items-center space-x-2 pt-1 border-t border-blue-200/50 mt-1">
                                          <span className="font-medium text-xs uppercase tracking-wide opacity-70">Total:</span> 
@@ -403,6 +460,16 @@ export const ReplenishmentItemCard: React.FC<ReplenishmentItemCardProps> = ({
                     </div>
                     {substitutedProductId && <AlertTriangle className="text-amber-500 h-6 w-6" />}
                  </div>
+
+                 {errorMessage && (
+                    <div className="mb-6 p-4 bg-red-100 border-2 border-red-500 text-red-700 rounded-lg flex items-start animate-pulse">
+                        <AlertTriangle className="h-6 w-6 mr-3 flex-shrink-0" />
+                        <div>
+                            <h4 className="font-bold uppercase text-xs mb-1">Échec de la transaction</h4>
+                            <p className="font-bold text-sm">{errorMessage}</p>
+                        </div>
+                    </div>
+                 )}
 
                  {/* Dispensation Controls */}
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

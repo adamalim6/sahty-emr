@@ -1,27 +1,25 @@
-
 import React, { useState, useMemo } from 'react';
-import { ProductDefinition, ProductType, ProductSupplier, Molecule, DosageUnit, PharmacySupplier } from '../../types/pharmacy';
+import { ProductDefinition, ProductType, ProductSupplier, Molecule, DosageUnit, PharmacySupplier, UnitType } from '../../types/pharmacy';
 import {
-  Plus, Search, Edit2, Trash2, Save, X, Box, Pill, Stethoscope,
-  DollarSign, Calculator, ChevronDown, Check
+  Search, Edit2, Save, X, Box, Pill, Stethoscope,
+  DollarSign, Calculator, Eye, EyeOff
 } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
 
 interface ProductCatalogProps {
   products: ProductDefinition[];
   suppliers: PharmacySupplier[];
-  onAddProduct: (product: ProductDefinition) => void;
+  onAddProduct: (product: ProductDefinition) => void; // Deprecated/Unused for tenants
   onUpdateProduct: (product: ProductDefinition) => void;
 }
 
-export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, suppliers: globalSuppliers, onAddProduct, onUpdateProduct }) => {
+export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, suppliers: globalSuppliers, onUpdateProduct }) => {
   const [viewMode, setViewMode] = useState<'list' | 'form'>('list');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showDisabled, setShowDisabled] = useState(true);
 
   const [formData, setFormData] = useState<Partial<ProductDefinition>>({});
-  const [activeSupplierId, setActiveSupplierId] = useState<string>('');
 
-  // ... existing code ...
   const getActivePrice = (suppliers: ProductSupplier[] = []): number => {
     const active = suppliers.find(s => s.isActive);
     return active ? active.purchasePrice : 0;
@@ -39,63 +37,23 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, suppli
     return units > 0 ? priceTTC / units : 0;
   };
 
-  const handleStartCreate = () => {
-    setFormData({
-      id: `PROD-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000)}`,
-      type: ProductType.DRUG,
-      suppliers: [],
-      molecules: [],
-      profitMargin: 20,
-      vatRate: 5.5,
-      isSubdivisable: false,
-      unitsPerPack: 1, // Default to 1 as requested
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-    setViewMode('form');
-  };
-
   const handleEdit = (product: ProductDefinition) => {
     setFormData({ ...product });
     setViewMode('form');
   };
 
   const handleSave = () => {
-    if (!formData.name || !formData.id) {
-      alert("Le nom et l'ID du produit sont obligatoires.");
-      return;
-    }
+    if (!formData.id) return;
 
-    if (formData.suppliers && formData.suppliers.length > 0) {
-      const hasActive = formData.suppliers.some(s => s.isActive);
-      if (!hasActive) {
-        formData.suppliers[0].isActive = true;
-      }
-    }
-
-    // Validation stricte pour les produits subdivisables
-    if (formData.isSubdivisable && (!formData.unitsPerPack || formData.unitsPerPack <= 0)) {
-      alert("Pour un produit subdivisable, le nombre d'unités par boîte est OBLIGATOIRE et doit être supérieur à 0.");
-      return;
-    }
-
-    const finalProduct = {
-      ...formData,
-      subdivisionUnits: formData.unitsPerPack, // Keep for backward compatibility if needed, or remove if strictly following new type
-      updatedAt: new Date(),
-    } as ProductDefinition;
-
-    const exists = products.find(p => p.id === finalProduct.id);
-    if (exists) {
-      onUpdateProduct(finalProduct);
-    } else {
-      onAddProduct(finalProduct);
-    }
+    // Call update - backend will only update config (prices, enabled, suppliers)
+    // We pass the full object but backend ignores read-only fields
+    onUpdateProduct(formData as ProductDefinition);
     setViewMode('list');
   };
+
   const handleAddSupplier = () => {
     const newSupplier: ProductSupplier = {
-      id: `SUP-${Date.now()}`,
+      id: '', // Empty initially
       name: '',
       purchasePrice: 0,
       isActive: (formData.suppliers?.length || 0) === 0
@@ -126,32 +84,21 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, suppli
     setFormData({ ...formData, suppliers: newSuppliers });
   };
 
-  const handleAddMolecule = () => {
-    const newMol: Molecule = { id: `MOL-${Date.now()}`, name: '' };
-    setFormData({ ...formData, molecules: [...(formData.molecules || []), newMol] });
-  };
-
-  const updateMolecule = (index: number, name: string) => {
-    const newMols = [...(formData.molecules || [])];
-    newMols[index].name = name;
-    setFormData({ ...formData, molecules: newMols });
-  };
-
-  const removeMolecule = (index: number) => {
-    const newMols = [...(formData.molecules || [])];
-    newMols.splice(index, 1);
-    setFormData({ ...formData, molecules: newMols });
-  };
-
   const activePurchasePrice = getActivePrice(formData.suppliers);
   const salePriceHT = calculateSalePriceHT(activePurchasePrice, formData.profitMargin || 0);
   const priceTTC = calculatePriceTTC(salePriceHT, formData.vatRate || 0);
-  const unitPriceTTC = calculateUnitPriceTTC(priceTTC, formData.unitsPerPack || 1);
+  const unitPriceTTC = calculateUnitPriceTTC(priceTTC, formData.unitsPerBox || 1);
 
-  const filteredProducts = products.filter(p =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredProducts = products.filter(p => {
+    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.code.toLowerCase().includes(searchTerm.toLowerCase()); // Use code
+    
+    // If searching, ignore visibility toggle (Show all matches)
+    if (searchTerm) return matchesSearch;
+
+    const matchesVisibility = showDisabled ? true : p.isEnabled;
+    return matchesSearch && matchesVisibility;
+  });
 
   if (viewMode === 'list') {
     return (
@@ -161,19 +108,24 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, suppli
             <Search className="text-slate-400 mr-2" size={20} />
             <input
               type="text"
-              placeholder="Rechercher un produit..."
+              placeholder="Rechercher (Nom ou Code)..."
               className="outline-none w-full text-black bg-white"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <button
-            onClick={handleStartCreate}
-            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium shadow-sm transition-all"
-          >
-            <Plus size={18} />
-            <span>Ajouter Nouveau Produit</span>
-          </button>
+          
+          <div className="flex items-center space-x-3">
+             <label className="flex items-center space-x-2 text-sm text-slate-600 cursor-pointer select-none">
+                <input 
+                    type="checkbox" 
+                    checked={showDisabled} 
+                    onChange={e => setShowDisabled(e.target.checked)}
+                    className="rounded text-blue-600 focus:ring-blue-500"
+                />
+                <span>Voir produits non activés</span>
+             </label>
+          </div>
         </div>
 
         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
@@ -183,7 +135,8 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, suppli
             const pTTC = calculatePriceTTC(pHT, product.vatRate);
 
             return (
-              <div key={product.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 hover:shadow-md transition-shadow">
+              <div key={product.id} className={`bg-white rounded-xl border shadow-sm p-5 hover:shadow-md transition-shadow relative ${!product.isEnabled ? 'opacity-75 border-slate-200 bg-slate-50' : 'border-slate-200'}`}>
+                
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center space-x-3">
                     <div className={`p-2 rounded-lg 
@@ -194,12 +147,19 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, suppli
                     </div>
                     <div>
                       <h3 className="font-bold text-slate-900">{product.name}</h3>
-                      <div className="text-xs text-slate-400 font-mono">{product.id}</div>
+                      <div className="text-xs text-slate-400 font-mono">{product.code}</div>
                     </div>
                   </div>
-                  <button onClick={() => handleEdit(product)} className="text-slate-400 hover:text-blue-600">
-                    <Edit2 size={18} />
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    {!product.isEnabled && (
+                        <span className="px-2 py-1 bg-slate-100 text-slate-500 text-xs rounded-full font-medium border border-slate-200">
+                            Non Activé
+                        </span>
+                    )}
+                    <button onClick={() => handleEdit(product)} className="text-slate-400 hover:text-blue-600 p-1 rounded-full hover:bg-slate-100 transition-colors">
+                        <Edit2 size={18} />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-2 text-sm text-slate-600">
@@ -207,25 +167,16 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, suppli
                     <span>Type:</span>
                     <span className="font-medium">{product.type}</span>
                   </div>
-                  {product.type === ProductType.DRUG && (
-                    <div className="flex justify-between">
-                      <span>Classe:</span>
-                      <span className="font-medium bg-slate-100 px-2 rounded text-xs">{product.therapeuticClass || 'N/A'}</span>
-                    </div>
-                  )}
+                  <div className="flex justify-between">
+                    <span>Unité:</span>
+                    <span className="font-medium">{product.unit} ({product.unitsPerBox})</span>
+                  </div>
+                  
                   <div className="border-t border-slate-100 my-2 pt-2">
                     <div className="flex justify-between items-center">
                       <span className="text-xs text-slate-400 uppercase">Prix Public (TTC)</span>
                       <span className="font-bold text-lg text-emerald-600">€{pTTC.toFixed(2)}</span>
                     </div>
-                    {product.isSubdivisable && (
-                      <div className="flex justify-between items-center mt-1">
-                        <span className="text-xs text-slate-400">Prix Unitaire ({product.unitsPerPack} unités)</span>
-                        <span className="font-mono text-xs text-slate-600">
-                          €{calculateUnitPriceTTC(pTTC, product.unitsPerPack || 1).toFixed(3)} /unité
-                        </span>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
@@ -242,9 +193,9 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, suppli
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">
-            {formData.id && products.some(p => p.id === formData.id) ? 'Modifier Produit' : 'Créer Nouveau Produit'}
+            Configuration du Produit
           </h2>
-          <p className="text-slate-500 text-sm">Remplissez les détails ci-dessous pour définir l'entrée du catalogue.</p>
+          <p className="text-slate-500 text-sm">Définissez vos conditions d'achat et la visibilité locale.</p>
         </div>
         <div className="flex space-x-3">
           <button onClick={() => setViewMode('list')} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors">
@@ -252,7 +203,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, suppli
           </button>
           <button onClick={handleSave} className="px-6 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg font-bold shadow-sm transition-colors flex items-center space-x-2">
             <Save size={18} />
-            <span>Enregistrer</span>
+            <span>Enregistrer Config</span>
           </button>
         </div>
       </div>
@@ -260,134 +211,70 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, suppli
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
+             <div className="absolute top-0 right-0 bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500 rounded-bl-lg">
+                GLOBAL (Lecture Seule)
+             </div>
             <h3 className="font-bold text-slate-800 mb-4 flex items-center">
-              <Box className="mr-2 text-blue-500" size={18} /> Informations de Base
+              <Box className="mr-2 text-slate-500" size={18} /> Informations Produit
             </h3>
-            <div className="space-y-4">
+            <div className="space-y-4 opacity-80 pointer-events-none">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Code Produit (Auto)</label>
-                  <input type="text" disabled value={formData.id} className="w-full bg-slate-100 border border-slate-200 rounded px-3 py-2 text-slate-500 font-mono text-sm" />
+                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Code</label>
+                  <input type="text" readOnly value={formData.code} className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-2 text-slate-600 font-mono text-sm" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Type de Produit</label>
-                  <select
-                    value={formData.type}
-                    onChange={(e) => setFormData({ ...formData, type: e.target.value as ProductType })}
-                    className="w-full bg-white border border-slate-300 rounded px-3 py-2 text-black outline-none focus:ring-2 focus:ring-blue-100"
-                  >
-                    {Object.values(ProductType).map(t => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
+                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Type</label>
+                    <input type="text" readOnly value={formData.type} className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-2 text-slate-600 text-sm" />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Nom du Produit</label>
                 <input
                   type="text"
+                  readOnly
                   value={formData.name || ''}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full bg-white border border-slate-300 rounded px-3 py-2 text-black font-medium outline-none focus:ring-2 focus:ring-blue-100 placeholder-slate-400"
-                  placeholder="ex: Amoxicilline 500mg"
+                  className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-2 text-slate-800 font-bold"
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Unité</label>
+                  <input type="text" readOnly value={formData.unit} className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-2 text-slate-600 text-sm" />
+                </div>
+                <div>
+                   <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Unités / Boîte</label>
+                   <input type="number" readOnly value={formData.unitsPerBox} className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-2 text-slate-600 text-sm" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Fabricant</label>
+                <input type="text" readOnly value={formData.manufacturer || '-'} className="w-full bg-slate-50 border border-slate-200 rounded px-3 py-2 text-slate-600 text-sm" />
               </div>
             </div>
           </div>
 
-          {formData.type === ProductType.DRUG && (
-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm animate-in fade-in">
-              <h3 className="font-bold text-slate-800 mb-4 flex items-center">
-                <Stethoscope className="mr-2 text-purple-500" size={18} /> Données Pharmaceutiques
-              </h3>
-
-              <div className="grid grid-cols-3 gap-4 mb-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Dosage</label>
-                  <input
-                    type="number"
-                    value={formData.dosage || ''}
-                    onChange={(e) => setFormData({ ...formData, dosage: parseFloat(e.target.value) })}
-                    className="w-full bg-white border border-slate-300 rounded px-3 py-2 text-black outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Unité</label>
-                  <select
-                    value={formData.dosageUnit || 'mg'}
-                    onChange={(e) => setFormData({ ...formData, dosageUnit: e.target.value as DosageUnit })}
-                    className="w-full bg-white border border-slate-300 rounded px-3 py-2 text-black outline-none"
-                  >
-                    <option value="mg">mg</option>
-                    <option value="g">g</option>
-                    <option value="ml">ml</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Classe Thérapeutique</label>
-                  <input
-                    type="text"
-                    list="classes"
-                    value={formData.therapeuticClass || ''}
-                    onChange={(e) => setFormData({ ...formData, therapeuticClass: e.target.value })}
-                    className="w-full bg-white border border-slate-300 rounded px-3 py-2 text-black outline-none"
-                  />
-                  <datalist id="classes">
-                    <option value="Antibiotiques" />
-                    <option value="Analgésiques" />
-                    <option value="Cardiologie" />
-                    <option value="Psychotropes" />
-                  </datalist>
-                </div>
-              </div>
-
-              <div className="border-t border-slate-100 pt-4">
-                <label className="block text-xs font-semibold text-slate-500 uppercase mb-2">Molécules</label>
-                {formData.molecules?.map((mol, idx) => (
-                  <div key={idx} className="flex space-x-2 mb-2">
-                    <input
-                      type="text"
-                      value={mol.name}
-                      onChange={(e) => updateMolecule(idx, e.target.value)}
-                      className="flex-1 bg-white border border-slate-300 rounded px-3 py-1 text-sm text-black outline-none"
-                      placeholder="Nom de la molécule"
-                    />
-                    <button onClick={() => removeMolecule(idx)} className="text-red-400 hover:text-red-600">
-                      <X size={18} />
-                    </button>
-                  </div>
-                ))}
-                <button onClick={handleAddMolecule} className="text-xs text-blue-600 font-medium hover:underline flex items-center">
-                  <Plus size={14} className="mr-1" /> Ajouter Molécule
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+          <div className="bg-white p-6 rounded-xl border border-blue-200 shadow-sm ring-1 ring-blue-100">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-slate-800 flex items-center">
-                <DollarSign className="mr-2 text-emerald-500" size={18} /> Fournisseurs & Coûts
+              <h3 className="font-bold text-blue-800 flex items-center">
+                <DollarSign className="mr-2 text-emerald-500" size={18} /> Vos Fournisseurs & Coûts
               </h3>
-              <button onClick={handleAddSupplier} className="text-xs bg-slate-100 hover:bg-slate-200 px-3 py-1 rounded text-slate-700 font-medium">
+              <button onClick={handleAddSupplier} className="text-xs bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded text-blue-700 font-medium transition-colors">
                 + Ajouter Fournisseur
               </button>
             </div>
 
             <div className="space-y-3">
               {formData.suppliers?.length === 0 && (
-                <p className="text-sm text-slate-400 italic">Aucun fournisseur ajouté.</p>
+                <p className="text-sm text-slate-400 italic">Aucun fournisseur configuré. Ajoutez-en un pour définir votre prix d'achat.</p>
               )}
-
-
 
               {formData.suppliers?.map((supplier, idx) => {
                 const otherSelectedIds = formData.suppliers
                   ?.filter((s, i) => i !== idx && globalSuppliers.some(gs => gs.id === s.id))
                   .map(s => s.id) || [];
 
-                // Prepare options for the searchable select with disabled state logic
                 const supplierOptions = globalSuppliers.map(gs => ({
                   value: gs.id,
                   label: gs.name + (gs.source === 'GLOBAL' ? ' (Global)' : '') + (otherSelectedIds.includes(gs.id) ? ' (Déjà ajouté)' : ''),
@@ -402,7 +289,8 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, suppli
                       type="radio"
                       checked={supplier.isActive}
                       onChange={() => updateSupplier(idx, 'isActive', true)}
-                      className="h-4 w-4 text-emerald-600 focus:ring-emerald-500"
+                      className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                      title="Définir comme fournisseur par défaut"
                     />
                     <div className="flex-1">
                       <SearchableSelect
@@ -410,17 +298,11 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, suppli
                         value={currentValue}
                         onChange={(newValue) => {
                           const selectedName = globalSuppliers.find(s => s.id === newValue)?.name || '';
-
-                          // Atomic update
                           const newSuppliers = [...(formData.suppliers || [])];
-                          newSuppliers[idx] = {
-                            ...newSuppliers[idx],
-                            id: newValue,
-                            name: selectedName
-                          };
+                          newSuppliers[idx] = { ...newSuppliers[idx], id: newValue, name: selectedName };
                           setFormData({ ...formData, suppliers: newSuppliers });
                         }}
-                        placeholder="Sélectionner un fournisseur"
+                        placeholder="Sélectionner un fournisseur..."
                         className="w-full"
                       />
                     </div>
@@ -430,25 +312,13 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, suppli
                         type="number"
                         min="0"
                         step="0.01"
-                        placeholder="Prix"
+                        placeholder="Prix Achat"
                         value={supplier.purchasePrice}
-                        onChange={(e) => {
-                          const val = parseFloat(e.target.value);
-                          if (!isNaN(val) && val >= 0) {
-                            updateSupplier(idx, 'purchasePrice', val);
-                          } else if (e.target.value === '') {
-                            updateSupplier(idx, 'purchasePrice', 0);
-                          }
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === '-' || e.key === 'e') {
-                            e.preventDefault();
-                          }
-                        }}
+                        onChange={(e) => updateSupplier(idx, 'purchasePrice', parseFloat(e.target.value))}
                         className="w-24 bg-white border border-slate-300 rounded px-2 py-1 text-sm text-black font-mono text-right outline-none focus:border-blue-400"
                       />
                     </div>
-                    <button onClick={() => removeSupplier(idx)} className="text-slate-400 hover:text-red-500">
+                    <button onClick={() => removeSupplier(idx)} className="text-slate-400 hover:text-red-500 transition-colors">
                       <Trash2 size={16} />
                     </button>
                   </div>
@@ -478,19 +348,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, suppli
                     min="0"
                     step="0.1"
                     value={formData.profitMargin}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value);
-                      if (!isNaN(val) && val >= 0) {
-                        setFormData({ ...formData, profitMargin: val });
-                      } else if (e.target.value === '') {
-                        setFormData({ ...formData, profitMargin: 0 });
-                      }
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === '-' || e.key === 'e') {
-                        e.preventDefault();
-                      }
-                    }}
+                    onChange={(e) => setFormData({ ...formData, profitMargin: parseFloat(e.target.value) })}
                     className="w-20 bg-white border border-white rounded px-2 py-1 text-right text-black font-bold text-sm outline-none focus:ring-2 focus:ring-blue-400"
                   />
                 </div>
@@ -509,19 +367,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, suppli
                     min="0"
                     step="0.1"
                     value={formData.vatRate}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value);
-                      if (!isNaN(val) && val >= 0) {
-                        setFormData({ ...formData, vatRate: val });
-                      } else if (e.target.value === '') {
-                        setFormData({ ...formData, vatRate: 0 });
-                      }
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === '-' || e.key === 'e') {
-                        e.preventDefault();
-                      }
-                    }}
+                    onChange={(e) => setFormData({ ...formData, vatRate: parseFloat(e.target.value) })}
                     className="w-20 bg-white border border-white rounded px-2 py-1 text-right text-black font-bold text-sm outline-none focus:ring-2 focus:ring-blue-400"
                   />
                 </div>
@@ -531,49 +377,31 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ products, suppli
                 <span className="font-bold text-sm">PRIX FINAL (TTC)</span>
                 <span className="font-bold text-xl font-mono">€{priceTTC.toFixed(2)}</span>
               </div>
+               <div className="flex justify-between items-center mt-1">
+                    <span className="text-xs text-blue-200">Prix Unitaire ({formData.unitsPerBox} ut)</span>
+                    <span className="font-mono text-xs text-white">
+                        €{unitPriceTTC.toFixed(3)}
+                    </span>
+                </div>
             </div>
           </div>
 
           <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-            <div className="flex items-center space-x-3 mb-4">
+            <div className="flex items-center space-x-3">
               <input
                 type="checkbox"
-                id="subdiv"
-                checked={formData.isSubdivisable}
-                onChange={(e) => setFormData({ ...formData, isSubdivisable: e.target.checked })}
-                className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+                id="isEnabled"
+                checked={formData.isEnabled}
+                onChange={(e) => setFormData({ ...formData, isEnabled: e.target.checked })}
+                className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
               />
-              <label htmlFor="subdiv" className="font-bold text-slate-800 cursor-pointer select-none">Produit Subdivisable</label>
+              <label htmlFor="isEnabled" className="font-bold text-slate-800 cursor-pointer select-none">
+                 Activer Produit
+              </label>
             </div>
-
-            <div className="space-y-4 animate-in fade-in slide-in-from-top-2 mt-4 pt-4 border-t border-slate-100">
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Unités par Boîte (Min. 1)</label>
-                <input
-                  type="number"
-                  value={formData.unitsPerPack || ''}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value);
-                    setFormData({ ...formData, unitsPerPack: isNaN(val) ? 0 : val });
-                  }}
-                  className="w-full bg-white border border-slate-300 rounded px-3 py-2 text-black outline-none focus:border-blue-400"
-                  placeholder="ex: 30"
-                  min="1"
-                  onKeyDown={(e) => {
-                    if (e.key === '-' || e.key === 'e') {
-                      e.preventDefault();
-                    }
-                  }}
-                />
-              </div>
-
-              {formData.isSubdivisable && (
-                <div className="bg-slate-50 p-3 rounded border border-slate-100 flex justify-between items-center">
-                  <span className="text-sm text-slate-500">Prix Unitaire (TTC)</span>
-                  <span className="font-bold text-slate-800 font-mono">€{unitPriceTTC.toFixed(3)}</span>
-                </div>
-              )}
-            </div>
+            <p className="text-xs text-slate-500 mt-2 ml-8">
+                Si désactivé, ce produit ne sera pas visible pour la dispensation ou le réapprovisionnement dans votre pharmacie.
+            </p>
           </div>
         </div>
       </div>

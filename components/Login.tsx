@@ -15,21 +15,42 @@ export const Login: React.FC = () => {
         e.preventDefault();
         setError('');
         try {
+            // Unified Login Logic
+            // The system (backend) determines if I am Admin or Tenant
             const user = await login({ username, password });
             
-            // Intelligent Redirection
-            if (user.user_type === 'PUBLISHER_SUPERADMIN') {
-                navigate('/super-admin');
-            } else if (user.user_type === 'TENANT_SUPERADMIN') {
-                navigate('/settings');
-            } else if (user.role_id === 'role_pharmacien') {
-                navigate('/pharmacy');
-            } else {
-                // Default EMR View (Doctors, Nurses)
-                navigate('/');
+            // Deterministic Routing Logic
+            // Priority: Super Admin -> Tenant Admin -> Module Specific Roles -> Default EMR
+
+            // 1. Super Admin (Global Realm)
+            if (user.role_id === 'role_super_admin' || user.user_type === 'SUPER_ADMIN') {
+                 navigate('/super-admin');
+                 return;
             }
+
+            // 2. Tenant Admin (Settings Manager)
+            if (user.role_id === 'role_admin_struct' || user.user_type === 'TENANT_SUPERADMIN') {
+                 navigate('/settings');
+                 return;
+            }
+
+            // 3. Pharmacy User (Check Permission)
+            if (user.role_id === 'role_pharmacien' || user.permissions?.includes('ph_dashboard')) {
+                 navigate('/pharmacy');
+                 return;
+            }
+
+            // 4. EMR Users (Check Permission)
+            if (['role_medecin', 'role_infirmier'].includes(user.role_id) || user.permissions?.includes('emr_patients')) {
+                 navigate('/'); // Root routes to EMR App
+                 return;
+            }
+
+            // 5. Fallback
+            navigate('/');
+
         } catch (err: any) {
-            setError(err.message || 'Login failed');
+            setError(err.message || 'Authentication failed');
         }
     };
 
@@ -42,20 +63,9 @@ export const Login: React.FC = () => {
                 </div>
                 
                 <div className="p-8">
-                    <div className="flex justify-center space-x-4 mb-8">
-                         <div className="flex flex-col items-center justify-center p-3 bg-slate-50 rounded-lg border border-slate-200 w-24">
-                            <ShieldCheck className="text-purple-600 h-6 w-6 mb-1" />
-                            <span className="text-[10px] text-slate-500 font-medium">Admin</span>
-                         </div>
-                         <div className="flex flex-col items-center justify-center p-3 bg-slate-50 rounded-lg border border-slate-200 w-24">
-                            <Building2 className="text-blue-600 h-6 w-6 mb-1" />
-                            <span className="text-[10px] text-slate-500 font-medium">Tenant</span>
-                         </div>
-                         <div className="flex flex-col items-center justify-center p-3 bg-slate-50 rounded-lg border border-slate-200 w-24">
-                            <Stethoscope className="text-emerald-600 h-6 w-6 mb-1" />
-                            <span className="text-[10px] text-slate-500 font-medium">Soignants</span>
-                         </div>
-                    </div>
+                    <p className="text-center text-slate-500 mb-6 text-sm">
+                        Please sign in to continue
+                    </p>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div>

@@ -4,6 +4,7 @@ import { api } from '../services/api';
 
 export enum UserType {
     PUBLISHER_SUPERADMIN = 'PUBLISHER_SUPERADMIN',
+    SUPER_ADMIN = 'SUPER_ADMIN', // Added
     TENANT_SUPERADMIN = 'TENANT_SUPERADMIN',
     TENANT_USER = 'TENANT_USER'
 }
@@ -17,7 +18,9 @@ export interface User {
     role_id: string;
     client_id?: string | null;
     permissions?: string[];
-    service_ids?: string[]; // ADDED
+    service_ids?: string[];
+    role_code?: string; // ADDED
+    modules?: string[]; // ADDED
 }
 
 interface AuthContextType {
@@ -69,6 +72,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(user);
         return user;
     };
+
+
 
     const logout = () => {
         setUser(null);

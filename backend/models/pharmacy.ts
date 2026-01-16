@@ -12,12 +12,75 @@ export interface StockLocation {
     id: string;
     name: string;
     description?: string;
+    // Nouveaux champs pour import Maroc
+    form?: string;
+    presentation?: string;
+    brandName?: string; // Spécialité
+    marketInfo?: {
+        ppv?: number;
+    };
     isActive: boolean;
     tenantId?: string; // New: Tenant Isolation
     serviceId?: string; // Linked to Service
     scope?: 'PHARMACY' | 'SERVICE'; // Strict Scope Enforcement
 }
 
+// --- 🏗 NEW STOCK ARCHITECTURE (PHYSICAL LEDGERS) ---
+
+export type ContainerType = 'SEALED_BOX' | 'OPEN_BOX' | 'LOOSE_UNITS';
+
+export interface BaseStockContainer {
+    id: string;
+    type: ContainerType;
+    productId: string;
+    productName: string;
+    lot: string; // batchNumber
+    expiration: string; // ISO Date
+    locationId: string;
+    createdAt: string; // ISO Date
+    tenantId?: string;
+}
+
+export interface SealedBox extends BaseStockContainer {
+    type: 'SEALED_BOX';
+    serial: string; // QR Code
+    unitsPerBox: number;
+    status: 'SEALED'; // Immutable in this valid state
+}
+
+export interface OpenBox extends BaseStockContainer {
+    type: 'OPEN_BOX';
+    originSealedBoxId: string;
+    unitsPerBox: number;
+    remainingUnits: number;
+}
+
+export interface LooseUnits extends BaseStockContainer {
+    type: 'LOOSE_UNITS';
+    quantityUnits: number;
+    originOpenBoxId?: string;
+    originSealedBoxId?: string;
+    origin: 'RETURN_PATIENT' | 'RETURN_SERVICE' | 'ADJUSTMENT' | 'DISPENSATION' | 'CONSUMPTION';
+}
+
+export type StockContainer = SealedBox | OpenBox | LooseUnits;
+
+// --- LEDGERS ---
+// Ideally these are mapped in the DB structure, but we define the types here for Typescript
+
+export interface ServiceLedger {
+    [serviceId: string]: StockContainer[];
+}
+
+export interface AdmissionLedger {
+    [admissionId: string]: StockContainer[];
+}
+
+// --------------------------------------------------------
+
+/**
+ * @deprecated Legacy Inventory Item. Migrating to Container-based Ledgers.
+ */
 export interface InventoryItem {
     id: string;
     productId: string;
@@ -85,7 +148,14 @@ export interface Molecule {
     dosageUnit?: DosageUnit;
 }
 
+
 export type DosageUnit = 'g' | 'mg' | 'ml';
+
+export interface ProductDCI {
+    dciId: string;
+    dosage: number;
+    unit: string;
+}
 
 export interface ProductDefinition {
     id: string;
@@ -97,13 +167,15 @@ export interface ProductDefinition {
     isSubdivisable: boolean;
     subdivisionUnits?: number;          // DEPRECATED: use unitsPerPack
     unitsPerPack: number;               // NOUVEAU: nombre d'unités par boîte (obligatoire)
-    molecules?: Molecule[];
+    dciIds?: string[];                  // NOUVEAU: Références aux DCIs globales (Obligatoire pour Médicament)
+    molecules?: never;                  // DEPRECATED/REMOVED
     dosage?: number;
     dosageUnit?: DosageUnit;
     therapeuticClass?: string;
     createdAt: Date;
     updatedAt: Date;
     tenantId?: string;
+    isEnabled: boolean;
 }
 
 export enum POStatus {
@@ -293,5 +365,30 @@ export interface SerializedPack {
     status: PackStatus;
     history: PackHistoryEvent[];
     createdAt: string;
+    tenantId?: string;
+}
+
+// --- 🏗 TRACEABILITY LOGS ---
+
+export type MovementReason = 'REPLENISHMENT' | 'PRESCRIPTION' | 'RETURN' | 'CONSUMPTION' | 'DESTRUCTION' | 'INTERNAL_TRANSFER' | 'ADJUSTMENT';
+
+export type SelectionMode = 'FEFO' | 'SCAN' | 'MANUAL';
+
+export interface MovementLog {
+    id: string;
+    timestamp: string;
+    productId: string;
+    lot: string;
+    containerId: string;
+    originSealedBoxId?: string;
+    
+    fromLedger: string; // "PHARMACY", "SERVICE:xxx", "ADMISSION:xxx", "SUPPLIER", "VOID"
+    toLedger: string;
+    
+    quantityUnits: number | null; // Null for whole boxes
+    
+    reason: MovementReason;
+    selectionMode: SelectionMode;
+    actorUserId: string;
     tenantId?: string;
 }
