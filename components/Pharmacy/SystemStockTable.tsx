@@ -67,9 +67,10 @@ export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, produ
             if (!matchesFilter && filter !== '') return;
 
             if (!groups[item.productId]) {
+                const productDef = products.find(p => p.id === item.productId);
                 groups[item.productId] = {
                     productId: item.productId,
-                    name: item.name,
+                    name: productDef?.name || item.productId, // Resolve Name
                     items: [],
                     totalQty: 0,
                     totalValue: 0
@@ -79,23 +80,8 @@ export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, produ
             const group = groups[item.productId];
             group.items.push(item);
             
-            // DYNAMIC CALCULATION (SSOT: Physical State)
-            const itemPacks = packs.filter(p => 
-                p.productId === item.productId &&
-                p.batchNumber === item.batchNumber &&
-                p.locationId === item.location
-            );
-            
-            const sealedQty = itemPacks.filter(p => p.status === PackStatus.SEALED).length * (productDef?.unitsPerPack || 1);
-            const openQty = itemPacks.filter(p => p.status === PackStatus.OPENED).reduce((acc, p) => acc + (p.remainingUnits || 0), 0);
-            
-            const itemLoose = looseUnits.filter(u => 
-                u.productId === item.productId &&
-                u.batchNumber === item.batchNumber &&
-                u.locationId === item.location
-            ).reduce((acc, u) => acc + u.quantity, 0);
-
-            const qty = sealedQty + openQty + itemLoose;
+            // Use SQL Inventory Quantity
+            const qty = item.theoreticalQty; 
             
             group.totalQty += qty;
 
@@ -236,22 +222,14 @@ export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, produ
                                 
                                 <div className="flex items-center space-x-6 md:space-x-12 bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm">
                                     <div className="flex flex-col items-center">
-                                         <span className="text-[10px] uppercase text-slate-400 font-bold">Boites Scellées</span>
-                                         <span className="font-bold text-lg text-slate-800">{productStats.sealed}</span>
+                                         <span className="text-[10px] uppercase text-slate-400 font-bold">Est. Boites</span>
+                                         <span className="font-bold text-lg text-slate-800">
+                                             {unitsPerPack > 0 ? Math.floor(productStats.totalQty / unitsPerPack) : productStats.totalQty}
+                                         </span>
                                     </div>
                                     <div className="w-px h-8 bg-slate-200"></div>
                                     <div className="flex flex-col items-center">
-                                         <span className="text-[10px] uppercase text-slate-400 font-bold">Boites Ouvertes</span>
-                                         <span className="font-bold text-lg text-slate-800">{productStats.open}</span>
-                                    </div>
-                                    <div className="w-px h-8 bg-slate-200"></div>
-                                    <div className="flex flex-col items-center">
-                                         <span className="text-[10px] uppercase text-slate-400 font-bold">Unités Vrac</span>
-                                         <span className="font-bold text-lg text-slate-800">{productStats.loose}</span>
-                                    </div>
-                                    <div className="w-px h-8 bg-slate-200"></div>
-                                    <div className="flex flex-col items-center">
-                                         <span className="text-[10px] uppercase text-slate-400 font-bold">Tot. Unités</span>
+                                         <span className="text-[10px] uppercase text-slate-400 font-bold">Total Unités</span>
                                          <span className="font-bold text-lg text-slate-800">{productStats.totalQty}</span>
                                     </div>
                                 </div>
@@ -297,15 +275,11 @@ export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, produ
                                                  const openUnits = openPacks.reduce((acc, p) => acc + (p.remainingUnits || 0), 0);
                                                  
 
-                                                 
-                                                 const batchLooseItems = looseUnits.filter(u => 
-                                                     u.productId === item.productId &&
-                                                     u.batchNumber === item.batchNumber &&
-                                                     u.locationId === item.location
-                                                 );
-                                                 const looseUnitsQty = batchLooseItems.reduce((acc, u) => acc + u.quantity, 0);
+                                                 const totalStockUnits = item.theoreticalQty;
 
-                                                 const totalStockUnits = sealedUnits + openUnits + looseUnitsQty;
+                                                 // Estimate boxes for display
+                                                 const boxes = unitsPerPack > 0 ? Math.floor(totalStockUnits / unitsPerPack) : 0;
+                                                 const remainder = unitsPerPack > 0 ? totalStockUnits % unitsPerPack : 0;
                                                  
                                                  return (
                                                     <div key={item.id} className="bg-slate-900 text-white p-4 rounded-lg shadow-lg relative overflow-hidden">
@@ -324,16 +298,12 @@ export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, produ
                                                         
                                                         <div className="space-y-2">
                                                             <div className="bg-slate-800 rounded px-2 py-1.5 flex justify-between items-center text-xs">
-                                                                <span className="text-slate-300">Boites scellés</span>
-                                                                <span className="font-bold text-white text-sm">: {sealedCount}</span>
-                                                            </div>
-                                                            <div className="bg-slate-800 rounded px-2 py-1.5 flex justify-between items-center text-xs border border-slate-700">
-                                                                <span className="text-amber-400 font-bold">Boites ouvertes</span>
-                                                                <span className="font-bold text-white text-sm">: {openCount}</span>
+                                                                <span className="text-slate-300">Est. Boites</span>
+                                                                <span className="font-bold text-white text-sm">: {boxes}</span>
                                                             </div>
                                                             <div className="bg-slate-800 rounded px-2 py-1.5 flex justify-between items-center text-xs">
-                                                                <span className="text-slate-300">Unités Vrac</span>
-                                                                <span className="font-bold text-white text-sm">: {looseUnitsQty}</span>
+                                                                <span className="text-slate-300">Reste (Unités)</span>
+                                                                <span className="font-bold text-white text-sm">: {remainder}</span>
                                                             </div>
 
                                                             <div className="pt-2 border-t border-slate-700 flex justify-between items-center mt-1">

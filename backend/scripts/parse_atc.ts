@@ -28,7 +28,7 @@ const outPath = path.join(__dirname, '../data/global/atc_tree.json');
 const rdfContent = fs.readFileSync(rdfPath, 'utf-8');
 
 // Regex blocks
-const blockRegex = /<rdf:Description rdf:about="(.*?)">(.*?)<\/rdf:Description>/gs;
+const blockRegex = /<rdf:Description rdf:about="(.*?)">([\s\S]*?)<\/rdf:Description>/g;
 const notationRegex = /<skos:notation>(.*?)<\/skos:notation>/;
 const labelFrRegex = /<rdfs:label xml:lang="fr">(.*?)<\/rdfs:label>/;
 const labelEnRegex = /<rdfs:label xml:lang="en">(.*?)<\/rdfs:label>/;

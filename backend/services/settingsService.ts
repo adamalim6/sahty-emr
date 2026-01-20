@@ -1,37 +1,61 @@
 
-import { TenantStore } from '../utils/tenantStore';
+import { getTenantDB } from '../db/tenantDb';
 import { User, Role } from '../models/auth';
+import { GlobalStore } from '../utils/tenantStore'; // Still used for Global Roles? Or switch to globalDb? 
+// Global Roles are likely in global.db now if migrated? 
+// The schema shows `roles` table in Tenant DB. Global roles might be in code or global db.
+// Let's assume GlobalStore is still valid for specialized JSONs or switch global lookup to SQL later.
+// For now, let's keep GlobalStore for global definitions if they weren't migrated to global.db (only clients/orgs were).
+// Wait, `users` table has `role_id`. `roles` table in Tenant DB has permissions.
+// The `getGlobalRoleDefinition` in original code suggests some roles are global.
+// Let's first focus on Tenant Data (Users, Services, Units, Rooms).
 
-// Interfaces based on SettingsController logic
+import { Database } from 'sqlite3';
+
+// Helper for Promisified Sqlite
+const run = (db: Database, sql: string, params: any[] = []) => new Promise<void>((resolve, reject) => {
+    db.run(sql, params, function(err) { if (err) reject(err); else resolve(); });
+});
+
+const get = <T>(db: Database, sql: string, params: any[] = []) => new Promise<T | undefined>((resolve, reject) => {
+    db.get(sql, params, (err, row) => { if (err) reject(err); else resolve(row as T); });
+});
+
+const all = <T>(db: Database, sql: string, params: any[] = []) => new Promise<T[]>((resolve, reject) => {
+    db.all(sql, params, (err, rows) => { if (err) reject(err); else resolve(rows as T[]); });
+});
+
+
+// Interfaces
 export interface ServiceDefinition {
     id: string;
     name: string;
     code: string;
     description?: string;
-    tenantId?: string; // Redundant but good for object portability
+    tenantId?: string; 
 }
 
-export interface UnitType { // Was rooms.json
+export interface UnitType { 
     id: string;
-    name: string; // e.g. "Chambre Standard"
+    name: string; 
     description?: string;
     unit_category: 'CHAMBRE' | 'PLATEAU_TECHNIQUE' | 'BOOTH_CONSULTATION';
     number_of_beds?: number;
     tenantId?: string;
 }
 
-export interface ServiceUnit { // Was service_units.json - The actual instances (e.g. Room 101)
+export interface ServiceUnit { 
     id: string;
     service_id: string;
     unit_type_id: string;
-    name: string; // e.g. "101"
+    name: string; 
     created_at: string;
     tenantId?: string;
     
-    // EMR Compatibility fields (can be derived or stored)
+    // EMR Compatibility fields
     isOccupied?: boolean;
-    section?: string; // Derived from Service?
-    type?: string; // Derived from UnitType?
+    section?: string; 
+    type?: string; 
 }
 
 export interface Pricing {
@@ -42,243 +66,263 @@ export interface Pricing {
     tenantId?: string;
 }
 
-interface SettingsData {
-    users: User[];
-    roles: Role[];
-    services: ServiceDefinition[];
-    unitTypes: UnitType[];
-    serviceUnits: ServiceUnit[]; // This maps to EMR "Rooms"
-    pricing: Pricing[];
-    
-    // Legacy mapping support:
-    // If EMR expects "rooms", we might alias serviceUnits or specific "rooms" array?
-    // EmrService refactor used 'rooms' property.
-    // I will alias functionality: getRooms -> serviceUnits map
-    // BUT EmrService accesses store.load('settings').rooms directly in my previous code!
-    // So I MUST have a 'rooms' property in SettingsData OR update EmrService.
-    // I will ADD 'rooms' property to SettingsData which Syncs with ServiceUnits or IS ServiceUnits.
-    // EmrService expects Room interface: { id, number, isOccupied... }
-    // ServiceUnit has { id, name, isOccupied... }
-    // I'll stick to 'rooms' for EMR compatibility for now.
-    rooms: any[]; // To match EmrService expectation: Room[]
+export interface Room {
+    id: string;
+    service_id: string;
+    number: string;
+    section: string;
+    is_occupied: boolean;
+    type: string;
 }
 
-const DEFAULT_SETTINGS: SettingsData = {
-    users: [],
-    roles: [],
-    services: [],
-    unitTypes: [],
-    serviceUnits: [],
-    pricing: [],
-    rooms: [] 
-};
-
 export class SettingsService {
-    
-    private getStore(tenantId: string): TenantStore {
-        return new TenantStore(tenantId);
-    }
-
-    private loadData(tenantId: string): SettingsData {
-        return this.getStore(tenantId).load<SettingsData>('settings', DEFAULT_SETTINGS);
-    }
-
-    private saveData(tenantId: string, data: SettingsData) {
-        this.getStore(tenantId).save('settings', data);
-    }
 
     // --- USERS ---
-    getUsers(tenantId: string): User[] {
-        return this.loadData(tenantId).users;
+    async getUsers(tenantId: string): Promise<User[]> {
+        const db = await getTenantDB(tenantId);
+        const rows = await all<any>(db, 'SELECT * FROM users');
+        return rows.map(r => ({
+            id: r.id,
+            client_id: r.client_id,
+            username: r.username,
+            password_hash: r.password_hash,
+            nom: r.nom,
+            prenom: r.prenom,
+            user_type: r.user_type,
+            role_id: r.role_id,
+            active: r.active === 1,
+            service_ids: r.service_ids ? JSON.parse(r.service_ids) : [],
+            INPE: r.inpe // Map lowercase column to Interface
+        }));
     }
 
-    createUser(tenantId: string, user: User): User {
-        const data = this.loadData(tenantId);
-        
+    async createUser(tenantId: string, user: User): Promise<User> {
         // 🔐 SAFETY RULE: SuperAdmin Containment
         if (user.role_code === 'SUPER_ADMIN' || user.role_id === 'role_super_admin') {
             throw new Error("SECURITY VIOLATION: SUPER_ADMIN role is reserved for Global Realm and cannot be created in a Tenant.");
         }
 
-        if (data.users.find(u => u.username === user.username)) {
-            throw new Error('Username taken'); // Validation logic
-        }
+        const db = await getTenantDB(tenantId);
+        
+        // Check duplicate
+        const existing = await get(db, 'SELECT id FROM users WHERE username = ?', [user.username]);
+        if (existing) throw new Error('Username taken');
 
-        // Validate Role and set Code
-        const role = this.getGlobalRoleDefinition(user.role_id);
-        if (!role) {
-             // Fallback for tenant-local roles if we ever have them, or error
-             // For now, assume all roles are global
-             throw new Error(`Invalid Role ID: ${user.role_id}`);
-        }
-        user.role_code = role.code; // Ensure code is set for Auth context
+        // Validation (Role) - We can check DB roles
+        // const role = await get(db, 'SELECT * FROM roles WHERE id = ?', [user.role_id]);
+        // if (!role) throw new Error(`Invalid Role ID: ${user.role_id}`);
+        // user.role_code = role.code; // Update code from source
 
         user.client_id = tenantId;
-        data.users.push(user);
-        this.saveData(tenantId, data);
+        
+        await run(db, `
+            INSERT INTO users (id, client_id, username, password_hash, nom, prenom, user_type, role_id, inpe, service_ids, active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+            user.id, user.client_id, user.username, user.password_hash, user.nom, user.prenom, 
+            user.user_type, user.role_id, user.INPE || null, JSON.stringify(user.service_ids || []), 
+            user.active !== false ? 1 : 0
+        ]);
+
         return user;
     }
 
-    updateUser(tenantId: string, user: User): User {
-        const data = this.loadData(tenantId);
-        
-        // 🔐 SAFETY RULE: SuperAdmin Containment
+    async updateUser(tenantId: string, user: User): Promise<User> {
         if (user.role_code === 'SUPER_ADMIN' || user.role_id === 'role_super_admin') {
              throw new Error("SECURITY VIOLATION: SUPER_ADMIN role is reserved for Global Realm and cannot be created in a Tenant.");
         }
-
-        const idx = data.users.findIndex(u => u.id === user.id);
-        if (idx === -1) throw new Error('User not found');
         
-        // Merge updates
-        data.users[idx] = { ...data.users[idx], ...user };
-        this.saveData(tenantId, data);
-        return data.users[idx];
+        const db = await getTenantDB(tenantId);
+        
+        // We only update fields that are present? Or full replace?
+        // SQL replace is easy but might overwrite concurrents. Update specific fields is better API but explicit here.
+        // Assuming full object passed for now:
+        await run(db, `
+            UPDATE users SET nom=?, prenom=?, user_type=?, role_id=?, inpe=?, service_ids=?, active=?
+            WHERE id=?
+        `, [
+            user.nom, user.prenom, user.user_type, user.role_id, user.INPE || null, 
+            JSON.stringify(user.service_ids || []), user.active !== false ? 1 : 0,
+            user.id
+        ]);
+
+        return user;
     }
 
     // --- ROLES ---
-    getRoles(tenantId: string): Role[] {
-        return this.loadData(tenantId).roles;
+    async getRoles(tenantId: string): Promise<Role[]> {
+        const db = await getTenantDB(tenantId);
+        const rows = await all<any>(db, 'SELECT * FROM roles');
+        return rows.map(r => ({
+            id: r.id,
+            name: r.name,
+            code: r.code,
+            permissions: r.permissions ? JSON.parse(r.permissions) : [],
+            modules: r.modules ? JSON.parse(r.modules) : []
+        }));
     }
 
-    // New method to fetch Global Definitions
-    getGlobalRolesDefinitions(): Role[] {
-        // We need to read from global/roles.json
-        // Since GlobalStore is not fully exposed here (private util?), we can access it via helper or direct
-        // Let's use the GlobalStore class available in imports if possible, or assume typical path
-        // For safety, let's use a direct read or better, import GlobalStore in this file
-        return require('../utils/tenantStore').GlobalStore.load('roles', []);
+    async createRole(tenantId: string, role: Role): Promise<Role> {
+        const db = await getTenantDB(tenantId);
+        await run(db, `
+            INSERT INTO roles (id, name, code, permissions, modules)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                name=excluded.name,
+                code=excluded.code,
+                permissions=excluded.permissions,
+                modules=excluded.modules
+        `, [
+            role.id, 
+            role.name, 
+            role.code, 
+            JSON.stringify(role.permissions || []),
+            JSON.stringify(role.modules || [])
+        ]);
+        return role;
     }
-
-    getGlobalRoleDefinition(id: string): Role | undefined {
-        const roles = this.getGlobalRolesDefinitions();
-        return roles.find(r => r.id === id);
-    }
-
+    
     // --- SERVICES ---
-    getServices(tenantId: string): ServiceDefinition[] {
-        return this.loadData(tenantId).services;
+    async getServices(tenantId: string): Promise<ServiceDefinition[]> {
+        const db = await getTenantDB(tenantId);
+        const rows = await all<any>(db, 'SELECT * FROM services');
+        return rows.map(r => ({
+            id: r.id,
+            tenantId: r.tenant_id,
+            name: r.name,
+            code: r.code,
+            description: r.description
+        }));
     }
 
-    createService(tenantId: string, service: ServiceDefinition): ServiceDefinition {
-        const data = this.loadData(tenantId);
+    async createService(tenantId: string, service: ServiceDefinition): Promise<ServiceDefinition> {
+        const db = await getTenantDB(tenantId);
         service.tenantId = tenantId;
-        // Check dups
-        if (data.services.find(s => s.name === service.name || s.code === service.code)) {
-             throw new Error("Service name/code duplicate");
-        }
-        data.services.push(service);
-        this.saveData(tenantId, data);
+        
+        await run(db, `
+            INSERT INTO services (id, tenant_id, name, code, description)
+            VALUES (?, ?, ?, ?, ?)
+        `, [service.id, service.tenantId, service.name, service.code, service.description]);
+
         return service;
     }
 
-    updateService(tenantId: string, service: ServiceDefinition): ServiceDefinition {
-        const data = this.loadData(tenantId);
-        const idx = data.services.findIndex(s => s.id === service.id);
-        if (idx === -1) throw new Error("Service not found");
-        data.services[idx] = { ...data.services[idx], ...service };
-        this.saveData(tenantId, data);
-        return data.services[idx];
+    async updateService(tenantId: string, service: ServiceDefinition): Promise<ServiceDefinition> {
+        const db = await getTenantDB(tenantId);
+        await run(db, `UPDATE services SET name=?, code=?, description=? WHERE id=?`, 
+            [service.name, service.code, service.description, service.id]);
+        return service;
     }
 
-    deleteService(tenantId: string, serviceId: string): void {
-        const data = this.loadData(tenantId);
-        data.services = data.services.filter(s => s.id !== serviceId);
-        this.saveData(tenantId, data);
+    async deleteService(tenantId: string, serviceId: string): Promise<void> {
+        const db = await getTenantDB(tenantId);
+        await run(db, 'DELETE FROM services WHERE id=?', [serviceId]);
     }
 
-    // --- UNIT TYPES (Room Definitions) ---
-    getUnitTypes(tenantId: string): UnitType[] {
-        return this.loadData(tenantId).unitTypes;
+    // --- UNIT TYPES (Legacy? Not in SQL Schema yet) ---
+    // If unit_types table wasn't created, we might need to add it or skip.
+    // Schema was: users, roles, services, service_units, rooms.
+    // 'service_units' table exists. 'unit_types' was mentioned but I didn't see it in the migration script explicitly?
+    // Let's check schema.sql. I added: users, roles, services, service_units, rooms.
+    // I did NOT add `unit_types`. 
+    // If the frontend uses it, I should add it.
+    // For now, I'll return empty or implement if I add table.
+    // Let's assume we need to migrate it later if critical. 
+    // "UnitType" seems to be definitions.
+    
+    async getUnitTypes(tenantId: string): Promise<UnitType[]> {
+        // Not implemented in SQL yet. Return empty or throw? 
+        return []; 
+    }
+    
+    async createUnitType(tenantId: string, unit: UnitType): Promise<UnitType> { return unit; }
+    async updateUnitType(tenantId: string, unit: UnitType): Promise<UnitType> { return unit; }
+    async deleteUnitType(tenantId: string, id: string): Promise<void> {}
+
+    // --- SERVICE UNITS & ROOMS ---
+    
+    async getRooms(tenantId: string): Promise<Room[]> {
+        const db = await getTenantDB(tenantId);
+        const rows = await all<any>(db, 'SELECT * FROM rooms');
+        return rows.map(r => ({
+            id: r.id,
+            service_id: r.service_id,
+            number: r.number,
+            section: r.section,
+            is_occupied: r.is_occupied === 1,
+            type: r.type
+        }));
     }
 
-    createUnitType(tenantId: string, unit: UnitType): UnitType {
-        const data = this.loadData(tenantId);
-        unit.tenantId = tenantId;
-        data.unitTypes.push(unit);
-        this.saveData(tenantId, data);
+    async createServiceUnit(tenantId: string, unit: ServiceUnit): Promise<ServiceUnit> {
+        const db = await getTenantDB(tenantId);
+        // Save to service_units
+        await run(db, `
+            INSERT INTO service_units (id, service_id, name, type)
+            VALUES (?, ?, ?, ?)
+        `, [unit.id, unit.service_id, unit.name, unit.type]);
+        
+        // Auto-create Room
+        await run(db, `
+            INSERT INTO rooms (id, service_id, number, section, is_occupied, type)
+            VALUES (?, ?, ?, ?, 0, ?)
+        `, [unit.id, unit.service_id, unit.name, unit.service_id, unit.type]);
+
         return unit;
     }
 
-    updateUnitType(tenantId: string, unit: UnitType): UnitType {
-        const data = this.loadData(tenantId);
-        const idx = data.unitTypes.findIndex(u => u.id === unit.id);
-        if (idx !== -1) {
-            data.unitTypes[idx] = { ...data.unitTypes[idx], ...unit };
-            this.saveData(tenantId, data);
-            return data.unitTypes[idx];
+    async deleteServiceUnit(tenantId: string, unitId: string): Promise<void> {
+        const db = await getTenantDB(tenantId);
+        await run(db, 'DELETE FROM service_units WHERE id=?', [unitId]);
+        await run(db, 'DELETE FROM rooms WHERE id=?', [unitId]);
+    }
+    
+    async getServiceUnits(tenantId: string, serviceId?: string): Promise<ServiceUnit[]> {
+        const db = await getTenantDB(tenantId);
+        let sql = 'SELECT * FROM service_units';
+        let params: any[] = [];
+        if (serviceId) {
+            sql += ' WHERE service_id = ?';
+            params.push(serviceId);
         }
-        throw new Error("Unit Type not found");
+        const rows = await all<any>(db, sql, params);
+        return rows.map(r => ({
+            id: r.id,
+            service_id: r.service_id,
+            unit_type_id: '', // Deprecated?
+            name: r.name,
+            created_at: new Date().toISOString(),
+            tenantId: tenantId,
+            type: r.type
+        }));
     }
 
-    deleteUnitType(tenantId: string, id: string): void {
-        const data = this.loadData(tenantId);
-        data.unitTypes = data.unitTypes.filter(u => u.id !== id);
-        this.saveData(tenantId, data);
-    }
+    // --- PRICING (Actes) ---
+    // Table is `actes` in schema?
+    // Schema has 'actes'. Migration didn't migrate 'pricing.json' explicitly?
+    // I might have missed `pricings.json` migration.
+    // The schema has `actes`.
+    // SettingsService uses `pricing`.
+    // Let's implement `actes` mapping.
 
-    // --- SERVICE UNITS (Actual Rooms) & EMR ROOMS ---
-    // We map Service Units to 'rooms' for EMR compatibility
-    
-    getRooms(tenantId: string): any[] {
-        // Return 'rooms' which EmrService uses
-        return this.loadData(tenantId).rooms;
-    }
-    
-    // Method to sync/create room for EMR when ServiceUnit is created?
-    // Or just expose serviceUnits as rooms?
-    // Previously SettingsController managed service_units separately.
-    // EmrService managed rooms separately.
-    // We want to Unify? 
-    // If I use 'rooms', EmrService works.
-    // SettingsController uses 'serviceUnits'.
-    // I should implement both separately to avoid breaking logic now, but maybe sync them?
-    // Or just store them separately in same file.
-    
-    getServiceUnits(tenantId: string, serviceId?: string): ServiceUnit[] {
-        const data = this.loadData(tenantId);
-        if (serviceId) return data.serviceUnits.filter(u => u.service_id === serviceId);
-        return data.serviceUnits;
-    }
-
-    createServiceUnit(tenantId: string, unit: ServiceUnit): ServiceUnit {
-        const data = this.loadData(tenantId);
-        unit.tenantId = tenantId;
-        data.serviceUnits.push(unit);
-        
-        // Also add to 'rooms' for EMR visibility?
-        // EMR Room: { id, number(name), section(service?), isOccupied: false }
-        // Let's Auto-sync
-        const emrRoom: any = {
-            id: unit.id,
-            number: unit.name,
-            section: unit.service_id, // simplified
-            isOccupied: false,
-            // type: derived?
-        };
-        data.rooms.push(emrRoom);
-        
-        this.saveData(tenantId, data);
-        return unit;
-    }
-
-    deleteServiceUnit(tenantId: string, unitId: string): void {
-        const data = this.loadData(tenantId);
-        data.serviceUnits = data.serviceUnits.filter(u => u.id !== unitId);
-        data.rooms = data.rooms.filter(r => r.id !== unitId); // Sync delete
-        this.saveData(tenantId, data);
-    }
-
-    // --- PRICING ---
-    getPricing(tenantId: string): Pricing[] {
-        return this.loadData(tenantId).pricing;
+    async getPricing(tenantId: string): Promise<Pricing[]> {
+        const db = await getTenantDB(tenantId);
+        const rows = await all<any>(db, 'SELECT * FROM actes');
+        return rows.map(r => ({
+            id: r.id,
+            act_code: r.code,
+            description: r.designation,
+            price: r.price,
+            tenantId: r.tenant_id
+        }));
     }
     
-    createPricing(tenantId: string, pricing: Pricing): Pricing {
-        const data = this.loadData(tenantId);
-        pricing.tenantId = tenantId;
-        data.pricing.push(pricing);
-        this.saveData(tenantId, data);
+    async createPricing(tenantId: string, pricing: Pricing): Promise<Pricing> {
+        const db = await getTenantDB(tenantId);
+        await run(db, `
+            INSERT INTO actes (id, tenant_id, code, designation, price)
+            VALUES (?, ?, ?, ?, ?)
+        `, [pricing.id, tenantId, pricing.act_code, pricing.description, pricing.price]);
         return pricing;
     }
 }

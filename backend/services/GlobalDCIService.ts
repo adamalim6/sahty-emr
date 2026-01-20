@@ -1,5 +1,5 @@
-
-import { TenantStore } from '../utils/tenantStore';
+import { getGlobalDB } from '../db/globalDb';
+import { Database } from 'sqlite3';
 
 export interface DCI {
     id: string;
@@ -11,97 +11,172 @@ export interface DCI {
     updatedAt: string;
 }
 
+// Helpers
+const run = (db: Database, sql: string, params: any[] = []) => new Promise<void>((resolve, reject) => {
+    db.run(sql, params, function(err) { if (err) reject(err); else resolve(); });
+});
+
+const get = <T>(db: Database, sql: string, params: any[] = []) => new Promise<T | undefined>((resolve, reject) => {
+    db.get(sql, params, (err, row) => { if (err) reject(err); else resolve(row as T); });
+});
+
+const all = <T>(db: Database, sql: string, params: any[] = []) => new Promise<T[]>((resolve, reject) => {
+    db.all(sql, params, (err, rows) => { if (err) reject(err); else resolve(rows as T[]); });
+});
+
 export class GlobalDCIService {
     
-    private get store() {
-        return require('../utils/tenantStore').GlobalStore; 
+    // Internal Cache? Or rely on SQL speed? SQL is fast enough usually.
+    // For DCI lookup in products service, we might need bulk load. Let's keep a getAllDCIs for now.
+
+    public async getAllDCIs(): Promise<DCI[]> {
+        const db = await getGlobalDB();
+        const rows = await all<any>(db, 'SELECT * FROM global_dci');
+        return rows.map(r => this.mapDCI(r));
     }
 
-    public getAllDCIs(): DCI[] {
-        return this.store.load('dci', []);
+    private mapDCI(r: any): DCI {
+        return {
+            id: r.id,
+            name: r.name,
+            atcCode: r.atc_code,
+            therapeuticClass: r.therapeutic_class,
+            synonyms: r.synonyms ? JSON.parse(r.synonyms) : [],
+            createdAt: r.created_at,
+            updatedAt: r.created_at // specific updated_at column missing in basic schema? default to created_at
+        };
     }
 
-    public getDCIById(id: string): DCI | undefined {
-        const dcis = this.getAllDCIs();
-        return dcis.find(d => d.id === id);
+    public async getDCIById(id: string): Promise<DCI | undefined> {
+        const db = await getGlobalDB();
+        const row = await get<any>(db, 'SELECT * FROM global_dci WHERE id = ?', [id]);
+        return row ? this.mapDCI(row) : undefined;
     }
 
     private normalizeName(name: string): string {
         return name.trim().replace(/\s+/g, ' ');
     }
 
-    public createDCI(data: Omit<DCI, 'id' | 'createdAt' | 'updatedAt'>): DCI {
-        const dcis = this.getAllDCIs();
+    public async createDCI(data: Omit<DCI, 'id' | 'createdAt' | 'updatedAt'>): Promise<DCI> {
+        const db = await getGlobalDB();
         const normalizedName = this.normalizeName(data.name);
 
-        // Check for duplicate name (case-insensitive)
-        if (dcis.some(d => d.name.toLowerCase() === normalizedName.toLowerCase())) {
-            throw new Error(`Une DCI avec le nom "${normalizedName}" existe déjà.`);
+        // Check Duplicate
+        const existing = await get(db, 'SELECT id FROM global_dci WHERE lower(name) = lower(?)', [normalizedName]);
+        if (existing) {
+             throw new Error(`Une DCI avec le nom "${normalizedName}" existe déjà.`);
         }
 
-        const newDCI: DCI = {
-            id: `DCI_${Date.now()}_${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
+        const newId = `DCI_${Date.now()}_${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+        const now = new Date().toISOString();
+
+        await run(db, `
+            INSERT INTO global_dci (id, name, atc_code, therapeutic_class, synonyms, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        `, [
+            newId, 
+            normalizedName, 
+            data.atcCode?.trim() || null, 
+            data.therapeuticClass?.trim() || null, 
+            JSON.stringify(data.synonyms?.map(s => s.trim()).filter(s => s.length > 0) || []),
+            now
+        ]);
+
+        this.invalidateCache();
+        return {
+            id: newId,
             name: normalizedName,
             atcCode: data.atcCode?.trim(),
-            synonyms: data.synonyms?.map(s => s.trim()).filter(s => s.length > 0),
-            therapeuticClass: data.therapeuticClass?.trim(),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
+            synonyms: data.synonyms, // ...
+            therapeuticClass: data.therapeuticClass,
+            createdAt: now,
+            updatedAt: now
         };
-
-        dcis.push(newDCI);
-        this.saveDCIs(dcis);
-        return newDCI;
     }
 
-    public updateDCI(id: string, updates: Partial<Omit<DCI, 'id' | 'createdAt' | 'updatedAt'>>): DCI {
-        const dcis = this.getAllDCIs();
-        const idx = dcis.findIndex(d => d.id === id);
-        if (idx === -1) throw new Error("DCI non trouvée");
+    public async updateDCI(id: string, updates: Partial<Omit<DCI, 'id' | 'createdAt' | 'updatedAt'>>): Promise<DCI> {
+        const db = await getGlobalDB();
+        const current = await this.getDCIById(id);
+        if (!current) throw new Error("DCI non trouvée");
 
-        const currentDCI = dcis[idx];
-        let normalizedName = currentDCI.name;
-
+        let normalizedName = current.name;
         if (updates.name) {
             normalizedName = this.normalizeName(updates.name);
-            // Check for duplicate if name is changing
-            if (normalizedName.toLowerCase() !== currentDCI.name.toLowerCase()) {
-                 if (dcis.some(d => d.id !== id && d.name.toLowerCase() === normalizedName.toLowerCase())) {
-                    throw new Error(`Une DCI avec le nom "${normalizedName}" existe déjà.`);
-                }
+            if (normalizedName.toLowerCase() !== current.name.toLowerCase()) {
+                const existing = await get<any>(db, 'SELECT id FROM global_dci WHERE lower(name) = lower(?) AND id != ?', [normalizedName, id]);
+                if (existing) throw new Error(`Une DCI avec le nom "${normalizedName}" existe déjà.`);
             }
         }
 
-        const updatedDCI: DCI = {
-            ...currentDCI,
-            ...updates,
-            name: normalizedName, // Ensure normalized name is saved
-            atcCode: updates.atcCode !== undefined ? updates.atcCode.trim() : currentDCI.atcCode,
-            synonyms: updates.synonyms ? updates.synonyms.map(s => s.trim()).filter(s => s.length > 0) : currentDCI.synonyms,
-            therapeuticClass: updates.therapeuticClass !== undefined ? updates.therapeuticClass.trim() : currentDCI.therapeuticClass,
+        const atcCode = updates.atcCode !== undefined ? updates.atcCode.trim() : current.atcCode;
+        const therapeuticClass = updates.therapeuticClass !== undefined ? updates.therapeuticClass.trim() : current.therapeuticClass;
+        const synonyms = updates.synonyms ? updates.synonyms.map(s => s.trim()).filter(s => s.length > 0) : current.synonyms;
+
+        await run(db, `
+            UPDATE global_dci 
+            SET name=?, atc_code=?, therapeutic_class=?, synonyms=?
+            WHERE id=?
+        `, [normalizedName, atcCode || null, therapeuticClass || null, JSON.stringify(synonyms), id]);
+
+        this.invalidateCache();
+        return {
+            ...current,
+            name: normalizedName,
+            atcCode: atcCode,
+            therapeuticClass: therapeuticClass,
+            synonyms: synonyms,
             updatedAt: new Date().toISOString()
         };
+    }
+
+    public async deleteDCI(id: string): Promise<void> {
+        const db = await getGlobalDB();
+        await run(db, 'DELETE FROM global_dci WHERE id = ?', [id]);
+        this.invalidateCache();
+    }
+
+    private dciCache: DCI[] | null = null;
+
+    private async ensureCache(): Promise<DCI[]> {
+        if (!this.dciCache) {
+            this.dciCache = await this.getAllDCIs();
+        }
+        return this.dciCache;
+    }
+
+    public invalidateCache() {
+        this.dciCache = null;
+    }
+
+    public async getDCIsPaginated(page: number, limit: number, query: string = ''): Promise<{ data: DCI[], total: number, page: number, totalPages: number }> {
+        // In-memory fuzzy search for better UX (accents, case, etc.)
+        const allDCIs = await this.ensureCache();
         
-        // Prevent immutable field changes just in case
-        updatedDCI.id = id;
-        updatedDCI.createdAt = currentDCI.createdAt;
+        let filtered = allDCIs;
+        if (query) {
+            const normalizedQuery = this.normalizeString(query);
+            filtered = allDCIs.filter(dci => {
+                const normName = this.normalizeString(dci.name);
+                const normAtc = dci.atcCode ? this.normalizeString(dci.atcCode) : '';
+                return normName.includes(normalizedQuery) || normAtc.includes(normalizedQuery);
+            });
+        }
 
-        dcis[idx] = updatedDCI;
-        this.saveDCIs(dcis);
-        return updatedDCI;
+        const total = filtered.length;
+        const totalPages = Math.ceil(total / limit);
+        const offset = (page - 1) * limit;
+        const pagedData = filtered.slice(offset, offset + limit);
+
+        return {
+            data: pagedData,
+            total,
+            page,
+            totalPages
+        };
     }
 
-    public deleteDCI(id: string): void {
-        let dcis = this.getAllDCIs();
-        // TODO: Check for usage in products before delete? 
-        // For now, strict referential integrity might be too heavy for JSON, but good practice.
-        // Assuming deletion is allowed for now.
-        dcis = dcis.filter(d => d.id !== id);
-        this.saveDCIs(dcis);
-    }
-
-    private saveDCIs(dcis: DCI[]) {
-        this.store.save('dci', dcis);
+    private normalizeString(str: string): string {
+        return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
     }
 }
 

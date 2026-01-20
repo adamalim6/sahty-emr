@@ -35,4 +35,6 @@ export interface Role {
     id: string;
     name: string;
     code: string;
+    permissions?: string[];
+    modules?: string[];
 }

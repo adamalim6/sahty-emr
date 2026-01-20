@@ -13,6 +13,7 @@ router.get('/:id', authenticateToken, globalProductController.getProductById);
 // Write access for SuperAdmins only
 router.post('/', authenticateGlobalAdmin, globalProductController.createProduct);
 router.put('/:id', authenticateGlobalAdmin, globalProductController.updateProduct);
-router.delete('/:id', authenticateGlobalAdmin, globalProductController.deleteProduct);
+router.delete('/:id', authenticateGlobalAdmin as any, globalProductController.deleteProduct);
+router.get('/:id/price-history', authenticateToken as any, globalProductController.getProductPriceHistory);
 
 export default router;

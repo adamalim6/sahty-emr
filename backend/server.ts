@@ -29,16 +29,16 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Routes
 app.use((req, res, next) => {
     console.log(`${req.method} ${req.url}`);
     next();
 });
+
 app.use('/api/auth', authRoutes);
 app.use('/api/super-admin', superAdminRoutes); // SuperAdmin auth handled internally
 
 // Protected Tenant Routes
-app.use('/api/settings', authenticateToken, requireModule('SETTINGS'), settingsRoutes);
+app.use('/api/settings', authenticateToken, settingsRoutes);
 app.use('/api/actes', authenticateToken, actesRoutes); // Should this be protected? Assuming yes.
 app.use('/api/dev', devRoutes); // Dev routes (maybe protect in prod?)
 app.use('/api/global/products', globalProductRoutes);

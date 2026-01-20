@@ -18,7 +18,8 @@ export const ClientsPage: React.FC = () => {
         admin_username: '',
         admin_password: '', // Should be generated or input
         admin_nom: '',
-        admin_prenom: ''
+        admin_prenom: '',
+        country: 'MAROC'
     });
 
     useEffect(() => {
@@ -139,6 +140,20 @@ export const ClientsPage: React.FC = () => {
                                             value={formData.representant_legal}
                                             onChange={e => setFormData({...formData, representant_legal: e.target.value})}
                                         />
+                                    </div>
+                                    <div className="col-span-2">
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Pays / Région</label>
+                                        <select 
+                                            className="w-full border rounded-lg p-2"
+                                            value={(formData as any).country}
+                                            onChange={e => setFormData({...formData, country: e.target.value} as any)}
+                                        >
+                                            <option value="MAROC">Maroc</option>
+                                            <option value="ARABIE_SAOUDITE">Arabie Saoudite</option>
+                                            <option value="GCC">GCC</option>
+                                            <option value="FRANCE">France</option>
+                                            <option value="ETATS_UNIS">Etats-Unis</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>

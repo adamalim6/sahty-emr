@@ -156,7 +156,6 @@ export const DCIModal: React.FC<DCIModalProps> = ({ isOpen, onClose, onSuccess, 
                                 className={`w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-purple-500 ${editingDCI ? 'bg-slate-50 text-slate-500' : ''}`}
                                 value={atcCode}
                                 onChange={e => setAtcCode(e.target.value)}
-                                readOnly={!!editingDCI}
                                 placeholder="ex: N02BE01"
                             />
                         </div>

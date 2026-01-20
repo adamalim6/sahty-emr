@@ -63,5 +63,6 @@ router.get('/returns/admission/:admissionId', pharmacyController.getReturnsByAdm
 
 
 
+router.post('/dev/reset', pharmacyController.resetDB);
 
 export default router;

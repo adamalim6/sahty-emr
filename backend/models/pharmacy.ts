@@ -125,6 +125,9 @@ export interface ProductSupplier {
     name: string;
     purchasePrice: number;
     isActive: boolean;
+    margin?: number;
+    vat?: number;
+    isDefault?: boolean;
 }
 
 export interface PharmacySupplier {
@@ -155,6 +158,8 @@ export interface ProductDCI {
     dciId: string;
     dosage: number;
     unit: string;
+    name?: string; // Enriched
+    atcCode?: string; // Enriched
 }
 
 export interface ProductDefinition {
@@ -253,6 +258,7 @@ export interface ProductProcessData {
 export interface QuarantineSessionResult {
     noteId: string;
     processedDate: Date;
+    processedBy?: string;
     items: ProductProcessData[];
 }
 

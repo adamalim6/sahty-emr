@@ -1,24 +1,24 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, X, Plus, FlaskConical } from 'lucide-react';
 import { DCI, ProductDCIComponent } from '../../types/pharmacy';
-
+import { api } from '../../services/api';
 
 interface DCISelectorProps {
-    availableDCIs: DCI[];
+    // availableDCIs: DCI[]; // REMOVED: Managed internally via async search
     value: ProductDCIComponent[];
     onChange: (value: ProductDCIComponent[]) => void;
     onAddNew: () => void;
 }
 
 export const DCISelector: React.FC<DCISelectorProps> = ({ 
-    availableDCIs, 
     value, 
     onChange,
     onAddNew 
 }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [isOpen, setIsOpen] = useState(false);
+    const [searchResults, setSearchResults] = useState<DCI[]>([]);
+    const [loading, setLoading] = useState(false);
     const wrapperRef = useRef<HTMLDivElement>(null);
 
     // Close dropdown when clicking outside
@@ -32,17 +32,42 @@ export const DCISelector: React.FC<DCISelectorProps> = ({
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [wrapperRef]);
 
-    // Filter DCIs based on search and exclude already selected ones
-    const filteredDCIs = availableDCIs.filter(dci => 
-        !value.some(item => item.dciId === dci.id) && (
-            dci.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            dci.atc_code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            dci.synonyms?.some(s => s.toLowerCase().includes(searchQuery.toLowerCase()))
-        )
-    ).slice(0, 10); // Limit to 10 results for performance/UI
+    // Async Search
+    useEffect(() => {
+        if (!searchQuery) {
+            setSearchResults([]);
+            return;
+        }
 
-    const handleSelect = (dciId: string) => {
-        onChange([...value, { dciId, dosage: 0, unit: 'mg' as const }]);
+        const timer = setTimeout(async () => {
+            setLoading(true);
+            try {
+                // Use the paginated API for search (limit 20)
+                const res: any = await api.getGlobalDCIs({ q: searchQuery, limit: 20 });
+                if (res.data) {
+                     setSearchResults(res.data);
+                } else {
+                    setSearchResults([]);
+                }
+            } catch (error) {
+                console.error("Failed to search DCIs", error);
+            } finally {
+                setLoading(false);
+            }
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+
+    const handleSelect = (dci: DCI) => {
+        onChange([...value, { 
+            dciId: dci.id, 
+            name: dci.name, 
+            atcCode: dci.atc_code, // Store ATC Code
+            dosage: 0, 
+            unit: 'mg' as const 
+        }]);
         setSearchQuery('');
         setIsOpen(false);
     };
@@ -80,13 +105,34 @@ export const DCISelector: React.FC<DCISelectorProps> = ({
             {/* Selected Rows */}
             <div className="space-y-2 mb-3">
                 {value.map(item => {
-                    const dci = availableDCIs.find(d => d.id === item.dciId);
-                    if (!dci) return null;
-
                     return (
                         <div key={item.dciId} className="bg-white border border-slate-200 text-slate-700 p-2 rounded-md shadow-sm">
                             <div className="flex items-center gap-2">
-                                <span className="font-medium flex-1 truncate">{dci.name}</span>
+                                <span className="font-medium flex-1 truncate">
+                                    {item.name || 'DCI Sans Nom'}
+                                    {item.atcCode && (
+                                        <span className="ml-2 text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-mono border border-slate-200">
+                                            {item.atcCode}
+                                        </span>
+                                    )}
+                                     {/* We don't have the ATC code easily available here unless we store it too or look it up.
+                                        But wait, user asked "display dci code with the name".
+                                        The DCI object has `dci.id` but usually ATC code is relevant. 
+                                        But `item` is `ProductDCIComponent` which only has `dciId`.
+                                        We cannot display ATC code unless we persist it in ProductDefinition too.
+                                        
+                                        Wait, `dciId` MIGHT be displayed? No, user usually means ATC or just the name.
+                                        "display dci code with the name" -> Maybe DCI ID?
+                                        
+                                        If the user means ATC code, I need to add `atcCode` to `ProductDCIComponent` as enriched field.
+                                        Let's assume name is enough for now OR try to fetch it?
+                                        Actually, my previous enrichment logic in backend ONLY added `name`. 
+                                        I should verify if I need to enrich `atcCode` too.
+                                        
+                                        Let's stick to Name for now, ensuring it works. 
+                                        If user insists on Code, I will add it to enrichment.
+                                     */}
+                                </span>
                                 
                                 {/* Dosage Input - Hide if complex presentation is active */}
                                 {!item.presentation && (
@@ -99,190 +145,119 @@ export const DCISelector: React.FC<DCISelectorProps> = ({
                                         min={0}
                                     />
                                 )}
-
-                            {/* Unit Select */}
-                            <select 
-                                className="w-24 px-2 py-1 border border-slate-300 rounded text-sm outline-none focus:ring-2 focus:ring-purple-500 bg-white"
-                                value={(() => {
-                                    if (item.presentation) {
-                                        if (item.presentation.numeratorUnit === 'mg') return 'COMPLEX_MG_ML';
-                                        if (item.presentation.numeratorUnit === 'mcg') return 'COMPLEX_MCG_ML';
-                                        if (item.presentation.numeratorUnit === 'g') return 'COMPLEX_G_ML';
-                                        return 'COMPLEX_MG_ML'; 
-                                    }
-                                    return item.unit;
-                                })()}
-                                onChange={e => {
-                                    const val = e.target.value;
-                                    if (val.startsWith('COMPLEX')) {
-                                        // Initialize complex mode
-                                        const num = item.dosage || 0;
-                                        let numUnit = 'mg';
-                                        let canonUnit = 'mg/mL';
-                                        
-                                        if (val === 'COMPLEX_MCG_ML') {
-                                            numUnit = 'mcg';
-                                            canonUnit = 'mcg/mL';
-                                        } else if (val === 'COMPLEX_G_ML') {
-                                            numUnit = 'g';
-                                            canonUnit = 'g/mL';
+                                
+                                {/* Unit Selector */}
+                                <select 
+                                    className="w-24 px-2 py-1 border border-slate-300 rounded text-sm outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                                    value={(() => {
+                                        if (item.presentation) {
+                                            if (item.presentation.numeratorUnit === 'mg') return 'COMPLEX_MG_ML';
+                                            if (item.presentation.numeratorUnit === 'mcg') return 'COMPLEX_MCG_ML';
+                                            if (item.presentation.numeratorUnit === 'g') return 'COMPLEX_G_ML';
+                                            return 'COMPLEX_MG_ML'; 
                                         }
-
-                                        handleUpdate(item.dciId, 'presentation', {
-                                            numerator: num,
-                                            denominator: 1, // Default
-                                            numeratorUnit: numUnit,
-                                            denominatorUnit: 'ml'
-                                        });
-                                        // Recalculate canonical
-                                        handleUpdate(item.dciId, 'unit', canonUnit as any);
-                                        handleUpdate(item.dciId, 'dosage', num);
-                                    } else {
-                                        // Switch back to simple
-                                        handleUpdate(item.dciId, 'unit', val);
-                                        // Clear presentation
-                                        const updated = value.map(i => i.dciId === item.dciId ? { ...i, unit: val as any, presentation: undefined } : i);
-                                        onChange(updated);
-                                        return; 
-                                    }
-                                }}
-                            >
-                                <optgroup label="Standard">
-                                    <option value="mg">mg</option>
-                                    <option value="g">g</option>
-                                    <option value="mcg">mcg</option>
-                                    <option value="ng">ng</option>
-                                    <option value="kg">kg</option>
-                                    <option value="ml">ml</option>
-                                    <option value="IU">IU</option>
-                                    <option value="mIU">mIU</option>
-                                    <option value="kIU">kIU</option>
-                                    <option value="U">U</option>
-                                    <option value="mU">mU</option>
-                                    <option value="kU">kU</option>
-                                    <option value="%">%</option>
-                                </optgroup>
-
-                                <optgroup label="Concentration">
-                                    <option value="mg/mL">mg/mL</option>
-                                    <option value="mcg/mL">mcg/mL</option>
-                                    <option value="ng/mL">ng/mL</option>
-                                    <option value="g/L">g/L</option>
-                                    <option value="g/mL">g/mL</option>
-                                    <option value="IU/mL">IU/mL</option>
-                                    <option value="mIU/mL">mIU/mL</option>
-                                    <option value="U/mL">U/mL</option>
-                                    <option value="mmol/L">mmol/L</option>
-                                    <option value="µmol/L">µmol/L</option>
-                                    <option value="mEq/L">mEq/L</option>
-                                </optgroup>
-
-                                <optgroup label="Ratio Complexe">
-                                    <option value="COMPLEX_MG_ML">(x)mg / (y)ml</option>
-                                    <option value="COMPLEX_MCG_ML">(x)mcg / (y)ml</option>
-                                    <option value="COMPLEX_G_ML">(x)g / (y)ml</option>
-                                </optgroup>
-                                
-                                <optgroup label="Poids/Surface">
-                                    <option value="mg/kg">mg/kg</option>
-                                    <option value="mcg/kg">mcg/kg</option>
-                                    <option value="IU/kg">IU/kg</option>
-                                    <option value="mg/kg/day">mg/kg/day</option>
-                                    <option value="mcg/kg/day">mcg/kg/day</option>
-
-                                    <option value="mg/m²">mg/m²</option>
-                                    <option value="mcg/m²">mcg/m²</option>
-                                </optgroup>
-
-                                <optgroup label="Dose">
-                                    <option value="mg/dose">mg/dose</option>
-                                    <option value="mcg/dose">mcg/dose</option>
-                                    <option value="mL/dose">mL/dose</option>
-                                </optgroup>
-                            </select>
-
-                            <button 
-                                type="button"
-                                onClick={() => handleRemove(item.dciId)}
-                                className="text-slate-400 hover:text-red-500 transition-colors ml-1 p-1"
-                            >
-                                <X size={16} />
-                            </button>
-                        </div>
-                        
-                        {/* Complex Dosage Input Row */}
-                        {item.presentation && (
-                             <div className="ml-2 mt-2 p-2 bg-slate-50 border border-slate-200 rounded text-xs flex items-center gap-2">
-                                <span className="text-slate-500 italic">Ratio:</span>
-                                <input 
-                                    type="number"
-                                    className="w-16 px-1 py-0.5 border border-slate-300 rounded outline-none"
-                                    value={item.presentation.numerator}
+                                        return item.unit;
+                                    })()}
                                     onChange={e => {
-                                        const n = parseFloat(e.target.value) || 0;
-                                        const d = item.presentation?.denominator || 1;
-                                        const newPres = { ...item.presentation!, numerator: n };
-                                        
-                                        // Calculate canonical
-                                        let canonUnit = 'mg/mL';
-                                        if (newPres.numeratorUnit === 'mcg') canonUnit = 'mcg/mL';
-                                        if (newPres.numeratorUnit === 'g') canonUnit = 'g/mL';
+                                        const val = e.target.value;
+                                        if (val.startsWith('COMPLEX')) {
+                                            // Initialize complex mode
+                                            const num = item.dosage || 0;
+                                            let numUnit = 'mg';
+                                            let canonUnit = 'mg/mL';
+                                            
+                                            if (val === 'COMPLEX_MCG_ML') {
+                                                numUnit = 'mcg';
+                                                canonUnit = 'mcg/mL';
+                                            } else if (val === 'COMPLEX_G_ML') {
+                                                numUnit = 'g';
+                                                canonUnit = 'g/mL';
+                                            }
 
-                                        const updated = value.map(i => i.dciId === item.dciId ? { 
-                                            ...i, 
-                                            presentation: newPres,
-                                            dosage: parseFloat((n / d).toFixed(4)), 
-                                            unit: canonUnit as any 
-                                        } : i);
-                                        onChange(updated);
+                                            handleUpdate(item.dciId, 'presentation', {
+                                                numerator: num,
+                                                denominator: 1, // Default
+                                                numeratorUnit: numUnit,
+                                                denominatorUnit: 'ml'
+                                            });
+                                            // Recalculate canonical
+                                            handleUpdate(item.dciId, 'unit', canonUnit as any);
+                                            handleUpdate(item.dciId, 'dosage', num);
+                                        } else {
+                                            // Switch back to simple
+                                            handleUpdate(item.dciId, 'unit', val);
+                                            // Clear presentation
+                                            const updated = value.map(i => i.dciId === item.dciId ? { ...i, unit: val as any, presentation: undefined } : i);
+                                            onChange(updated);
+                                            return; 
+                                        }
                                     }}
-                                />
-                                <span className="text-slate-600 font-medium uppercase">{item.presentation.numeratorUnit}</span>
-                                <span className="text-slate-400">/</span>
-                                <input 
-                                    type="number"
-                                    className="w-16 px-1 py-0.5 border border-slate-300 rounded outline-none"
-                                    value={item.presentation.denominator}
-                                    onChange={e => {
-                                        const d = parseFloat(e.target.value) || 1;
-                                        const n = item.presentation?.numerator || 0;
-                                        const newPres = { ...item.presentation!, denominator: d };
-                                        
-                                        let canonUnit = 'mg/mL';
-                                        if (newPres.numeratorUnit === 'mcg') canonUnit = 'mcg/mL';
-                                        if (newPres.numeratorUnit === 'g') canonUnit = 'g/mL';
+                                >
+                                    <optgroup label="Standard">
+                                        <option value="mg">mg</option>
+                                        <option value="g">g</option>
+                                        <option value="mcg">mcg</option>
+                                        <option value="ml">ml</option>
+                                        <option value="IU">IU</option>
+                                        <option value="%">%</option>
+                                    </optgroup>
+                                    <optgroup label="Complexe (Sirop/Injectable)">
+                                        <option value="COMPLEX_MG_ML">mg / _ ml</option>
+                                        <option value="COMPLEX_MCG_ML">mcg / _ ml</option>
+                                        <option value="COMPLEX_G_ML">g / _ ml</option>
+                                    </optgroup>
+                                </select>
 
-                                        const updated = value.map(i => i.dciId === item.dciId ? { 
-                                            ...i, 
-                                            presentation: newPres,
-                                            dosage: parseFloat((n / d).toFixed(4)),
-                                            unit: canonUnit as any
-                                        } : i);
-                                        onChange(updated);
-                                    }}
-                                />
-                                <span className="text-slate-600 font-medium uppercase">{item.presentation.denominatorUnit}</span>
-                                
-                                <span className="ml-auto text-slate-400 text-[10px] flex items-center gap-1">
-                                    <span>Équivalent:</span>
-                                    <span className="font-mono bg-slate-100 px-1 rounded text-slate-600">
-                                        {item.dosage} {item.unit}
-                                    </span>
-                                </span>
-                             </div>
-                        )}
+                                {/* Complex Dosage Inputs */}
+                                {item.presentation && (
+                                    <div className="flex items-center gap-1 bg-purple-50 px-2 py-1 rounded border border-purple-200">
+                                         <span className="text-xs text-slate-500">/</span>
+                                         <input 
+                                            type="number" 
+                                            className="w-12 px-1 py-0.5 border border-purple-300 rounded text-xs outline-none focus:ring-1 focus:ring-purple-500"
+                                            value={item.presentation.denominator}
+                                            onChange={e => {
+                                                const denom = parseFloat(e.target.value);
+                                                const pres = item.presentation!; // safe
+                                                
+                                                // Update presentation
+                                                handleUpdate(item.dciId, 'presentation', { ...pres, denominator: denom });
+
+                                                // Update Canonical Dosage = Num / Denom
+                                                // e.g. 15mg / 5ml = 3 mg/ml
+                                                const canonical = pres.numerator / (denom || 1);
+                                                handleUpdate(item.dciId, 'dosage', canonical);
+                                            }}
+                                         />
+                                         <span className="text-xs font-mono text-purple-700">ml</span>
+                                    </div>
+                                )}
+
+                                <button 
+                                    type="button"
+                                    onClick={() => handleRemove(item.dciId)}
+                                    className="p-1 hover:bg-red-50 text-red-500 rounded transition-colors"
+                                >
+                                    <X size={16} />
+                                </button>
+                            </div>
                         </div>
                     );
                 })}
+                {value.length === 0 && (
+                    <div className="text-sm text-slate-400 italic text-center py-2 border border-dashed border-slate-300 rounded">
+                        Aucune DCI associée
+                    </div>
+                )}
             </div>
 
             {/* Search Input */}
             <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                 <input 
-                    type="text"
-                    className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                    placeholder="Rechercher une DCI à ajouter..."
+                    type="text" 
+                    placeholder="Ajouter une DCI (Rechercher...)" 
+                    className="w-full pl-9 pr-4 py-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-purple-500"
                     value={searchQuery}
                     onChange={e => {
                         setSearchQuery(e.target.value);
@@ -291,39 +266,40 @@ export const DCISelector: React.FC<DCISelectorProps> = ({
                     onFocus={() => setIsOpen(true)}
                 />
 
-                {/* Dropdown Results */}
+                {/* Dropdown */}
                 {isOpen && searchQuery && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        {filteredDCIs.length > 0 ? (
-                            filteredDCIs.map(dci => (
+                        {loading ? (
+                            <div className="p-3 text-center text-slate-400 text-sm">Recherche...</div>
+                        ) : searchResults.length > 0 ? (
+                            searchResults
+                                .filter(dci => !value.some(v => v.dciId === dci.id)) // Filter out already selected
+                                .map(dci => (
                                 <button
                                     key={dci.id}
                                     type="button"
-                                    onClick={() => handleSelect(dci.id)}
-                                    className="w-full text-left px-4 py-2 hover:bg-slate-50 flex flex-col border-b border-slate-50 last:border-0"
+                                    onClick={() => handleSelect(dci)}
+                                    className="w-full text-left px-4 py-2 hover:bg-purple-50 flex flex-col border-b border-slate-50 last:border-0"
                                 >
-                                    <span className="font-medium text-slate-800 text-sm">{dci.name}</span>
-                                    <div className="flex gap-2 text-xs text-slate-500">
-                                        {dci.atc_code && <span>ATC: {dci.atc_code}</span>}
-                                        {dci.therapeutic_class && <span>Class: {dci.therapeutic_class}</span>}
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-medium text-slate-700 text-sm">{dci.name}</span>
+                                        {dci.atcCode && (
+                                            <span className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-mono">
+                                                {dci.atcCode}
+                                            </span>
+                                        )}
                                     </div>
+                                    {/* Synonyms? {dci.synonyms?.join(', ')} */}
                                 </button>
                             ))
                         ) : (
-                            <div className="p-4 text-center text-sm text-slate-500">
-                                Aucune DCI trouvée. 
-                                <button onClick={onAddNew} className="text-purple-600 hover:underline ml-1">
-                                    En créer une ?
-                                </button>
+                            <div className="p-3 text-center text-slate-400 text-sm">
+                                Aucune DCI trouvée. <button type="button" onClick={onAddNew} className="text-purple-600 underline">En créér une ?</button>
                             </div>
                         )}
                     </div>
                 )}
             </div>
-            
-            <p className="text-xs text-slate-500 mt-2">
-                Recherchez et sélectionnez les substances actives composant ce médicament.
-            </p>
         </div>
     );
 };

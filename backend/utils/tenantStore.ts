@@ -9,7 +9,14 @@ const GLOBAL_DIR = path.join(DATA_ROOT, 'global');
 if (!fs.existsSync(TENANTS_DIR)) fs.mkdirSync(TENANTS_DIR, { recursive: true });
 if (!fs.existsSync(GLOBAL_DIR)) fs.mkdirSync(GLOBAL_DIR, { recursive: true });
 
-export type TenantModule = 'pharmacy' | 'emr_admissions' | 'settings' | 'pharmacy_catalog';
+export type TenantModule = 'pharmacy' | 'emr_admissions' | 'settings' | 'pharmacy_catalog' | 'suppliers' 
+| 'settings/users' | 'settings/roles' | 'settings/services' | 'settings/unitTypes' 
+| 'settings/serviceUnits' | 'settings/rooms' | 'settings/pricing'
+// Pharmacy Granular Files
+| 'pharmacy/inventory' | 'pharmacy/pharmacy_locations' | 'pharmacy/department_locations' | 'pharmacy/partners' | 'pharmacy/stockOutHistory'
+| 'pharmacy/purchaseOrders' | 'pharmacy/serializedPacks' | 'pharmacy/looseUnits' | 'pharmacy/dispensations'
+| 'pharmacy/replenishmentRequests' | 'pharmacy/pharmacyLedger' | 'pharmacy/serviceLedgers' | 'pharmacy/movementLogs'
+| 'pharmacy/returnRequests' | 'pharmacy/containers' | 'pharmacy/deliveryNotes';
 export type GlobalModule = 'patients' | 'admins' | 'roles' | 'products' | 'suppliers';
 
 /**

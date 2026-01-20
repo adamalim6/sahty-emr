@@ -57,11 +57,28 @@ export enum ProductType {
   DEVICE = 'Dispositif Médical'
 }
 
+export interface PriceVersion {
+  id: string;
+  purchasePrice: number;
+  margin: number;
+  vat: number;
+  salePriceHT: number;
+  salePriceTTC: number;
+  validFrom: string;
+  validTo: string | null;
+  createdBy?: string; // User Name or ID
+  reason?: string;    // Modification Motif
+}
+
 export interface ProductSupplier { // Renamed from Supplier to avoid collision, or keep as sub-interface
   id: string;
   name: string;
   purchasePrice: number;
   isActive: boolean;
+  margin?: number;
+  vat?: number;
+  isDefault?: boolean;
+  priceVersions: PriceVersion[];
 }
 
 export interface PharmacySupplier {
@@ -111,6 +128,8 @@ export enum UnitType {
 
 export interface ProductDCIComponent {
   dciId: string;
+  name?: string; // Enriched by backend
+  atcCode?: string; // Enriched by backend
   dosage: number;
   unit: DosageUnit;
   // For complex dosages like "15mg / 5ml"

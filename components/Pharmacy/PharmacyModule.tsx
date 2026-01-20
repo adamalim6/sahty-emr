@@ -84,11 +84,15 @@ export const PharmacyModule: React.FC = () => {
       
       if (!needsStockData && !loading) return; 
 
+      setLoading(true); // Ensure loading state is shown during refresh
+
       try {
-        // console.log("Refreshing Pharmacy Data...");
-        const [inv, cat, loc, part, hist, pos, notes, sups, packs, loose] = await Promise.all([
+        console.log(`Fetching data for view: ${view}`);
+        
+        // Use allSettled to prevent one failure from blocking everything
+        const results = await Promise.allSettled([
           api.getInventory(),
-          api.getCatalog(),
+          api.getCatalog(), // Restore Catalog for StockEntry search
           api.getLocations(),
           api.getPartners(),
           api.getStockOutHistory(),
@@ -98,20 +102,53 @@ export const PharmacyModule: React.FC = () => {
           api.getSerializedPacks(),
           api.getLooseUnits()
         ]);
+
+        // Helper to extract result or default
+        function getResult<T>(result: PromiseSettledResult<T>, defaultVal: T): T {
+            if (result.status === 'fulfilled') return result.value;
+            console.error('Fetch failed:', result.reason);
+            return defaultVal;
+        }
+
+
+        const cat = getResult(results[1], []);
+        const inv = getResult(results[0], []).map((item: InventoryItem) => {
+             const product = cat.find((p: ProductDefinition) => p.id === item.productId);
+             return {
+                 ...item,
+                 name: product?.name || 'Produit Inconnu',
+                 category: product?.therapeuticClass || ItemCategory.ANTIBIOTICS, // Use class or fallback
+                 unitPrice: product?.suppliers?.find(s => s.isActive)?.purchasePrice || 0
+             };
+        });
+        const loc = getResult(results[2], []);
+        const part = getResult(results[3], []);
+        const hist = getResult(results[4], []);
+        const pos = getResult(results[5], []);
+        const notes = getResult(results[6], []);
+        const sups = getResult(results[7], []);
+        
+        // Packs and Loose Units are deprecated/secondary in SQL mode, but we keep fetching them for now to avoid breaking types
+        // until fully refactored.
+        const packs = getResult(results[8], []);
+        const loose = getResult(results[9], []);
+
+        console.log(`Suppliers fetched: ${sups.length}`);
+
         setSystemItems(inv);
-        setProductCatalog(cat);
+        setProductCatalog(cat); // Set catalog
         setLocations(loc);
         setPartners(part);
         // Convert date strings to Date objects
-        setStockOutHistory(hist.map(h => ({ ...h, date: new Date(h.date) })));
-        setPurchaseOrders(pos.map(p => ({ ...p, date: new Date(p.date) })));
-        setDeliveryNotes(notes.map(n => ({ ...n, date: new Date(n.date) })));
+        setStockOutHistory(hist.map((h: any) => ({ ...h, date: new Date(h.date) })));
+        setPurchaseOrders(pos.map((p: any) => ({ ...p, date: new Date(p.date) })));
+        setDeliveryNotes(notes.map((n: any) => ({ ...n, date: new Date(n.date) })));
         setSuppliers(sups);
         setAllPacks(packs);
         setLooseUnits(loose);
-        setLoading(false);
       } catch (error) {
-        console.error("Failed to load pharmacy data", error);
+        console.error("Critical error in fetchData", error);
+      } finally {
         setLoading(false);
       }
     };
@@ -125,6 +162,9 @@ export const PharmacyModule: React.FC = () => {
          // Keeping logging or minor specific updates if needed
          if (view === 'catalog' && productCatalog.length === 0) {
              api.getCatalog().then(setProductCatalog).catch(console.error);
+         }
+         if ((view === 'suppliers' || view === 'catalog') && suppliers.length === 0) {
+             handleUpdateSuppliers();
          }
     }
   }, [view]);
@@ -185,7 +225,7 @@ export const PharmacyModule: React.FC = () => {
       const newPO = await api.createPurchaseOrder(po);
       // Convert date string to Date object
       const poWithDate = { ...newPO, date: new Date(newPO.date) };
-      setPurchaseOrders([poWithDate, ...purchaseOrders]);
+      setPurchaseOrders([poWithDate, ...(purchaseOrders || [])]);
     } catch (e) {
       console.error(e);
       alert("Erreur lors de la création du bon de commande");
@@ -459,7 +499,7 @@ export const PharmacyModule: React.FC = () => {
         ) : view === 'prescriptions' ? (
           <PrescriptionManager />
         ) : view === 'catalog' ? (
-          <ProductCatalog products={productCatalog} suppliers={suppliers} onAddProduct={handleAddProduct} onUpdateProduct={handleUpdateProduct} />
+          <ProductCatalog suppliers={suppliers} onAddProduct={handleAddProduct} onUpdateProduct={handleUpdateProduct} />
         ) : view === 'entry' ? (
           <StockEntry purchaseOrders={purchaseOrders} products={productCatalog} deliveryNotes={deliveryNotes} suppliers={suppliers} onCreatePO={handleCreatePO} onReceiveDelivery={handleReceiveDelivery} />
         ) : view === 'quarantine' ? (

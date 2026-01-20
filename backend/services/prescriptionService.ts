@@ -79,7 +79,7 @@ export class PrescriptionService {
 
     // Get all patients who have prescriptions with their info, EXCLUDING biology prescriptions
     // Filter by clientId if provided (for Multi-tenant Pharmacy View)
-    getPatientsWithPrescriptions(clientId?: string) {
+    async getPatientsWithPrescriptions(clientId?: string) {
         // Filter out biology prescriptions for Pharmacy view
         // AND enforce Tenant Isolation via Author Tenant ID
         const pharmacyPrescriptions = this.prescriptions.filter(p => {
@@ -94,9 +94,9 @@ export class PrescriptionService {
         const patientIdsWithPrescriptions = [...new Set(pharmacyPrescriptions.map(p => p.patientId))];
 
         // Fetch patient data and combine with prescription count
-        const patientsWithPrescriptions = patientIdsWithPrescriptions
-            .map(patientId => {
-                const patient = emrService.getPatientById(patientId);
+        const patientsWithPrescriptions = await Promise.all(patientIdsWithPrescriptions
+            .map(async patientId => {
+                const patient = await emrService.getPatientById(patientId);
                 if (!patient) return null;
 
                 const prescriptionCount = pharmacyPrescriptions.filter(p => p.patientId === patientId).length;
@@ -111,10 +111,9 @@ export class PrescriptionService {
                     cin: patient.cin,
                     prescriptionCount
                 };
-            })
-            .filter(p => p !== null);
+            }));
 
-        return patientsWithPrescriptions;
+        return patientsWithPrescriptions.filter(p => p !== null);
     }
 
     // --- EXECUTION MANAGEMENT ---

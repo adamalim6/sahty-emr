@@ -63,48 +63,25 @@ export const ReplenishmentProcessing: React.FC<ReplenishmentProcessingProps> = (
     const handleDispenseItem = async (data: any) => {
         if (!request) return;
         try {
-            // New logic: Construct the updated request object locally and send it whole
-            const updatedRequest = JSON.parse(JSON.stringify(request)); // Deep clone
-            const targetItem = updatedRequest.items.find((i: ReplenishmentRequest['items'][0]) => i.productId === data.itemProductId);
-            
-            if (!targetItem) throw new Error("Item not found in current request state");
+            // New logic: Send explicit dispensation command
+            // data contains: { itemProductId, dispensedProductId, quantity, batches: [], unitType }
 
-            // 1. Update Batches
-            if (!targetItem.dispensedBatches) targetItem.dispensedBatches = [];
-            
-            // Resolve names (optional, backend might re-validate but good for optimistic UI)
-            const productDef = catalog.find(p => p.id === data.dispensedProductId);
-            const productName = productDef?.name || 'Unknown';
+            const payload = {
+                action: 'DISPENSE_ITEM',
+                itemProductId: data.itemProductId,
+                dispensedProductId: data.dispensedProductId,
+                dispensedQuantity: data.quantity,
+                batches: data.batches, // [{ batchNumber, quantity, expiryDate }]
+                userId: 'CURRENT_USER' // TODO: Get from context/auth
+            };
 
-            data.batches.forEach((b: any) => {
-                targetItem.dispensedBatches.push({
-                    batchNumber: b.batchNumber,
-                    quantity: b.quantity,
-                    expiryDate: b.expiryDate,
-                    productId: data.dispensedProductId,
-                    productName: productName,
-                    dispensedAs: data.unitType || 'BOX'
-                });
-            });
-
-            // 2. Update Totals
-            targetItem.quantityApproved = (targetItem.quantityApproved || 0) + data.quantity;
-            
-            // 3. Substitution info
-            if (data.dispensedProductId !== data.itemProductId) {
-                targetItem.productDispensedId = data.dispensedProductId;
-                targetItem.productDispensedName = productName;
-            }
-
-            // 4. Send Update
-            // We use 'EN_COURS' or keep current status to indicate active processing
             const result = await api.updateReplenishmentRequestStatus(
                 request.id, 
-                ReplenishmentStatus.IN_PROGRESS, // Or keep current? Usually implies partial progress.
-                updatedRequest
+                'DISPENSED', 
+                 payload
             );
 
-            // 5. Refresh
+            // Refresh to get updated counters
             await loadData(true); 
 
         } catch (error) {

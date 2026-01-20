@@ -2,6 +2,7 @@
 import { Request, Response } from 'express';
 import { AuthRequest, getTenantId } from '../middleware/authMiddleware';
 import { settingsService, ServiceDefinition, UnitType, ServiceUnit, Pricing } from '../services/settingsService';
+import { globalAdminService } from '../services/globalAdminService';
 import { User, UserType } from '../models/auth';
 import bcrypt from 'bcryptjs';
 
@@ -11,10 +12,10 @@ const getContext = (req: Request) => {
 };
 
 // --- Users ---
-export const getMyUsers = (req: AuthRequest, res: Response) => {
+export const getMyUsers = async (req: AuthRequest, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const users = settingsService.getUsers(tenantId);
+        const users = await settingsService.getUsers(tenantId);
         // Mask password hash
         const safeUsers = users.map(u => {
             const { password_hash, ...rest } = u;
@@ -26,7 +27,7 @@ export const getMyUsers = (req: AuthRequest, res: Response) => {
     }
 };
 
-export const createMyUser = (req: AuthRequest, res: Response) => {
+export const createMyUser = async (req: AuthRequest, res: Response) => {
     try {
         const { tenantId } = getContext(req);
         const { username, password, nom, prenom, role_id, INPE, service_ids } = req.body;
@@ -44,7 +45,7 @@ export const createMyUser = (req: AuthRequest, res: Response) => {
             service_ids: service_ids || []
         };
 
-        const created = settingsService.createUser(tenantId, newUser);
+        const created = await settingsService.createUser(tenantId, newUser);
         const { password_hash, ...safeUser } = created;
         res.status(201).json(safeUser);
     } catch (error: any) {
@@ -52,14 +53,14 @@ export const createMyUser = (req: AuthRequest, res: Response) => {
     }
 };
 
-export const updateTenantUser = (req: AuthRequest, res: Response) => {
+export const updateTenantUser = async (req: AuthRequest, res: Response) => {
     try {
         const { tenantId } = getContext(req);
         const { id } = req.params;
         const updates = req.body;
         
         // Fetch current to check logic
-        const users = settingsService.getUsers(tenantId);
+        const users = await settingsService.getUsers(tenantId);
         const currentUser = users.find(u => u.id === id);
         
         if (!currentUser) return res.status(404).json({ error: 'User not found' });
@@ -73,7 +74,7 @@ export const updateTenantUser = (req: AuthRequest, res: Response) => {
             delete updates.password;
         }
 
-        const updated = settingsService.updateUser(tenantId, { ...updates, id });
+        const updated = await settingsService.updateUser(tenantId, { ...updates, id });
         const { password_hash, ...safeUser } = updated;
         res.json(safeUser);
     } catch (error: any) {
@@ -82,19 +83,19 @@ export const updateTenantUser = (req: AuthRequest, res: Response) => {
 };
 
 // --- Roles ---
-export const getGlobalRoles = (req: Request, res: Response) => {
+export const getGlobalRoles = async (req: Request, res: Response) => {
     try {
         // const { tenantId } = getContext(req); // Not needed for global roles
-        const roles = settingsService.getGlobalRolesDefinitions();
+        const roles = await globalAdminService.getAllGlobalRoles();
         res.json(roles);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
 
-export const getGlobalRole = (req: Request, res: Response) => {
+export const getGlobalRole = async (req: Request, res: Response) => {
     try {
-        const role = settingsService.getGlobalRoleDefinition(req.params.id);
+        const role = await globalAdminService.getGlobalRole(req.params.id);
         if (!role) return res.status(404).json({ error: 'Role not found' });
         res.json(role);
     } catch (error: any) {
@@ -103,20 +104,20 @@ export const getGlobalRole = (req: Request, res: Response) => {
 };
 
 // --- Services ---
-export const getServices = (req: AuthRequest, res: Response) => {
+export const getServices = async (req: AuthRequest, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const services = settingsService.getServices(tenantId);
+        const services = await settingsService.getServices(tenantId);
         res.json(services);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
 
-export const getService = (req: AuthRequest, res: Response) => {
+export const getService = async (req: AuthRequest, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const services = settingsService.getServices(tenantId);
+        const services = await settingsService.getServices(tenantId);
         const service = services.find(s => s.id === req.params.id);
         if (!service) return res.status(404).json({ error: 'Service not found' });
         res.json(service);
@@ -127,7 +128,7 @@ export const getService = (req: AuthRequest, res: Response) => {
 
 import { pharmacyService } from '../services/pharmacyService'; // Import Service
 
-export const createService = (req: AuthRequest, res: Response) => {
+export const createService = async (req: AuthRequest, res: Response) => {
     try {
         const { tenantId } = getContext(req);
         const newService: ServiceDefinition = {
@@ -135,7 +136,7 @@ export const createService = (req: AuthRequest, res: Response) => {
             tenantId,
             ...req.body
         };
-        const created = settingsService.createService(tenantId, newService);
+        const created = await settingsService.createService(tenantId, newService);
         
         // 🔗 LINKING: Automatically Initialize Physical Service Ledger
         try {
@@ -151,21 +152,21 @@ export const createService = (req: AuthRequest, res: Response) => {
     }
 };
 
-export const updateService = (req: AuthRequest, res: Response) => {
+export const updateService = async (req: AuthRequest, res: Response) => {
     try {
         const { tenantId } = getContext(req);
         const { id } = req.params;
-        const updated = settingsService.updateService(tenantId, { ...req.body, id });
+        const updated = await settingsService.updateService(tenantId, { ...req.body, id });
         res.json(updated);
     } catch (error: any) {
         res.status(400).json({ message: error.message });
     }
 };
 
-export const deleteService = (req: AuthRequest, res: Response) => {
+export const deleteService = async (req: AuthRequest, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        settingsService.deleteService(tenantId, req.params.id);
+        await settingsService.deleteService(tenantId, req.params.id);
         res.json({ success: true });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -173,17 +174,17 @@ export const deleteService = (req: AuthRequest, res: Response) => {
 };
 
 // --- Rooms (Unit Types) ---
-export const getRooms = (req: AuthRequest, res: Response) => {
+export const getRooms = async (req: AuthRequest, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const rooms = settingsService.getUnitTypes(tenantId);
+        const rooms = await settingsService.getUnitTypes(tenantId);
         res.json(rooms);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
 
-export const createRoom = (req: AuthRequest, res: Response) => {
+export const createRoom = async (req: AuthRequest, res: Response) => {
     try {
         const { tenantId } = getContext(req);
         const newRoom: UnitType = {
@@ -191,28 +192,28 @@ export const createRoom = (req: AuthRequest, res: Response) => {
             tenantId,
             ...req.body
         };
-        const created = settingsService.createUnitType(tenantId, newRoom);
+        const created = await settingsService.createUnitType(tenantId, newRoom);
         res.status(201).json(created);
     } catch (error: any) {
         res.status(400).json({ message: error.message });
     }
 };
 
-export const updateRoom = (req: AuthRequest, res: Response) => {
+export const updateRoom = async (req: AuthRequest, res: Response) => {
     try {
         const { tenantId } = getContext(req);
         const { id } = req.params;
-        const updated = settingsService.updateUnitType(tenantId, { ...req.body, id });
+        const updated = await settingsService.updateUnitType(tenantId, { ...req.body, id });
         res.json(updated);
     } catch (error: any) {
         res.status(400).json({ message: error.message });
     }
 };
 
-export const deleteRoom = (req: AuthRequest, res: Response) => {
+export const deleteRoom = async (req: AuthRequest, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        settingsService.deleteUnitType(tenantId, req.params.id);
+        await settingsService.deleteUnitType(tenantId, req.params.id);
         res.json({ success: true });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -220,17 +221,17 @@ export const deleteRoom = (req: AuthRequest, res: Response) => {
 };
 
 // --- Pricing ---
-export const getPricing = (req: AuthRequest, res: Response) => {
+export const getPricing = async (req: AuthRequest, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const pricing = settingsService.getPricing(tenantId);
+        const pricing = await settingsService.getPricing(tenantId);
         res.json(pricing);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
 
-export const createPricing = (req: AuthRequest, res: Response) => {
+export const createPricing = async (req: AuthRequest, res: Response) => {
     try {
         const { tenantId } = getContext(req);
         const newPricing: Pricing = {
@@ -238,7 +239,7 @@ export const createPricing = (req: AuthRequest, res: Response) => {
             tenantId,
             ...req.body
         };
-        const created = settingsService.createPricing(tenantId, newPricing);
+        const created = await settingsService.createPricing(tenantId, newPricing);
         res.status(201).json(created);
     } catch (error: any) {
         res.status(400).json({ message: error.message });
@@ -246,18 +247,18 @@ export const createPricing = (req: AuthRequest, res: Response) => {
 };
 
 // --- Service Units ---
-export const getServiceUnits = (req: AuthRequest, res: Response) => {
+export const getServiceUnits = async (req: AuthRequest, res: Response) => {
     try {
         const { tenantId } = getContext(req);
         const { id: serviceId } = req.params;
-        const units = settingsService.getServiceUnits(tenantId, serviceId);
+        const units = await settingsService.getServiceUnits(tenantId, serviceId);
         res.json(units);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
 
-export const createServiceUnit = (req: AuthRequest, res: Response) => {
+export const createServiceUnit = async (req: AuthRequest, res: Response) => {
     try {
         const { tenantId } = getContext(req);
         const newItem: ServiceUnit = {
@@ -267,18 +268,18 @@ export const createServiceUnit = (req: AuthRequest, res: Response) => {
             created_at: new Date().toISOString(),
             ...req.body
         };
-        const created = settingsService.createServiceUnit(tenantId, newItem);
+        const created = await settingsService.createServiceUnit(tenantId, newItem);
         res.status(201).json(created);
     } catch (error: any) {
         res.status(400).json({ message: error.message });
     }
 };
 
-export const deleteServiceUnit = (req: AuthRequest, res: Response) => {
+export const deleteServiceUnit = async (req: AuthRequest, res: Response) => {
     try {
         const { tenantId } = getContext(req);
         const { unitId } = req.params;
-        settingsService.deleteServiceUnit(tenantId, unitId);
+        await settingsService.deleteServiceUnit(tenantId, unitId);
         res.json({ success: true });
     } catch (error: any) {
         res.status(500).json({ message: error.message });

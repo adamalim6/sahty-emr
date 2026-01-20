@@ -2,18 +2,28 @@
 import { Request, Response } from 'express';
 import { globalDCIService } from '../services/GlobalDCIService';
 
-export const getAllDCIs = (req: Request, res: Response) => {
+export const getAllDCIs = async (req: Request, res: Response) => {
     try {
-        const dcis = globalDCIService.getAllDCIs();
+        if (req.query.page || req.query.limit) {
+            const page = parseInt(req.query.page as string) || 1;
+            const limit = parseInt(req.query.limit as string) || 20;
+            // The query param might be 'search' or 'q'. Let's support 'q' based on plan.
+            const q = (req.query.q as string) || '';
+
+            const result = await globalDCIService.getDCIsPaginated(page, limit, q);
+            return res.json(result);
+        }
+
+        const dcis = await globalDCIService.getAllDCIs();
         res.json(dcis);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
 
-export const createDCI = (req: Request, res: Response) => {
+export const createDCI = async (req: Request, res: Response) => {
     try {
-        const dci = globalDCIService.createDCI(req.body);
+        const dci = await globalDCIService.createDCI(req.body);
         res.status(201).json(dci);
     } catch (error: any) {
         if (error.message.includes('existe déjà')) {
@@ -24,9 +34,9 @@ export const createDCI = (req: Request, res: Response) => {
     }
 };
 
-export const updateDCI = (req: Request, res: Response) => {
+export const updateDCI = async (req: Request, res: Response) => {
     try {
-        const dci = globalDCIService.updateDCI(req.params.id, req.body);
+        const dci = await globalDCIService.updateDCI(req.params.id, req.body);
         res.json(dci);
     } catch (error: any) {
          if (error.message.includes('existe déjà')) {
@@ -39,9 +49,9 @@ export const updateDCI = (req: Request, res: Response) => {
     }
 };
 
-export const deleteDCI = (req: Request, res: Response) => {
+export const deleteDCI = async (req: Request, res: Response) => {
     try {
-        globalDCIService.deleteDCI(req.params.id);
+        await globalDCIService.deleteDCI(req.params.id);
         res.status(204).send();
     } catch (error: any) {
         res.status(500).json({ message: error.message });

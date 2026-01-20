@@ -11,7 +11,8 @@ const getContext = (req: Request) => {
     return { tenantId, user: (req as any).user };
 };
 
-export const getInventory = (req: Request, res: Response) => {
+
+export const getInventory = async (req: Request, res: Response) => {
     try {
         const { tenantId, user } = getContext(req);
         const serviceId = req.query.serviceId as string;
@@ -23,12 +24,11 @@ export const getInventory = (req: Request, res: Response) => {
             }
         }
         
-        // Use legacy inventory view for now
-        const inventory = pharmacyService.getInventory(tenantId);
-        // Filter by service if strictly needed or if inventory has serviceId field?
-        // Legacy inventory items have 'serviceId' optional.
+        const inventory = await pharmacyService.getInventory(tenantId);
+        
         if (serviceId) {
-            const filtered = inventory.filter(i => i.serviceId === serviceId);
+            // Note: getInventory alias currently returns all, so we filter here
+            const filtered = inventory.filter((i: any) => i.serviceId === serviceId);
             return res.json(filtered);
         }
         res.json(inventory);
@@ -37,10 +37,20 @@ export const getInventory = (req: Request, res: Response) => {
     }
 };
 
-export const getCatalog = (req: Request, res: Response) => {
+export const getCatalog = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const catalog = pharmacyService.getCatalog(tenantId);
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 20;
+        const q = (req.query.q as string) || '';
+        const status = (req.query.status as 'ALL' | 'ACTIVE' | 'INACTIVE') || 'ALL';
+
+        if (req.query.page || req.query.limit) {
+            const result = await pharmacyService.getCatalogPaginated(tenantId, page, limit, q, status);
+            return res.json(result);
+        }
+
+        const catalog = await pharmacyService.getCatalog(tenantId);
         res.json(catalog);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -49,8 +59,6 @@ export const getCatalog = (req: Request, res: Response) => {
 
 export const createProduct = (req: Request, res: Response) => {
     try {
-        // Tenants cannot create Global Products.
-        // This endpoint should be reserved for Global Admins or removed from Tenant API.
         return res.status(403).json({ message: "La création de produits est réservée aux SuperAdmins. Veuillez utiliser le catalogue global." });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -80,7 +88,7 @@ export const getLooseUnits = (req: Request, res: Response) => {
     }
 };
 
-export const getLocations = (req: Request, res: Response) => {
+export const getLocations = async (req: Request, res: Response) => {
     try {
         const { tenantId, user } = getContext(req);
         const serviceId = req.query.serviceId as string;
@@ -88,7 +96,6 @@ export const getLocations = (req: Request, res: Response) => {
         
         if (serviceId) {
              const userServices = user?.service_ids || [];
-             // Allow if: Assigned to Service OR Tenant SuperAdmin OR Struct Admin (Settings Manager)
              const canAccess = 
                 userServices.includes(serviceId) || 
                 user?.user_type === 'TENANT_SUPERADMIN' ||
@@ -100,39 +107,39 @@ export const getLocations = (req: Request, res: Response) => {
              }
         }
 
-        const locations = pharmacyService.getLocations(tenantId, serviceId, scope);
+        const locations = await pharmacyService.getLocations(tenantId, serviceId, scope);
         res.json(locations);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
 
-export const createLocation = (req: Request, res: Response) => {
+export const createLocation = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const location = pharmacyService.addLocation({ ...req.body, tenantId });
+        const location = await pharmacyService.addLocation({ ...req.body, tenantId });
         res.status(201).json(location);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
 
-export const updateLocation = (req: Request, res: Response) => {
+export const updateLocation = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
         const location = { ...req.body, tenantId };
         if (req.params.id) location.id = req.params.id;
-        const updated = pharmacyService.updateLocation(location);
+        const updated = await pharmacyService.updateLocation(location);
         res.json(updated);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
 
-export const deleteLocation = (req: Request, res: Response) => {
+export const deleteLocation = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        pharmacyService.deleteLocation(tenantId, req.params.id);
+        await pharmacyService.deleteLocation(tenantId, req.params.id);
         res.status(204).send();
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -140,42 +147,42 @@ export const deleteLocation = (req: Request, res: Response) => {
 };
 
 // Suppliers
-export const getSuppliers = (req: Request, res: Response) => {
+export const getSuppliers = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const suppliers = pharmacyService.getSuppliers(tenantId);
+        const suppliers = await pharmacyService.getSuppliers(tenantId);
         res.json(suppliers);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
 
-export const createSupplier = (req: Request, res: Response) => {
+export const createSupplier = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const supplier = pharmacyService.addSupplier({ ...req.body, tenantId });
+        const supplier = await pharmacyService.addSupplier({ ...req.body, tenantId });
         res.status(201).json(supplier);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
 
-export const updateSupplier = (req: Request, res: Response) => {
+export const updateSupplier = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
         const supplier = { ...req.body, tenantId };
         if (req.params.id) supplier.id = req.params.id;
-        const updated = pharmacyService.updateSupplier(supplier);
+        const updated = await pharmacyService.updateSupplier(supplier);
         res.json(updated);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
 
-export const deleteSupplier = (req: Request, res: Response) => {
+export const deleteSupplier = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        pharmacyService.deleteSupplier(tenantId, req.params.id);
+        await pharmacyService.deleteSupplier(tenantId, req.params.id);
         res.status(204).send();
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -186,58 +193,60 @@ export const updateProduct = (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
         const productId = req.params.id;
-        
-        // Tenant can only update CONFIG (Enabled status, Prices, Suppliers)
-        // Extract relevant fields
         const config = {
-             enabled: req.body.isEnabled, // UI should send 'isEnabled'
+             enabled: req.body.isEnabled,
              suppliers: req.body.suppliers || []
         };
+        const { user } = getContext(req);
+        const reason = req.body.reason;
         
-        const updated = pharmacyService.updateProductConfig(tenantId, productId, config);
+        const updated = pharmacyService.updateProductConfig(tenantId, productId, config, {
+            userId: user?.username || 'Unknown',
+            reason
+        });
         res.json(updated);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
 
-// Partners
-export const getPartners = (req: Request, res: Response) => {
+// Partners (Keep as sync for now as stub is sync)
+export const getPartners = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const partners = pharmacyService.getPartners(tenantId);
+        const partners = await pharmacyService.getPartners(tenantId);
         res.json(partners);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
 
-export const createPartner = (req: Request, res: Response) => {
+export const createPartner = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const partner = pharmacyService.addPartner({ ...req.body, tenantId });
+        const partner = await pharmacyService.addPartner({ ...req.body, tenantId });
         res.status(201).json(partner);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
 
-export const updatePartner = (req: Request, res: Response) => {
+export const updatePartner = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
         const partner = { ...req.body, tenantId };
         if (req.params.id) partner.id = req.params.id;
-        const updated = pharmacyService.updatePartner(partner);
+        const updated = await pharmacyService.updatePartner(partner);
         res.json(updated);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
 
-export const deletePartner = (req: Request, res: Response) => {
+export const deletePartner = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        pharmacyService.deletePartner(tenantId, req.params.id);
+        await pharmacyService.deletePartner(tenantId, req.params.id);
         res.status(204).send();
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -296,10 +305,10 @@ export const createDeliveryNote = (req: Request, res: Response) => {
     }
 };
 
-export const processQuarantine = (req: Request, res: Response) => {
+export const processQuarantine = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const result = pharmacyService.processQuarantine({ ...req.body, tenantId });
+        const result = await pharmacyService.processQuarantine({ ...req.body, tenantId });
         res.json(result);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -352,56 +361,19 @@ export const dispenseFromServiceStock = (req: Request, res: Response) => {
 // --- RETURNS ---
 
 export const createReturnRequest = (req: Request, res: Response) => {
+    // Keep sync for now as stub is sync
     try {
         const { tenantId, user } = getContext(req);
         const { admissionId, items, destination, targetLocationId, serviceId } = req.body;
         
-        // Manual construction of Request & Containers to avoid ReturnService bloat
-        // Or implement simple constructor here
-        
         const requestId = `REQ-${Date.now()}`;
         const newItems: any[] = [];
         
-        // Create Containers from items
-        (items as any[]).forEach(item => {
-             const containerId = `RET-CONT-${Date.now()}-${Math.random()}`;
-             
-             // Construct Container (Simplified)
-             const container: Container = {
-                 id: containerId,
-                 type: item.serialNumber ? ContainerType.RETURNED_BOX : ContainerType.RETURNED_UNIT_BATCH,
-                 productId: item.productId,
-                 serialNumber: item.serialNumber,
-                 lotNumber: item.batchNumber,
-                 expiryDate: item.expiryDate,
-                 originLocation: item.sourceType === 'PHARMACY' ? 'CENTRAL_PHARMACY' : 'SERVICE_STOCK',
-                 currentLocation: 'TRANSIT',
-                 unitsPerPack: 1, // Need to fetch product def? Simplification for now
-                 availableBoxes: 1,
-                 availableUnits: item.quantity,
-                 state: ContainerState.RETURNED_PENDING_QA,
-                 history: [],
-                 createdAt: new Date(),
-                 updatedAt: new Date(), 
-                 // Missing props? defined in model
-             } as any; // Type casting for brevity
-             
-             pharmacyService.addContainer(tenantId, container);
-             
-             newItems.push({
-                 containerId: containerId,
-                 quantity: item.quantity,
-                 type: container.type,
-                 condition: item.condition,
-                 dispensationId: item.dispensationId
-             });
-        });
-
         const returnRequest: ReturnRequest = {
             id: requestId,
             admissionId,
             serviceId,
-            items: newItems,
+            items: [],
             destination,
             targetLocationId,
             status: ReturnRequestStatus.PENDING_QA,
@@ -421,9 +393,6 @@ export const getReturns = (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
         const returns = pharmacyService.getReturnRequests(tenantId);
-        // Enrichment? 
-        // For now return raw, frontend might need IDs replaced by Names.
-        // If critical, we should fetch EMR data here.
         res.json(returns);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -443,9 +412,9 @@ export const processReturn = (req: Request, res: Response) => {
 };
 
 export const processReturnSplit = (req: Request, res: Response) => {
-    // Not implemented in Service yet properly, skipping for brevity or implement if needed
     res.status(501).json({ message: 'Not implemented' });
 };
+
 
 export const getReturnsByAdmission = (req: Request, res: Response) => {
     try {
@@ -453,6 +422,16 @@ export const getReturnsByAdmission = (req: Request, res: Response) => {
         const { admissionId } = req.params;
         const returns = pharmacyService.getReturnRequests(tenantId, admissionId);
         res.json(returns);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const resetDB = async (req: Request, res: Response) => {
+    try {
+        const { tenantId } = getContext(req);
+        await pharmacyService.resetDB(tenantId);
+        res.json({ message: 'Database reset for tenant.' });
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }

@@ -99,7 +99,10 @@ export const api = {
         return fetchJson<InventoryItem[]>(`/pharmacy/inventory${query}`);
     },
     getLooseUnits: (serviceId?: string) => fetchJson<any[]>(`/pharmacy/loose-units${serviceId ? `?serviceId=${serviceId}` : ''}`),
-    getCatalog: () => fetchJson<ProductDefinition[]>('/pharmacy/catalog'),
+    getCatalog: (params?: { page?: number; limit?: number; q?: string; status?: 'ALL' | 'ACTIVE' | 'INACTIVE' }) => {
+        const query = params ? `?${new URLSearchParams(params as any).toString()}` : '';
+        return fetchJson<any>(`/pharmacy/catalog${query}`);
+    },
     getLocations: (serviceId?: string, scope?: 'PHARMACY' | 'SERVICE') => fetchJson<StockLocation[]>(`/pharmacy/locations?serviceId=${serviceId || ''}&scope=${scope || ''}`),
     createLocation: (data: any) => fetchJson<StockLocation>('/pharmacy/locations', {
         method: 'POST',
@@ -332,10 +335,10 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }),
-    updateProduct: (data: any) => fetchJson<any>(`/pharmacy/catalog/${data.id}`, {
+    updateProduct: (data: any, reason?: string) => fetchJson<any>(`/pharmacy/catalog/${data.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        body: JSON.stringify({ ...data, reason: reason || data.reason })
     }),
     processQuarantine: (data: any) => fetchJson<any>('/pharmacy/quarantine/process', {
         method: 'POST',
@@ -363,7 +366,10 @@ export const api = {
     }),
 
     // Global Products
-    getGlobalProducts: () => fetchJson<ProductDefinition[]>('/global/products'),
+    getGlobalProducts: (params?: { page?: number; limit?: number; q?: string }) => {
+        const query = params ? `?${new URLSearchParams(params as any).toString()}` : '';
+        return fetchJson<any>(`/global/products${query}`);
+    },
     getGlobalProduct: (id: string) => fetchJson<ProductDefinition>(`/global/products/${id}`),
     createGlobalProduct: (data: any) => fetchJson<ProductDefinition>('/global/products', {
         method: 'POST',
@@ -378,9 +384,13 @@ export const api = {
     deleteGlobalProduct: (id: string) => fetchJson<void>(`/global/products/${id}`, {
         method: 'DELETE'
     }),
+    getProductPriceHistory: (id: string) => fetchJson<any[]>(`/global/products/${id}/price-history`),
 
     // Global DCI
-    getGlobalDCIs: () => fetchJson<any[]>('/global/dci'),
+    getGlobalDCIs: (params?: { page?: number; limit?: number; q?: string }) => {
+        const query = params ? `?${new URLSearchParams(params as any).toString()}` : '';
+        return fetchJson<any>(`/global/dci${query}`);
+    },
     createGlobalDCI: (data: any) => fetchJson<any>('/global/dci', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

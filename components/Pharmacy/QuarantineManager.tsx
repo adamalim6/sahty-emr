@@ -59,11 +59,12 @@ export const QuarantineManager: React.FC<QuarantineManagerProps> = ({
 
    const addBatch = (productId: string) => {
       const current = processData[productId];
+      const pharmacyLocations = locations.filter(l => l.scope === 'PHARMACY');
       const newBatch: BatchEntry = {
          batchNumber: '',
          expiryDate: '',
          quantity: 0,
-         locationId: locations[0]?.name || ''
+         locationId: pharmacyLocations[0]?.name || ''
       };
 
       setProcessData({
@@ -450,7 +451,7 @@ export const QuarantineManager: React.FC<QuarantineManagerProps> = ({
                                                          value={batch.locationId}
                                                          onChange={(e) => updateBatch(item.productId, idx, 'locationId', e.target.value)}
                                                       >
-                                                         {locations.map(l => <option key={l.id} value={l.name}>{l.name}</option>)}
+                                                         {locations.filter(l => l.scope === 'PHARMACY').map(l => <option key={l.id} value={l.name}>{l.name}</option>)}
                                                       </select>
                                                    </div>
 

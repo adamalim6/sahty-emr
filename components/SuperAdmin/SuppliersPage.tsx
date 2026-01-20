@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
-import { Plus, Search, Truck, Edit2, Trash2, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Search, Truck, Edit2, Trash2, CheckCircle, XCircle, X } from 'lucide-react';
 
 export const SuppliersPage: React.FC = () => {
     const [suppliers, setSuppliers] = useState<any[]>([]);
@@ -30,7 +30,8 @@ export const SuppliersPage: React.FC = () => {
     const handleOpenModal = (supplier?: any) => {
         if (supplier) {
             setEditingSupplier(supplier);
-            setFormData({ name: supplier.name, is_active: supplier.is_active });
+            // Fix: Handle both 'isActive' (from new SQL service) and 'is_active' (legacy/form)
+            setFormData({ name: supplier.name, is_active: supplier.isActive ?? supplier.is_active });
         } else {
             setEditingSupplier(null);
             setFormData({ name: '', is_active: true });
@@ -119,7 +120,8 @@ export const SuppliersPage: React.FC = () => {
                                     <div className="font-medium text-slate-900">{supplier.name}</div>
                                 </td>
                                 <td className="px-6 py-4">
-                                    {supplier.is_active ? (
+                                    {/* Fix: Check both property names */}
+                                    {supplier.isActive || supplier.is_active ? (
                                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                             <CheckCircle size={12} className="mr-1" /> Actif
                                         </span>
@@ -162,9 +164,14 @@ export const SuppliersPage: React.FC = () => {
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
                     <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
-                        <h2 className="text-xl font-bold mb-6 text-slate-800">
-                            {editingSupplier ? 'Modifier le fournisseur' : 'Nouveau fournisseur'}
-                        </h2>
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold text-slate-800">
+                                {editingSupplier ? 'Modifier le fournisseur' : 'Nouveau fournisseur'}
+                            </h2>
+                            <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                                <X size={24} />
+                            </button>
+                        </div>
                         
                         {error && (
                             <div className="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg flex items-center">

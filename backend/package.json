@@ -18,6 +18,7 @@
         "jsdom": "^27.4.0",
         "jsonwebtoken": "^9.0.3",
         "multer": "^2.0.2",
+        "sqlite3": "^5.1.7",
         "xlsx": "^0.18.5"
     },
     "devDependencies": {
@@ -26,6 +27,7 @@
         "@types/express": "^4.17.21",
         "@types/jsonwebtoken": "^9.0.10",
         "@types/node": "^20.10.6",
+        "@types/sqlite3": "^3.1.11",
         "nodemon": "^3.0.2",
         "ts-node": "^10.9.2",
         "typescript": "^5.3.3"

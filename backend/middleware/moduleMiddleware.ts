@@ -15,6 +15,12 @@ export const requireModule = (requiredModule: string) => {
         // Ensure modules array exists
         const userModules = user.modules || [];
 
+        // Tenant SuperAdmins have implicit access to all enabled modules
+        if (user.user_type === 'TENANT_SUPERADMIN') {
+            next();
+            return;
+        }
+
         if (!userModules.includes(requiredModule)) {
             console.warn(`[Access Denied] User ${user.username} tried to access ${requiredModule} but only has [${userModules.join(', ')}]`);
             return res.status(403).json({ 

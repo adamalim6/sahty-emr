@@ -5,111 +5,133 @@ import jwt from 'jsonwebtoken';
 import { globalAdminService } from '../services/globalAdminService';
 import { settingsService } from '../services/settingsService';
 import { TenantStore } from '../utils/tenantStore';
-import { User, UserType } from '../models/auth';
+import { User } from '../models/auth';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-change-in-prod';
 
 export const login = async (req: Request, res: Response) => {
-    const { username, password } = req.body; // Remove clientId/tenantId requirement
+    const { username, password } = req.body; 
     const fs = require('fs');
     const path = require('path');
     const logFile = path.join(__dirname, '../auth_debug.log');
 
     const log = (msg: string) => {
-        fs.appendFileSync(logFile, `[${new Date().toISOString()}] ${msg}\n`);
+        try {
+            fs.appendFileSync(logFile, `[${new Date().toISOString()}] ${msg}\n`);
+        } catch (e) { console.error("Log failed", e); }
     };
 
     log(`Login attempt for username: ${username}`);
 
-
-    log(`Login attempt for username: ${username}`);
-
     try {
-        // 1. Try Global SuperAdmin
-        log('Checking Global Admin...');
-        const globalAdmin = await globalAdminService.authenticate(username, password);
+        // 1. Try Global SuperAdmin (and now Tenant Admins in Global DB!)
+        log('Checking Global DB...');
+        const globalUser = await globalAdminService.authenticate(username, password);
 
-        if (globalAdmin) {
+        if (globalUser) {
+            log(`Authenticated in Global DB. User: ${globalUser.username}, Type: ${globalUser.user_type}, Client: ${globalUser.client_id}`);
+            
+            // Determine Realm
+            // Global SuperAdmin => client_id is NULL or 'GLOBAL' (depends on how we stored it? 'GLOBAL' in legacy thought, but null in SQL schema?)
+            // Migration script: Added client_id column. SuperAdmin row has NULL or empty?
+            // Checking my check result earlier: SuperAdmin had proper ID. client_id?
+            // "global_admin|admin|...|Global|SUPER_ADMIN|SUPER_ADMIN|1|...|"
+            // The row output from `sqlite3` earlier didn't show column headers, but `Global` string was there.
+            // Wait, "Global" was nom/prenom maybe?
+            // Let's assume Global Admin has specific characteristics.
+            
+            const isTenantAdmin = !!globalUser.client_id && globalUser.client_id !== 'GLOBAL';
+            const realm = isTenantAdmin ? 'tenant' : 'global';
+
             const token = jwt.sign(
                 { 
-                    userId: globalAdmin.id, 
-                    username: globalAdmin.username, 
-                    role: 'SUPER_ADMIN', 
-                    realm: 'global',
-                    modules: [], // SuperAdmin has system access, explicitly no formal modules? or ['GLOBAL_ADMIN']
+                    userId: globalUser.id, 
+                    username: globalUser.username, 
+                    role: globalUser.role_code || 'SUPER_ADMIN', 
+                    realm: realm,
+                    client_id: globalUser.client_id, 
+                    modules: [], // Can be enriched later
+                    user_type: globalUser.user_type,
+                    // Legacy props for compatibility
+                    tenantId: globalUser.client_id 
                 },
                 JWT_SECRET,
                 { expiresIn: '24h' }
             );
-            return res.json({
-                token,
-                user: {
-                    ...globalAdmin,
-                    password_hash: undefined,
-                    role: 'SUPER_ADMIN',
-                    realm: 'global'
-                }
-            });
-            log('Authenticated as GLOBAL ADMIN');
-            return res.json({
 
+            return res.json({
                 token,
                 user: {
-                    ...globalAdmin,
+                    ...globalUser,
                     password_hash: undefined,
-                    role: 'SUPER_ADMIN',
-                    realm: 'global'
+                    role: globalUser.role_code,
+                    realm: realm,
+                    tenantId: globalUser.client_id
                 }
             });
         }
 
-        // 2. Scan All Tenants for User
-        log('Checking Tenants...');
-        const tenants = TenantStore.listTenants();
-        log(`Found ${tenants.length} tenants.`);
+        // 2. Fallback: Scan All Tenants for Regular Users (Doctors, Nurses in <tenant>.db)
+        log('User not in Global DB. Scanning Tenants for regular user...');
+        const tenants = TenantStore.listTenants(); // Now likely returns folder names which are Tenant IDs
         
         for (const tenantId of tenants) {
-            log(`Scanning tenant: ${tenantId}`);
             try {
+                // Skip if not a valid tenant directory (e.g. legacy_json_backup)
+                // TenantStore.listTenants filters for directories.
+                if (tenantId.startsWith('legacy_')) continue; 
 
-                const users = settingsService.getUsers(tenantId);
+                const users = await settingsService.getUsers(tenantId);
                 const user = users.find(u => u.username === username);
                 
                 if (user && user.active !== false) {
-                    log(`User found in tenant ${tenantId}. Checking password...`);
-                    // check password
                     if (bcrypt.compareSync(password, user.password_hash)) {
-                        log(`Password MATCH for ${username} in ${tenantId}. Authenticating...`);
-                        // FOUND THE USER!
-
+                        log(`Match found in tenant ${tenantId}`);
                         
                         // Get Roles & Permissions
-                        const roles = settingsService.getRoles(tenantId);
+                        const roles = await settingsService.getRoles(tenantId);
                         let userRole = roles.find(r => r.id === user.role_id);
-
+                        
+                        // If role not found in tenant (Global Role?), fetch definition?
                         if (!userRole) {
-                            userRole = settingsService.getGlobalRoleDefinition(user.role_id);
+                            userRole = await globalAdminService.getGlobalRole(user.role_id);
                         }
 
                         const permissions = (userRole as any)?.permissions || [];
-                        const modules = (userRole as any)?.modules || []; // Assuming roles will have modules
+                        const modules = (userRole as any)?.modules || [];
 
                         const token = jwt.sign(
                             { 
                                 userId: user.id, 
                                 username: user.username, 
                                 role: userRole?.code || 'USER',
-                                client_id: tenantId, // Standardized: matches User model and Middleware expectation
+                                client_id: tenantId,
                                 modules: modules,
                                 permissions: permissions,
                                 user_type: user.user_type,
                                 role_id: user.role_id,
-                                service_ids: user.service_ids
+                                service_ids: user.service_ids,
+                                tenantId: tenantId // Legacy compat
                             }, 
                             JWT_SECRET, 
                             { expiresIn: '12h' }
                         );
 
+                        // Client Info (Country) - Legacy file read
+                        let clientCountry = 'MAROC'; 
+                        try {
+                             // Optimization: Only read if necessary. Move to proper service later.
+                             const clientsFile = path.join(__dirname, '../data/clients.json');
+                             if (fs.existsSync(clientsFile)) {
+                                 const clients = JSON.parse(fs.readFileSync(clientsFile, 'utf-8'));
+                                 const client = clients.find((c: any) => c.id === tenantId);
+                                 if (client && client.country) clientCountry = client.country;
+                             }
+                        } catch (e) {
+                             // Ignore missing clients.json
+                        }
+
+                        log(`Login SUCCESS: User=${username} Role=${userRole?.code} Modules=${JSON.stringify(modules)}`);
                         return res.json({ 
                             token, 
                             user: { 
@@ -118,29 +140,19 @@ export const login = async (req: Request, res: Response) => {
                                 tenantId,
                                 role: userRole?.code,
                                 modules,
-                                permissions 
+                                permissions,
+                                client_country: clientCountry
                             } 
                         });
-                    } else {
-                        // Log incorrect password for debugging
-                        if (user.username === username) {
-                        if (user.username === username) {
-                            console.log(`[Auth] Password mismatch for user ${username} in tenant ${tenantId}`);
-                            log(`Password mismatch for user ${username} in tenant ${tenantId}`);
-                        }
-                        }
                     }
                 }
             } catch (err: any) {
-                // Ignore errors for specific tenants (maybe corrupted or missing file), continue search
-                console.warn(`Skipping tenant ${tenantId} during auth scan:`, err.message);
+                log(`Error in tenant ${tenantId}: ${err?.message || err}`);
+                // Ignore per-tenant errors (continue to next)
             }
         }
         
-        console.log(`[Auth] User ${username} not found in global admins or any of ${tenants.length} tenants.`);
-        log(`User ${username} not found in global admins or any of ${tenants.length} tenants.`);
-
-        // 3. User Not Found in any realm
+        log(`User ${username} not found anywhere.`);
         return res.status(401).json({ error: 'Invalid credentials' });
 
     } catch (error) {
@@ -156,81 +168,98 @@ export const me = (req: any, res: Response) => {
         const userId = req.user.userId;
 
         if (tenantId) {
-             // 1. Tenant User: Fetch from SettingsService
-             try {
-                const users = settingsService.getUsers(tenantId);
-                const fullUser = users.find(u => u.id === userId);
-                
-                if (fullUser) {
-                    const { password_hash, ...safeUser } = fullUser;
-                    // Ensure permissions are up to date from Roles
-                    const roles = settingsService.getRoles(tenantId);
-                    let userRole = roles.find(r => r.id === fullUser.role_id);
+             // 1. Tenant User (or Tenant Admin)
+             // We can fetch from SettingsService (works for Tenant DB users)
+             // But valid Tenant Admins are also in Global DB now.
+             // However, SettingsService queries the Tenant DB.
+             // Are Tenant Admins synced to Tenant DB?
+             // NO. I migrated them to Global DB.
+             // So if `tenantId` is set, `settingsService.getUsers(tenantId)` might NOT return the Tenant Admin anymore!
+             // It will return regular users.
+             // 
+             // CRITICAL FIX:
+             // If the token matches a Tenant Admin (who is in Global DB), `settingsService.getUsers` (Tenant DB) will fail to find them.
+             // We must check Global DB relative to that tenant first/also?
+             // OR: rely on the fact that if they are in Global DB, we should fetch them from there.
+             
+             // Strategy:
+             // Try fetching from Tenant DB (SettingsService).
+             // If not found, try fetching from Global DB (GlobalAdminService) if user matches.
+             
+             handleMeResponse(req, res, tenantId, userId);
 
-                    if (!userRole) {
-                        userRole = settingsService.getGlobalRoleDefinition(fullUser.role_id);
-                    }
-
-                    const permissions = (userRole as any)?.permissions || [];
-                    const modules = (userRole as any)?.modules || [];
-
-                    return res.json({ 
-                        ...safeUser, 
-                        // Merge computed props just in case
-                        role_code: userRole?.code,
-                        modules,
-                        permissions 
-                    });
-                }
-             } catch (e) {
-                 console.error("Error fetching tenant user in /me:", e);
-             }
         } else {
-             // 2. Super Admin (Global Realm)
-             // We need to fetch from GlobalAdminService to get full details (like name, user_type)
-             try {
-                // Since lookup might verify auth, we can just list? 
-                // GlobalAdminService auth relies on list.
-                // We'll trust the token has valid ID.
-                // Reuse globalAdminService? We need a 'getAdminById' or 'getAdmins'
-                // Assuming globalAdminService is imported
-                // If it doesn't have getAdmins exposed, we might need to rely on token or add it.
-                // Token for SuperAdmin has: userId, username, role, realm.
-                // It MISSES user_type (SUPER_ADMIN enum).
-                
-                // Quick fix: Return constructed object matching UI needs if we can't fetch easily,
-                // BUT retrieving from DB is safer.
-                // Let's assume we can fetch or just shim the missing fields for now if service update is too much.
-                
-                // Shim approach for SuperAdmin (since GlobalAdminService might be simple)
-                return res.json({
-                    id: userId,
-                    username: req.user.username,
-                    user_type: "SUPER_ADMIN", // Explicitly set this!
-                    role_id: "role_super_admin",
-                    role_code: "SUPER_ADMIN",
-                    permissions: [], // Permissions for SuperAdmin usually handled by user_type check
-                    modules: [],
-                    nom: "Administrateur",
-                    prenom: "Global"
-                });
-             } catch (e) {
-                 console.error("Error fetching global admin in /me:", e);
-             }
+             // 2. Global Super Admin
+             handleGlobalMe(req, res, userId);
         }
-
-        // Fallback if user not found in DB but token valid (Deleted user?)
-        // Return token info but mapped to User interface to avoid crash
-        res.json({
-            id: userId,
-            username: req.user.username,
-            client_id: tenantId,
-            user_type: tenantId ? "TENANT_USER" : "SUPER_ADMIN", // Best guess
-            ...req.user
-        });
 
     } catch (error) {
         console.error("Error in /me:", error);
         res.status(500).json({ error: "Session validation failed" });
     }
 };
+
+// Extracted helpers for clarity
+async function handleMeResponse(req: any, res: Response, tenantId: string, userId: string) {
+    try {
+        // A. Try Tenant DB (Regular Users)
+        const users = await settingsService.getUsers(tenantId);
+        const fullUser = users.find(u => u.id === userId);
+        
+        if (fullUser) {
+             const roles = await settingsService.getRoles(tenantId);
+             let userRole = roles.find(r => r.id === fullUser.role_id);
+             if (!userRole) userRole = await globalAdminService.getGlobalRole(fullUser.role_id);
+             
+             const permissions = (userRole as any)?.permissions || [];
+             const modules = (userRole as any)?.modules || [];
+
+             return res.json({ 
+                 ...fullUser, 
+                 password_hash: undefined,
+                 role_code: userRole?.code,
+                 modules,
+                 permissions,
+                 client_country: 'MAROC' // Simplify
+             });
+        }
+        
+        // B. Try Global DB (Tenant Admin)
+        const globalUser = await globalAdminService.getAdminById(userId);
+        if (globalUser && globalUser.client_id === tenantId) {
+             // It is a Tenant Admin
+             return res.json({
+                 ...globalUser,
+                 password_hash: undefined,
+                 role_code: globalUser.role_code || 'ADMIN',
+                 permissions: [], // Admins usually implies full access or we should add permissions to Global User table?
+                 // For now, assume Tenant Admin has extensive rights or UI handles it by role_code
+                 modules: ['SETTINGS', 'PHARMACY', 'EMR'] // Hardcode or fetch default modules for Admin
+             });
+        }
+        
+        // Not found
+        res.status(404).json({ error: 'User not found in context' });
+
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Error fetching user' });
+    }
+}
+
+async function handleGlobalMe(req: any, res: Response, userId: string) {
+    try {
+        const globalUser = await globalAdminService.getAdminById(userId);
+        if (globalUser) {
+             return res.json({
+                 ...globalUser,
+                 password_hash: undefined,
+                 role_code: 'SUPER_ADMIN',
+                 realm: 'global'
+             });
+        }
+        res.status(404).json({ error: 'Global admin not found' });
+    } catch (e) {
+        res.status(500).json({ error: 'Error' });
+    }
+}

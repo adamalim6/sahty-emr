@@ -26,7 +26,7 @@ export const authenticateGlobalAdmin = async (req: Request, res: Response, next:
         }
 
         // 3. Verify existence in Global Store
-        const user = globalAdminService.getAdminById(decoded.userId);
+        const user = await globalAdminService.getAdminById(decoded.userId);
         if (!user || !user.active) {
             return res.status(403).json({ message: 'Account disabled or not found' });
         }

@@ -17,41 +17,40 @@ import {
 } from '../controllers/settingsController';
 import { authenticateToken, requireRole } from '../middleware/authMiddleware';
 import { UserType } from '../models/auth';
+import { requireModule } from '../middleware/moduleMiddleware';
 
 const router = express.Router();
 
-// Middleware: Must be Tenant Super Admin (or maybe just Tenant User with permissions? Prompt says ONLY TENANT_SUPERADMIN)
+// Middleware: Authenticated (from server.ts)
 router.use(authenticateToken);
-// REMOVED GLOBAL RESTRICTION to TENANT_SUPERADMIN because Doctors need read access to Services/Rooms
-// router.use(requireRole([UserType.TENANT_SUPERADMIN])); 
 
-// Helper for strict Admin check
-const requireAdmin = requireRole([UserType.TENANT_SUPERADMIN]);
+// --- USERS & ROLES (Strict Settings Access) ---
+router.get('/users', requireModule('SETTINGS'), getMyUsers);
+router.post('/users', requireModule('SETTINGS'), createMyUser);
+router.put('/users/:id', requireModule('SETTINGS'), updateTenantUser);
+router.get('/roles', requireModule('SETTINGS'), getGlobalRoles); // Maybe open?
+router.get('/roles/:id', requireModule('SETTINGS'), getGlobalRole);
 
-router.get('/users', getMyUsers);
-router.post('/users', createMyUser);
-router.put('/users/:id', updateTenantUser);
-router.get('/roles', getGlobalRoles);
-router.get('/roles/:id', getGlobalRole);
-
-// Services
-router.get('/services', getServices);
+// --- SERVICES (Read Open, Write Protected) ---
+router.get('/services', getServices); // OPEN for all auth users (needed for EMR/Pharmacy)
 router.get('/services/:id', getService);
-router.post('/services', createService);
-router.put('/services/:id', updateService); // New
-router.delete('/services/:id', deleteService);
+router.post('/services', requireModule('SETTINGS'), createService);
+router.put('/services/:id', requireModule('SETTINGS'), updateService);
+router.delete('/services/:id', requireModule('SETTINGS'), deleteService);
 
-// Service Layout (Units)
+// --- SERVICE UNITS (Read Open, Write Protected) ---
 router.get('/services/:id/units', getServiceUnits);
-router.post('/services/:id/units', createServiceUnit);
-router.delete('/services/units/:unitId', deleteServiceUnit);
+router.post('/services/:id/units', requireModule('SETTINGS'), createServiceUnit);
+router.delete('/services/units/:unitId', requireModule('SETTINGS'), deleteServiceUnit);
 
+// --- ROOMS (Read Open, Write Protected) ---
 router.get('/rooms', getRooms);
-router.post('/rooms', createRoom);
-router.put('/rooms/:id', updateRoom);
-router.delete('/rooms/:id', deleteRoom);
+router.post('/rooms', requireModule('SETTINGS'), createRoom);
+router.put('/rooms/:id', requireModule('SETTINGS'), updateRoom);
+router.delete('/rooms/:id', requireModule('SETTINGS'), deleteRoom);
 
-router.get('/pricing', getPricing);
-router.post('/pricing', createPricing);
+// --- PRICING ---
+router.get('/pricing', getPricing); // Pricing view might be needed?
+router.post('/pricing', requireModule('SETTINGS'), createPricing);
 
 export default router;

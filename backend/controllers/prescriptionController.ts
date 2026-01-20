@@ -52,10 +52,10 @@ export const prescriptionController = {
     },
 
     // GET /api/prescriptions/patients/with-prescriptions
-    getPatientsWithPrescriptions: (req: any, res: Response) => {
+    getPatientsWithPrescriptions: async (req: any, res: Response) => {
         try {
             const clientId = req.user?.client_id;
-            const patientsWithPrescriptions = prescriptionService.getPatientsWithPrescriptions(clientId || undefined);
+            const patientsWithPrescriptions = await prescriptionService.getPatientsWithPrescriptions(clientId || undefined);
             res.json(patientsWithPrescriptions);
         } catch (error) {
             res.status(500).json({ error: 'Failed to fetch patients with prescriptions' });

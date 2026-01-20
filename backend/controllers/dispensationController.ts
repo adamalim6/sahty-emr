@@ -36,22 +36,22 @@ export const dispenseWithFEFO = async (req: Request, res: Response) => {
     }
 };
 
-export const getDispensationsByPrescription = (req: Request, res: Response) => {
+export const getDispensationsByPrescription = async (req: Request, res: Response) => {
     try {
         const { prescriptionId } = req.params;
         const tenantId = getTenantId(req as any);
-        const dispensations = pharmacyService.getDispensationsByPrescription(tenantId, prescriptionId);
+        const dispensations = await pharmacyService.getDispensationsByPrescription(tenantId, prescriptionId);
         res.json(dispensations);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching dispensations' });
     }
 };
 
-export const getDispensationsByAdmission = (req: Request, res: Response) => {
+export const getDispensationsByAdmission = async (req: Request, res: Response) => {
     try {
         const { admissionId } = req.params;
         const tenantId = getTenantId(req as any);
-        const dispensations = pharmacyService.getDispensationsByAdmission(tenantId, admissionId);
+        const dispensations = await pharmacyService.getDispensationsByAdmission(tenantId, admissionId);
         res.json(dispensations);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching dispensations' });
