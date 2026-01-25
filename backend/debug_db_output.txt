@@ -1,0 +1,65 @@
+--- DB DIRECT CHECK ---
+Suppliers Count: 1
+Suppliers List: [
+  {
+    tenant_id: 'client_1768926673968',
+    supplier_id: 'SUP-1768938767041',
+    name: 'test',
+    email: 'adamalim6@gmail.com',
+    phone: '096897657',
+    address: '10 rue Chanoinesse'
+  }
+]
+Product Suppliers Links Count: 14
+Links List: [
+  {
+    tenant_id: 'client_1768926673968',
+    product_id: '132dbad8-3f67-4db3-b0c7-07df83f8fc51',
+    supplier_id: 'supp_1',
+    purchase_price: null,
+    created_at: '2026-01-20 21:36:50',
+    id: 'd6af0e21-b83f-476e-beaa-30152384be8e',
+    supplier_type: 'GLOBAL',
+    is_active: 1
+  },
+  {
+    tenant_id: 'client_1768926673968',
+    product_id: 'a1273415-5b32-4759-a42e-af70f58f0244',
+    supplier_id: 'supp_1',
+    purchase_price: null,
+    created_at: '2026-01-20 21:57:29',
+    id: '6f8ea3cf-1568-4fdd-ac6b-f39d4d6242b7',
+    supplier_type: 'GLOBAL',
+    is_active: 1
+  },
+  {
+    tenant_id: 'client_1768926673968',
+    product_id: '5cf0ed15-136e-4f47-83e6-f0637cfa98ea',
+    supplier_id: 'supp_1',
+    purchase_price: null,
+    created_at: '2026-01-20 21:58:09',
+    id: '6f3de884-7dc4-4ff9-bc65-883e01de5b8e',
+    supplier_type: 'GLOBAL',
+    is_active: 1
+  },
+  {
+    tenant_id: 'client_1768926673968',
+    product_id: '0e9549d7-7f54-4b4c-b919-18fc9e1d09f3',
+    supplier_id: 'supp_4',
+    purchase_price: null,
+    created_at: '2026-01-20 22:06:22',
+    id: 'ccad3fe1-04b0-455a-8712-26f3a2635d7e',
+    supplier_type: 'GLOBAL',
+    is_active: 1
+  },
+  {
+    tenant_id: 'client_1768926673968',
+    product_id: '8a194705-29ca-4d4e-8109-c20e077ba39d',
+    supplier_id: 'supp_27',
+    purchase_price: null,
+    created_at: '2026-01-20 22:13:21',
+    id: '765f70a5-c106-49d2-9f47-622a2b8da2fa',
+    supplier_type: 'GLOBAL',
+    is_active: 1
+  }
+]

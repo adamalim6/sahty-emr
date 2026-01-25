@@ -79,6 +79,8 @@ export interface ProductSupplier { // Renamed from Supplier to avoid collision, 
   vat?: number;
   isDefault?: boolean;
   priceVersions: PriceVersion[];
+  salePriceHT?: number;
+  salePriceTTC?: number;
 }
 
 export interface PharmacySupplier {
@@ -182,15 +184,17 @@ export interface ProductDefinition {
 }
 
 export enum POStatus {
-  DRAFT = 'Brouillon',
-  PARTIAL = 'Partiel',
-  COMPLETED = 'Terminé'
+  DRAFT = 'DRAFT',
+  ORDERED = 'ORDERED',
+  PARTIAL = 'PARTIAL',
+  COMPLETED = 'COMPLETED'
 }
 
 export interface POItem {
   productId: string;
   orderedQty: number;
   deliveredQty: number;
+  unitPrice?: number; // Added for Transactional Pricing
 }
 
 export interface PurchaseOrder {
@@ -208,8 +212,8 @@ export interface DeliveryNoteItem {
 }
 
 export enum ProcessingStatus {
-  PENDING = 'En attente',
-  PROCESSED = 'Traité'
+  PENDING = 'PENDING',
+  PROCESSED = 'PROCESSED'
 }
 
 export interface DeliveryNote {

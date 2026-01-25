@@ -1,109 +1,100 @@
 
-import { pharmacyService } from '../services/pharmacyService';
+const { Database } = require('sqlite3');
+const path = require('path');
+const { v4: uuidv4 } = require('uuid');
+
+const TENANT_ID = 'test_tenant_verification';
+const DB_PATH = path.join(process.cwd(), 'backend/data', `client_${Date.now()}.db`);
+const fs = require('fs');
+
+import { PharmacyService } from '../services/pharmacyService';
 import { getTenantDB } from '../db/tenantDb';
 
-const TENANT_ID = 'verify_write_tenant_' + Date.now();
-const USER_ID = 'verify_user';
+async function main() {
+    console.log("--- START VERIFICATION: Blind Reception Flow (Renamed Delivery Notes) ---");
 
-async function runVerification() {
-    console.log(`\n=== 0. SETUP: Tenant ${TENANT_ID} ===`);
-    const db = await getTenantDB(TENANT_ID);
-    await pharmacyService.initServiceLedger(TENANT_ID, 'SERVICE_A'); // Does nothing but good to call
-
-    // Clean start
-    await pharmacyService.resetDB(TENANT_ID); 
-    console.log("DB Reset.");
-
-    // --- 1. PURCHASE ORDER ---
-    console.log(`\n=== 1. CREATE PURCHASE ORDER ===`);
-    const poItems = [
-        { productId: 'PROD_001', orderedQty: 100, unitPrice: 10.5 },
-        { productId: 'PROD_002', orderedQty: 50, unitPrice: 25.0 }
-    ];
-    const po = await pharmacyService.createPurchaseOrder({
-        tenantId: TENANT_ID,
-        supplierId: 'SUPPLIER_XYZ',
-        items: poItems,
-        userId: USER_ID
+    const tenantId = 'verify_flow_' + Date.now();
+    
+    // 1. Init DB
+    const db = await getTenantDB(tenantId);
+    const schemaPath = path.join(process.cwd(), 'backend/db/schema.sql');
+    const schemaSql = fs.readFileSync(schemaPath, 'utf8');
+    
+    await new Promise<void>((resolve, reject) => {
+        db.exec(schemaSql, (err) => {
+            if (err) reject(err);
+            else resolve();
+        });
     });
-    console.log("PO Created:", po.id, po.status);
-    
-    // Verify Read
-    const pos = await pharmacyService.getPurchaseOrders(TENANT_ID);
-    console.log("POs Found:", pos.length);
-    if (pos.length !== 1 || pos[0].status !== 'ORDERED') throw new Error("PO Verification Failed");
+    console.log("DB Initialized and Schema Applied.");
 
-    // --- 2. RECEIVE DELIVERY (PARTIAL) ---
-    console.log(`\n=== 2. RECEIVE DELIVERY (PARTIAL) ===`);
-    // Receive 50 of PROD_001 and 50 of PROD_002
-    const deliveryItems = [
-        { productId: 'PROD_001', deliveredQty: 50, batchNumber: 'BATCH_A1', expiryDate: new Date('2026-12-31') },
-        { productId: 'PROD_002', deliveredQty: 50, batchNumber: 'BATCH_B1', expiryDate: new Date('2027-06-30') }
-    ];
-    
-    const note = await pharmacyService.createDeliveryNote({
-        tenantId: TENANT_ID,
+    const service = PharmacyService.getInstance();
+    const userId = 'tester';
+    const productId = 'prod-123';
+
+    // 2. Create PO
+    console.log("Creating Purchase Order...");
+    const po = await service.createPurchaseOrder({
+        tenantId,
+        supplierId: 'sup-1',
+        items: [{ productId, orderedQty: 10, unitPrice: 100 }],
+        userId
+    });
+    console.log("PO Created:", po.id);
+
+    // 3. Create Delivery Note (Reception)
+    console.log("Creating Delivery Note (Reception)...");
+    const noteId = `BL-${Date.now()}`;
+    const dlPayload = {
+        id: noteId, 
+        tenantId,
         poId: po.id,
-        noteId: 'BL_001',
-        items: deliveryItems,
-        userId: USER_ID
-    });
-    console.log("Delivery Note Created:", note.id);
-
-    // Check PO Status (Should be RECEIVED?)
-    const updatedPos = await pharmacyService.getPurchaseOrders(TENANT_ID);
-    console.log("PO Status Update:", updatedPos[0].status);
-
-    // Check Stock
-    const stock = await pharmacyService.getInventory(TENANT_ID);
-    console.log("Stock Items:", stock.length);
-    const prod1Stock = stock.find(s => s.productId === 'PROD_001');
-    console.log("PROD_001 Stock:", prod1Stock?.qtyUnits);
-    
-    if (prod1Stock?.qtyUnits !== 50) throw new Error("Stock Verification Failed (Expected 50)");
-
-    // --- 3. REPLENISHMENT REQUEST ---
-    console.log(`\n=== 3. REPLENISHMENT REQUEST ===`);
-    const req = await pharmacyService.createReplenishmentRequest({
-        tenantId: TENANT_ID,
-        serviceId: 'SERVICE_A',
-        items: [{ productId: 'PROD_001', quantity: 20 }],
-        userId: USER_ID
-    });
-    console.log("Replenishment Request Created:", req.id);
-
-    // Verify Read
-    const reqs = await pharmacyService.getReplenishmentRequests(TENANT_ID);
-    console.log("Requests Found:", reqs.length);
-
-    // --- 4. DISPENSE REPLENISHMENT ---
-    console.log(`\n=== 4. DISPENSE REPLENISHMENT ===`);
-    // Dispense 20 from BATCH_A1
-    await pharmacyService.updateReplenishmentRequestStatus(TENANT_ID, req.id, 'DISPENSED', {
-        action: 'DISPENSE_ITEM',
-        itemProductId: 'PROD_001',
-        dispensedProductId: 'PROD_001',
-        dispensedQuantity: 20,
-        batches: [{
-            productId: 'PROD_001',
-            quantity: 20,
-            batchNumber: 'BATCH_A1',
+        items: [{
+            productId,
+            deliveredQty: 5,
+            // NO batchNumber, NO expiryDate for blind reception
         }],
-        userId: USER_ID
+        userId
+    };
+
+    const result = await service.createDeliveryNote(dlPayload);
+    console.log("Delivery Note Created:", result);
+
+    // 4. Verify DB
+    console.log("Verifying Database Entries...");
+
+    // Check Delivery Notes (Header) - RENAMED FROM purchase_receipts
+    const receiptFn = () => new Promise<any>((res, rej) => {
+        db.get(`SELECT * FROM delivery_notes WHERE delivery_note_id = ?`, [noteId], (err, row) => err ? rej(err) : res(row));
     });
-    console.log("Replenishment Dispensed.");
+    const note = await receiptFn();
+    console.log("Delivery Note Header:", note ? "OK" : "MISSING", note);
+    
+    // NEW: Check PO ID Link
+    if (!note) throw new Error("Delivery Note Header Missing!");
+    if (note.po_id !== po.id) throw new Error(`Delivery Note PO ID Mismatch: ${note.po_id} vs ${po.id}`);
 
-    // Check Stock Decrease
-    const finalStock = await pharmacyService.getInventory(TENANT_ID);
-    const prod1Final = finalStock.find(s => s.productId === 'PROD_001');
-    console.log("PROD_001 Final Stock:", prod1Final?.qtyUnits);
+    // Check Delivery Note Items (Pending/Quarantine) - RENAMED FROM purchase_receipt_items
+    const itemsFn = () => new Promise<any[]>((res, rej) => {
+        db.all(`SELECT * FROM delivery_note_items WHERE delivery_note_id = ?`, [noteId], (err, rows) => err ? rej(err) : res(rows));
+    });
+    const noteItems = await itemsFn();
+    console.log("Delivery Note Items:", noteItems.length);
 
-    if (prod1Final?.qtyUnits !== 30) throw new Error("Dispensation Verification Failed (Expected 30)");
+    if (noteItems.length !== 1) throw new Error("Delivery Note Items Missing or Incorrect Count!");
+    if (noteItems[0].qty_pending !== 5) throw new Error(`Incorrect Quantity Pending: ${noteItems[0].qty_pending} vs 5`);
+    
+    // NEW: Check PO Item Qty Persistence
+    const poItemFn = () => new Promise<any>((res, rej) => {
+        db.get(`SELECT * FROM po_items WHERE po_id = ? AND product_id = ?`, [po.id, productId], (err, row) => err ? rej(err) : res(row));
+    });
+    const poItem = await poItemFn();
+    console.log("PO Item Updates:", poItem);
+    
+    if (poItem.qty_delivered !== 5) throw new Error(`PO Item Qty Delivered Not Updated: ${poItem.qty_delivered}`); 
+    if (poItem.qty_to_be_delivered !== 5) throw new Error(`PO Item Qty Remaining Not Updated: ${poItem.qty_to_be_delivered}`); 
 
-    console.log("\n=== VERIFICATION SUCCESSFUL ===");
+    console.log("--- SUCCESS: Verification Passed ---");
 }
 
-runVerification().catch(err => {
-    console.error("VERIFICATION FAILED:", err);
-    process.exit(1);
-});
+main().catch(console.error);

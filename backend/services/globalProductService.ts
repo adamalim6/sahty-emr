@@ -259,7 +259,7 @@ export class GlobalProductService {
         const total = countRes.c;
         const totalPages = Math.ceil(total / limit);
 
-        sql += ` LIMIT ? OFFSET ?`;
+        sql += ` ORDER BY name ASC LIMIT ? OFFSET ?`;
         params.push(limit, (page - 1) * limit);
 
         const rows = await all<any>(db, sql, params);

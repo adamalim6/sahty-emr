@@ -6,7 +6,6 @@ export interface StockPosition {
     productId: string;
     lot: string;
     expiry: Date;
-    supplierId?: string;
     location: string;
     qtyUnits: number;
 }
@@ -20,7 +19,6 @@ export interface Movement {
     qtyUnits: number;
     fromLocation?: string;
     toLocation?: string;
-    supplierId?: string;
     documentType: string;
     documentId?: string;
     createdBy?: string;
@@ -62,7 +60,7 @@ export class PharmacyService {
             productId: row.product_id,
             lot: row.lot,
             expiry: new Date(row.expiry),
-            supplierId: row.supplier_id,
+            // supplierId: NOT STORED ANYMORE
             location: row.location,
             qtyUnits: row.qty_units
         })));
@@ -84,7 +82,6 @@ export class PharmacyService {
             qtyUnits: row.qty_units,
             fromLocation: row.from_location,
             toLocation: row.to_location,
-            supplierId: row.supplier_id,
             documentType: row.document_type,
             documentId: row.document_id,
             createdBy: row.created_by,
@@ -95,44 +92,35 @@ export class PharmacyService {
     // --- 2. RECEPTION (QUARANTINE PROCESS) ---
 
     // Now called processReceipt to reflect SQL model
-    public async processReceipt(params: {
+    // Now called processDeliveryNote to reflect SQL model
+    public async processDeliveryNote(params: {
         tenantId: string,
-        items: any[], // Simple items: { productId, lot, expiry, qtyUnits, supplierId }
+        items: any[],
         location: string,
         documentId: string, // BL ID
-        userId: string
+        userId: string,
+        poId?: string // Optional link to PO
     }): Promise<void> {
-        const { tenantId, items, location, documentId, userId } = params;
+        const { tenantId, items, location, documentId, userId, poId } = params;
 
         // Transaction simulation (Series of ops)
-        const receiptId = documentId;
+        const deliveryNoteId = documentId;
         
         await this.run(tenantId, `
-            INSERT OR IGNORE INTO purchase_receipts (receipt_id, tenant_id, supplier_id, received_at, created_by)
-            VALUES (?, ?, ?, datetime('now'), ?)
-        `, [receiptId, tenantId, items[0]?.supplierId || 'UNKNOWN', userId]);
+            INSERT OR IGNORE INTO delivery_notes (delivery_note_id, tenant_id, supplier_id, po_id, received_at, created_by)
+            VALUES (?, ?, ?, ?, datetime('now'), ?)
+        `, [deliveryNoteId, tenantId, items[0]?.supplierId || 'UNKNOWN', poId || null, userId]);
 
         for (const item of items) {
-             const { productId, lot, expiry, qtyUnits, supplierId } = item;
+             const qty = item.qtyPending || item.qtyUnits || 0;
+             const { productId } = item;
              
-             // 2a. Receipt Layer
+             // NEW FLOW: Insert into delivery_note_items (Quarantine/Pending Verification)
+             // No Lot/Expiry required at this stage.
              await this.run(tenantId, `
-                INSERT INTO receipt_layers (receipt_id, tenant_id, product_id, lot, expiry, qty_received, qty_remaining)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-             `, [receiptId, tenantId, productId, lot, expiry, qtyUnits, qtyUnits]);
-
-             // 2b. Movement
-             const movementId = uuidv4();
-             await this.run(tenantId, `
-                INSERT INTO inventory_movements (
-                    movement_id, tenant_id, product_id, lot, expiry, qty_units, 
-                    from_location, to_location, supplier_id, document_type, document_id, created_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-             `, [movementId, tenantId, productId, lot, expiry, qtyUnits, 
-                 'EXTERNAL', location, supplierId, 'DELIVERY', receiptId, userId]);
-
-             // 2c. Upsert Stock
-             await this.upsertStock(tenantId, productId, lot, expiry, location, qtyUnits, supplierId);
+                INSERT INTO delivery_note_items (id, tenant_id, delivery_note_id, product_id, qty_pending, created_at)
+                VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+             `, [uuidv4(), tenantId, deliveryNoteId, productId, qty]);
         }
     }
 
@@ -162,17 +150,17 @@ export class PharmacyService {
                 const take = Math.min(position.qtyUnits, remaining);
                 
                 // 2. Decrement Stock
-                await this.upsertStock(tenantId, position.productId, position.lot, position.expiry, sourceLocation, -take, position.supplierId);
+                await this.upsertStock(tenantId, position.productId, position.lot, position.expiry, sourceLocation, -take);
 
                 // 3. Log Movement
                 const movementId = uuidv4();
                 await this.run(tenantId, `
                     INSERT INTO inventory_movements (
                         movement_id, tenant_id, product_id, lot, expiry, qty_units, 
-                        from_location, to_location, supplier_id, document_type, document_id, created_by
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        from_location, to_location, document_type, document_id, created_by
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `, [movementId, tenantId, position.productId, position.lot, position.expiry, -take, 
-                    sourceLocation, 'DISPENSED', position.supplierId, 'DISPENSE', prescriptionId || admissionId, userId]);
+                    sourceLocation, 'DISPENSED', 'DISPENSE', prescriptionId || admissionId, userId]);
 
                 // 4. Clinical Event Sink
                 const dispenseId = uuidv4();
@@ -215,19 +203,19 @@ export class PharmacyService {
                 const take = Math.min(position.qtyUnits, remaining);
 
                 // Debit Source
-                await this.upsertStock(tenantId, position.productId, position.lot, position.expiry, fromLocation, -take, position.supplierId);
+                await this.upsertStock(tenantId, position.productId, position.lot, position.expiry, fromLocation, -take);
                 // Credit Dest
-                await this.upsertStock(tenantId, position.productId, position.lot, position.expiry, toLocation, take, position.supplierId);
+                await this.upsertStock(tenantId, position.productId, position.lot, position.expiry, toLocation, take);
 
                 // Movement
                 const movementId = uuidv4();
                  await this.run(tenantId, `
                     INSERT INTO inventory_movements (
                         movement_id, tenant_id, product_id, lot, expiry, qty_units, 
-                        from_location, to_location, supplier_id, document_type, document_id, created_by
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        from_location, to_location, document_type, document_id, created_by
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `, [movementId, tenantId, position.productId, position.lot, position.expiry, take, 
-                    fromLocation, toLocation, position.supplierId, 'REPLENISHMENT', documentId || 'MANUAL_TRANSFER', userId]);
+                    fromLocation, toLocation, 'REPLENISHMENT', documentId || 'MANUAL_TRANSFER', userId]);
 
                 remaining -= take;
             }
@@ -258,18 +246,18 @@ export class PharmacyService {
         });
     }
 
-    private async upsertStock(tenantId: string, productId: string, lot: string, expiry: Date | string, location: string, deltaQty: number, supplierId: string = '') {
+    private async upsertStock(tenantId: string, productId: string, lot: string, expiry: Date | string, location: string, deltaQty: number) {
         // Date handling
         const expStr = typeof expiry === 'string' ? expiry : expiry.toISOString().split('T')[0];
 
         const sql = `
-            INSERT INTO current_stock (tenant_id, product_id, lot, expiry, location, qty_units, supplier_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO current_stock (tenant_id, product_id, lot, expiry, location, qty_units)
+            VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT(tenant_id, product_id, lot, location) 
             DO UPDATE SET qty_units = qty_units + excluded.qty_units
         `;
 
-        await this.run(tenantId, sql, [tenantId, productId, lot, expStr, location, deltaQty, supplierId]);
+        await this.run(tenantId, sql, [tenantId, productId, lot, expStr, location, deltaQty]);
     }
 
     // --- 5. LOCATIONS (SQL) ---
@@ -280,7 +268,7 @@ export class PharmacyService {
         const db = await getTenantDB(tenantId);
         
         // 1. Fetch from 'locations' table (Pharmacy specific, or explicitly defined service stocks)
-        let queryLoc = `SELECT location_id as id, name, type, scope, service_id FROM locations WHERE tenant_id = ?`;
+        let queryLoc = `SELECT location_id as id, name, type, scope, service_id, status FROM locations WHERE tenant_id = ?`;
         const paramsLoc: any[] = [tenantId];
         
         if (serviceId) {
@@ -300,6 +288,8 @@ export class PharmacyService {
                 type: r.type,
                 scope: r.scope,
                 serviceId: r.service_id,
+                status: r.status || 'ACTIVE',
+                isActive: (r.status === 'ACTIVE' || !r.status), // Map to frontend boolean
                 tenantId: tenantId
             }));
         }).catch(err => {
@@ -335,6 +325,8 @@ export class PharmacyService {
                     id: r.id,
                     name: r.name,
                     type: 'WARD', // Default type for service units
+                    status: 'ACTIVE', // Service units are always active structurally
+                    isActive: true,
                     scope: 'SERVICE',
                     serviceId: r.service_id,
                     tenantId: tenantId
@@ -353,40 +345,74 @@ export class PharmacyService {
         return locations;
     }
 
-    public async addLocation(params: { tenantId: string, name: string, type: string, scope: string, serviceId?: string, id?: string }): Promise<any> {
+    public async addLocation(params: { tenantId: string, name: string, type: string, scope: string, serviceId?: string, id?: string, status?: string, isActive?: boolean }): Promise<any> {
         const id = params.id || `LOC-${Date.now()}`;
+        const status = params.status || (params.isActive !== undefined ? (params.isActive ? 'ACTIVE' : 'INACTIVE') : 'ACTIVE');
+        
         await this.run(params.tenantId, `
-            INSERT INTO locations (tenant_id, location_id, name, type, scope, service_id)
-            VALUES (?, ?, ?, ?, ?, ?)
-        `, [params.tenantId, id, params.name, params.type, params.scope, params.serviceId || null]);
-        return { ...params, id };
+            INSERT INTO locations (tenant_id, location_id, name, type, scope, service_id, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `, [params.tenantId, id, params.name, params.type, params.scope, params.serviceId || null, status]);
+        return { ...params, id, status, isActive: status === 'ACTIVE' };
     }
 
-    public async updateLocation(params: { tenantId: string, id: string, name?: string, type?: string }): Promise<any> {
-        // Dynamic Update not easy with simple run, let's just do fixed fields or simplistic
-        // Assuming full object passed usually
+    public async updateLocation(params: { tenantId: string, id: string, name?: string, type?: string, status?: string, isActive?: boolean }): Promise<any> {
+        // Map isActive to status if provided
+        let status = params.status;
+        if (params.isActive !== undefined) {
+            status = params.isActive ? 'ACTIVE' : 'INACTIVE';
+        }
+
         await this.run(params.tenantId, `
-            UPDATE locations SET name = COALESCE(?, name), type = COALESCE(?, type)
+            UPDATE locations SET name = COALESCE(?, name), type = COALESCE(?, type), status = COALESCE(?, status)
             WHERE tenant_id = ? AND location_id = ?
-        `, [params.name, params.type, params.tenantId, params.id]);
-        return params;
+        `, [params.name, params.type, status, params.tenantId, params.id]);
+        return { ...params, status, isActive: status === 'ACTIVE' };
     }
 
     public async deleteLocation(tenantId: string, locationId: string): Promise<void> {
+        // SAFETY CHECK: Prevent deletion if stock exists
+        const stockCount = await this.get<any>(tenantId, `SELECT COUNT(*) as count FROM current_stock WHERE location = ? AND qty_units > 0`, [locationId]).then(r => r[0].count);
+        
+        if (stockCount > 0) {
+            throw new Error(`Impossible de supprimer l'emplacement : Il contient ${stockCount} lots de stock.`);
+        }
+
         await this.run(tenantId, `DELETE FROM locations WHERE tenant_id = ? AND location_id = ?`, [tenantId, locationId]);
     }
 
     // --- 6. SUPPLIERS (SQL) ---
 
     public async getSuppliers(tenantId: string): Promise<any[]> {
-        return this.get(tenantId, `SELECT * FROM suppliers WHERE tenant_id = ?`, [tenantId]).then(rows => rows.map((r: any) => ({
+        const { globalSupplierService } = require('./globalSupplierService');
+        
+        // 1. Fetch Local
+        const localSuppliers = await this.get(tenantId, `SELECT * FROM suppliers WHERE tenant_id = ?`, [tenantId]).then(rows => rows.map((r: any) => ({
              id: r.supplier_id,
              name: r.name,
              email: r.email,
              phone: r.phone,
              address: r.address,
-             tenantId: r.tenant_id
+             tenantId: r.tenant_id,
+             source: 'LOCAL',
+             isActive: true // Assuming local are active by default or add column if exists
         })));
+
+        // 2. Fetch Global
+        const globalSuppliersRaw = await globalSupplierService.getAll();
+        const globalSuppliers = globalSuppliersRaw.map((g: any) => ({
+            id: g.id,
+            name: g.name,
+            email: g.email,
+            phone: g.phone,
+            address: g.address,
+            tenantId: 'GLOBAL',
+            source: 'GLOBAL',
+            isActive: g.isActive
+        }));
+
+        // 3. Merge
+        return [...globalSuppliers, ...localSuppliers];
     }
 
     public async addSupplier(params: { tenantId: string, name: string, email?: string, phone?: string, address?: string, id?: string }): Promise<any> {
@@ -419,23 +445,228 @@ export class PharmacyService {
     public async updatePartner(params: any): Promise<any> { return params; }
     public async deletePartner(tenantId: string, id: string): Promise<void> {}
 
-    // --- 8. CATALOG PROXY (Legacy JSON Bridge) ---
-    // The controller calls pharmacyService.updateProductConfig
-    // We import tenantCatalogService to handle this.
-    
-    public updateProductConfig(tenantId: string, productId: string, config: any, context?: any) {
-        // We need to import tenantCatalogService at module level or here
-        // Assuming it's imported at top
-        const { tenantCatalogService } = require('./tenantCatalogService'); 
-        return tenantCatalogService.upsertProductConfig(tenantId, {
-            productId,
-            enabled: config.enabled,
-            suppliers: config.suppliers // Maps roughly
-        }, context);
+    public async updateProductConfig(tenantId: string, config: any) {
+        // config has structure: { id (productId), suppliers: [ { id, purchasePrice, margin, vat, isActive, ... } ], reason: "Inflation", ... }
+        
+        const now = new Date().toISOString();
+        const reason = config.reason || '-'; // Capture reason
+        const productId = config.id; // Extract productId from config
+
+        try {
+            console.log(`[PharmacyService] updateProductConfig called.`);
+            console.log(`[PharmacyService] Tenant: ${tenantId}, Product: ${productId}`);
+             // console.log(`[PharmacyService] Config Payload:`, JSON.stringify(config, null, 2));
+
+            // SQL IMPLEMENTATION (Removes JSON dependency)
+            // 1. Upsert Product Config
+            await this.run(tenantId, `
+                INSERT INTO product_configs (tenant_id, product_id, is_enabled, min_stock, max_stock, security_stock, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(tenant_id, product_id) DO UPDATE SET
+                    is_enabled = excluded.is_enabled,
+                    min_stock = excluded.min_stock,
+                    max_stock = excluded.max_stock,
+                    security_stock = excluded.security_stock,
+                    updated_at = CURRENT_TIMESTAMP
+            `, [tenantId, productId, (config.isEnabled !== undefined ? config.isEnabled : config.enabled) ? 1 : 0, config.minStock || 0, config.maxStock || 0, config.securityStock || 0]);
+
+            // 2. Handle Suppliers
+            // config.suppliers = [{ supplierId, purchasePrice, margin, vat, salesPrice, isActive ... }]
+            for (const s of config.suppliers || []) {
+                const isActive = s.isActive !== undefined ? (s.isActive ? 1 : 0) : 1;
+                // FIX: Frontend sends 'id', not 'supplierId' sometimes
+                const supplierId = s.id || s.supplierId;
+                const supplierLinkParams = [tenantId, productId, supplierId, s.source || 'GLOBAL', isActive];
+                
+                // Upsert Supplier Link to get ID
+                // Check existence first to get ID
+                const existingLink = await this.get(tenantId, `SELECT id FROM product_suppliers WHERE tenant_id = ? AND product_id = ? AND supplier_id = ?`, [tenantId, productId, supplierId]).then(r => r[0] as any);
+                let linkId = existingLink?.id;
+
+                if (!linkId) {
+                    linkId = uuidv4();
+                    await this.run(tenantId, `INSERT INTO product_suppliers (id, tenant_id, product_id, supplier_id, supplier_type, is_active) VALUES (?, ?, ?, ?, ?, ?)`, [linkId, ...supplierLinkParams]);
+                } else {
+                    // Update status if changed
+                    await this.run(tenantId, `UPDATE product_suppliers SET is_active = ? WHERE id = ?`, [isActive, linkId]);
+                }
+
+                // 3. Price Versioning
+                // Check active version
+                const activeVer = await this.get(tenantId, `SELECT * FROM product_price_versions WHERE product_supplier_id = ? AND valid_to IS NULL`, [linkId]).then(r => r[0] as any);
+
+                // Detect Change
+                let newPurchase = parseFloat(s.purchasePrice || 0);
+                let newMargin = parseFloat(s.margin || 0);
+                let newVat = parseFloat(s.vat || 0);
+                
+                // FORCE CALCULATION (Backend is source of truth)
+                // HT = Purchase * (1 + Margin/100)
+                // Fetch Global Product EARLY for PH Lock Logic
+                const globalProduct = await this.getProductById(tenantId, productId);
+                // FORCE CALCULATION (Backend is source of truth)
+                // HT = Purchase * (1 + Margin/100)
+                const calculatedHT = newPurchase * (1 + newMargin / 100);
+                // TTC = HT * (1 + VAT/100)
+                const calculatedTTC = calculatedHT * (1 + newVat / 100);
+
+                let newSaleHT = parseFloat(calculatedHT.toFixed(4));
+                let newSaleTTC = parseFloat(calculatedTTC.toFixed(4));
+                
+                // PH LOCK (Moroccan Medicament Regulation)
+                // If product has a fixed Hospital Price (PH), it strictly overrides the calculated TTC.
+                // Accept 'MEDICAMENT' or 'Médicament' (legacy data compatibility)
+                if ((globalProduct?.type === 'MEDICAMENT' || globalProduct?.type === 'Médicament') && globalProduct.marketInfo?.ph && globalProduct.marketInfo.ph > 0) {
+                    const ph = Number(globalProduct.marketInfo.ph);
+                    // Only override if meaningful difference or strict enforcement
+                    if (Math.abs(newSaleTTC - ph) > 0.001) {
+                         // Lock TTC
+                         newSaleTTC = ph;
+                         // Reverse Calculate HT
+                         newSaleHT = parseFloat((newSaleTTC / (1 + newVat / 100)).toFixed(4));
+                         // Reverse Calculate Margin (This effectively ignores user input margin if it contradicts PH)
+                         if (newPurchase > 0) {
+                             newMargin = parseFloat((((newSaleHT / newPurchase) - 1) * 100).toFixed(4));
+                         }
+                    } else {
+                        // Even if close, strictly snap to PH for cleanliness
+                         newSaleTTC = ph;
+                    }
+                }
+
+                const hasChanged = !activeVer || 
+                    activeVer.purchase_price !== newPurchase || 
+                    activeVer.margin !== newMargin || 
+                    activeVer.vat !== newVat ||
+                    activeVer.sale_price_ttc !== newSaleTTC;
+
+                if (hasChanged) {
+                    const unitsPerBox = globalProduct?.unitsPerBox || 1;
+                    const newUnitSalePrice = unitsPerBox > 0 ? (newSaleTTC / unitsPerBox) : 0;
+
+                    // Close ALL old/active versions -> ARCHIVED
+                    // This creates a self-healing mechanism for duplicate active rows
+                    await this.run(tenantId, `
+                        UPDATE product_price_versions 
+                        SET valid_to = CURRENT_TIMESTAMP, change_reason = ?, status = 'ARCHIVED' 
+                        WHERE product_supplier_id = ? AND (status = 'ACTIVE' OR valid_to IS NULL)
+                    `, [reason, linkId]);
+
+                    const priceParams = [
+                        uuidv4(), tenantId, linkId, 
+                        newPurchase, newMargin, newVat, 
+                        newSaleHT, newSaleTTC, newUnitSalePrice, 
+                        config.userId || 'SYSTEM', 
+                        '',       // change_reason (empty string for active)
+                        'ACTIVE'  // status
+                    ];
+                    
+                    await this.run(tenantId, `
+                        INSERT INTO product_price_versions (
+                            id, tenant_id, product_supplier_id, 
+                            purchase_price, margin, vat, 
+                            sale_price_ht, sale_price_ttc, unit_sale_price, 
+                            created_by, change_reason, status
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    `, priceParams);
+                }
+            }
+            
+            // Return Updated Product Object (Critical for Frontend)
+            return this.getProductConfig(tenantId, productId);
+        } catch (error: any) {
+            console.error('[PharmacyService] CRITICAL SQL ERROR in updateProductConfig:', error);
+            throw error;
+        }
     }
     
+    public async getProductConfig(tenantId: string, productId: string) {
+        const { globalProductService } = require('./globalProductService');
+        const { globalSupplierService } = require('./globalSupplierService');
+
+        // 1. Global Product
+        const globalProduct = await globalProductService.getProductById(productId);
+        if (!globalProduct) throw new Error("Global Product Not Found");
+
+        // 2. Tenant Config
+        const config = await this.get<any>(tenantId, `SELECT * FROM product_configs WHERE tenant_id = ? AND product_id = ?`, [tenantId, productId])
+            .then(r => r[0]);
+
+        // 3. Suppliers & Active Prices
+        const dbSuppliers = await this.get<any>(tenantId, `
+            SELECT ps.id, ps.tenant_id, ps.product_id, ps.supplier_id, ps.supplier_type, ps.is_active,
+                   ppv.id as ppv_id,
+                   ppv.purchase_price as v_purchase_price, 
+                   ppv.margin as v_margin, 
+                   ppv.vat as v_vat, 
+                   ppv.sale_price_ttc as v_sale_price_ttc, 
+                   ppv.sale_price_ht as v_sale_price_ht,
+                   ppv.unit_sale_price as v_unit_sale_price
+            FROM product_suppliers ps
+            LEFT JOIN product_price_versions ppv ON ps.id = ppv.product_supplier_id AND ps.tenant_id = ppv.tenant_id AND (ppv.status = 'ACTIVE' OR ppv.valid_to IS NULL)
+            WHERE ps.tenant_id = ? AND ps.product_id = ?
+        `, [tenantId, productId]);
+
+        // 4. Resolve Supplier Names
+        const tenantLocalSuppliers = await this.get<any>(tenantId, `SELECT * FROM suppliers WHERE tenant_id = ?`, [tenantId]);
+        const globalSupplierDefs = await globalSupplierService.getAll();
+        const allSuppliers = [...globalSupplierDefs, ...tenantLocalSuppliers];
+
+        const mappedSuppliers = await Promise.all(dbSuppliers.map(async (s: any) => {
+             // Name
+             let def;
+             if (s.supplier_type === 'LOCAL') {
+                 def = tenantLocalSuppliers.find((l: any) => l.supplier_id === s.supplier_id);
+             } else {
+                 def = allSuppliers.find((g: any) => g.id === s.supplier_id);
+             }
+
+             // FETCH HISTORY
+             const history = await this.get<any>(tenantId, `
+                 SELECT * FROM product_price_versions 
+                 WHERE tenant_id = ? AND product_supplier_id = ? 
+                 ORDER BY valid_from DESC
+             `, [tenantId, s.id]);
+
+             return {
+                 id: s.supplier_id,
+                 linkId: s.id, // Important
+                 name: def ? def.name : 'Unknown Supplier',
+                 source: s.supplier_type,
+                 isActive: !!s.is_active,
+                 isDefault: false,
+                 purchasePrice: s.v_purchase_price || 0,
+                 margin: s.v_margin || 0,
+                 vat: s.v_vat || 0,
+                 salesPrice: s.v_sale_price_ttc || 0,
+                 priceVersions: history.map((h:any) => ({
+                     id: h.id,
+                     purchasePrice: h.purchase_price,
+                     salesPrice: h.sale_price_ttc,
+                     validFrom: h.valid_from,
+                     validTo: h.valid_to,
+                     reason: h.change_reason,
+                     createdBy: h.created_by,
+                     status: h.status
+                 }))
+             };
+        }));
+
+        // Merge
+        return {
+            ...globalProduct,
+            isEnabled: config ? !!config.is_enabled : false,
+            minStock: config?.min_stock || 0,
+            maxStock: config?.max_stock || 0,
+            securityStock: config?.security_stock || 0,
+            suppliers: mappedSuppliers
+        };
+    }
+
     public getProductById(tenantId: string, id: string) {
         // Proxy to global
+
         const { globalProductService } = require('./globalProductService');
         return globalProductService.getProductById(id);
     }
@@ -444,23 +675,31 @@ export class PharmacyService {
     public getStockOutHistory(tenantId: string) { return []; }
     public async getPurchaseOrders(tenantId: string): Promise<any[]> {
         const pos = await this.get(tenantId, `SELECT * FROM purchase_orders WHERE tenant_id = ? ORDER BY created_at DESC`, [tenantId]);
+        const suppliers = await this.getSuppliers(tenantId);
         
         // Fetch items for each PO (N+1 but minimal for typical list size, or optimize with join)
         for (const po of pos as any[]) {
             po.items = await this.get(tenantId, `SELECT * FROM po_items WHERE tenant_id = ? AND po_id = ?`, [tenantId, po.po_id]);
         }
-        return pos.map((p: any) => ({
-            id: p.po_id,
-            tenantId: p.tenant_id,
-            supplierId: p.supplier_id,
-            status: p.status,
-            date: new Date(p.created_at),
-            items: p.items.map((i: any) => ({
-                productId: i.product_id,
-                orderedQty: i.qty_ordered,
-                unitPrice: i.unit_price
-            }))
-        }));
+        return pos.map((p: any) => {
+            const supplier = suppliers.find(s => s.id === p.supplier_id);
+            return {
+                id: p.po_id,
+                tenantId: p.tenant_id,
+                supplierId: p.supplier_id,
+                supplierName: supplier ? supplier.name : 'Inconnu',
+                status: p.status,
+                date: new Date(p.created_at),
+                createdBy: p.created_by || 'Système',
+                items: p.items.map((i: any) => ({
+                    productId: i.product_id,
+                    orderedQty: i.qty_ordered,
+                    deliveredQty: i.qty_delivered || 0, // Persisted Qty
+                    remainingQty: i.qty_to_be_delivered, // Optional exposure
+                    unitPrice: i.unit_price
+                }))
+            };
+        });
     }
 
     public async createPurchaseOrder(params: any): Promise<any> {
@@ -478,40 +717,43 @@ export class PharmacyService {
                 VALUES (?, ?, ?, ?, ?)
             `, [poId, tenantId, item.productId, item.orderedQty, item.unitPrice]);
         }
-        return { ...params, id: poId, status: 'ORDERED' };
+        return { ...params, id: poId, status: 'ORDERED', createdBy: userId };
     }
 
     public async getDeliveryNotes(tenantId: string): Promise<any[]> {
-        const receipts = await this.get(tenantId, `SELECT * FROM purchase_receipts WHERE tenant_id = ? ORDER BY received_at DESC`, [tenantId]);
+        const notes = await this.get(tenantId, `SELECT * FROM delivery_notes WHERE tenant_id = ? ORDER BY received_at DESC`, [tenantId]);
         // Get details
-        for (const r of receipts as any[]) {
-             const layers = await this.get(tenantId, `SELECT * FROM receipt_layers WHERE tenant_id = ? AND receipt_id = ?`, [tenantId, r.receipt_id]);
-             r.items = layers.map((l: any) => ({
-                 productId: l.product_id,
-                 deliveredQty: l.qty_received,
-                 batchNumber: l.lot,
-                 expiryDate: l.expiry
+        for (const n of notes as any[]) {
+             const items = await this.get(tenantId, `SELECT * FROM delivery_note_items WHERE tenant_id = ? AND delivery_note_id = ?`, [tenantId, n.delivery_note_id]);
+             n.items = items.map((i: any) => ({
+                 productId: i.product_id,
+                 deliveredQty: i.qty_pending, // Used Pending as Delivered in this context for now
+                 batchNumber: null, // Blind reception has no batch yet
+                 expiryDate: null
              }));
         }
-        return receipts.map((r: any) => ({
-            id: r.receipt_id,
-            date: new Date(r.received_at),
-            items: r.items,
-            createdBy: r.created_by
+        return notes.map((n: any) => ({
+            id: n.delivery_note_id,
+            status: n.status || 'PENDING',
+            poId: n.po_id, // Return PO ID for filtering
+            date: new Date(n.received_at),
+            items: n.items,
+            createdBy: n.created_by
         }));
     }
 
     public async createDeliveryNote(params: any): Promise<any> {
         // params: { tenantId, poId, noteId, items: [ { productId, deliveredQty, batchNumber, expiryDate } ], userId }
-        const { tenantId, poId, noteId, items, userId } = params;
+        const { tenantId, poId, items, userId } = params;
+        const noteId = params.noteId || params.id || `BL-${Date.now()}`;
         
         // 1. Process Receipt (Stock + Movements)
-        // Need to map simple items to what processReceipt expects (qtyUnits instead of deliveredQty)
+        // Need to map simple items to what processReceipt expects (qtyPending instead of deliveredQty)
         const receiptItems = items.map((i: any) => ({
             productId: i.productId,
-            lot: i.batchNumber,
-            expiry: i.expiryDate,
-            qtyUnits: i.deliveredQty, // Map Name
+            // lot: i.batchNumber, // REMOVED for Blind Reception
+            // expiry: i.expiryDate, // REMOVED for Blind Reception
+            qtyPending: i.deliveredQty, // Map to new Pending Field
             supplierId: 'UNKNOWN' // Will limit functionality if not passed, maybe fetch PO?
         }));
 
@@ -521,50 +763,171 @@ export class PharmacyService {
              const po: any = result[0];
              if (po) {
                  receiptItems.forEach((i: any) => i.supplierId = po.supplier_id);
+                 
                  // Update PO status
                  await this.run(tenantId, `UPDATE purchase_orders SET status = 'RECEIVED', updated_at = CURRENT_TIMESTAMP WHERE po_id = ?`, [poId]);
+
+                 // NEW LOGIC: Update PO Items Quantity + Save PO Link in Receipt
+                 // Since we have poId, we can update po_items
+                 for (const item of items) {
+                     // item.deliveredQty is what is delivered NOW.
+                     // We need to INCREMENT qty_delivered in po_items
+                     
+                     // Get current state to calculate remainder? Or just SQL update
+                     // qty_to_be_delivered = qty_ordered - (new_total_delivered)
+                     // Implementation:
+                     // UPDATE po_items SET qty_delivered = qty_delivered + ?, qty_to_be_delivered = qty_ordered - (qty_delivered + ?)
+                     // WHERE po_id = ? AND product_id = ?
+                     
+                     await this.run(tenantId, `
+                        UPDATE po_items 
+                        SET qty_delivered = qty_delivered + ?,
+                            qty_to_be_delivered = qty_ordered - (qty_delivered + ?)
+                        WHERE po_id = ? AND product_id = ? AND tenant_id = ?
+                     `, [item.deliveredQty, item.deliveredQty, poId, item.productId, tenantId]);
+                 }
              }
         }
 
-        await this.processReceipt({
+        // Pass poId to processDeliveryNote if we want to save it in delivery_notes?
+        // processDeliveryNote signature modification vs direct update.
+        // Easier: update processDeliveryNote signature to accept optional poId.
+        
+        await this.processDeliveryNote({
             tenantId,
             items: receiptItems,
             location: 'PHARMACY_MAIN', // Default
             documentId: noteId,
-            userId
+            userId,
+            poId // Pass to processDeliveryNote
         });
         
         return { id: noteId, ...params };
     }
 
-    public processQuarantine(params: any) {
-         // Proxy to processReceipt
-         // Logic bridge: Map params to items
-         // params might be { items: [{ productId, batches: [{ batchNumber, expiryDate, quantity, locationId}] }], ... }
-         // We need to flatten batches to items
+    public async processQuarantine(params: {
+         tenantId: string,
+         noteId: string, // Delivery Note ID
+         items: any[],   // Request items with batches/returns
+         processedBy: string
+    }) {
+         const { tenantId, noteId, items, processedBy } = params;
+
+         // 1. Get Delivery Note to find Supplier
+         const notes = await this.get(tenantId, `SELECT * FROM delivery_notes WHERE delivery_note_id = ?`, [noteId]) as any[];
+         const note = notes && notes.length > 0 ? notes[0] : null;
          
-         const items: any[] = [];
-         params.items.forEach((i: any) => {
-             i.batches.forEach((b: any) => {
-                 items.push({
-                     productId: i.productId,
-                     lot: b.batchNumber,
-                     expiry: b.expiryDate,
-                     qtyUnits: b.quantity,
-                     supplierId: 'UNKNOWN' // TODO: extract from params
-                 });
-             });
-         });
+         if (!note) throw new Error(`Delivery Note ${noteId} not found`);
+
+         // TODO: If note has a PO, we might want to check against it, but for now we trust the flow.
+         const supplierId = note.supplier_id || 'UNKNOWN';
+
+         // Group Batches by Product to perform ONE WAC Update per Product
+         const batchesByProduct: Record<string, { qty: number, batches: any[] }> = {};
+         for (const item of items) {
+             if (!item.batches || item.batches.length === 0) continue;
+             if (!batchesByProduct[item.productId]) {
+                 batchesByProduct[item.productId] = { qty: 0, batches: [] };
+             }
+             for (const batch of item.batches) {
+                 const q = Number(batch.quantity);
+                 if (q > 0) {
+                     batchesByProduct[item.productId].qty += q;
+                     batchesByProduct[item.productId].batches.push(batch);
+                 }
+             }
+         }
+
+         const resultItems: any[] = [];
+
+         for (const item of items) {
+             const productData = batchesByProduct[item.productId];
+             if (!productData) {
+                 resultItems.push(item);
+                 continue;
+             }
+
+             // --- WAC CALCULATION (Once per product) ---
+             // Only if we haven't processed this product in this loop yet 
+             // (Simple check: iterate Object.keys or use a Set map. Here we iterate Items which might repeat?
+             // Usually items are unique by product in payload. We assume uniqueness or handle idempotency.)
+             
+             // 1. Determine Unit Cost (Priority: PO Item ONLY)
+             let unitCost = 0;
+             if (note.po_id) {
+                 const poItem = await this.get<any>(tenantId, `SELECT unit_price FROM po_items WHERE po_id = ? AND product_id = ?`, [note.po_id, item.productId]).then(r => r[0]);
+                 if (poItem) unitCost = Number(poItem.unit_price) || 0;
+             }
+             
+             // STRICT: If no PO or no Price, unitCost matches 0.
+             if (unitCost === 0) {
+                 console.warn(`[WAC] Warning: Zero cost for Injection. Product=${item.productId}, PO=${note.po_id}`);
+             }
+
+             // 2. Fetch Current Stock (Sum of all locations)
+             const stockRow = await this.get<any>(tenantId, `SELECT SUM(qty_units) as total FROM current_stock WHERE tenant_id = ? AND product_id = ?`, [tenantId, item.productId]).then(r => r[0]);
+             const currentStock = Number(stockRow?.total) || 0;
+
+             // 3. Fetch Old WAC
+             const wacRow = await this.get<any>(tenantId, `SELECT wac FROM product_wac WHERE tenant_id = ? AND product_id = ?`, [tenantId, item.productId]).then(r => r[0]);
+             const oldWac = wacRow ? Number(wacRow.wac) : 0;
+             const hasOldWac = !!wacRow;
+
+             // 4. Calculate New WAC
+             const injectedQty = productData.qty;
+             let newWac = unitCost;
+             
+             if (hasOldWac && (currentStock + injectedQty) > 0) {
+                 const totalValue = (currentStock * oldWac) + (injectedQty * unitCost);
+                 const totalQty = currentStock + injectedQty;
+                 newWac = totalValue / totalQty;
+             } else if (!hasOldWac) {
+                 newWac = unitCost;
+             }
+             
+             // 5. Update WAC Table
+             await this.run(tenantId, `
+                 INSERT INTO product_wac (tenant_id, product_id, wac, last_updated)
+                 VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                 ON CONFLICT(tenant_id, product_id) DO UPDATE SET wac = excluded.wac, last_updated = CURRENT_TIMESTAMP
+             `, [tenantId, item.productId, newWac]);
+
+             // --- PROCESS BATCHES ---
+             for (const batch of productData.batches) {
+                 const qty = Number(batch.quantity);
+
+                 // Inventory Movement
+                 const movementId = uuidv4();
+                 await this.run(tenantId, `
+                    INSERT INTO inventory_movements (
+                        movement_id, tenant_id, product_id, lot, expiry, qty_units,
+                        from_location, to_location, document_type, document_id, created_by
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 `, [movementId, tenantId, item.productId, batch.batchNumber, batch.expiryDate, qty,
+                     'QUARANTINE', batch.locationId, 'DELIVERY_INJECTION', noteId, processedBy]);
+
+                 // Update Stock
+                 await this.upsertStock(tenantId, item.productId, batch.batchNumber, new Date(batch.expiryDate), batch.locationId, qty);
+                 
+                 // Traceability Layer (With Cost)
+                 await this.run(tenantId, `
+                    INSERT INTO delivery_note_layers (
+                        delivery_note_id, tenant_id, product_id, lot, expiry,
+                        qty_received, qty_remaining, purchase_unit_cost
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                 `, [noteId, tenantId, item.productId, batch.batchNumber, batch.expiryDate, 
+                     qty, qty, unitCost]);
+             }
+             
+             // Removed from batch loop to avoid double processing if items array has dupes (unlikely but safe) (Wait, I loop items, so I should be careful)
+             // Optimization: logic assumes items are unique by product ID.
+             resultItems.push(item);
+         }
          
-         const location = items[0]?.location || 'PHARMACY_MAIN'; // TODO: extract
+         // 5. Update Status
+         await this.run(tenantId, `UPDATE delivery_notes SET status = 'PROCESSED' WHERE delivery_note_id = ?`, [noteId]);
          
-         return this.processReceipt({
-             tenantId: params.tenantId,
-             items,
-             location,
-             documentId: params.noteId || `BL-${Date.now()}`,
-             userId: params.processedBy || 'SYSTEM'
-         });
+         return { success: true, id: noteId, items: resultItems, processedBy, processedDate: new Date() };
     }
 
     public async getReplenishmentRequests(tenantId: string): Promise<any[]> {
@@ -687,68 +1050,165 @@ export class PharmacyService {
 
     public async getCatalogPaginated(tenantId: string, page: number, limit: number, query: string = '', status: 'ALL' | 'ACTIVE' | 'INACTIVE' = 'ALL') {
         const { globalProductService } = require('./globalProductService');
-        const { tenantCatalogService } = require('./tenantCatalogService');
         const { globalSupplierService } = require('./globalSupplierService');
 
-        // 1. Determine Filtering Strategy
-        const tenantConfig = await tenantCatalogService.getCatalogConfig(tenantId); // Assuming this might be async too? Check. 
-        // If tenantCatalogService uses TenantStore (JSON), it's sync. If it uses SQL, it might be async.
-        // I haven't checked tenantCatalogService. Let's assume sync for now but it's safer to not await if uncertain, unless I check.
-        // Wait, if it IS sync, awaiting a non-promise value is fine in JS (resolves to value).
-        
-        let idsFilter: string[] | undefined;
-        
-        if (status === 'ACTIVE') {
-            idsFilter = tenantConfig.filter((tc: any) => tc.enabled).map((tc: any) => tc.productId);
+        // 1. Fetch Tenant Configs (SQL)
+        const dbConfigs = await this.get<any>(tenantId, `SELECT * FROM product_configs`);
+
+        const dbSuppliers = await this.get<any>(tenantId, `
+            SELECT ps.id, ps.tenant_id, ps.product_id, ps.supplier_id, ps.supplier_type, ps.is_active,
+                   ppv.id as ppv_id,
+                   ppv.purchase_price as v_purchase_price, 
+                   ppv.margin as v_margin, 
+                   ppv.vat as v_vat, 
+                   ppv.vat as v_vat, 
+                   ppv.sale_price_ttc as v_sale_price_ttc, 
+                   ppv.sale_price_ht as v_sale_price_ht,
+                   ppv.unit_sale_price as v_unit_sale_price
+            FROM product_suppliers ps
+            LEFT JOIN product_price_versions ppv ON ps.id = ppv.product_supplier_id AND ppv.valid_to IS NULL
+            WHERE ps.tenant_id = ?
+        `, [tenantId]);
+
+
+        console.log(`[PharmacyService] getCatalogPaginated: Fetched ${dbSuppliers.length} active supplier links for tenant ${tenantId}.`);
+        if (dbSuppliers.length > 0) {
+             // console.log(`[PharmacyService] Sample Supplier Link:`, JSON.stringify(dbSuppliers[0], null, 2));
         }
 
-        // 2. Fetch Paginated Global Definitions (ASYNC)
+        // 2. Filter IDs?
+        let idsFilter: string[] | undefined;
+        if (status === 'ACTIVE') {
+            // Robust check for SQLite boolean (1, true, "1")
+            idsFilter = dbConfigs
+                .filter((c: any) => c.is_enabled === 1 || c.is_enabled === true || c.is_enabled === '1')
+                .map((c: any) => c.product_id);
+            
+            console.log(`[PharmacyService] ACTIVE Filter: Found ${idsFilter.length} enabled products out of ${dbConfigs.length} configs.`);
+
+            // FIX: If status is ACTIVE and no enabled products, return empty immediately
+            if (idsFilter.length === 0) {
+                 console.log('[PharmacyService] No active products found. Returning empty.');
+                 return { data: [], total: 0, page, totalPages: 0 };
+            }
+        }
+
+        // 3. Fetch Global Products
         const { data: globalProducts, total, totalPages } = await globalProductService.getProductsPaginated(page, limit, query, idsFilter);
 
-        // 3. Fetch Suppliers (SQL + Global) (ASYNC)
-        const tenantSuppliers = await this.getSuppliers(tenantId);
-        const globalSuppliers = await globalSupplierService.getAll();
-        const allSuppliers = [...globalSuppliers, ...tenantSuppliers];
+        // 4. Reference Data (Suppliers)
+        const tenantLocalSuppliers = await this.get<any>(tenantId, `SELECT * FROM suppliers WHERE tenant_id = ?`, [tenantId]); // Only local definitions
+        const globalSupplierDefs = await globalSupplierService.getAll();
+        const allSuppliers = [...globalSupplierDefs, ...tenantLocalSuppliers];
 
-        // 4. Merge Chunk
+        // 5. Merge
         const mergedProducts = globalProducts.map((gp: any) => {
-            const config = tenantConfig.find((tc: any) => tc.productId === gp.id);
-            
-            const productSuppliers = (config?.suppliers || []).map((link: any) => {
-                const supplierDef = allSuppliers.find((s: any) => s.id === link.supplierId);
-                if (!supplierDef) return null;
-                const activeVer = (link.priceVersions || []).find((v: any) => !v.validTo);
-                return {
-                    id: link.supplierId,
-                    name: supplierDef.name,
-                    purchasePrice: activeVer?.purchasePrice || 0,
-                    margin: activeVer?.margin || 0,
-                    vat: activeVer?.vat || 0,
-                    isDefault: link.isDefault || false,
-                    isActive: link.isActive,
-                    priceVersions: link.priceVersions || []
-                };
-            }).filter((s: any) => s !== null);
+            const config = dbConfigs.find((c: any) => c.product_id === gp.id);
+            const mySuppliers = dbSuppliers.filter((s: any) => s.product_id === gp.id);
 
+            const suppliersMapped = mySuppliers.map((s: any) => {
+                // Resolve Name
+                let def;
+                if (s.supplier_type === 'LOCAL') {
+                    def = tenantLocalSuppliers.find((l: any) => l.supplier_id === s.supplier_id);
+                } else {
+                    def = allSuppliers.find((g: any) => g.id === s.supplier_id);
+                }
+
+                if (!def) {
+                    console.warn(`[PharmacyService] Unknown Supplier ID: '${s.supplier_id}' (Type: ${s.supplier_type}) for Link ${s.id}`);
+                    // Debug: Log active global IDs to see mismatch
+                    if (s.supplier_type === 'GLOBAL' && allSuppliers.length > 0) {
+                         const sampleIds = allSuppliers.slice(0, 5).map((g: any) => g.id).join(', ');
+                         console.warn(`[PharmacyService] Available Global IDs (Sample): ${sampleIds}`);
+                    }
+                }
+
+                return {
+                    id: s.supplier_id,
+                    linkId: s.id, // Store linkId to help debugging if needed
+                    name: def?.name || 'Unknown Supplier',
+                    source: s.supplier_type,
+                    purchasePrice: s.v_purchase_price ?? s.purchase_price ?? 0,
+                    margin: s.v_margin ?? s.margin ?? 0,
+                    vat: s.v_vat ?? s.vat ?? 0,
+                    salePriceHT: s.v_sale_price_ht ?? 0,
+                    salePriceTTC: s.v_sale_price_ttc ?? 0,
+                    unitSalePrice: s.v_unit_sale_price ?? 0,
+                    isActive: s.is_active === 1,
+                    isDefault: false, // Retired concept
+                };
+            }).sort((a: any, b: any) => a.name.localeCompare(b.name));
+            
             return {
                 ...gp,
-                suppliers: productSuppliers,
-                profitMargin: (config?.suppliers.find((s: any)=>s.isDefault)?.priceVersions.find((v: any)=>!v.validTo)?.margin) || 0,
-                vatRate: (config?.suppliers.find((s: any)=>s.isDefault)?.priceVersions.find((v: any)=>!v.validTo)?.vat) || 0,
-                isEnabled: config?.enabled ?? false,
+                // Client specific override or fallback
+                isEnabled: config ? (config.is_enabled === 1 || config.is_enabled === true) : false, // Default false
+                minStock: config?.min_stock,
+                maxStock: config?.max_stock,
+                securityStock: config?.security_stock,
+                
+                suppliers: suppliersMapped,
+
+                // Computed/legacy fields for UI grid
+                profitMargin: suppliersMapped[0]?.margin || 0, 
+                vatRate: suppliersMapped[0]?.vat || 0,
                 tenantId
             };
         });
+
+        // 6. Enrichment: Fetch Full Price History for all visibly loaded suppliers
+        const productSupplierLinkIds = dbSuppliers.map((s: any) => s.id);
+        
+        if (productSupplierLinkIds.length > 0) {
+            // console.log(`[PharmacyService] Fetching history for ${productSupplierLinkIds.length} links:`, productSupplierLinkIds);
+            
+            const placeholders = productSupplierLinkIds.map(() => '?').join(',');
+            const allHistory = await this.get<any>(tenantId, `
+                SELECT *, change_reason FROM product_price_versions 
+                WHERE product_supplier_id IN (${placeholders})
+                ORDER BY valid_from DESC
+            `, productSupplierLinkIds);
+
+            // console.log(`[PharmacyService] Found ${allHistory.length} history entries.`);
+
+            // Attach history to the merged structure
+            mergedProducts.forEach((prod: any) => {
+                prod.suppliers.forEach((supp: any) => {
+                    const history = allHistory.filter((v: any) => v.product_supplier_id === supp.linkId);
+                    
+                    supp.priceVersions = history.map((h: any) => ({
+                        id: h.id,
+                        purchasePrice: h.purchase_price,
+                        margin: h.margin,
+                        vat: h.vat, // Ensure mapped
+                        salePriceTTC: h.sale_price_ttc,
+                        validFrom: new Date(h.valid_from),
+                        validTo: h.valid_to ? new Date(h.valid_to) : undefined,
+                        createdBy: h.created_by,
+                        changeReason: h.change_reason || '-'
+                    }));
+                });
+            });
+        }
+
+
+        // FIX: The query parameter in getProductsPaginated might not filter correctly if we are relying on partial matches?
+        // Actually globalProductService handles query.
+        
+
+        
+
 
         return { data: mergedProducts, total, page, totalPages };
     }
 
 
     public async getCatalog(tenantId: string): Promise<any[]> {
-        const { globalProductService } = require('./globalProductService');
-        const globalProducts = await globalProductService.getAllProducts();
-        // Simple map for now, full logic above if needed
-        return globalProducts.map((p: any) => ({ ...p, tenantId }));
+        // Use Paginated method with high limit to get all enriched data (Configs + Suppliers)
+        // This ensures frontend receives 'suppliers' array needed for Stock Entry filtering.
+        const result = await this.getCatalogPaginated(tenantId, 1, 10000, '', 'ALL');
+        return result.data;
     }
 
     public async getDispensationsByPrescription(tenantId: string, prescriptionId: string): Promise<any[]> {
@@ -767,8 +1227,9 @@ export class PharmacyService {
         
         await this.run(tenantId, `DELETE FROM current_stock WHERE tenant_id = ?`, [tenantId]);
         await this.run(tenantId, `DELETE FROM inventory_movements WHERE tenant_id = ?`, [tenantId]);
-        await this.run(tenantId, `DELETE FROM receipt_layers WHERE tenant_id = ?`, [tenantId]);
-        await this.run(tenantId, `DELETE FROM purchase_receipts WHERE tenant_id = ?`, [tenantId]);
+        await this.run(tenantId, `DELETE FROM delivery_note_items WHERE tenant_id = ?`, [tenantId]); // Was receipt_layers
+        await this.run(tenantId, `DELETE FROM delivery_note_layers WHERE tenant_id = ?`, [tenantId]); // Was receipt_layers (wait, check mapping)
+        await this.run(tenantId, `DELETE FROM delivery_notes WHERE tenant_id = ?`, [tenantId]); // Was purchase_receipts
         await this.run(tenantId, `DELETE FROM supplier_return_lines WHERE tenant_id = ?`, [tenantId]);
         await this.run(tenantId, `DELETE FROM supplier_returns WHERE tenant_id = ?`, [tenantId]);
         await this.run(tenantId, `DELETE FROM medication_dispense_events WHERE tenant_id = ?`, [tenantId]);

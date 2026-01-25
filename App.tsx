@@ -36,8 +36,9 @@ import { GlobalDCIManager } from './components/SuperAdmin/GlobalDCIManager';
 import { EMDNSandboxPage } from './components/SuperAdmin/EMDNSandboxPage';
 import { RoleDetailPage } from './components/SuperAdmin/RoleDetailPage';
 import { ServiceStock } from './components/ServiceStock';
-import { ReplenishmentPage } from './components/ReplenishmentPage';
+import ServiceStockManager from './components/StockTransfer/ServiceStockManager';
 import { EmrLocationManager } from './components/EmrLocationManager';
+import TransferManager from './components/StockTransfer/TransferManager';
 
 const ProtectedRoute = ({ role, permission, children }: { role?: string | UserType, permission?: string, children: React.ReactNode }) => {
   const { user, isAuthenticated, loading } = useAuth();
@@ -89,7 +90,7 @@ const App: React.FC = () => {
             <Route path="waiting-room" element={<WaitingRoom />} />
             <Route path="map" element={<WardMap />} />
             <Route path="service-stock" element={<ServiceStock />} />
-            <Route path="replenishment" element={<ReplenishmentPage />} />
+            <Route path="replenishment" element={<ServiceStockManager />} />
 
           </Route>
           
@@ -138,6 +139,12 @@ const App: React.FC = () => {
           </Route>
 
           {/* Pharmacist / Pharmacy Routes - PROTECTED BY PERMISSION */}
+          <Route path="/pharmacy/processing/:demandId" element={
+            <ProtectedRoute permission="ph_dashboard">
+               <TransferManager />
+            </ProtectedRoute>
+          } />
+
           <Route path="/pharmacy/*" element={
             <ProtectedRoute permission="ph_dashboard">
               <PharmacyModule />

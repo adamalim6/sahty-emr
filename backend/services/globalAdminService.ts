@@ -86,10 +86,10 @@ export class GlobalAdminService {
         if (!role) return undefined;
         return {
             id: role.id,
-            code: role.code || 'USER', // default
+            code: role.code, 
             name: role.name,
             permissions: role.permissions ? JSON.parse(role.permissions) : [],
-            modules: [] 
+            modules: role.modules ? JSON.parse(role.modules) : [] 
         };
     }
 
@@ -98,12 +98,28 @@ export class GlobalAdminService {
         const rows = await all<any>(db, 'SELECT * FROM global_roles');
         return rows.map(role => ({
             id: role.id,
-            code: role.code || 'USER',
+            code: role.code,
             name: role.name,
             description: role.description,
             permissions: role.permissions ? JSON.parse(role.permissions) : [],
-            modules: [] 
+            modules: role.modules ? JSON.parse(role.modules) : [] 
         }));
+    }
+
+    public async updateGlobalRole(id: string, updates: any): Promise<any> {
+        const db = await getGlobalDB();
+        const fields: string[] = [];
+        const values: any[] = [];
+
+        if (updates.name) { fields.push('name=?'); values.push(updates.name); }
+        if (updates.permissions) { fields.push('permissions=?'); values.push(JSON.stringify(updates.permissions)); }
+        if (updates.modules) { fields.push('modules=?'); values.push(JSON.stringify(updates.modules)); }
+        
+        if (fields.length > 0) {
+            values.push(id);
+            await run(db, `UPDATE global_roles SET ${fields.join(', ')} WHERE id = ?`, values);
+        }
+        return this.getGlobalRole(id);
     }
 
     // Tenant Admin Management

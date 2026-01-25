@@ -1,0 +1,93 @@
+--- GLOBAL DB CHECK ---
+Global Suppliers: [
+  {
+    id: 'supp_1',
+    name: 'Laprophan',
+    tax_id: null,
+    address: null,
+    contact_info: null,
+    created_at: '2026-01-01T20:00:00.000Z',
+    is_active: 1
+  },
+  {
+    id: 'supp_2',
+    name: 'Pharma 5',
+    tax_id: null,
+    address: null,
+    contact_info: null,
+    created_at: '2026-01-01T20:00:00.000Z',
+    is_active: 1
+  },
+  {
+    id: 'supp_3',
+    name: 'Cooper Pharma',
+    tax_id: null,
+    address: null,
+    contact_info: null,
+    created_at: '2026-01-01T20:00:00.000Z',
+    is_active: 1
+  },
+  {
+    id: 'supp_4',
+    name: 'Sothema',
+    tax_id: null,
+    address: null,
+    contact_info: null,
+    created_at: '2026-01-01T20:00:00.000Z',
+    is_active: 1
+  },
+  {
+    id: 'supp_5',
+    name: 'Polymedic',
+    tax_id: null,
+    address: null,
+    contact_info: null,
+    created_at: '2026-01-01T20:00:00.000Z',
+    is_active: 1
+  },
+  {
+    id: 'supp_6',
+    name: 'Promopharm',
+    tax_id: null,
+    address: null,
+    contact_info: null,
+    created_at: '2026-01-01T20:00:00.000Z',
+    is_active: 1
+  },
+  {
+    id: 'supp_7',
+    name: 'Galenica',
+    tax_id: null,
+    address: null,
+    contact_info: null,
+    created_at: '2026-01-01T20:00:00.000Z',
+    is_active: 1
+  },
+  {
+    id: 'supp_8',
+    name: 'Novagenerics',
+    tax_id: null,
+    address: null,
+    contact_info: null,
+    created_at: '2026-01-01T20:00:00.000Z',
+    is_active: 1
+  },
+  {
+    id: 'supp_9',
+    name: 'Zenith Pharma',
+    tax_id: null,
+    address: null,
+    contact_info: null,
+    created_at: '2026-01-01T20:00:00.000Z',
+    is_active: 1
+  },
+  {
+    id: 'supp_10',
+    name: 'Afric-Phar',
+    tax_id: null,
+    address: null,
+    contact_info: null,
+    created_at: '2026-01-01T20:00:00.000Z',
+    is_active: 1
+  }
+]

@@ -103,7 +103,7 @@ export const api = {
         const query = params ? `?${new URLSearchParams(params as any).toString()}` : '';
         return fetchJson<any>(`/pharmacy/catalog${query}`);
     },
-    getLocations: (serviceId?: string, scope?: 'PHARMACY' | 'SERVICE') => fetchJson<StockLocation[]>(`/pharmacy/locations?serviceId=${serviceId || ''}&scope=${scope || ''}`),
+    getLocations: (serviceId?: string, scope?: 'PHARMACY' | 'SERVICE') => fetchJson<StockLocation[]>(`/pharmacy/locations?serviceId=${serviceId || ''}&scope=${scope || 'PHARMACY'}`),
     createLocation: (data: any) => fetchJson<StockLocation>('/pharmacy/locations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -403,6 +403,74 @@ export const api = {
     }),
     deleteGlobalDCI: (id: string) => fetchJson<void>(`/global/dci/${id}`, {
         method: 'DELETE'
+    }),
+
+    // --- Unified Stock Transfer Engine ---
+    
+    createStockDemand: (data: any) => fetchJson<any>('/stock-transfers/demands', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    
+    getStockDemands: (serviceId?: string) => {
+        const query = serviceId ? `?serviceId=${serviceId}` : '';
+        return fetchJson<any[]>(`/stock-transfers/demands${query}`);
+    },
+    
+    getStockDemandDetails: (demandId: string) => fetchJson<any>(`/stock-transfers/demands/${demandId}`),
+    
+    updateStockDemandStatus: (demandId: string, status: string) => fetchJson<any>(`/stock-transfers/demands/${demandId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+    }),
+    
+    createStockTransferDraft: (data: any) => fetchJson<any>('/stock-transfers/transfers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    
+    getStockTransferDetails: (transferId: string) => fetchJson<any>(`/stock-transfers/transfers/${transferId}`),
+    
+    executeStockTransfer: (transferId: string) => fetchJson<any>(`/stock-transfers/transfers/${transferId}/execute`, {
+        method: 'POST'
+    }),
+    
+    getStockDemandCatalog: (params?: { page?: number; limit?: number; q?: string; status?: 'ALL' | 'ACTIVE' | 'INACTIVE' }) => {
+        const query = params ? `?${new URLSearchParams(params as any).toString()}` : '';
+        return fetchJson<any>(`/stock-transfers/catalog${query}`);
+    },
+
+    getTransferHistory: (productId: string) => fetchJson<any[]>(`/stock-transfers/history/${productId}`),
+
+    // --- Stock Reservations (HOLD Engine) ---
+    
+    holdStockReservation: (data: any) => fetchJson<any>('/pharmacy/stock-reservations/hold', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    
+    releaseStockReservation: (reservationId: string) => fetchJson<any>('/pharmacy/stock-reservations/release', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reservation_id: reservationId })
+    }),
+    
+    refreshStockReservationSession: (sessionId: string) => fetchJson<any>('/pharmacy/stock-reservations/refresh-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId })
+    }),
+    
+    getStockReservationCart: (sessionId: string) => fetchJson<any[]>(`/pharmacy/stock-reservations/cart/${sessionId}`),
+    
+    commitStockReservationSession: (sessionId: string, relatedDemandId: string) => fetchJson<any>('/pharmacy/stock-reservations/commit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId, related_demand_id: relatedDemandId })
     })
 };
 

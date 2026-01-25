@@ -58,19 +58,25 @@ export const QuarantineManager: React.FC<QuarantineManagerProps> = ({
    }, [selectedNote]);
 
    const addBatch = (productId: string) => {
-      const current = processData[productId];
+      const current = processData[productId] || {
+          productId,
+          deliveredQty: selectedNote?.items.find(i => i.productId === productId)?.deliveredQty || 0,
+          batches: [],
+          returns: []
+      };
+      
       const pharmacyLocations = locations.filter(l => l.scope === 'PHARMACY');
       const newBatch: BatchEntry = {
          batchNumber: '',
          expiryDate: '',
          quantity: 0,
-         locationId: pharmacyLocations[0]?.name || ''
+         locationId: pharmacyLocations[0]?.id || ''
       };
 
-      setProcessData({
-         ...processData,
+      setProcessData(prev => ({
+         ...prev,
          [productId]: { ...current, batches: [...current.batches, newBatch] }
-      });
+      }));
    };
 
    const updateBatch = (productId: string, index: number, field: keyof BatchEntry, value: any) => {
@@ -96,17 +102,23 @@ export const QuarantineManager: React.FC<QuarantineManagerProps> = ({
    };
 
    const addReturn = (productId: string) => {
-      const current = processData[productId];
+      const current = processData[productId] || {
+          productId,
+          deliveredQty: selectedNote?.items.find(i => i.productId === productId)?.deliveredQty || 0,
+          batches: [],
+          returns: []
+      };
+
       const newReturn: ReturnEntry = {
          quantity: 0,
          reason: ReturnReason.DAMAGED,
          notes: ''
       };
 
-      setProcessData({
-         ...processData,
+      setProcessData(prev => ({
+         ...prev,
          [productId]: { ...current, returns: [...current.returns, newReturn] }
-      });
+      }));
    };
 
    const updateReturn = (productId: string, index: number, field: keyof ReturnEntry, value: any) => {
@@ -340,14 +352,21 @@ export const QuarantineManager: React.FC<QuarantineManagerProps> = ({
                         if (!product) return null;
 
                         const isDrug = product.type === ProductType.DRUG;
+                        const unitsPerBox = product.unitsPerBox || 1;
                         const data = processData[item.productId] || { productId: item.productId, deliveredQty: 0, batches: [], returns: [] };
 
-                        const totalBatch = data.batches.reduce((sum: number, b: BatchEntry) => sum + (b.quantity || 0), 0);
-                        const totalReturn = data.returns.reduce((sum: number, r: ReturnEntry) => sum + (r.quantity || 0), 0);
-                        const totalAssigned = totalBatch + totalReturn;
-                        const remaining = item.deliveredQty - totalAssigned;
-                        const isBalanced = remaining === 0;
-                        const isInvalid = remaining < 0;
+                        const totalBatchUnits = data.batches.reduce((sum: number, b: BatchEntry) => sum + (b.quantity || 0), 0);
+                        const totalReturnUnits = data.returns.reduce((sum: number, r: ReturnEntry) => sum + (r.quantity || 0), 0);
+                        const totalAssignedUnits = totalBatchUnits + totalReturnUnits;
+                        const remainingUnits = item.deliveredQty - totalAssignedUnits;
+                        
+                        // Derived Box Values
+                        const deliveredBoxes = Number((item.deliveredQty / unitsPerBox).toFixed(2));
+                        const assignedBoxes = Number((totalAssignedUnits / unitsPerBox).toFixed(2));
+                        const remainingBoxes = Number((remainingUnits / unitsPerBox).toFixed(2));
+
+                        const isBalanced = remainingUnits === 0;
+                        const isInvalid = remainingUnits < 0;
 
                         return (
                            <div key={item.productId} className={`border rounded-xl p-5 transition-colors ${
@@ -372,6 +391,8 @@ export const QuarantineManager: React.FC<QuarantineManagerProps> = ({
                                           <span className="bg-slate-100 px-2 py-0.5 rounded">{product.id}</span>
                                           <span>•</span>
                                           <span>{product.type}</span>
+                                          <span>•</span>
+                                          <span className="font-medium text-slate-700">1 Bte = {unitsPerBox} U</span>
                                        </div>
                                     </div>
                                  </div>
@@ -379,19 +400,22 @@ export const QuarantineManager: React.FC<QuarantineManagerProps> = ({
                                  <div className="flex items-center space-x-6 bg-slate-50 px-4 py-2 rounded-lg border border-slate-100">
                                     <div className="text-right">
                                        <div className="text-[10px] uppercase text-slate-400 font-bold">Livré</div>
-                                       <div className="font-bold text-lg text-slate-800">{item.deliveredQty}</div>
+                                       <div className="font-bold text-lg text-slate-800">
+                                          {deliveredBoxes} <span className="text-xs font-normal text-slate-500">Btes</span>
+                                       </div>
+                                       <div className="text-[10px] text-slate-400">({item.deliveredQty} U)</div>
                                     </div>
                                     <ArrowRight className="text-slate-300" size={20} />
                                     <div className="text-right">
                                        <div className="text-[10px] uppercase text-slate-400 font-bold">Assigné</div>
                                        <div className={`font-bold text-lg ${isBalanced ? 'text-emerald-600' : 'text-amber-600'}`}>
-                                          {totalAssigned}
+                                          {assignedBoxes} <span className="text-xs font-normal text-slate-500">Btes</span>
                                        </div>
                                     </div>
                                     <div className="text-right pl-4 border-l border-slate-200">
                                        <div className="text-[10px] uppercase text-slate-400 font-bold">Restant</div>
-                                       <div className={`font-bold text-lg ${remaining === 0 ? 'text-slate-300' : 'text-red-600'}`}>
-                                          {remaining}
+                                       <div className={`font-bold text-lg ${remainingBoxes === 0 ? 'text-slate-300' : 'text-red-600'}`}>
+                                          {remainingBoxes} <span className="text-xs font-normal text-slate-500">Btes</span>
                                        </div>
                                     </div>
                                  </div>
@@ -451,18 +475,24 @@ export const QuarantineManager: React.FC<QuarantineManagerProps> = ({
                                                          value={batch.locationId}
                                                          onChange={(e) => updateBatch(item.productId, idx, 'locationId', e.target.value)}
                                                       >
-                                                         {locations.filter(l => l.scope === 'PHARMACY').map(l => <option key={l.id} value={l.name}>{l.name}</option>)}
+                                                         {locations.filter(l => l.scope === 'PHARMACY' && l.isActive !== false).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                                                       </select>
                                                    </div>
 
                                                    <div className="col-span-2">
-                                                      <input
-                                                         type="number"
-                                                         placeholder="Qté"
-                                                         className="w-full text-center text-xs font-bold py-1.5 border border-slate-200 rounded bg-white focus:ring-1 focus:ring-emerald-500"
-                                                         value={batch.quantity || ''}
-                                                         onChange={(e) => updateBatch(item.productId, idx, 'quantity', parseInt(e.target.value) || 0)}
-                                                      />
+                                                      <div className="relative">
+                                                          <input
+                                                             type="number"
+                                                             placeholder="Btes"
+                                                             className="w-full text-center text-xs font-bold py-1.5 border border-slate-200 rounded bg-white focus:ring-1 focus:ring-emerald-500"
+                                                             value={batch.quantity ? batch.quantity / unitsPerBox : ''}
+                                                             onChange={(e) => {
+                                                                 const val = parseFloat(e.target.value) || 0;
+                                                                 updateBatch(item.productId, idx, 'quantity', Math.round(val * unitsPerBox));
+                                                             }}
+                                                          />
+                                                          <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[9px] text-slate-400 pointer-events-none">Btes</span>
+                                                      </div>
                                                    </div>
                                                 </div>
 
@@ -675,9 +705,15 @@ export const QuarantineManager: React.FC<QuarantineManagerProps> = ({
                <div className="p-6 space-y-6">
                   {selectedHistoryNote.processingResult?.items.map((item, idx) => {
                      const product = products.find(p => p.id === item.productId);
+                     const unitsPerBox = product?.unitsPerBox || 1;
+
                      // Calculate totals from the PROCESSED data
-                     const totalInjected = item.batches.reduce((sum, b) => sum + b.quantity, 0);
-                     const totalReturned = item.returns.reduce((sum, r) => sum + r.quantity, 0);
+                     const totalInjectedUnits = item.batches.reduce((sum, b) => sum + b.quantity, 0);
+                     const totalReturnedUnits = item.returns.reduce((sum, r) => sum + r.quantity, 0);
+                     
+                     // Display in Boxes
+                     const deliveredBoxes = Number((item.deliveredQty / unitsPerBox).toFixed(2));
+                     const injectedBoxes = Number((totalInjectedUnits / unitsPerBox).toFixed(2));
 
                      return (
                         <div key={idx} className="border border-slate-200 rounded-xl overflow-hidden">
@@ -692,26 +728,27 @@ export const QuarantineManager: React.FC<QuarantineManagerProps> = ({
                                  </div>
                               </div>
                               
-                              <div className="flex items-center space-x-6 text-sm">
-                                 <div className="text-right">
-                                    <div className="text-[10px] uppercase text-slate-400 font-bold">Livré</div>
-                                    <div className="font-bold text-slate-900">{item.deliveredQty}</div>
-                                 </div>
-                                 <div className="h-8 w-px bg-slate-200"></div>
-                                 <div className="text-right">
-                                    <div className="text-[10px] uppercase text-slate-400 font-bold">Injecté</div>
-                                    <div className="font-bold text-emerald-600">{totalInjected}</div>
-                                 </div>
-                                 {totalReturned > 0 && (
-                                     <>
-                                        <div className="h-8 w-px bg-slate-200"></div>
-                                        <div className="text-right">
-                                            <div className="text-[10px] uppercase text-slate-400 font-bold">Retourné</div>
-                                            <div className="font-bold text-red-600">{totalReturned}</div>
-                                        </div>
-                                     </>
-                                 )}
-                              </div>
+                                  <div className="flex items-center space-x-6 text-sm">
+                                     <div className="text-right">
+                                        <div className="text-[10px] uppercase text-slate-400 font-bold">Livré</div>
+                                        <div className="font-bold text-slate-900">{deliveredBoxes} Btes</div>
+                                        <div className="text-[9px] text-slate-400">({item.deliveredQty} Unit)</div>
+                                     </div>
+                                     <div className="h-8 w-px bg-slate-200"></div>
+                                     <div className="text-right">
+                                        <div className="text-[10px] uppercase text-slate-400 font-bold">Injecté</div>
+                                        <div className="font-bold text-emerald-600">{injectedBoxes} Btes</div>
+                                     </div>
+                                     {totalReturnedUnits > 0 && (
+                                         <>
+                                            <div className="h-8 w-px bg-slate-200"></div>
+                                            <div className="text-right">
+                                                <div className="text-[10px] uppercase text-slate-400 font-bold">Retourné</div>
+                                                <div className="font-bold text-red-600">{totalReturnedUnits} Unit</div>
+                                            </div>
+                                         </>
+                                     )}
+                                  </div>
                            </div>
 
                            {/* Level 2: Children (Batches & Returns) */}
@@ -730,7 +767,7 @@ export const QuarantineManager: React.FC<QuarantineManagerProps> = ({
                                                         <th className="px-4 py-2">N° Lot</th>
                                                         <th className="px-4 py-2">Péremption</th>
                                                         <th className="px-4 py-2">Emplacement</th>
-                                                        <th className="px-4 py-2 text-right">Qté</th>
+                                                        <th className="px-4 py-2 text-right">Qté (Btes)</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-slate-100">
@@ -740,10 +777,12 @@ export const QuarantineManager: React.FC<QuarantineManagerProps> = ({
                                                             <td className="px-4 py-2 text-slate-600">{batch.expiryDate ? new Date(batch.expiryDate).toLocaleDateString() : '-'}</td>
                                                             <td className="px-4 py-2">
                                                                 <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs border border-slate-200">
-                                                                    {batch.locationId}
+                                                                    {locations.find(l => l.id === batch.locationId)?.name || batch.locationId}
                                                                 </span>
                                                             </td>
-                                                            <td className="px-4 py-2 text-right font-bold text-emerald-600">{batch.quantity}</td>
+                                                            <td className="px-4 py-2 text-right font-bold text-emerald-600">
+                                                                {Number((batch.quantity / unitsPerBox).toFixed(2))}
+                                                            </td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
@@ -765,7 +804,7 @@ export const QuarantineManager: React.FC<QuarantineManagerProps> = ({
                                                     <tr>
                                                         <th className="px-4 py-2">Motif</th>
                                                         <th className="px-4 py-2">Note</th>
-                                                        <th className="px-4 py-2 text-right">Qté</th>
+                                                        <th className="px-4 py-2 text-right">Qté (Unités)</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-red-50">

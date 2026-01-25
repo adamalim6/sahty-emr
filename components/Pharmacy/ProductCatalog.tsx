@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   Search, Edit2, Save, X, Box, Pill, Stethoscope,
   DollarSign, Calculator, ChevronLeft, ChevronRight, RotateCcw, 
-  Plus as PlusIcon, Lock, Info, History, FileText, CheckCircle
+  Plus as PlusIcon, Lock, Info, History, FileText, CheckCircle, Trash2
 } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
 import { api } from '../../services/api';
@@ -116,7 +116,8 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ suppliers: globa
           page, 
           limit: 20, 
           q: activeQuery,
-          status: showDisabled ? 'ALL' : 'ACTIVE' 
+          status: showDisabled ? 'ALL' : 'ACTIVE',
+          _t: Date.now() // Cache Buster 
       });
       if (result.data) {
           setProducts(result.data);
@@ -187,15 +188,24 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ suppliers: globa
   const handleSave = async () => {
     if (!formData.id) return;
 
+    // Validation: Cannot save as "Active" if no suppliers/prices configured
+    if (formData.isEnabled) {
+         const hasValidSupplier = formData.suppliers && formData.suppliers.some(s => s.id && s.purchasePrice > 0 && s.isActive);
+         if (!hasValidSupplier) {
+             alert("Veuillez configurer les prix par fournisseur !");
+             return;
+         }
+    }
+
     // Detect if prices changed
     const original = products.find(p => p.id === formData.id);
     const isPriceDirty = original && formData.suppliers?.some(s => {
             const orig = original.suppliers?.find((os: any) => os.id === s.id);
             if (!orig) return false; 
-            // Check numeric diffs
-            return (s.purchasePrice !== orig.purchasePrice) ||
-                   (s.margin !== orig.margin) ||
-                   (s.vat !== orig.vat);
+            // Check numeric diffs (safety cast)
+            return (Number(s.purchasePrice) !== Number(orig.purchasePrice)) ||
+                   (Number(s.margin) !== Number(orig.margin)) ||
+                   (Number(s.vat) !== Number(orig.vat));
     });
 
     if (isPriceDirty) {
@@ -214,6 +224,11 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ suppliers: globa
           // Note: TypeScript might complain if ProductDefinition doesn't have reason. 
           // We cast to any to pass pure data through.
           await onUpdateProduct({ ...formData, reason } as any);
+          
+          // CRITICAL FIX: Race Condition Protection
+          // Wait 200ms to ensure SQLite WAL flushes and index updates properly before reading back
+          await new Promise(resolve => setTimeout(resolve, 200));
+
           await fetchProducts();
           setViewMode('list');
           setShowSavePrompt(false);
@@ -230,7 +245,8 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ suppliers: globa
       margin: 0,
       vat: 0,
       isActive: true,
-      isDefault: (formData.suppliers?.length || 0) === 0
+      isDefault: (formData.suppliers?.length || 0) === 0,
+      priceVersions: []
     };
     setFormData({
       ...formData,
@@ -289,7 +305,19 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ suppliers: globa
                   s.margin = parseFloat(calculatedMargin.toFixed(2));
              }
         }
-    }
+        }
+
+    // 3. Update Derived Values (HT, TTC)
+    const updatedS = newSuppliers[index];
+    const purchase = parseFloat(updatedS.purchasePrice as any) || 0;
+    const margin = parseFloat(updatedS.margin as any) || 0;
+    const vat = parseFloat(updatedS.vat as any) || 0;
+
+    const derivedHT = purchase * (1 + margin / 100);
+    const derivedTTC = derivedHT * (1 + vat / 100);
+    
+    updatedS.salePriceHT = parseFloat(derivedHT.toFixed(2));
+    updatedS.salePriceTTC = parseFloat(derivedTTC.toFixed(2));
 
     setFormData({ ...formData, suppliers: newSuppliers });
   };
@@ -631,15 +659,20 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ suppliers: globa
         </div>
         )}
 
-        {/* 3. PRICING MATRIX TABLE */}
+        {/* 3. PRICING CARDS - REDESIGNED */}
         <div className="border-t border-slate-200 bg-slate-50 p-6">
-             <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-lg text-slate-900 flex items-center">
-                    Tarification & Fournisseurs
-                </h3>
+             <div className="flex justify-between items-center mb-6">
+                <div>
+                    <h3 className="font-bold text-lg text-slate-900 flex items-center">
+                        Tarification & Fournisseurs
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                        Gérez les prix d'achat et les marges par fournisseur.
+                    </p>
+                </div>
                 <button 
                     onClick={handleAddSupplier} 
-                    className="flex items-center space-x-2 text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow-sm transition-colors font-medium"
+                    className="flex items-center space-x-2 text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-sm transition-colors font-medium"
                 >
                     <PlusIcon size={16} />
                     <span>Ajouter un Fournisseur</span>
@@ -651,7 +684,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ suppliers: globa
                 const original = products.find(p => p.id === formData.id);
                 const isPriceDirty = original && formData.suppliers?.some(s => {
                      const orig = original.suppliers?.find((os: any) => os.id === s.id);
-                     if (!orig) return false; // Ignore new suppliers (they are Version 1)
+                     if (!orig) return false; 
                      return (s.purchasePrice !== orig.purchasePrice) ||
                             (s.margin !== orig.margin) ||
                             (s.vat !== orig.vat);
@@ -659,11 +692,11 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ suppliers: globa
 
                 if (isPriceDirty) {
                     return (
-                        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md flex items-start text-blue-800 mx-1">
-                            <Info className="flex-shrink-0 mr-2 mt-0.5" size={18} />
+                        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start text-blue-800 shadow-sm">
+                            <Info className="flex-shrink-0 mr-3 mt-0.5" size={20} />
                             <div className="text-sm">
-                                <strong>Note : Cette modification créera une nouvelle version du prix pour ce fournisseur.</strong>
-                                <br/>Les factures passées et les historiques ne seront pas affectés.
+                                <strong className="font-bold">Modification de prix détectée</strong>
+                                <p className="mt-1 opacity-90">Une nouvelle version du prix sera créée lors de l'enregistrement. L'historique des anciens prix sera conservé.</p>
                             </div>
                         </div>
                     );
@@ -671,162 +704,238 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ suppliers: globa
                 return null;
             })()}
 
-            <div className="bg-white border boundary-slate-200 rounded-lg shadow-sm overflow-visible">
-                <table className="w-full text-left border-collapse">
-                    <thead className="bg-slate-100 text-[10px] uppercase font-bold text-slate-500 border-b border-slate-200">
-                        <tr>
-                            <th className="px-4 py-3 text-center w-16">Défaut</th>
-                            <th className="px-4 py-3 min-w-[200px]">Fournisseur</th>
-                            <th className="px-4 py-3 text-right w-40">P. Achat (HT)</th>
-                            <th className="px-4 py-3 text-right w-32">Marge %</th>
-                            <th className="px-4 py-3 text-right w-32 bg-slate-50/80 text-slate-400">P. Vente HT</th>
-                            <th className="px-4 py-3 text-right w-24">TVA %</th>
-                            <th className="px-4 py-3 text-right w-40 text-emerald-700">P. Vente TTC</th>
-                            <th className="px-4 py-3 w-10"></th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                        {formData.suppliers?.length === 0 && (
-                            <tr>
-                                <td colSpan={8} className="px-6 py-8 text-center text-slate-400 italic">
-                                    Aucun fournisseur configuré. Cliquez sur "Ajouter" pour commencer.
-                                </td>
-                            </tr>
-                        )}
-                        {formData.suppliers?.map((supplier, idx) => {
-                             const otherSelectedIds = formData.suppliers
-                                ?.filter((s, i) => i !== idx && globalSuppliers.some(gs => gs.id === s.id))
-                                .map(s => s.id) || [];
+            <div className="space-y-4">
+                {formData.suppliers?.length === 0 && (
+                    <div className="px-6 py-12 text-center border-2 border-dashed border-slate-300 rounded-xl bg-slate-50/50">
+                        <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <Box size={24} />
+                        </div>
+                        <p className="text-slate-500 font-medium">Aucun fournisseur configuré</p>
+                        <p className="text-xs text-slate-400 mt-1">Cliquez sur "Ajouter un Fournisseur" pour commencer.</p>
+                    </div>
+                )}
 
-                            const isMorocco = (user as any)?.client_country === 'MAROC';
-                            const isMedicament = (formData.type as string) === ProductType.DRUG || (formData.type as string) === 'MEDICAMENT' || (formData.type as string) === 'Médicament';
-                            const ph = formData.marketInfo?.ph;
-                            const isLocked = isMorocco && isMedicament && ph && ph > 0;
+                {formData.suppliers?.map((supplier, idx) => {
+                     const originalProduct = products.find(p => p.id === formData.id);
+                     // A supplier is persisted if it exists in the original product's supplier list
+                     const isPersisted = originalProduct?.suppliers?.some(os => os.id === supplier.id);
 
-                            const pPrice = supplier.purchasePrice || 0;
-                            const margin = supplier.margin || 0;
-                            const vat = isLocked ? 0 : (supplier.vat || 0);
+                     const otherSelectedIds = formData.suppliers
+                        ?.filter((s, i) => i !== idx && globalSuppliers.some(gs => gs.id === s.id))
+                        .map(s => s.id) || [];
+
+                    const isMorocco = (user as any)?.client_country === 'MAROC';
+                    const isMedicament = (formData.type as string) === ProductType.DRUG || (formData.type as string) === 'MEDICAMENT' || (formData.type as string) === 'Médicament';
+                    const ph = formData.marketInfo?.ph;
+                    const isLocked = isMorocco && isMedicament && ph && ph > 0;
+
+                    const pPrice = supplier.purchasePrice || 0;
+                    const margin = supplier.margin || 0;
+                    const vat = isLocked ? 0 : (supplier.vat || 0);
+                    
+                    let saleHT = calculateSalePriceHT(pPrice, margin);
+                    let saleTTC = calculatePriceTTC(saleHT, vat);
+
+                    if (isLocked) {
+                        saleTTC = ph;
+                        saleHT = ph; // Since VAT is 0
+                    }
+
+                    const supplierOptions = globalSuppliers.map(gs => ({
+                        value: gs.id,
+                        label: gs.name,
+                        disabled: otherSelectedIds.includes(gs.id)
+                    }));
+                    const currentValue = globalSuppliers.some(gs => gs.id === supplier.id) ? supplier.id : '';
+
+                    return (
+                        <div key={idx} className={`bg-white rounded-xl border transition-all duration-200 overflow-hidden
+                            ${supplier.isActive ? 'border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300' : 'border-slate-100 bg-slate-50 opacity-75 grayscale-[0.5]'}`}>
                             
-                            let saleHT = calculateSalePriceHT(pPrice, margin);
-                            let saleTTC = calculatePriceTTC(saleHT, vat);
+                            {/* Card Header: Supplier Identity & Controls */}
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 border-b border-slate-100 bg-slate-50/50 gap-4">
+                                <div className="flex-1 w-full sm:w-auto">
+                                    {isPersisted ? (
+                                        <div className="flex items-center space-x-3">
+                                            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">
+                                                {supplier.name.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-slate-800 text-base">{supplier.name}</h4>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                     <span className="text-[10px] uppercase font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                                                        Fournisseur Enregistré
+                                                     </span>
+                                                     {isPersisted && (
+                                                         <button
+                                                            onClick={() => setHistorySupplier(supplier)}
+                                                            className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                                                         >
+                                                             <History size={12} /> Historique
+                                                         </button>
+                                                     )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="max-w-xs">
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Sélectionner un fournisseur</label>
+                                            <SearchableSelect
+                                                options={supplierOptions}
+                                                value={currentValue}
+                                                onChange={(newValue) => {
+                                                    const selectedName = globalSuppliers.find(s => s.id === newValue)?.name || '';
+                                                    const newSuppliers = [...(formData.suppliers || [])];
+                                                    newSuppliers[idx] = { ...newSuppliers[idx], id: newValue, name: selectedName };
+                                                    setFormData({ ...formData, suppliers: newSuppliers });
+                                                }}
+                                                placeholder="Rechercher..."
+                                                className="w-full"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
 
-                            if (isLocked) {
-                                saleTTC = ph;
-                                saleHT = ph; // Since VAT is 0
-                            }
+                                <div className="flex items-center space-x-4 w-full sm:w-auto justify-end">
+                                    {/* Active Toggle */}
+                                    <label className="flex items-center cursor-pointer select-none group">
+                                        <div className="mr-3 text-right hidden sm:block">
+                                            <div className={`text-xs font-bold ${supplier.isActive ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                                {supplier.isActive ? 'Actif pour les commandes' : 'Désactivé'}
+                                            </div>
+                                            <div className="text-[10px] text-slate-400">
+                                                {supplier.isActive ? 'Visible dans les appros' : 'Ne sera pas proposé'}
+                                            </div>
+                                        </div>
+                                        <div className="relative">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={supplier.isActive} 
+                                                onChange={() => {
+                                                    const newSuppliers = [...(formData.suppliers || [])];
+                                                    newSuppliers[idx].isActive = !newSuppliers[idx].isActive;
+                                                    setFormData({ ...formData, suppliers: newSuppliers });
+                                                }}
+                                                className="sr-only" 
+                                            />
+                                            <div className={`block w-10 h-6 rounded-full transition-colors ${supplier.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
+                                            <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${supplier.isActive ? 'translate-x-4' : ''}`}></div>
+                                        </div>
+                                    </label>
 
-                            const supplierOptions = globalSuppliers.map(gs => ({
-                                value: gs.id,
-                                label: gs.name,
-                                disabled: otherSelectedIds.includes(gs.id)
-                            }));
-                            const currentValue = globalSuppliers.some(gs => gs.id === supplier.id) ? supplier.id : '';
+                                    {/* Delete Button - ONLY for NEW suppliers */}
+                                    {!isPersisted && (
+                                        <div className="pl-4 border-l border-slate-200">
+                                            <button 
+                                                onClick={() => removeSupplier(idx)}
+                                                className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                title="Supprimer ce fournisseur (Non enregistré)"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
 
-                            return (
-                                <tr key={idx} className={`group hover:bg-slate-50 transition-colors ${supplier.isDefault ? 'bg-emerald-50/30' : ''}`}>
-                                    <td className="px-4 py-3 text-center align-middle">
+                            {/* Card Body: Pricing Matrix */}
+                            <div className="p-4 grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6 items-end">
+                                
+                                {/* 1. Purchase Price */}
+                                <div className="col-span-1">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5">
+                                        Prix Achat (HT)
+                                    </label>
+                                    <div className="relative group focus-within:ring-2 ring-blue-500 rounded-lg transition-all">
+                                        <input
+                                            type="number" min="0" step="0.01"
+                                            value={supplier.purchasePrice}
+                                            onChange={(e) => updateSupplier(idx, 'purchasePrice', parseFloat(e.target.value) || 0)}
+                                            className="w-full pl-3 pr-8 py-2.5 bg-white border border-slate-300 rounded-lg text-slate-800 font-mono font-bold text-lg outline-none focus:border-blue-500 transition-colors"
+                                            placeholder="0.00"
+                                        />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-medium pointer-events-none">Dhs</span>
+                                    </div>
+                                </div>
+
+                                {/* 2. Margin */}
+                                <div className="col-span-1">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5 flex items-center justify-between">
+                                        <span>Marge</span>
+                                        <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 rounded">%</span>
+                                    </label>
+                                    <div className="relative">
                                          <input
-                                            type="radio"
-                                            name="defaultSupplier"
-                                            checked={!!supplier.isDefault}
-                                            onChange={() => {
-                                                const newS = formData.suppliers?.map((s, i) => ({ ...s, isDefault: i === idx })) || [];
-                                                setFormData({ ...formData, suppliers: newS });
-                                            }}
-                                            className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                                            title="Définir comme fournisseur principal"
+                                            type="number" step="0.1"
+                                            value={supplier.margin || 0}
+                                            onChange={(e) => updateSupplier(idx, 'margin', parseFloat(e.target.value) || 0)}
+                                            className="w-full px-3 py-2.5 bg-blue-50/30 border border-blue-200 text-blue-700 font-mono font-bold text-lg rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-all text-center"
                                         />
-                                    </td>
-                                    <td className="px-4 py-3 align-middle">
-                                         <SearchableSelect
-                                            options={supplierOptions}
-                                            value={currentValue}
-                                            onChange={(newValue) => {
-                                                const selectedName = globalSuppliers.find(s => s.id === newValue)?.name || '';
-                                                const newSuppliers = [...(formData.suppliers || [])];
-                                                newSuppliers[idx] = { ...newSuppliers[idx], id: newValue, name: selectedName };
-                                                setFormData({ ...formData, suppliers: newSuppliers });
-                                            }}
-                                            placeholder="Choisir..."
-                                            className="w-full text-sm"
-                                        />
-                                    </td>
-                                    <td className="px-4 py-3 align-middle">
-                                        <div className="relative">
-                                            <input
-                                                type="number" min="0" step="0.01"
-                                                value={supplier.purchasePrice}
-                                                onChange={(e) => updateSupplier(idx, 'purchasePrice', parseFloat(e.target.value) || 0)}
-                                                className="w-full pl-8 pr-2 py-1.5 border border-slate-300 rounded text-right font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:ring-2 focus:ring-blue-500 outline-none"
-                                            />
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3 align-middle">
-                                        <div className="relative">
-                                             <input
-                                                type="number" step="0.1"
-                                                value={supplier.margin || 0}
-                                                onChange={(e) => updateSupplier(idx, 'margin', parseFloat(e.target.value) || 0)}
-                                                className="w-full text-right border border-blue-200 bg-blue-50/20 text-blue-700 font-bold rounded px-2 pr-6 py-1.5 text-sm font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:ring-2 focus:ring-blue-500 outline-none"
-                                            />
-                                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">%</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3 align-middle text-right">
-                                         <div className="text-sm font-mono text-slate-500 bg-slate-100/50 px-2 py-1.5 rounded border border-transparent">
-                                            {saleHT.toFixed(2)}
-                                         </div>
-                                    </td>
-                                    <td className="px-4 py-3 align-middle text-right">
+                                    </div>
+                                </div>
+
+                                {/* 3. Sale HT (Derived) */}
+                                <div className="col-span-1 opacity-75">
+                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1.5">
+                                        P. Vente (HT)
+                                    </label>
+                                    <div className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 text-slate-500 font-mono text-lg rounded-lg text-right">
+                                        {saleHT.toFixed(2)}
+                                    </div>
+                                </div>
+
+                                {/* 4. VAT */}
+                                <div className="col-span-1">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5 flex items-center justify-between">
+                                        <span>TVA</span>
+                                        {isLocked && <Lock size={10} className="text-slate-400" />}
+                                    </label>
+                                    <div className="relative">
                                          <input
                                             type="number" min="0" step="0.1"
                                             readOnly={isLocked}
                                             value={vat}
                                             onChange={(e) => updateSupplier(idx, 'vat', parseFloat(e.target.value) || 0)}
-                                            className={`w-full text-right border rounded px-2 py-1.5 text-sm font-mono [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:ring-2 focus:ring-blue-500 outline-none
-                                                ${isLocked ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' : 'border-slate-300'}`}
+                                            className={`w-full px-3 py-2.5 border rounded-lg font-mono text-lg text-center outline-none transition-colors
+                                                ${isLocked 
+                                                    ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' 
+                                                    : 'bg-white border-slate-300 text-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500'}`}
                                         />
-                                    </td>
-                                    <td className="px-4 py-3 align-middle text-right">
-                                         <div className={`text-sm font-bold font-mono px-2 py-1.5 rounded flex items-center justify-end gap-2
-                                            ${isLocked ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'text-slate-800'}`}>
-                                            {isLocked && <Lock size={12} className="opacity-50" />}
-                                            {saleTTC.toFixed(2)} <span className="text-[10px] text-slate-400 font-normal">Dhs</span>
-                                         </div>
-                                    </td>
-                                    <td className="px-4 py-3 align-middle text-center">
-                                        <button 
-                                            onClick={() => removeSupplier(idx)}
-                                            className="text-slate-300 hover:text-red-500 transition-colors p-1"
-                                        >
-                                            <X size={18} />
-                                        </button>
-                                        <button 
-                                            onClick={() => setHistorySupplier(supplier)}
-                                            className="text-blue-300 hover:text-blue-600 transition-colors p-1 ml-1"
-                                            title="Voir l'historique des prix"
-                                        >
-                                            <History size={18} />
-                                        </button>
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
+                                        {!isLocked && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs text-xs font-medium pointer-events-none">%</span>}
+                                    </div>
+                                </div>
+
+                                {/* 5. Sale TTC (Derived - Hero) */}
+                                <div className="col-span-2 md:col-span-1">
+                                    <label className="block text-xs font-bold text-emerald-600 uppercase mb-1.5">
+                                        P. Vente (TTC)
+                                    </label>
+                                    <div className={`w-full px-3 py-2.5 border rounded-lg font-mono font-bold text-xl text-right shadow-sm flex items-center justify-end gap-2
+                                         ${isLocked ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-emerald-50/30 border-emerald-200 text-emerald-700'}`}>
+                                        <span>{saleTTC.toFixed(2)}</span>
+                                        <span className="text-xs font-medium opacity-60">Dhs</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+
+                })}
             </div>
             
-            <div className="mt-4 flex gap-3 text-xs text-slate-500 bg-blue-50/50 p-3 rounded border border-blue-100/50">
-                 <Calculator size={14} className="text-blue-500 mt-0.5" />
-                 <p>
-                    Le prix affiché dans le tableau de bord sera basé sur le fournisseur sélectionné par <strong>Défaut</strong>. 
-                    Les marges sont calculées automatiquement en fonction du Prix Achat saisi.
+            <div className="mt-6 flex gap-3 text-xs text-slate-500 bg-blue-50/50 p-4 rounded-lg border border-blue-100/50">
+                 <Calculator size={16} className="text-blue-500 mt-0.5" />
+                 <div>
+                    <p className="leading-relaxed">
+                        Tous les fournisseurs marqués comme <strong>Actifs</strong> seront visibles pour le réapprovisionnement.
+                        <br/>Les marges sont calculées automatiquement : <code>P.Vente = P.Achat × (1 + Marge%)</code>
+                    </p>
                     { (user as any)?.client_country === 'MAROC' && 
-                        <span className="block mt-1 text-emerald-700 font-medium">
-                            * Pour les médicaments (Maroc), le prix de vente est automatiquement aligné sur le Prix Hospitalier (PH).
-                        </span>
+                        <p className="mt-2 text-emerald-700 font-medium flex items-center gap-1">
+                             <Lock size={10} /> Mode Maroc : Le prix de vente public (PPM/PH) est verrouillé par la régulation.
+                        </p>
                     }
-                 </p>
+                 </div>
             </div>
         </div>
 

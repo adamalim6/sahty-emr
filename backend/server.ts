@@ -1,7 +1,6 @@
 
-// Server restart trigger 9
+// Server restart trigger 10
 import express from 'express';
-// Force Restart 1
 import cors from 'cors';
 import emrRoutes from './routes/emrRoutes';
 import pharmacyRoutes from './routes/pharmacyRoutes';
@@ -17,8 +16,12 @@ import globalDCIRoutes from './routes/globalDCIRoutes';
 import globalATCRoutes from './routes/globalATCRoutes';
 import globalEMDNRoutes from './routes/globalEMDNRoutes';
 import devRoutes from './routes/devRoutes';
+import stockTransferRoutes from './routes/stockTransferRoutes';
+import stockReservationRoutes from './routes/stockReservationRoutes';
 import { authenticateToken } from './middleware/authMiddleware';
-import { requireModule } from './middleware/moduleMiddleware';const app = express();
+import { requireModule } from './middleware/moduleMiddleware';
+
+const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors({
@@ -39,8 +42,8 @@ app.use('/api/super-admin', superAdminRoutes); // SuperAdmin auth handled intern
 
 // Protected Tenant Routes
 app.use('/api/settings', authenticateToken, settingsRoutes);
-app.use('/api/actes', authenticateToken, actesRoutes); // Should this be protected? Assuming yes.
-app.use('/api/dev', devRoutes); // Dev routes (maybe protect in prod?)
+app.use('/api/actes', authenticateToken, actesRoutes);
+app.use('/api/dev', devRoutes);
 app.use('/api/global/products', globalProductRoutes);
 app.use('/api/global/dci', globalDCIRoutes);
 app.use('/api/global/atc', authenticateToken, globalATCRoutes);
@@ -50,8 +53,10 @@ app.use('/api/emr', authenticateToken, requireModule('EMR'), emrRoutes);
 app.use('/api/pharmacy', authenticateToken, requireModule('PHARMACY'), pharmacyRoutes);
 app.use('/api/pharmacy', authenticateToken, requireModule('PHARMACY'), serializedPackRoutes);
 app.use('/api/pharmacy', authenticateToken, requireModule('PHARMACY'), dispensationRoutes);
+app.use('/api/pharmacy/stock-reservations', authenticateToken, requireModule('PHARMACY'), stockReservationRoutes);
 app.use('/api/prescriptions', authenticateToken, requireModule('PHARMACY'), prescriptionRoutes); 
-app.use('/api', authenticateToken, dispensationRoutes); // Backup route? likely legacy or specific generic
+app.use('/api/stock-transfers', authenticateToken, stockTransferRoutes); 
+app.use('/api', authenticateToken, dispensationRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

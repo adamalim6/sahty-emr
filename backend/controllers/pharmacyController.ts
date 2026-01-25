@@ -65,23 +65,23 @@ export const createProduct = (req: Request, res: Response) => {
     }
 };
 
-export const getSerializedPacks = (req: Request, res: Response) => {
+export const getSerializedPacks = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
         const productId = req.query.productId as string;
-        const packs = pharmacyService.getSerializedPacks({ tenantId, productId });
+        const packs = await pharmacyService.getSerializedPacks({ tenantId, productId });
         res.json(packs);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
 
-export const getLooseUnits = (req: Request, res: Response) => {
+export const getLooseUnits = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
         const productId = req.query.productId as string;
         const serviceId = req.query.serviceId as string;
-        const units = pharmacyService.getLooseUnits(tenantId, productId, serviceId);
+        const units = await pharmacyService.getLooseUnits(tenantId, productId, serviceId);
         res.json(units);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -96,7 +96,7 @@ export const getLocations = async (req: Request, res: Response) => {
         
         if (serviceId) {
              const userServices = user?.service_ids || [];
-             const canAccess = 
+             const canAccess = userServices.includes(serviceId) || 
                 userServices.includes(serviceId) || 
                 user?.user_type === 'TENANT_SUPERADMIN' ||
                 user?.role_code === 'ADMIN_STRUCT' ||
@@ -189,21 +189,27 @@ export const deleteSupplier = async (req: Request, res: Response) => {
     }
 };
 
-export const updateProduct = (req: Request, res: Response) => {
+    export const updateProduct = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
         const productId = req.params.id;
-        const config = {
-             enabled: req.body.isEnabled,
-             suppliers: req.body.suppliers || []
-        };
         const { user } = getContext(req);
-        const reason = req.body.reason;
+        const reason = req.body.reason; // Ensure this is passed from frontend
+
+        const config = {
+             id: productId, // Important: Service expects id in config
+             enabled: req.body.isEnabled, // Frontend sends isEnabled
+             isEnabled: req.body.isEnabled, // Support both just in case
+             minStock: req.body.minStock,
+             maxStock: req.body.maxStock,
+             securityStock: req.body.securityStock,
+             suppliers: req.body.suppliers || [],
+             reason: reason, // Pass reason to service
+             userId: user?.username || 'Unknown' // Pass userId for history
+        };
         
-        const updated = pharmacyService.updateProductConfig(tenantId, productId, config, {
-            userId: user?.username || 'Unknown',
-            reason
-        });
+        // Pass complete config to service
+        const updated = await pharmacyService.updateProductConfig(tenantId, config);
         res.json(updated);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -265,40 +271,42 @@ export const getStockOutSafety = (req: Request, res: Response) => {
 };
 
 // Procurement
-export const getPurchaseOrders = (req: Request, res: Response) => {
+export const getPurchaseOrders = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const pos = pharmacyService.getPurchaseOrders(tenantId);
+        const pos = await pharmacyService.getPurchaseOrders(tenantId);
         res.json(pos);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
 
-export const createPurchaseOrder = (req: Request, res: Response) => {
+    export const createPurchaseOrder = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const po = pharmacyService.createPurchaseOrder({ ...req.body, tenantId });
+        const userId = (req as any).user?.username || (req as any).user?.id || 'Système';
+        const po = await pharmacyService.createPurchaseOrder({ ...req.body, tenantId, userId });
         res.status(201).json(po);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
 
-export const getDeliveryNotes = (req: Request, res: Response) => {
+export const getDeliveryNotes = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const notes = pharmacyService.getDeliveryNotes(tenantId);
+        const notes = await pharmacyService.getDeliveryNotes(tenantId);
         res.json(notes);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
 
-export const createDeliveryNote = (req: Request, res: Response) => {
+export const createDeliveryNote = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const note = pharmacyService.createDeliveryNote({ ...req.body, tenantId });
+        const userId = (req as any).user?.username || (req as any).user?.id || 'Système';
+        const note = await pharmacyService.createDeliveryNote({ ...req.body, tenantId, userId });
         res.status(201).json(note);
     } catch (error: any) {
         res.status(500).json({ message: error.message });

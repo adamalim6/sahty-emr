@@ -5,7 +5,8 @@ import {
   CheckCircle2, PackageSearch, RotateCcw, Sparkles, DollarSign,
   FileCode, Database, Check, ArrowRight, ArrowLeft, Save, Lock,
   BookOpen, Truck, ShieldAlert, MapPin, LogOut, Building2,
-  FileSignature // Import de l'icône
+  FileSignature, // Import de l'icône
+  X
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 // import { generateMockInventory, generateMockCatalog, generateMockLocations, generateMockPartners, generateMockStockOutHistory } from '../../constants/pharmacy';
@@ -20,6 +21,7 @@ import { InventoryTable } from './InventoryTable';
 import { SystemStockTable } from './SystemStockTable';
 import { RequestsAndTransfers } from './RequestsAndTransfers';
 import { ReplenishmentProcessing } from './ReplenishmentProcessing';
+import PharmacyDemandManager from '../StockTransfer/PharmacyDemandManager';
 import { InventorySessionList } from './InventorySessionList';
 import { JavaCodeModal } from './JavaCodeModal';
 import { ProductCatalog } from './ProductCatalog';
@@ -60,13 +62,15 @@ export const PharmacyModule: React.FC = () => {
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [deliveryNotes, setDeliveryNotes] = useState<DeliveryNote[]>([]);
   const [stockOutHistory, setStockOutHistory] = useState<StockOutTransaction[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState(''); // Buffer for manual search triggers
   const [suppliers, setSuppliers] = useState<PharmacySupplier[]>([]);
   const [allPacks, setAllPacks] = useState<SerializedPack[]>([]);
   const [looseUnits, setLooseUnits] = useState<LooseUnitItem[]>([]);
 
   const [loading, setLoading] = useState(true);
   
-  const [searchTerm, setSearchTerm] = useState('');
+
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -140,9 +144,9 @@ export const PharmacyModule: React.FC = () => {
         setLocations(loc);
         setPartners(part);
         // Convert date strings to Date objects
-        setStockOutHistory(hist.map((h: any) => ({ ...h, date: new Date(h.date) })));
-        setPurchaseOrders(pos.map((p: any) => ({ ...p, date: new Date(p.date) })));
-        setDeliveryNotes(notes.map((n: any) => ({ ...n, date: new Date(n.date) })));
+        setStockOutHistory((Array.isArray(hist) ? hist : []).map((h: any) => ({ ...h, date: new Date(h.date) })));
+        setPurchaseOrders((Array.isArray(pos) ? pos : []).map((p: any) => ({ ...p, date: new Date(p.date) })));
+        setDeliveryNotes((Array.isArray(notes) ? notes : []).map((n: any) => ({ ...n, date: new Date(n.date) })));
         setSuppliers(sups);
         setAllPacks(packs);
         setLooseUnits(loose);
@@ -453,15 +457,34 @@ export const PharmacyModule: React.FC = () => {
 
             <div className="flex items-center space-x-3">
               {view === 'stock' && (
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
-                  <input
-                    type="text"
-                    placeholder="Rechercher (Nom, Molécule, Lot, Emplacement)..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-64 md:w-80"
-                  />
+                <div className="flex items-center space-x-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+                    <input
+                      type="text"
+                      placeholder="Rechercher (Nom, Code, Lot)..."
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && setSearchTerm(searchInput)}
+                      className="pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-64 md:w-80"
+                    />
+                  </div>
+                  <button 
+                    onClick={() => setSearchTerm(searchInput)}
+                    className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    title="Rechercher"
+                  >
+                    <Search size={20} />
+                  </button>
+                  {searchTerm && (
+                    <button 
+                      onClick={() => { setSearchInput(''); setSearchTerm(''); }}
+                      className="p-2 bg-slate-200 text-slate-600 rounded-lg hover:bg-slate-300 transition-colors"
+                      title="Réinitialiser"
+                    >
+                      <X size={20} /> {/* Need to import X */}
+                    </button>
+                  )}
                 </div>
               )}
               {currentSession && view === 'inventory' && (
@@ -515,9 +538,9 @@ export const PharmacyModule: React.FC = () => {
         ) : view === 'locations' ? (
           <LocationManager locations={locations} inventoryItems={systemItems} onUpdateLocations={handleUpdateLocations} scope="PHARMACY" />
         ) : view === 'requests' ? (
-          <RequestsAndTransfers onViewDetails={(req) => { setSelectedRequestId(req.id); navigate('/pharmacy/processing_request'); }} />
-        ) : view === 'processing_request' ? (
-          <ReplenishmentProcessing requestIdStr={selectedRequestId || undefined} onBack={() => navigate('/pharmacy/requests')} />
+          <PharmacyDemandManager />
+        ) : view === 'processing_request' ? ( // Clean up this route later
+          <PharmacyDemandManager /> // Redirect processing to manager logic
         ) : view === 'inventory' ? (
           <>
             {!currentSession ? (
@@ -555,7 +578,7 @@ export const PharmacyModule: React.FC = () => {
           </>
         ) : (
           <div className="space-y-4">
-            <SystemStockTable items={systemItems} products={productCatalog} filter={searchTerm} packs={allPacks} looseUnits={looseUnits} />
+            <SystemStockTable items={systemItems} products={productCatalog} locations={locations} filter={searchTerm} packs={allPacks} looseUnits={looseUnits} />
           </div>
         )}
 

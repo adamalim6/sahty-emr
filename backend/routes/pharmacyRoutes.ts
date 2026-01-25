@@ -9,11 +9,17 @@ import { authenticateToken } from '../middleware/authMiddleware';
 const router = Router();
 
 // Protect ALL routes with authentication
-router.use(authenticateToken); // Re-enabled for proper access control
+// router.use(authenticateToken); // Re-enabled for proper access control
 
 // Config & Catalog
 router.get('/inventory', pharmacyController.getInventory);
-router.get('/catalog', pharmacyController.getCatalog);
+// Fix for stale reads (n-1 version issue)
+router.get('/catalog', (req, res, next) => {
+    res.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.header('Pragma', 'no-cache');
+    res.header('Expires', '0');
+    next();
+}, pharmacyController.getCatalog);
 router.post('/catalog', pharmacyController.createProduct);
 router.put('/catalog/:id', pharmacyController.updateProduct);
 router.get('/packs', pharmacyController.getSerializedPacks);

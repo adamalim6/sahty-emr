@@ -9,31 +9,30 @@ const getContext = (req: Request) => {
 };
 
 // GLOBAL (Patients)
-export const getPatients = (req: Request, res: Response) => {
+export const getPatients = async (req: Request, res: Response) => {
     try {
-        // Patients are Global, but we require auth (handled by middleware)
-        const patients = emrService.getAllPatients();
+        const patients = await emrService.getAllPatients();
         res.json(patients);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
 
-export const createPatient = (req: Request, res: Response) => {
+export const createPatient = async (req: Request, res: Response) => {
     try {
         const patientData = req.body;
-        const newPatient = emrService.createPatient(patientData);
+        const newPatient = await emrService.createPatient(patientData);
         res.status(201).json(newPatient);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
 
-export const updatePatient = (req: Request, res: Response) => {
+export const updatePatient = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const updates = req.body;
-        const updatedPatient = emrService.updatePatient(id, updates);
+        const updatedPatient = await emrService.updatePatient(id, updates);
 
         if (!updatedPatient) {
             return res.status(404).json({ message: 'Patient not found' });
@@ -45,10 +44,10 @@ export const updatePatient = (req: Request, res: Response) => {
     }
 };
 
-export const getPatient = (req: Request, res: Response) => {
+export const getPatient = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const patient = emrService.getPatientById(id);
+        const patient = await emrService.getPatientById(id);
 
         if (!patient) {
             return res.status(404).json({ message: 'Patient not found' });
@@ -62,32 +61,32 @@ export const getPatient = (req: Request, res: Response) => {
 
 // TENANT SCOPED (Admissions, Appointments, Rooms, Consumptions)
 
-export const getAdmissions = (req: Request, res: Response) => {
+export const getAdmissions = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const admissions = emrService.getAllAdmissions(tenantId);
+        const admissions = await emrService.getAllAdmissions(tenantId);
         res.json(admissions);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
 
-export const createAdmission = (req: Request, res: Response) => {
+export const createAdmission = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const admissionData = { ...req.body }; // tenantId injected by service or we pass it
-        const newAdmission = emrService.createAdmission(tenantId, admissionData);
+        const admissionData = { ...req.body }; 
+        const newAdmission = await emrService.createAdmission(tenantId, admissionData);
         res.status(201).json(newAdmission);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
 
-export const closeAdmission = (req: Request, res: Response) => {
+export const closeAdmission = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
         const { id } = req.params;
-        const admission = emrService.closeAdmission(tenantId, id);
+        const admission = await emrService.closeAdmission(tenantId, id);
 
         if (!admission) {
             return res.status(404).json({ message: 'Admission not found' });
@@ -99,31 +98,31 @@ export const closeAdmission = (req: Request, res: Response) => {
     }
 };
 
-export const getAppointments = (req: Request, res: Response) => {
+export const getAppointments = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const appointments = emrService.getAllAppointments(tenantId);
+        const appointments = await emrService.getAllAppointments(tenantId);
         res.json(appointments);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
 
-export const getRooms = (req: Request, res: Response) => {
+export const getRooms = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const rooms = emrService.getAllRooms(tenantId);
+        const rooms = await emrService.getAllRooms(tenantId);
         res.json(rooms);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
 
-export const getConsumptionsByAdmission = (req: Request, res: Response) => {
+export const getConsumptionsByAdmission = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
         const { id } = req.params;
-        const consumptions = emrService.getConsumptionsByAdmission(tenantId, id);
+        const consumptions = await emrService.getConsumptionsByAdmission(tenantId, id);
         res.json(consumptions);
     } catch (error: any) {
         res.status(500).json({ message: error.message });

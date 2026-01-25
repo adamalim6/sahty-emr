@@ -31,7 +31,7 @@ export const StockEntry: React.FC<StockEntryProps> = ({
    const [activePO, setActivePO] = useState<PurchaseOrder | null>(null);
 
    const [newPOSupplier, setNewPOSupplier] = useState('');
-   const [newPOItems, setNewPOItems] = useState<{ productId: string, qty: number }[]>([]);
+   const [newPOItems, setNewPOItems] = useState<{ productId: string, qty: number, unitPrice: number }[]>([]);
    const [productSearch, setProductSearch] = useState('');
 
    const [supplierError, setSupplierError] = useState(false);
@@ -45,6 +45,26 @@ export const StockEntry: React.FC<StockEntryProps> = ({
    const fileInputRef = useRef<HTMLInputElement>(null);
 
    const [selectedDeliveryNote, setSelectedDeliveryNote] = useState<DeliveryNote | null>(null);
+
+   // DEBUG: Check data flow
+   useMemo(() => {
+       console.log("--- StockEntry DEBUG ---");
+       console.log("Suppliers Prop Count:", suppliers.length);
+       console.log("Products Prop Count:", products.length);
+       if (products.length > 0) {
+           const sample = products[0];
+           console.log("Sample Product:", sample.name, "Suppliers:", sample.suppliers);
+       }
+       const activeSuppliers = suppliers.filter(s => products.some(p => p.suppliers?.some(ps => ps.id === s.id)));
+       console.log("Filtered Active Suppliers:", activeSuppliers.length);
+       if (activeSuppliers.length === 0 && suppliers.length > 0) {
+           console.warn("MISMATCH DETECTED: Suppliers exist but none match product links.");
+           if (products.length > 0 && products[0].suppliers?.length > 0) {
+                console.log("Comparison - Product Supplier ID:", products[0].suppliers[0].id, "Type:", typeof products[0].suppliers[0].id);
+                console.log("Comparison - Global Supplier ID:", suppliers[0].id, "Type:", typeof suppliers[0].id);
+           }
+       }
+   }, [suppliers, products]);
 
    const handleCreatePO = () => {
       if (!newPOSupplier) {
@@ -61,17 +81,29 @@ export const StockEntry: React.FC<StockEntryProps> = ({
 
       const supplierName = suppliers.find(s => s.id === newPOSupplier)?.name || 'Inconnu';
 
+      // Calculate Total Amount (Optional, but good for data)
+      // const totalAmount = newPOItems.reduce((sum, item) => sum + (item.qty * item.unitPrice), 0);
+
       const po: PurchaseOrder = {
          id: `BC-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000)}`,
          supplierId: newPOSupplier,
          supplierName: supplierName,
          date: new Date(),
          status: POStatus.DRAFT,
-         items: newPOItems.map(i => ({
-            productId: i.productId,
-            orderedQty: i.qty,
-            deliveredQty: 0
-         }))
+         items: newPOItems.map(i => {
+            const prod = products.find(p => p.id === i.productId);
+            const unitsPerBox = prod?.unitsPerBox || 1;
+            // User inputs Box Price, but we store Unit Price in DB (since Qty is Units)
+            // storedUnitPrice = boxPrice / unitsPerBox
+            const computedUnitPrice = i.unitPrice / unitsPerBox;
+            
+            return {
+               productId: i.productId,
+               orderedQty: i.qty,
+               deliveredQty: 0,
+               unitPrice: computedUnitPrice
+            };
+         })
       };
 
       onCreatePO(po);
@@ -85,7 +117,14 @@ export const StockEntry: React.FC<StockEntryProps> = ({
    const addItemToPO = (productId: string) => {
       const existing = newPOItems.find(i => i.productId === productId);
       if (existing) return;
-      setNewPOItems([...newPOItems, { productId, qty: 1 }]);
+
+      // Seed Price from Catalog (Active Price Version)
+      const product = products.find(p => p.id === productId);
+      const supplierInfo = product?.suppliers.find(s => s.id === newPOSupplier);
+      const seededPrice = supplierInfo?.purchasePrice || 0;
+
+      const unitsPerBox = product?.unitsPerBox || 1;
+      setNewPOItems([...newPOItems, { productId, qty: unitsPerBox, unitPrice: seededPrice }]);
       setProductsError(false);
    };
 
@@ -93,10 +132,13 @@ export const StockEntry: React.FC<StockEntryProps> = ({
       setNewPOItems(newPOItems.map(i => i.productId === productId ? { ...i, qty } : i));
    };
 
+   const updatePOItemPrice = (productId: string, price: number) => {
+      setNewPOItems(newPOItems.map(i => i.productId === productId ? { ...i, unitPrice: price } : i));
+   };
+
    const removePOItem = (productId: string) => {
       setNewPOItems(newPOItems.filter(i => i.productId !== productId));
    };
-
    const handleStartReceive = (po: PurchaseOrder) => {
       setActivePO(po);
       const initial: Record<string, number> = {};
@@ -222,6 +264,8 @@ export const StockEntry: React.FC<StockEntryProps> = ({
       switch (status) {
          case POStatus.DRAFT:
             return <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs font-medium border border-slate-200">Brouillon</span>;
+         case POStatus.ORDERED:
+            return <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs font-medium border border-blue-200">Commandé</span>;
          case POStatus.PARTIAL:
             return <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded text-xs font-medium border border-amber-200">Partiel</span>;
          case POStatus.COMPLETED:
@@ -251,7 +295,9 @@ export const StockEntry: React.FC<StockEntryProps> = ({
                      className={`w-full bg-slate-50 border rounded-lg px-4 py-2.5 text-slate-900 outline-none focus:ring-2 focus:ring-blue-100 ${supplierError ? 'border-red-500 ring-2 ring-red-200 bg-red-50' : 'border-slate-300'}`}
                   >
                      <option value="">-- Choisir Fournisseur --</option>
-                     {suppliers.map(s => (
+                     {suppliers
+                        .filter(s => products.some(p => p.suppliers?.some(ps => ps.id === s.id)))
+                        .map(s => (
                         <option key={s.id} value={s.id}>
                            {s.name} {s.source === 'GLOBAL' ? '(Global)' : ''}
                         </option>
@@ -279,7 +325,7 @@ export const StockEntry: React.FC<StockEntryProps> = ({
                         {products
                            .filter(p =>
                               p.name.toLowerCase().includes(productSearch.toLowerCase()) &&
-                              p.suppliers.some(s => s.id === newPOSupplier)
+                              p.suppliers?.some(s => s.id === newPOSupplier)
                            )
                            .map(p => {
                               const isAdded = newPOItems.some(i => i.productId === p.id);
@@ -288,7 +334,7 @@ export const StockEntry: React.FC<StockEntryProps> = ({
                                     key={p.id}
                                     onClick={() => addItemToPO(p.id)}
                                     className={`p-3 cursor-pointer border-b border-slate-50 last:border-0 flex justify-between items-center transition-colors
-                              ${isAdded ? 'bg-emerald-50' : 'hover:bg-blue-50'}`}
+                                  ${isAdded ? 'bg-emerald-50' : 'hover:bg-blue-50'}`}
                                  >
                                     <span className={`font-medium ${isAdded ? 'text-emerald-800' : 'text-slate-800'}`}>{p.name}</span>
                                     {isAdded ? <Check size={16} className="text-emerald-600" /> : <Plus size={16} className="text-blue-500" />}
@@ -304,24 +350,48 @@ export const StockEntry: React.FC<StockEntryProps> = ({
                            <thead className="bg-slate-50 text-slate-500">
                               <tr>
                                  <th className="px-4 py-3 font-medium">Produit</th>
-                                 <th className="px-4 py-3 font-medium w-32 text-center">Quantité</th>
+                                 <th className="px-4 py-3 font-medium w-32 text-center">Qté (Boîtes)</th>
+                                 <th className="px-4 py-3 font-medium w-36 text-center">Prix Achat / Boîte (HT)</th>
+                                 <th className="px-4 py-3 font-medium w-32 text-right">Total</th>
                                  <th className="px-4 py-3 font-medium w-16"></th>
                               </tr>
                            </thead>
                            <tbody className="divide-y divide-slate-100">
                               {newPOItems.map(item => {
                                  const prod = products.find(p => p.id === item.productId);
+                                 const unitsPerBox = prod?.unitsPerBox || 1;
+                                 const qtyBoxes = item.qty / unitsPerBox;
+                                 
                                  return (
                                     <tr key={item.productId} className="bg-white">
-                                       <td className="px-4 py-3 font-medium text-slate-900">{prod?.name || item.productId}</td>
+                                       <td className="px-4 py-3 font-medium text-slate-900">
+                                          {prod?.name || item.productId}
+                                          <div className="text-xs text-slate-500 font-normal">
+                                             Conditionnement: {unitsPerBox} {prod?.unit === 'Boîte' ? 'Unités/Boîte' : 'Unités'}
+                                          </div>
+                                       </td>
                                        <td className="px-4 py-3 text-center">
                                           <input
                                              type="number"
                                              min="1"
-                                             value={item.qty}
-                                             onChange={(e) => updatePOItemQty(item.productId, parseInt(e.target.value) || 0)}
+                                             step="1"
+                                             value={qtyBoxes} 
+                                             onChange={(e) => updatePOItemQty(item.productId, (parseInt(e.target.value) || 0) * unitsPerBox)}
                                              className="w-20 text-center border border-slate-300 rounded py-1.5 bg-white text-slate-900 font-medium focus:ring-2 focus:ring-blue-100 outline-none"
                                           />
+                                       </td>
+                                       <td className="px-4 py-3 text-center">
+                                          <input
+                                             type="number"
+                                             min="0"
+                                             step="0.01"
+                                             value={item.unitPrice}
+                                             onChange={(e) => updatePOItemPrice(item.productId, parseFloat(e.target.value) || 0)}
+                                             className="w-28 text-center border border-slate-300 rounded py-1.5 bg-white text-slate-900 font-medium focus:ring-2 focus:ring-blue-100 outline-none"
+                                          />
+                                       </td>
+                                       <td className="px-4 py-3 text-right font-medium text-slate-700">
+                                          {(qtyBoxes * item.unitPrice).toFixed(2)} Dhs
                                        </td>
                                        <td className="px-4 py-3 text-center">
                                           <button onClick={() => removePOItem(item.productId)} className="text-red-400 hover:text-red-600">
@@ -337,7 +407,10 @@ export const StockEntry: React.FC<StockEntryProps> = ({
                   )}
                </div>
 
-               <div className="flex justify-end pt-4 border-t border-slate-100">
+               <div className="flex justify-between items-center pt-4 border-t border-slate-100">
+                   <div className="text-lg font-bold text-slate-800">
+                       Total Estimé: <span className="text-blue-600">{newPOItems.reduce((sum, i) => sum + (i.qty * i.unitPrice), 0).toFixed(2)} Dhs</span>
+                   </div>
                   <button
                      onClick={handleCreatePO}
                      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-bold shadow-sm transition-colors flex items-center space-x-2"
@@ -411,37 +484,50 @@ export const StockEntry: React.FC<StockEntryProps> = ({
                <div className="space-y-4">
                   {activePO.items.map(item => {
                      const prod = products.find(p => p.id === item.productId);
+                     const unitsPerBox = prod?.unitsPerBox || 1;
+                     
+                     const orderedBoxes = Math.ceil(item.orderedQty / unitsPerBox);
+                     const deliveredBoxes = Math.ceil(item.deliveredQty / unitsPerBox);
                      const remaining = item.orderedQty - item.deliveredQty;
+                     const remainingBoxes = Math.ceil(remaining / unitsPerBox);
+
                      const isFullyDelivered = remaining <= 0;
 
                      if (isFullyDelivered) return null;
 
-                     const currentVal = deliveryItems[item.productId] || 0;
+                     const currentValUnits = deliveryItems[item.productId] || 0;
+                     const currentValBoxes = currentValUnits / unitsPerBox;
 
                      return (
                         <div key={item.productId} className="flex flex-col md:flex-row items-center justify-between p-4 bg-white border border-slate-200 rounded-lg hover:border-blue-200 transition-colors">
                            <div className="mb-4 md:mb-0 w-full">
                               <h4 className="font-bold text-slate-900">{prod?.name}</h4>
+                              <div className="text-xs text-slate-500 font-normal">
+                                 Conditionnement: {unitsPerBox} {prod?.unit === 'Boîte' ? 'Unités/Boîte' : 'Unités'}
+                              </div>
                               <div className="flex text-xs text-slate-500 mt-1 space-x-3">
-                                 <span>Commandé: <span className="font-medium text-slate-700">{item.orderedQty}</span></span>
-                                 <span>Déjà Livré: <span className="font-medium text-slate-700">{item.deliveredQty}</span></span>
-                                 <span className="text-blue-600 font-bold">Reste à Livrer: {remaining}</span>
+                                 <span>Commandé: <span className="font-medium text-slate-700">{orderedBoxes} Bts</span></span>
+                                 <span>Déjà Livré: <span className="font-medium text-slate-700">{deliveredBoxes} Bts</span></span>
+                                 <span className="text-blue-600 font-bold">Reste à Livrer: {remainingBoxes} Bts</span>
                               </div>
                            </div>
 
                            <div className="flex flex-col items-center md:items-end w-full md:w-auto">
-                              <label className="text-[10px] font-bold text-slate-400 uppercase mb-1">Livré Maintenant</label>
+                              <label className="text-[10px] font-bold text-slate-400 uppercase mb-1">Livré (Boîtes)</label>
                               <input
                                  type="number"
                                  min="0"
-                                 max={remaining}
-                                 value={currentVal}
+                                 max={remainingBoxes}
+                                 step="1"
+                                 value={currentValBoxes || ''} 
                                  onChange={(e) => {
-                                    const val = parseInt(e.target.value) || 0;
-                                    if (val <= remaining) {
-                                       setDeliveryItems({ ...deliveryItems, [item.productId]: val });
+                                    const valBoxes = parseInt(e.target.value) || 0;
+                                    const valUnits = valBoxes * unitsPerBox;
+                                    
+                                    if (valUnits <= remaining) {
+                                       setDeliveryItems({ ...deliveryItems, [item.productId]: valUnits });
                                     } else {
-                                       alert(`Ne peut pas excéder le reste à livrer de ${remaining}`);
+                                       alert(`Ne peut pas excéder le reste à livrer de ${remainingBoxes} boîtes`);
                                     }
                                  }}
                                  className="w-full md:w-32 bg-white text-black border border-slate-300 rounded-lg py-2 px-3 text-center font-bold text-lg outline-none focus:ring-2 focus:ring-blue-100 shadow-sm"
@@ -512,24 +598,34 @@ export const StockEntry: React.FC<StockEntryProps> = ({
                         <thead className="text-slate-500 bg-slate-50/50 border-b border-slate-100">
                            <tr>
                               <th className="px-6 py-3 font-semibold uppercase text-xs tracking-wider">Produit</th>
-                              <th className="px-6 py-3 font-semibold uppercase text-xs tracking-wider text-center">Qté Comm.</th>
-                              <th className="px-6 py-3 font-semibold uppercase text-xs tracking-wider text-center">Qté Livrée</th>
-                              <th className="px-6 py-3 font-semibold uppercase text-xs tracking-wider text-center">Reste</th>
+                              <th className="px-6 py-3 font-semibold uppercase text-xs tracking-wider text-center">Qté Comm. (Bts)</th>
+                              <th className="px-6 py-3 font-semibold uppercase text-xs tracking-wider text-center">Qté Livrée (Bts)</th>
+                              <th className="px-6 py-3 font-semibold uppercase text-xs tracking-wider text-center">Reste (Bts)</th>
                               <th className="px-6 py-3 font-semibold uppercase text-xs tracking-wider text-right">Statut</th>
                            </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                            {activePO.items.map(item => {
                               const prod = products.find(p => p.id === item.productId);
+                              const unitsPerBox = prod?.unitsPerBox || 1;
                               const remaining = item.orderedQty - item.deliveredQty;
                               const status = remaining === 0 ? 'Complet' : item.deliveredQty > 0 ? 'Partiel' : 'En attente';
+                              
+                              const orderedBoxes = Math.ceil(item.orderedQty / unitsPerBox);
+                              const deliveredBoxes = Math.ceil(item.deliveredQty / unitsPerBox);
+                              const remainingBoxes = Math.ceil(remaining / unitsPerBox);
 
                               return (
                                  <tr key={item.productId} className="hover:bg-slate-50 transition-colors">
-                                    <td className="px-6 py-4 font-medium text-slate-900">{prod?.name || item.productId}</td>
-                                    <td className="px-6 py-4 text-center text-slate-600">{item.orderedQty}</td>
-                                    <td className="px-6 py-4 text-center font-medium text-blue-600">{item.deliveredQty}</td>
-                                    <td className="px-6 py-4 text-center font-bold text-slate-800">{remaining}</td>
+                                    <td className="px-6 py-4 font-medium text-slate-900">
+                                       {prod?.name || item.productId}
+                                       <div className="text-xs text-slate-500 font-normal">
+                                          Condit: {unitsPerBox}
+                                       </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-center text-slate-600">{orderedBoxes}</td>
+                                    <td className="px-6 py-4 text-center font-medium text-blue-600">{deliveredBoxes}</td>
+                                    <td className="px-6 py-4 text-center font-bold text-slate-800">{remainingBoxes}</td>
                                     <td className="px-6 py-4 text-right">
                                        <span className={`text-xs font-bold flex items-center justify-end
                                         ${status === 'Complet' ? 'text-emerald-600' : status === 'Partiel' ? 'text-amber-600' : 'text-slate-400'}`}>
@@ -673,7 +769,7 @@ export const StockEntry: React.FC<StockEntryProps> = ({
                         <th className="px-6 py-4">Fournisseur</th>
                         <th className="px-6 py-4">Date</th>
                         <th className="px-6 py-4">Articles</th>
-                        <th className="px-6 py-4">Statut</th>
+                        <th className="px-6 py-4">Créé par</th>
                         <th className="px-6 py-4 text-right">Action</th>
                      </tr>
                   </thead>
@@ -681,11 +777,14 @@ export const StockEntry: React.FC<StockEntryProps> = ({
                      {purchaseOrders.map(po => (
                         <tr key={po.id} onClick={() => { setActivePO(po); setView('detail'); }} className="hover:bg-slate-50 cursor-pointer transition-colors group">
                            <td className="px-6 py-4 font-bold text-slate-900">{po.id}</td>
-                           <td className="px-6 py-4 font-medium text-slate-700">{po.supplierName}</td>
+                           <td className="px-6 py-4 font-medium text-slate-700">{po.supplierName || 'Inconnu'}</td>
                            <td className="px-6 py-4 text-slate-500">{po.date.toLocaleDateString()}</td>
                            <td className="px-6 py-4 text-slate-500">{po.items.length} Produits</td>
-                           <td className="px-6 py-4">
-                              {renderStatus(po.status)}
+                           <td className="px-6 py-4 text-slate-600">
+                              <div className="flex items-center">
+                                  <User size={14} className="mr-2 text-slate-400" />
+                                  {po.createdBy || '-'}
+                              </div>
                            </td>
                            <td className="px-6 py-4 text-right">
                               <span className="text-blue-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-end">

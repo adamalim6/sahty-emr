@@ -293,7 +293,13 @@ export const createRole = async (req: Request, res: Response) => {
     res.status(501).json({ message: "Role creation via API not fully migrated yet." });
 };
 export const updateRole = async (req: Request, res: Response) => {
-    res.status(501).json({ message: "Role update via API not fully migrated yet." });
+    try {
+        const { id } = req.params;
+        const result = await globalAdminService.updateGlobalRole(id, req.body);
+        res.json(result);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
 };
 
 

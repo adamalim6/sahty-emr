@@ -42,6 +42,9 @@ export const login = async (req: Request, res: Response) => {
             
             const isTenantAdmin = !!globalUser.client_id && globalUser.client_id !== 'GLOBAL';
             const realm = isTenantAdmin ? 'tenant' : 'global';
+            
+            // Grant default modules to Tenant Admins
+            const modules = isTenantAdmin ? ['SETTINGS', 'PHARMACY', 'EMR'] : [];
 
             const token = jwt.sign(
                 { 
@@ -50,7 +53,7 @@ export const login = async (req: Request, res: Response) => {
                     role: globalUser.role_code || 'SUPER_ADMIN', 
                     realm: realm,
                     client_id: globalUser.client_id, 
-                    modules: [], // Can be enriched later
+                    modules: modules, 
                     user_type: globalUser.user_type,
                     // Legacy props for compatibility
                     tenantId: globalUser.client_id 

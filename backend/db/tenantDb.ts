@@ -25,6 +25,7 @@ export const getTenantDB = (tenantId: string): Promise<sqlite3.Database> => {
         }
 
         const tenantDir = path.join(TENANTS_DIR, tenantId);
+        ensureDirectory(tenantDir); // Ensure directory exists
         // For pharmacy specifically, maybe put in pharmacy subdir?
         // User said "file per tenant". "tenants/client_.../pharmacy.sqlite" or "tenants/client_.../pharmacy/store.sqlite"?
         // MIGRATION: Use <tenantId>.db at root of tenant folder
@@ -45,7 +46,7 @@ export const getTenantDB = (tenantId: string): Promise<sqlite3.Database> => {
         }
         
         // Ensure legacy pharmacy dir exists if we still use it for other things (optional)
-         ensureDirectory(pharmacyDir);
+
         
         const db = new sqlite3.Database(dbPath, (err) => {
             if (err) return reject(err);
@@ -66,6 +67,33 @@ export const getTenantDB = (tenantId: string): Promise<sqlite3.Database> => {
                 connections[tenantId] = db;
                 resolve(db);
             }
+        });
+    });
+};
+
+export const run = (db: sqlite3.Database, sql: string, params: any[] = []): Promise<void> => {
+    return new Promise((resolve, reject) => {
+        db.run(sql, params, function (err) {
+            if (err) return reject(err);
+            resolve();
+        });
+    });
+};
+
+export const get = (db: sqlite3.Database, sql: string, params: any[] = []): Promise<any> => {
+    return new Promise((resolve, reject) => {
+        db.get(sql, params, (err, row) => {
+            if (err) return reject(err);
+            resolve(row);
+        });
+    });
+};
+
+export const all = (db: sqlite3.Database, sql: string, params: any[] = []): Promise<any[]> => {
+    return new Promise((resolve, reject) => {
+        db.all(sql, params, (err, rows) => {
+            if (err) return reject(err);
+            resolve(rows);
         });
     });
 };

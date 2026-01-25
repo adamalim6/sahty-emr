@@ -12,7 +12,6 @@ CREATE TABLE IF NOT EXISTS inventory_movements (
   from_location TEXT,       -- nullable for receipts
   to_location TEXT,         -- nullable for consumption
 
-  supplier_id TEXT,         -- used for deliveries/returns
   document_type TEXT NOT NULL, -- DELIVERY, REPLENISHMENT, DISPENSE, RETURN_SUPPLIER, RETURN_WARD, WASTE, DESTRUCTION, BORROW_IN, BORROW_OUT
   document_id TEXT,         -- BL_01, RET_..., REQ_..., PRESC_...
 
@@ -30,7 +29,6 @@ CREATE TABLE IF NOT EXISTS current_stock (
   product_id TEXT NOT NULL,
   lot TEXT NOT NULL,
   expiry DATE NOT NULL,
-  supplier_id TEXT,
   location TEXT NOT NULL,
   qty_units INTEGER NOT NULL,
 
@@ -40,18 +38,42 @@ CREATE TABLE IF NOT EXISTS current_stock (
 CREATE INDEX IF NOT EXISTS idx_stock_loc ON current_stock(tenant_id, location);
 CREATE INDEX IF NOT EXISTS idx_stock_prod ON current_stock(tenant_id, product_id);
 
+CREATE INDEX IF NOT EXISTS idx_stock_prod ON current_stock(tenant_id, product_id);
+
+-- WAC / CMUP Table
+CREATE TABLE IF NOT EXISTS product_wac (
+  tenant_id TEXT NOT NULL,
+  product_id TEXT NOT NULL,
+  wac NUMERIC(12,4) NOT NULL,
+  last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (tenant_id, product_id)
+);
+
 -- 1.3 Receipts + provenance layers
-CREATE TABLE IF NOT EXISTS purchase_receipts (
-  receipt_id TEXT PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS delivery_notes (
+  delivery_note_id TEXT PRIMARY KEY,
   tenant_id TEXT NOT NULL,
   supplier_id TEXT NOT NULL,
+  po_id TEXT, -- Link to Purchase Order
   received_at DATETIME NOT NULL,
+  status TEXT DEFAULT 'PENDING',
   created_by TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS receipt_layers (
-  receipt_id TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS delivery_note_items (
+  id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  delivery_note_id TEXT NOT NULL,
+  product_id TEXT NOT NULL,
+  qty_pending INTEGER NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (delivery_note_id) REFERENCES delivery_notes(delivery_note_id)
+);
+
+CREATE TABLE IF NOT EXISTS delivery_note_layers (
+  delivery_note_id TEXT NOT NULL,
   tenant_id TEXT NOT NULL,
   product_id TEXT NOT NULL,
   lot TEXT NOT NULL,
@@ -61,74 +83,11 @@ CREATE TABLE IF NOT EXISTS receipt_layers (
   qty_remaining INTEGER NOT NULL,
   purchase_unit_cost NUMERIC(12,4),
 
-  PRIMARY KEY (receipt_id, product_id, lot),
-  FOREIGN KEY (receipt_id) REFERENCES purchase_receipts(receipt_id)
+  PRIMARY KEY (delivery_note_id, product_id, lot),
+  FOREIGN KEY (delivery_note_id) REFERENCES delivery_notes(delivery_note_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_layers_prod_lot ON receipt_layers(tenant_id, product_id, lot, expiry);
-
--- 1.4 Supplier returns documents
-CREATE TABLE IF NOT EXISTS supplier_returns (
-  return_id TEXT PRIMARY KEY,
-  tenant_id TEXT NOT NULL,
-  supplier_id TEXT NOT NULL,
-  reason TEXT NOT NULL,
-  status TEXT NOT NULL,
-  created_by TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS supplier_return_lines (
-  return_id TEXT NOT NULL,
-  tenant_id TEXT NOT NULL,
-  product_id TEXT NOT NULL,
-  lot TEXT NOT NULL,
-  expiry DATE NOT NULL,
-  qty_units INTEGER NOT NULL,
-
-  PRIMARY KEY (return_id, product_id, lot),
-  FOREIGN KEY (return_id) REFERENCES supplier_returns(return_id)
-);
-
--- 1.5 Admissions sink
-CREATE TABLE IF NOT EXISTS medication_dispense_events (
-  dispense_id TEXT PRIMARY KEY,
-  tenant_id TEXT NOT NULL,
-
-  admission_id TEXT NOT NULL,
-  patient_id TEXT NOT NULL,
-
-  product_id TEXT NOT NULL,
-  lot TEXT NOT NULL,
-  expiry DATE NOT NULL,
-  qty_units INTEGER NOT NULL,
-
-  source_location TEXT NOT NULL,
-  prescription_id TEXT,
-  created_by TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
--- 2. Metadata Tables (Locations & Suppliers)
-CREATE TABLE IF NOT EXISTS locations (
-  tenant_id TEXT NOT NULL,
-  location_id TEXT NOT NULL,
-  name TEXT NOT NULL,
-  type TEXT NOT NULL, -- PHARMACY, WARD, ...
-  scope TEXT NOT NULL, -- PHARMACY, SERVICE (Legacy compat)
-  service_id TEXT, -- Nullable
-  PRIMARY KEY (tenant_id, location_id)
-);
-
-CREATE TABLE IF NOT EXISTS suppliers (
-  tenant_id TEXT NOT NULL,
-  supplier_id TEXT NOT NULL,
-  name TEXT NOT NULL,
-  email TEXT,
-  phone TEXT,
-  address TEXT,
-  PRIMARY KEY (tenant_id, supplier_id)
-);
+-- ...
 
 -- 3. Purchasing & Replenishment Tables (Added for SQL Write Workflow)
 
@@ -148,6 +107,8 @@ CREATE TABLE IF NOT EXISTS po_items (
   tenant_id TEXT NOT NULL,
   product_id TEXT NOT NULL,
   qty_ordered INTEGER NOT NULL,
+  qty_delivered INTEGER DEFAULT 0,
+  qty_to_be_delivered INTEGER DEFAULT 0,
   unit_price NUMERIC(12,4),
   
   PRIMARY KEY (po_id, product_id),
@@ -282,23 +243,86 @@ CREATE TABLE IF NOT EXISTS actes (
 -- 6. Product Catalog Configuration
 CREATE TABLE IF NOT EXISTS product_configs (
     tenant_id TEXT NOT NULL,
-    product_id TEXT NOT NULL,
+    product_id TEXT NOT NULL, -- Global Product ID
     is_enabled BOOLEAN DEFAULT 1,
     min_stock INTEGER,
     max_stock INTEGER,
-    sales_price REAL, -- Cached/Overridden sales price
-    active_price_version_id TEXT,
+    security_stock INTEGER,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (tenant_id, product_id)
 );
 
 CREATE TABLE IF NOT EXISTS product_suppliers (
+    id TEXT PRIMARY KEY, -- config_...
     tenant_id TEXT NOT NULL,
     product_id TEXT NOT NULL,
     supplier_id TEXT NOT NULL,
-    purchase_price REAL,
-    is_preferred BOOLEAN DEFAULT 0,
+    supplier_type TEXT DEFAULT 'GLOBAL', -- 'GLOBAL' | 'LOCAL'
+    is_active BOOLEAN DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (tenant_id, product_id, supplier_id)
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(tenant_id, product_id, supplier_id)
 );
+
+CREATE TABLE IF NOT EXISTS product_price_versions (
+    id TEXT PRIMARY KEY, -- ver_...
+    tenant_id TEXT NOT NULL,
+    product_supplier_id TEXT NOT NULL, -- FK to product_suppliers.id
+    
+    purchase_price NUMERIC(12,4) NOT NULL,
+    margin NUMERIC(12,4) DEFAULT 0,
+    vat NUMERIC(5,2) DEFAULT 0,
+    sale_price_ht NUMERIC(12,4),
+    sale_price_ttc NUMERIC(12,4),
+    unit_sale_price NUMERIC(12,4), -- New Column
+    
+    valid_from DATETIME DEFAULT CURRENT_TIMESTAMP,
+    valid_to DATETIME, -- Null = Active
+    created_by TEXT,
+    
+    FOREIGN KEY (product_supplier_id) REFERENCES product_suppliers(id)
+);
+CREATE INDEX IF NOT EXISTS idx_price_ver_supp ON product_price_versions(product_supplier_id);
+
+-- 7. Locations (Pharmacy)
+CREATE TABLE IF NOT EXISTS locations (
+    tenant_id TEXT NOT NULL,
+    location_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    type TEXT,
+    scope TEXT, -- 'PHARMACY' | 'SERVICE'
+    service_id TEXT,
+    status TEXT DEFAULT 'ACTIVE',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_loc_tenant ON locations(tenant_id);
+
+
+-- 8. Stock Reservations (Hold Engine)
+CREATE TABLE IF NOT EXISTS stock_reservations (
+    reservation_id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    session_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    demand_id TEXT,
+    demand_line_id TEXT,
+    product_id TEXT NOT NULL,
+    lot TEXT,
+    expiry DATE,
+    location_id TEXT NOT NULL,
+    qty_units INTEGER NOT NULL CHECK(qty_units > 0),
+    status TEXT DEFAULT 'ACTIVE', -- ACTIVE, RELEASED, COMMITTED, EXPIRED
+    reserved_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    expires_at DATETIME NOT NULL,
+    released_at DATETIME,
+    committed_at DATETIME,
+    transfer_id TEXT,
+    transfer_line_id TEXT,
+    client_request_id TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_res_active ON stock_reservations(tenant_id, location_id, product_id, lot, expiry) WHERE status = 'ACTIVE';
+CREATE INDEX IF NOT EXISTS idx_res_session ON stock_reservations(tenant_id, session_id) WHERE status = 'ACTIVE';
+CREATE INDEX IF NOT EXISTS idx_res_expires ON stock_reservations(status, expires_at) WHERE status = 'ACTIVE';
+CREATE UNIQUE INDEX IF NOT EXISTS idx_res_idempotency ON stock_reservations(tenant_id, client_request_id) WHERE client_request_id IS NOT NULL;
