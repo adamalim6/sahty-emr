@@ -46,12 +46,26 @@ export const PharmacyModule: React.FC = () => {
 
   const getCurrentView = () => {
     const path = location.pathname.split('/').pop() || 'dashboard';
+    const parts = location.pathname.split('/');
+    if (parts.includes('processing')) {
+        return 'processing_request';
+    }
     // Mapping common routes to views
     if (path === 'pharmacy') return 'dashboard';
     return path as any; 
   };
 
   const view = getCurrentView();
+
+  useEffect(() => {
+      if (view === 'processing_request') {
+          const parts = location.pathname.split('/');
+          const id = parts[parts.length - 1]; // /pharmacy/processing/:id
+          if (id && id !== 'processing') {
+              setSelectedRequestId(id);
+          }
+      }
+  }, [location.pathname, view]);
 
   const [systemItems, setSystemItems] = useState<InventoryItem[]>([]);
   const [productCatalog, setProductCatalog] = useState<ProductDefinition[]>([]);
@@ -539,8 +553,8 @@ export const PharmacyModule: React.FC = () => {
           <LocationManager locations={locations} inventoryItems={systemItems} onUpdateLocations={handleUpdateLocations} scope="PHARMACY" />
         ) : view === 'requests' ? (
           <PharmacyDemandManager />
-        ) : view === 'processing_request' ? ( // Clean up this route later
-          <PharmacyDemandManager /> // Redirect processing to manager logic
+        ) : view === 'processing_request' ? (
+          <ReplenishmentProcessing onBack={() => navigate('/pharmacy/requests')} requestIdStr={selectedRequestId || undefined} />
         ) : view === 'inventory' ? (
           <>
             {!currentSession ? (

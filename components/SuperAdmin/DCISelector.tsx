@@ -135,16 +135,34 @@ export const DCISelector: React.FC<DCISelectorProps> = ({
                                 </span>
                                 
                                 {/* Dosage Input - Hide if complex presentation is active */}
-                                {!item.presentation && (
-                                    <input 
-                                        type="number" 
-                                        className={`w-20 px-2 py-1 border rounded text-sm outline-none focus:ring-2 focus:ring-purple-500 ${!item.dosage || item.dosage <= 0 ? 'border-red-300' : 'border-slate-300'}`}
-                                        placeholder="Dose"
-                                        value={item.dosage || ''}
-                                        onChange={e => handleUpdate(item.dciId, 'dosage', parseFloat(e.target.value))}
-                                        min={0}
-                                    />
-                                )}
+                                {/* Dosage Input - Always Visible (Numerator for Complex) */}
+                                <input 
+                                    type="number" 
+                                    className={`w-20 px-2 py-1 border rounded text-sm outline-none focus:ring-2 focus:ring-purple-500 ${(!item.dosage && !item.presentation?.numerator) ? 'border-red-300' : 'border-slate-300'}`}
+                                    placeholder="Dose"
+                                    value={item.presentation ? (item.presentation.numerator || '') : (item.dosage || '')}
+                                    onChange={e => {
+                                        const newVal = parseFloat(e.target.value);
+                                        // Handle NaN
+                                        if (isNaN(newVal)) return; // Or handle empty
+
+                                        let updatedItem = { ...item };
+                                        
+                                        if (updatedItem.presentation) {
+                                            // Complex mode: Update numerator
+                                            updatedItem.presentation = { ...updatedItem.presentation, numerator: newVal };
+                                            // Recalculate canonical dosage
+                                            const denom = updatedItem.presentation.denominator || 1;
+                                            updatedItem.dosage = newVal / denom;
+                                        } else {
+                                            // Simple mode
+                                            updatedItem.dosage = newVal;
+                                        }
+                                        
+                                        onChange(value.map(i => i.dciId === item.dciId ? updatedItem : i));
+                                    }}
+                                    min={0}
+                                />
                                 
                                 {/* Unit Selector */}
                                 <select 
@@ -160,6 +178,8 @@ export const DCISelector: React.FC<DCISelectorProps> = ({
                                     })()}
                                     onChange={e => {
                                         const val = e.target.value;
+                                        let updatedItem = { ...item };
+
                                         if (val.startsWith('COMPLEX')) {
                                             // Initialize complex mode
                                             const num = item.dosage || 0;
@@ -174,23 +194,22 @@ export const DCISelector: React.FC<DCISelectorProps> = ({
                                                 canonUnit = 'g/mL';
                                             }
 
-                                            handleUpdate(item.dciId, 'presentation', {
+                                            updatedItem.presentation = {
                                                 numerator: num,
                                                 denominator: 1, // Default
                                                 numeratorUnit: numUnit,
                                                 denominatorUnit: 'ml'
-                                            });
-                                            // Recalculate canonical
-                                            handleUpdate(item.dciId, 'unit', canonUnit as any);
-                                            handleUpdate(item.dciId, 'dosage', num);
+                                            };
+                                            updatedItem.unit = canonUnit as any;
+                                            updatedItem.dosage = num;
                                         } else {
                                             // Switch back to simple
-                                            handleUpdate(item.dciId, 'unit', val);
-                                            // Clear presentation
-                                            const updated = value.map(i => i.dciId === item.dciId ? { ...i, unit: val as any, presentation: undefined } : i);
-                                            onChange(updated);
-                                            return; 
+                                            updatedItem.unit = val as any;
+                                            delete updatedItem.presentation;
                                         }
+
+                                        // Atomic update
+                                        onChange(value.map(i => i.dciId === item.dciId ? updatedItem : i));
                                     }}
                                 >
                                     <optgroup label="Standard">

@@ -1,0 +1,51 @@
+{
+  "users": [
+    {
+      "id": "4c7eb3c3-6df4-401f-b521-15067abe05d3",
+      "client_id": "3861b58c-69a7-4113-b503-378a08c700b7",
+      "username": "tyu",
+      "password_hash": "$2b$10$lbLYnz.5RYYXg/meuFMOt.bUyrDusOBQsdojYpRCvLA7gvom0FPtm",
+      "nom": "tyu",
+      "prenom": "tyu",
+      "user_type": "TENANT_SUPERADMIN",
+      "role_id": "94c8da18-627d-48d0-807f-b606e4084eef",
+      "active": true,
+      "service_ids": []
+    }
+  ],
+  "roles": [
+    {
+      "id": "b1bcc0b9-1031-4b86-b4c1-fa5176ac5fc7",
+      "name": "Super Admin Global",
+      "code": "SUPER_ADMIN",
+      "permissions": [
+        "sa_clients",
+        "sa_organismes",
+        "sa_roles",
+        "sa_actes"
+      ]
+    },
+    {
+      "id": "94c8da18-627d-48d0-807f-b606e4084eef",
+      "name": "Administrateur Structure",
+      "code": "ADMIN_STRUCTURE",
+      "permissions": [
+        "st_users",
+        "st_services",
+        "st_rooms",
+        "st_pricing",
+        "st_roles"
+      ],
+      "modules": [
+        "SETTINGS",
+        "PHARMACY",
+        "EMR"
+      ]
+    }
+  ],
+  "services": [],
+  "unitTypes": [],
+  "serviceUnits": [],
+  "pricing": [],
+  "rooms": []
+}

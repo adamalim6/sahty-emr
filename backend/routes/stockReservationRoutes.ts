@@ -12,7 +12,7 @@ router.post('/hold', async (req, res) => {
         const { session_id, product_id, lot, expiry, location_id, qty_units, demand_id, demand_line_id, client_request_id } = req.body;
         
         // Use user ID from auth context
-        const userId = (req as any).user?.id || 'SYSTEM';
+        const userId = (req as any).user?.userId || 'SYSTEM';
 
         const reservation = await stockReservationService.hold(tenantId, {
             session_id,
@@ -29,7 +29,7 @@ router.post('/hold', async (req, res) => {
         
         res.status(201).json(reservation);
     } catch (error: any) {
-        if (error.message.includes('Insufficient stock')) {
+        if (error.message.includes('Insufficient stock') || error.message.includes('INSUFFICIENT_AVAILABLE_STOCK')) {
             return res.status(409).json({ message: error.message });
         }
         res.status(500).json({ message: error.message });
@@ -77,7 +77,7 @@ router.post('/commit', async (req, res) => {
     try {
         const tenantId = getTenantId(req as any);
         const { session_id, related_demand_id } = req.body;
-        const userId = (req as any).user?.id || 'SYSTEM';
+        const userId = (req as any).user?.userId || 'SYSTEM';
 
         const transferId = await stockReservationService.commitSession(tenantId, session_id, related_demand_id, userId);
         res.json({ success: true, transfer_id: transferId });

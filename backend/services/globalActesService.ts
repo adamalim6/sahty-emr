@@ -1,19 +1,5 @@
 
-import { getGlobalDB } from '../db/globalDb';
-import { Database } from 'sqlite3';
-
-// Promisified Helper (duplicated for now, should be shared)
-const all = <T>(db: Database, sql: string, params: any[] = []) => new Promise<T[]>((resolve, reject) => {
-    db.all(sql, params, (err, rows) => { if (err) reject(err); else resolve(rows as T[]); });
-});
-
-const get = <T>(db: Database, sql: string, params: any[] = []) => new Promise<T | undefined>((resolve, reject) => {
-    db.get(sql, params, (err, row) => { if (err) reject(err); else resolve(row as T); });
-});
-
-const run = (db: Database, sql: string, params: any[] = []) => new Promise<void>((resolve, reject) => {
-    db.run(sql, params, function(err) { if (err) reject(err); else resolve(); });
-});
+import { globalQuery, globalQueryOne } from '../db/globalPg';
 
 export interface Acte {
     code: string;
@@ -53,40 +39,39 @@ export class GlobalActesService {
             ccamLabel: row.libelle_ccam,
             type: row.type_acte,
             duration: row.duree_moyenne,
-            active: row.actif === 1
+            active: row.actif === true || row.actif === 1
         };
     }
 
     public async getAllPaginated(page: number, limit: number, search?: string): Promise<{ data: Acte[], total: number }> {
-        const db = await getGlobalDB();
         const offset = (page - 1) * limit;
         
         let sql = "SELECT * FROM global_actes";
         let countSql = "SELECT COUNT(*) as count FROM global_actes";
         let params: any[] = [];
+        let paramIndex = 1;
 
         if (search) {
-            const condition = " WHERE code_sih LIKE ? OR libelle_sih LIKE ?";
+            const condition = ` WHERE code_sih LIKE $${paramIndex} OR libelle_sih LIKE $${paramIndex}`;
             sql += condition;
             countSql += condition;
-            params.push(`%${search}%`, `%${search}%`);
+            params.push(`%${search}%`);
+            paramIndex++;
         }
 
-        sql += " LIMIT ? OFFSET ?";
+        sql += ` LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
         
-        const rows = await all<any>(db, sql, [...params, limit, offset]);
-        const countRow = await get<any>(db, countSql, params);
+        const countRow = await globalQueryOne<any>(countSql, params.slice(0, params.length > 0 && search ? 1 : 0));
+        const rows = await globalQuery(sql, [...params, limit, offset]);
         
         return {
             data: rows.map(this.mapToModel),
-            total: countRow?.count || 0
+            total: parseInt(countRow?.count || '0')
         };
     }
     
-    // Helper used by Settings Acte sync potentially
     public async getAll(): Promise<Acte[]> {
-         const db = await getGlobalDB();
-         const rows = await all<any>(db, "SELECT * FROM global_actes");
+         const rows = await globalQuery("SELECT * FROM global_actes");
          return rows.map(this.mapToModel);
     }
 }

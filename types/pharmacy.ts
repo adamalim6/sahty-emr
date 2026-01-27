@@ -100,9 +100,9 @@ export interface PharmacySupplier {
 export interface DCI {
     id: string;
     name: string;
-    atc_code?: string;
+    atcCode?: string;
     synonyms?: string[];
-    therapeutic_class?: string;
+    therapeuticClass?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -389,7 +389,7 @@ export interface ReplenishmentRequest {
     productName: string;
     quantityRequested: number;
     quantityApproved?: number;
-    targetLocationId?: string;
+    destination_location_id?: string;
     productDispensedId?: string;
     productDispensedName?: string;
     dispensedBatches?: {

@@ -16,12 +16,30 @@ interface ProductCatalogProps {
 }
 
 const PriceHistoryModal = ({ supplier, onClose }: { supplier: ProductSupplier, onClose: () => void }) => {
-    // Sort versions desc
-    const versions = [...(supplier.priceVersions || [])].sort((a, b) => new Date(b.validFrom).getTime() - new Date(a.validFrom).getTime());
+    // Robust Data Preparation (Prevents "Blank Page" crashes from type mismatches)
+    const versions = React.useMemo(() => {
+        if (!supplier.priceVersions || !Array.isArray(supplier.priceVersions)) return [];
+        
+        return [...supplier.priceVersions]
+            .map(v => {
+                // Safe Date Parsing
+                let dateObj = new Date(v.validFrom);
+                if (isNaN(dateObj.getTime())) dateObj = new Date(); // Fallback safety
+
+                return {
+                    ...v,
+                    validFromDate: dateObj,
+                    // Safe Number Casting (PG returns strings for numeric)
+                    purchasePriceVal: Number(v.purchasePrice || 0),
+                    salePriceTTCVal: Number(v.salePriceTTC || 0),
+                };
+            })
+            .sort((a, b) => b.validFromDate.getTime() - a.validFromDate.getTime());
+    }, [supplier.priceVersions]);
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[80vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={onClose}>
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center p-4 border-b border-slate-100 bg-slate-50">
                     <h3 className="font-bold text-slate-800 flex items-center gap-2">
                         <History size={18} className="text-blue-600" />
@@ -39,34 +57,36 @@ const PriceHistoryModal = ({ supplier, onClose }: { supplier: ProductSupplier, o
                         <thead className="bg-slate-50 text-xs uppercase text-slate-500 font-semibold sticky top-0">
                             <tr>
                                 <th className="px-4 py-3">Date</th>
-                                <th className="px-4 py-3">P. Achat</th>
-                                <th className="px-4 py-3">P. Vente</th>
+                                <th className="px-4 py-3 text-right">P. Achat</th>
+                                <th className="px-4 py-3 text-right">P. Vente</th>
                                 <th className="px-4 py-3">Auteur</th>
                                 <th className="px-4 py-3">Motif</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {versions.map((v) => (
-                                <tr key={v.id} className={!v.validTo ? "bg-blue-50/30" : ""}>
+                                <tr key={v.id} className={`hover:bg-slate-50 transition-colors ${!v.validTo ? "bg-blue-50/30" : ""}`}>
                                     <td className="px-4 py-3">
                                         <div className="font-medium text-slate-700">
-                                            {new Date(v.validFrom).toLocaleDateString('fr-FR')}
+                                            {v.validFromDate.toLocaleDateString('fr-FR')}
                                         </div>
                                         <div className="text-[10px] text-slate-400">
-                                            {new Date(v.validFrom).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'})}
+                                            {v.validFromDate.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'})}
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3 font-mono">
-                                        {v.purchasePrice.toFixed(2)}
+                                    <td className="px-4 py-3 font-mono text-right">
+                                        {v.purchasePriceVal.toFixed(2)} Dhs
                                     </td>
-                                    <td className="px-4 py-3 font-mono text-emerald-600 font-medium">
-                                        {v.salePriceTTC.toFixed(2)}
+                                    <td className="px-4 py-3 font-mono text-emerald-600 font-medium text-right">
+                                        {v.salePriceTTCVal.toFixed(2)} Dhs
                                     </td>
                                     <td className="px-4 py-3">
-                                        {v.createdBy || '-'}
+                                        <span className="bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded text-xs">
+                                           {v.createdBy || 'Sys'}
+                                        </span>
                                     </td>
-                                    <td className="px-4 py-3 text-slate-500 italic truncate max-w-[150px]" title={v.reason}>
-                                        {v.reason || '-'}
+                                    <td className="px-4 py-3 text-slate-500 italic max-w-[200px] truncate" title={v.reason || v.changeReason}>
+                                        {v.reason || v.changeReason || '-'}
                                     </td>
                                 </tr>
                             ))}
@@ -75,7 +95,7 @@ const PriceHistoryModal = ({ supplier, onClose }: { supplier: ProductSupplier, o
                     )}
                 </div>
                  <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
-                    <button onClick={onClose} className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50">
+                    <button onClick={onClose} className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 font-medium hover:bg-slate-50 shadow-sm">
                         Fermer
                     </button>
                 </div>

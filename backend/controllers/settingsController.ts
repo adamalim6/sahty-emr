@@ -5,6 +5,7 @@ import { settingsService, ServiceDefinition, UnitType, ServiceUnit, Pricing } fr
 import { globalAdminService } from '../services/globalAdminService';
 import { User, UserType } from '../models/auth';
 import bcrypt from 'bcryptjs';
+import { v4 as uuidv4 } from 'uuid';
 
 const getContext = (req: Request) => {
     const tenantId = getTenantId(req as any);
@@ -32,8 +33,18 @@ export const createMyUser = async (req: AuthRequest, res: Response) => {
         const { tenantId } = getContext(req);
         const { username, password, nom, prenom, role_id, INPE, service_ids } = req.body;
 
+        // RBAC Security: Tenant Admin cannot assign SUPER_ADMIN or ADMIN_STRUCTURE roles
+        const allRoles = await settingsService.getRoles(tenantId);
+        const targetRole = allRoles.find(r => r.id === role_id);
+        
+        if (targetRole && ['SUPER_ADMIN', 'ADMIN_STRUCTURE'].includes(targetRole.code)) {
+            return res.status(403).json({ 
+                error: 'RBAC Violation: Vous n\'êtes pas autorisé à assigner ce rôle système.' 
+            });
+        }
+
         const newUser: User = {
-            id: `user_${Date.now()}`,
+            id: uuidv4(),
             client_id: tenantId,
             username,
             password_hash: bcrypt.hashSync(password, 10),
@@ -65,7 +76,11 @@ export const updateTenantUser = async (req: AuthRequest, res: Response) => {
         
         if (!currentUser) return res.status(404).json({ error: 'User not found' });
         
-        if (currentUser.role_id === 'role_admin_struct') {
+        // Check if user is DSI (Admin Structure)
+        // We need to check the role CODE, not just the ID string
+        const userRole = (await settingsService.getRoles(tenantId)).find(r => r.id === currentUser.role_id);
+        
+        if (currentUser.role_id === 'role_admin_struct' || userRole?.code === 'ADMIN_STRUCTURE') {
              return res.status(403).json({ error: 'Modification interdite pour l\'administrateur principal.' });
         }
 
@@ -83,11 +98,18 @@ export const updateTenantUser = async (req: AuthRequest, res: Response) => {
 };
 
 // --- Roles ---
-export const getGlobalRoles = async (req: Request, res: Response) => {
+// RBAC: Tenant Admins can only see roles assignable_by = 'TENANT_ADMIN'
+// We filter by code since assignable_by might not be synced to Tenant DB yet.
+const SYSTEM_ROLE_CODES = ['SUPER_ADMIN', 'ADMIN_STRUCTURE'];
+
+export const getGlobalRoles = async (req: AuthRequest, res: Response) => {
     try {
-        // const { tenantId } = getContext(req); // Not needed for global roles
-        const roles = await globalAdminService.getAllGlobalRoles();
-        res.json(roles);
+        const { tenantId } = getContext(req);
+        const allRoles = await settingsService.getRoles(tenantId);
+        
+        // Return all roles - frontend handles filtering for assignment dropdown
+        // This allows display of system role names (like ADMIN_STRUCTURE) in the user list
+        res.json(allRoles);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
@@ -132,7 +154,7 @@ export const createService = async (req: AuthRequest, res: Response) => {
     try {
         const { tenantId } = getContext(req);
         const newService: ServiceDefinition = {
-            id: `svc_${Date.now()}`,
+            id: uuidv4(),
             tenantId,
             ...req.body
         };

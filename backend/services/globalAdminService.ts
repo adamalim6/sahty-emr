@@ -1,20 +1,6 @@
-import { getGlobalDB } from '../db/globalDb';
+import { globalQuery, globalQueryOne } from '../db/globalPg';
 import { User } from '../models/auth';
 import bcrypt from 'bcryptjs';
-import { Database } from 'sqlite3';
-
-// Helper for Promisified Sqlite
-const run = (db: Database, sql: string, params: any[] = []) => new Promise<void>((resolve, reject) => {
-    db.run(sql, params, function(err) { if (err) reject(err); else resolve(); });
-});
-
-const get = <T>(db: Database, sql: string, params: any[] = []) => new Promise<T | undefined>((resolve, reject) => {
-    db.get(sql, params, (err, row) => { if (err) reject(err); else resolve(row as T); });
-});
-
-const all = <T>(db: Database, sql: string, params: any[] = []) => new Promise<T[]>((resolve, reject) => {
-    db.all(sql, params, (err, rows) => { if (err) reject(err); else resolve(rows as T[]); });
-});
 
 export class GlobalAdminService {
     private static instance: GlobalAdminService;
@@ -29,7 +15,7 @@ export class GlobalAdminService {
     private mapUser(admin: any): User {
         return {
             id: admin.id,
-            client_id: admin.client_id || 'GLOBAL', // Default or legacy
+            client_id: admin.client_id || 'GLOBAL',
             username: admin.username,
             password_hash: admin.password_hash,
             nom: admin.nom,
@@ -37,14 +23,12 @@ export class GlobalAdminService {
             user_type: admin.user_type,
             role_code: admin.role_code || 'SUPER_ADMIN',
             role_id: admin.role_id,
-            active: admin.active === 1
+            active: admin.active === true || admin.active === 1
         };
     }
 
     public async authenticate(username: string, password: string): Promise<User | null> {
-        const db = await getGlobalDB();
-        // Check active status
-        const admin = await get<any>(db, 'SELECT * FROM users WHERE username = ? AND active = 1', [username]);
+        const admin = await globalQueryOne('SELECT * FROM users WHERE username = $1 AND active = TRUE', [username]);
 
         if (!admin) return null;
 
@@ -55,153 +39,177 @@ export class GlobalAdminService {
     }
 
     public async createGlobalAdmin(adminUser: User): Promise<User> {
-        const db = await getGlobalDB();
-        
-        const existing = await get<any>(db, 'SELECT id FROM users WHERE username = ?', [adminUser.username]);
+        const existing = await globalQueryOne('SELECT id FROM users WHERE username = $1', [adminUser.username]);
         if (existing) {
             throw new Error("Username already exists in Global Realm");
         }
 
-        await run(db, `
+        await globalQuery(`
             INSERT INTO users (id, username, password_hash, nom, prenom, user_type, role_code, active, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, $8)
         `, [
             adminUser.id, adminUser.username, adminUser.password_hash, adminUser.nom, adminUser.prenom, 
-            adminUser.user_type, adminUser.role_code || 'SUPER_ADMIN', 1, new Date().toISOString()
+            adminUser.user_type, adminUser.role_code || 'SUPER_ADMIN', new Date().toISOString()
         ]);
 
         return adminUser;
     }
     
     public async getAdminById(id: string): Promise<User | undefined> {
-        const db = await getGlobalDB();
-        const admin = await get<any>(db, 'SELECT * FROM users WHERE id = ?', [id]);
+        const admin = await globalQueryOne('SELECT * FROM users WHERE id = $1', [id]);
         if (!admin) return undefined;
         return this.mapUser(admin);
     }
 
     public async getGlobalRole(roleId: string): Promise<any> {
-        const db = await getGlobalDB();
-        const role = await get<any>(db, 'SELECT * FROM global_roles WHERE id = ?', [roleId]);
+        const role = await globalQueryOne('SELECT * FROM global_roles WHERE id = $1', [roleId]);
         if (!role) return undefined;
         return {
             id: role.id,
             code: role.code, 
             name: role.name,
-            permissions: role.permissions ? JSON.parse(role.permissions) : [],
-            modules: role.modules ? JSON.parse(role.modules) : [] 
+            permissions: role.permissions ? (typeof role.permissions === 'string' ? JSON.parse(role.permissions) : role.permissions) : [],
+            modules: role.modules ? (typeof role.modules === 'string' ? JSON.parse(role.modules) : role.modules) : [] 
         };
     }
 
     public async getAllGlobalRoles(): Promise<any[]> {
-        const db = await getGlobalDB();
-        const rows = await all<any>(db, 'SELECT * FROM global_roles');
+        const rows = await globalQuery('SELECT * FROM global_roles');
         return rows.map(role => ({
             id: role.id,
             code: role.code,
             name: role.name,
             description: role.description,
-            permissions: role.permissions ? JSON.parse(role.permissions) : [],
-            modules: role.modules ? JSON.parse(role.modules) : [] 
+            permissions: role.permissions ? (typeof role.permissions === 'string' ? JSON.parse(role.permissions) : role.permissions) : [],
+            modules: role.modules ? (typeof role.modules === 'string' ? JSON.parse(role.modules) : role.modules) : [] 
         }));
     }
 
+    public async createGlobalRole(roleData: { name: string; description?: string; permissions?: any[] }): Promise<any> {
+        const { v4: uuidv4 } = require('uuid');
+        const id = uuidv4();
+        
+        // Auto-generate code from name (UPPERCASE, no spaces, no accents)
+        const code = roleData.name
+            .toUpperCase()
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^A-Z0-9]/g, '_')
+            .replace(/_+/g, '_')
+            .replace(/^_|_$/g, '');
+        
+        await globalQuery(`
+            INSERT INTO global_roles (id, code, name, description, permissions, assignable_by)
+            VALUES ($1, $2, $3, $4, $5, 'TENANT_ADMIN')
+        `, [
+            id,
+            code,
+            roleData.name,
+            roleData.description || null,
+            JSON.stringify(roleData.permissions || [])
+        ]);
+        
+        return this.getGlobalRole(id);
+    }
+
     public async updateGlobalRole(id: string, updates: any): Promise<any> {
-        const db = await getGlobalDB();
         const fields: string[] = [];
         const values: any[] = [];
+        let paramIndex = 1;
 
-        if (updates.name) { fields.push('name=?'); values.push(updates.name); }
-        if (updates.permissions) { fields.push('permissions=?'); values.push(JSON.stringify(updates.permissions)); }
-        if (updates.modules) { fields.push('modules=?'); values.push(JSON.stringify(updates.modules)); }
+        if (updates.name) { fields.push(`name=$${paramIndex++}`); values.push(updates.name); }
+        if (updates.permissions) { fields.push(`permissions=$${paramIndex++}`); values.push(JSON.stringify(updates.permissions)); }
+        if (updates.modules) { fields.push(`modules=$${paramIndex++}`); values.push(JSON.stringify(updates.modules)); }
         
         if (fields.length > 0) {
             values.push(id);
-            await run(db, `UPDATE global_roles SET ${fields.join(', ')} WHERE id = ?`, values);
+            await globalQuery(`UPDATE global_roles SET ${fields.join(', ')} WHERE id = $${paramIndex}`, values);
         }
         return this.getGlobalRole(id);
     }
 
     // Tenant Admin Management
     public async getTenantAdmin(clientId: string): Promise<User | undefined> {
-        const db = await getGlobalDB();
-        const row = await get<any>(db, 'SELECT * FROM users WHERE client_id = ? AND user_type = ?', [clientId, 'TENANT_SUPERADMIN']);
+        const row = await globalQueryOne('SELECT * FROM users WHERE client_id = $1 AND user_type = $2', [clientId, 'TENANT_SUPERADMIN']);
         if (!row) return undefined;
         return this.mapUser(row);
     }
 
     public async createTenantAdmin(admin: Partial<User>): Promise<User> {
-         const db = await getGlobalDB();
-         const now = new Date().toISOString();
-         const newId = admin.id || `user_dsi_${Date.now()}`;
-         
-         await run(db, `
-            INSERT INTO users (id, username, password_hash, nom, prenom, user_type, role_id, client_id, created_at, active)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-         `, [
+        // Import uuid lazily or assume it's available, but better to use import at top. 
+        // We will just use the passed ID or generate a random one if needed.
+        // Wait, I can't add imports easily here without affecting top of file.
+        // I'll stick to 'uuid' if I can.
+        // Actually, let's use standard crypto.randomUUID() if node 19+, or just require it.
+        const { v4: uuidv4 } = require('uuid');
+        
+        const now = new Date().toISOString();
+        const newId = admin.id || uuidv4();
+
+        // Validate UUID for role_id
+        const isUuid = (str?: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str || '');
+        const validRoleId = isUuid(admin.role_id) ? admin.role_id : null;
+
+        await globalQuery(`
+            INSERT INTO users (id, username, password_hash, nom, prenom, user_type, role_id, role_code, client_id, created_at, active)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, TRUE)
+        `, [
             newId,
             admin.username,
             admin.password_hash,
             admin.nom || 'Admin',
             admin.prenom || 'Structure',
-            'TENANT_SUPERADMIN', // user_type
-            admin.role_id || 'role_admin_struct', // role_id
+            'TENANT_SUPERADMIN',
+            validRoleId,
+            'ADMIN_STRUCTURE',
             admin.client_id,
-            now,
-            1
-         ]);
-         
-         return {
-             ...admin,
-             id: newId,
-             user_type: 'TENANT_SUPERADMIN',
-             role_code: 'ADMIN_STRUCT', 
-             active: true
-         } as User;
+            now
+        ]);
+
+        return {
+            ...admin,
+            id: newId,
+            user_type: 'TENANT_SUPERADMIN',
+            role_code: 'ADMIN_STRUCTURE',
+            active: true
+        } as User;
     }
 
     public async updateTenantAdmin(clientId: string, updates: Partial<User>): Promise<void> {
-        const db = await getGlobalDB();
         const current = await this.getTenantAdmin(clientId);
         if (!current) {
-            // If not found, create? No, update logic usually implies existence.
-            // But superAdminController logic creates if not found. 
-            // We'll let controller handle "if not found create".
             throw new Error("Tenant Admin not found");
         }
 
-        // Dynamic update
         const fields: string[] = [];
         const values: any[] = [];
+        let paramIndex = 1;
         
-        if (updates.username) { fields.push('username=?'); values.push(updates.username); }
-        if (updates.password_hash) { fields.push('password_hash=?'); values.push(updates.password_hash); }
-        if (updates.nom) { fields.push('nom=?'); values.push(updates.nom); }
-        if (updates.prenom) { fields.push('prenom=?'); values.push(updates.prenom); }
+        if (updates.username) { fields.push(`username=$${paramIndex++}`); values.push(updates.username); }
+        if (updates.password_hash) { fields.push(`password_hash=$${paramIndex++}`); values.push(updates.password_hash); }
+        if (updates.nom) { fields.push(`nom=$${paramIndex++}`); values.push(updates.nom); }
+        if (updates.prenom) { fields.push(`prenom=$${paramIndex++}`); values.push(updates.prenom); }
         
         if (fields.length > 0) {
             values.push(current.id);
-            await run(db, `UPDATE users SET ${fields.join(', ')} WHERE id = ?`, values);
+            await globalQuery(`UPDATE users SET ${fields.join(', ')} WHERE id = $${paramIndex}`, values);
         }
     }
-    // --- Clients Management (SQL) ---
+
+    // --- Clients Management ---
     public async getAllClients(): Promise<any[]> {
-        const db = await getGlobalDB();
-        return all<any>(db, 'SELECT * FROM clients ORDER BY created_at DESC');
+        return globalQuery('SELECT * FROM clients ORDER BY created_at DESC');
     }
 
     public async getClientById(id: string): Promise<any> {
-        const db = await getGlobalDB();
-        return get<any>(db, 'SELECT * FROM clients WHERE id = ?', [id]);
+        return globalQueryOne('SELECT * FROM clients WHERE id = $1', [id]);
     }
 
     public async createClient(client: any): Promise<any> {
-        const db = await getGlobalDB();
         const now = new Date().toISOString();
         
-        await run(db, `
+        await globalQuery(`
             INSERT INTO clients (id, type, designation, siege_social, representant_legal, country, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
         `, [
             client.id, 
             client.type, 
@@ -209,60 +217,55 @@ export class GlobalAdminService {
             client.siege_social, 
             client.representant_legal, 
             client.country || 'MAROC', 
-            now, now
+            now
         ]);
         return client;
     }
 
     public async updateClient(id: string, updates: any): Promise<any> {
-        const db = await getGlobalDB();
         const fields: string[] = [];
         const values: any[] = [];
+        let paramIndex = 1;
         
-        if (updates.type) { fields.push('type=?'); values.push(updates.type); }
-        if (updates.designation) { fields.push('designation=?'); values.push(updates.designation); }
-        if (updates.siege_social) { fields.push('siege_social=?'); values.push(updates.siege_social); }
-        if (updates.representant_legal) { fields.push('representant_legal=?'); values.push(updates.representant_legal); }
-        if (updates.country) { fields.push('country=?'); values.push(updates.country); }
+        if (updates.type) { fields.push(`type=$${paramIndex++}`); values.push(updates.type); }
+        if (updates.designation) { fields.push(`designation=$${paramIndex++}`); values.push(updates.designation); }
+        if (updates.siege_social) { fields.push(`siege_social=$${paramIndex++}`); values.push(updates.siege_social); }
+        if (updates.representant_legal) { fields.push(`representant_legal=$${paramIndex++}`); values.push(updates.representant_legal); }
+        if (updates.country) { fields.push(`country=$${paramIndex++}`); values.push(updates.country); }
         
-        fields.push("updated_at=?");
+        fields.push(`updated_at=$${paramIndex++}`);
         values.push(new Date().toISOString());
 
         if (fields.length > 0) {
             values.push(id);
-            await run(db, `UPDATE clients SET ${fields.join(', ')} WHERE id = ?`, values);
+            await globalQuery(`UPDATE clients SET ${fields.join(', ')} WHERE id = $${paramIndex}`, values);
         }
         return this.getClientById(id);
     }
     
     public async deleteClient(id: string): Promise<void> {
-        const db = await getGlobalDB();
-        await run(db, 'DELETE FROM clients WHERE id = ?', [id]);
-        // Note: Should we delete or deactivate users?
-        // Ideally we deactivate them.
-        await run(db, 'UPDATE users SET active = 0 WHERE client_id = ?', [id]);
+        await globalQuery('DELETE FROM clients WHERE id = $1', [id]);
+        await globalQuery('UPDATE users SET active = FALSE WHERE client_id = $1', [id]);
     }
 
-    // --- Organismes Management (SQL) ---
+    // --- Organismes Management ---
     public async getAllOrganismes(): Promise<any[]> {
-        const db = await getGlobalDB();
-        return all<any>(db, 'SELECT * FROM organismes ORDER BY designation ASC');
+        return globalQuery('SELECT * FROM organismes ORDER BY designation ASC');
     }
 
     public async createOrganisme(org: any): Promise<any> {
-        const db = await getGlobalDB();
         const now = new Date().toISOString();
         
-        await run(db, `
+        await globalQuery(`
             INSERT INTO organismes (id, designation, category, sub_type, active, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES ($1, $2, $3, $4, $5, $6, $6)
         `, [
             org.id, 
             org.designation, 
             org.category, 
             org.sub_type, 
-            org.active !== undefined ? (org.active ? 1 : 0) : 1, 
-            now, now
+            org.active !== false, 
+            now
         ]);
         return org;
     }

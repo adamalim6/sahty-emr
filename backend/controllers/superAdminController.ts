@@ -5,6 +5,7 @@ import path from 'path';
 import bcrypt from 'bcryptjs';
 import { globalAdminService } from '../services/globalAdminService';
 import { globalSupplierService } from '../services/globalSupplierService';
+import { tenantProvisioningService } from '../services/tenantProvisioningService';
 
 // Legacy: Clients store? 'clients.json' might still be used if we didn't migrate clients to SQL.
 // Did we migrate Clients? NO. Only Global Data (Products, DCI, Suppliers, Roles, Acts).
@@ -104,6 +105,8 @@ export const updateClientDSI = async (req: Request, res: Response) => {
     }
 };
 
+import { v4 as uuidv4 } from 'uuid';
+
 export const createClient = async (req: Request, res: Response) => {
     try {
         // Validate DSI Info first
@@ -111,7 +114,7 @@ export const createClient = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Les informations du compte DSI (Login/Mot de passe) sont obligatoires.' });
         }
 
-        const clientId = `client_${Date.now()}`;
+        const clientId = uuidv4();
         
         // 1. Create Client in Global SQL DB
         const newClient = await globalAdminService.createClient({ 
@@ -133,21 +136,34 @@ export const createClient = async (req: Request, res: Response) => {
             role_id: 'role_admin_struct'
         });
 
+        // 2.5. PROVISION TENANT DATABASE
+        try {
+            console.log(`[createClient] Provisioning tenant DB for ${clientId}...`);
+            await tenantProvisioningService.createTenantDatabase(clientId);
+            console.log(`[createClient] Tenant DB provisioned.`);
+        } catch (dbErr: any) {
+            console.error("[createClient] Failed to provision tenant DB:", dbErr);
+            throw new Error(`Failed to provision tenant database: ${dbErr.message}`);
+        }
+
         // 3. INITIALIZE TENANT REALM (CRITICAL FOR LOGIN)
         try {
             const { TenantStore } = require('../utils/tenantStore');
             const store = new TenantStore(clientId);
             
-            // Define default roles for the new tenant
+            // Define default roles for the new tenant with valid UUIDs
+            const roleSuperAdminId = uuidv4();
+            const roleAdminStructId = uuidv4();
+
             const defaultRoles = [
               {
-                "id": "role_super_admin",
+                "id": roleSuperAdminId,
                 "name": "Super Admin Global",
                 "code": "SUPER_ADMIN",
                 "permissions": ["sa_clients", "sa_organismes", "sa_roles", "sa_actes"]
               },
               {
-                "id": "role_admin_struct",
+                "id": roleAdminStructId,
                 "name": "Administrateur Structure",
                 "code": "ADMIN_STRUCTURE",
                 "permissions": ["st_users", "st_services", "st_rooms", "st_pricing", "st_roles"],
@@ -160,15 +176,16 @@ export const createClient = async (req: Request, res: Response) => {
             // If we don't put user in Tenant DB, Settings won't list them in "Manage Users".
             // So we MUST sync DSI to Tenant DB too for visibility.
             
+            const tenantUserId = uuidv4(); // Generate valid UUID for tenant user
             const tenantUser = {
-                id: `user_dsi_${Date.now()}`, // Could match global ID if we routed it out
+                id: tenantUserId, 
                 client_id: clientId,
                 username: req.body.admin_username,
                 password_hash: bcrypt.hashSync(req.body.admin_password, 10),
                 nom: req.body.admin_nom || 'Directeur',
                 prenom: req.body.admin_prenom || 'Admin',
                 user_type: 'TENANT_SUPERADMIN',
-                role_id: 'role_admin_struct',
+                role_id: roleAdminStructId, // Use the valid UUID generated above
                 active: true,
                 service_ids: []
             };
@@ -253,7 +270,7 @@ export const getOrganismes = async (req: Request, res: Response) => {
 export const createOrganisme = async (req: Request, res: Response) => {
     try {
         const newOrganisme = await globalAdminService.createOrganisme({ 
-            id: `org_${Date.now()}`, 
+            id: uuidv4(), 
             ...req.body 
         });
         res.json(newOrganisme);
@@ -284,13 +301,21 @@ export const getRole = async (req: Request, res: Response) => {
     }
 };
 
-// Create/Update/Delete Role -> Not implemented in GlobalAdminService yet?
-// We only implemented Read.
-// For now, let's leave Create/Update commented out or return 501, 
-// OR implement them in GlobalAdminService if critical.
-// User asked to "verify". If frontend tries to create role, it fails.
+// Create Role - SuperAdmin only
 export const createRole = async (req: Request, res: Response) => {
-    res.status(501).json({ message: "Role creation via API not fully migrated yet." });
+    try {
+        const { name, description, permissions } = req.body;
+        
+        if (!name) {
+            return res.status(400).json({ error: 'Le nom du rôle est obligatoire.' });
+        }
+        
+        const newRole = await globalAdminService.createGlobalRole({ name, description, permissions });
+        res.status(201).json(newRole);
+    } catch (e: any) {
+        console.error('[createRole] Error:', e.message);
+        res.status(500).json({ error: e.message });
+    }
 };
 export const updateRole = async (req: Request, res: Response) => {
     try {

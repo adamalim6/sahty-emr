@@ -60,9 +60,9 @@ const TransferManager: React.FC = () => {
             items.forEach((item: any) => {
                 // If ad-hoc line (no demand_line_id), handle separately? 
                 // For now assuming linked to demand lines. 
-                // Wait, if item.demand_line_id is null? (AdHoc)
-                // Use a special key or just list them.
-                const key = item.demand_line_id || 'ADHOC';
+                // ROBUSTNESS FIX: Group by product_id to ensure DemandLineBlock receives its items
+                // even if demand_line_id is missing or mismatches.
+                const key = item.product_id;
                 const list = newCart.get(key) || [];
                 list.push(item);
                 newCart.set(key, list);

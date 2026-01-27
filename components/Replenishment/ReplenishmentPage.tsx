@@ -6,7 +6,7 @@ import { Plus, Search, ShoppingCart, MapPin, X, Save, Check } from 'lucide-react
 interface CartItem {
     product: ProductDefinition;
     quantity: number;
-    targetLocationId: string;
+    destination_location_id: string;
 }
 
 import { useAuth } from '../../context/AuthContext';
@@ -56,7 +56,7 @@ export const ReplenishmentPage: React.FC = () => {
         setCart([...cart, {
             product,
             quantity: 1,
-            targetLocationId: locations.length > 0 ? locations[0].id : ''
+            destination_location_id: locations.length > 0 ? locations[0].id : ''
         }]);
     };
 
@@ -71,7 +71,7 @@ export const ReplenishmentPage: React.FC = () => {
     };
 
     const handleBulkLocationAssign = (locationId: string) => {
-        setCart(cart.map(item => ({ ...item, targetLocationId: locationId })));
+        setCart(cart.map(item => ({ ...item, destination_location_id: locationId })));
     };
 
     const handleSubmit = async () => {
@@ -88,7 +88,7 @@ export const ReplenishmentPage: React.FC = () => {
                     productId: item.product.id,
                     productName: item.product.name,
                     quantityRequested: item.quantity,
-                    targetLocationId: item.targetLocationId
+                    destination_location_id: item.destination_location_id
                 }))
             };
 
@@ -208,8 +208,8 @@ export const ReplenishmentPage: React.FC = () => {
                                         <label className="text-xs text-slate-500 block mb-1">Emplacement</label>
                                         <select
                                             className="w-full text-sm border-slate-200 rounded px-2 py-1"
-                                            value={item.targetLocationId}
-                                            onChange={(e) => updateCartItem(item.product.id, { targetLocationId: e.target.value })}
+                                            value={item.destination_location_id}
+                                            onChange={(e) => updateCartItem(item.product.id, { destination_location_id: e.target.value })}
                                         >
                                             <option value="">Sélectionner</option>
                                             {locations.map(loc => (

@@ -184,7 +184,7 @@ export const StockEntry: React.FC<StockEntryProps> = ({
       }
 
       const dn: DeliveryNote = {
-         id: `BL-${Date.now().toString().slice(-6)}`,
+         id: deliveryNoteRef,
          poId: activePO.id,
          date: new Date(),
          createdBy: user?.username || 'Utilisateur Inconnu',
@@ -409,7 +409,11 @@ export const StockEntry: React.FC<StockEntryProps> = ({
 
                <div className="flex justify-between items-center pt-4 border-t border-slate-100">
                    <div className="text-lg font-bold text-slate-800">
-                       Total Estimé: <span className="text-blue-600">{newPOItems.reduce((sum, i) => sum + (i.qty * i.unitPrice), 0).toFixed(2)} Dhs</span>
+                       Total Estimé: <span className="text-blue-600">{newPOItems.reduce((sum, i) => {
+                           const prod = products.find(p => p.id === i.productId);
+                           const unitsPerBox = prod?.unitsPerBox || 1;
+                           return sum + ((i.qty / unitsPerBox) * i.unitPrice);
+                       }, 0).toFixed(2)} Dhs</span>
                    </div>
                   <button
                      onClick={handleCreatePO}

@@ -5,7 +5,9 @@ import { useNavigate } from 'react-router-dom';
 
 interface Demand {
     id: string;
-    service_id: string; // Need to map to name
+    demand_ref?: string;
+    service_id: string;
+    service_name?: string;
     status: string;
     priority: string;
     created_at: string;
@@ -81,6 +83,7 @@ const PharmacyDemandList: React.FC = () => {
                         <tr>
                             <th className="p-4 font-semibold text-slate-700">Priorité</th>
                             <th className="p-4 font-semibold text-slate-700">Service</th>
+                            <th className="p-4 font-semibold text-slate-700">N° Demande</th>
                             <th className="p-4 font-semibold text-slate-700">Date</th>
                             <th className="p-4 font-semibold text-slate-700">Demandeur</th>
                             <th className="p-4 font-semibold text-slate-700">Statut</th>
@@ -89,9 +92,9 @@ const PharmacyDemandList: React.FC = () => {
                     </thead>
                     <tbody className="divide-y">
                         {loading ? (
-                            <tr><td colSpan={6} className="p-8 text-center text-slate-400">Chargement...</td></tr>
+                            <tr><td colSpan={7} className="p-8 text-center text-slate-400">Chargement...</td></tr>
                         ) : filteredDemands.length === 0 ? (
-                            <tr><td colSpan={6} className="p-8 text-center text-slate-400 italic">Aucune demande à afficher.</td></tr>
+                            <tr><td colSpan={7} className="p-8 text-center text-slate-400 italic">Aucune demande à afficher.</td></tr>
                         ) : (
                             filteredDemands.map(demand => (
                                 <tr key={demand.id} className="hover:bg-slate-50 transition-colors group">
@@ -104,7 +107,8 @@ const PharmacyDemandList: React.FC = () => {
                                             <span className="text-slate-500 text-xs px-2">Normal</span>
                                         )}
                                     </td>
-                                    <td className="p-4 font-medium text-slate-800">{demand.service_id}</td>
+                                    <td className="p-4 font-medium text-slate-800">{demand.service_name || demand.service_id}</td>
+                                    <td className="p-4 font-mono text-xs text-slate-500 font-bold">{demand.demand_ref || demand.id.slice(0, 8)}</td>
                                     <td className="p-4 text-slate-500 text-xs">
                                         {new Date(demand.created_at).toLocaleDateString()} <br/>
                                         {new Date(demand.created_at).toLocaleTimeString().slice(0,5)}

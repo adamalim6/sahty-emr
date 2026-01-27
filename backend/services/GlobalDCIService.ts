@@ -1,9 +1,8 @@
-import { getGlobalDB } from '../db/globalDb';
-import { Database } from 'sqlite3';
+import { globalQuery, globalQueryOne } from '../db/globalPg';
 
 export interface DCI {
     id: string;
-    name: string;              // Unique, case-insensitive, trimmed
+    name: string;
     atcCode?: string;
     synonyms?: string[];
     therapeuticClass?: string;
@@ -11,27 +10,10 @@ export interface DCI {
     updatedAt: string;
 }
 
-// Helpers
-const run = (db: Database, sql: string, params: any[] = []) => new Promise<void>((resolve, reject) => {
-    db.run(sql, params, function(err) { if (err) reject(err); else resolve(); });
-});
-
-const get = <T>(db: Database, sql: string, params: any[] = []) => new Promise<T | undefined>((resolve, reject) => {
-    db.get(sql, params, (err, row) => { if (err) reject(err); else resolve(row as T); });
-});
-
-const all = <T>(db: Database, sql: string, params: any[] = []) => new Promise<T[]>((resolve, reject) => {
-    db.all(sql, params, (err, rows) => { if (err) reject(err); else resolve(rows as T[]); });
-});
-
 export class GlobalDCIService {
     
-    // Internal Cache? Or rely on SQL speed? SQL is fast enough usually.
-    // For DCI lookup in products service, we might need bulk load. Let's keep a getAllDCIs for now.
-
     public async getAllDCIs(): Promise<DCI[]> {
-        const db = await getGlobalDB();
-        const rows = await all<any>(db, 'SELECT * FROM global_dci');
+        const rows = await globalQuery('SELECT * FROM global_dci');
         return rows.map(r => this.mapDCI(r));
     }
 
@@ -41,15 +23,14 @@ export class GlobalDCIService {
             name: r.name,
             atcCode: r.atc_code,
             therapeuticClass: r.therapeutic_class,
-            synonyms: r.synonyms ? JSON.parse(r.synonyms) : [],
+            synonyms: r.synonyms ? (typeof r.synonyms === 'string' ? JSON.parse(r.synonyms) : r.synonyms) : [],
             createdAt: r.created_at,
-            updatedAt: r.created_at // specific updated_at column missing in basic schema? default to created_at
+            updatedAt: r.created_at
         };
     }
 
     public async getDCIById(id: string): Promise<DCI | undefined> {
-        const db = await getGlobalDB();
-        const row = await get<any>(db, 'SELECT * FROM global_dci WHERE id = ?', [id]);
+        const row = await globalQueryOne('SELECT * FROM global_dci WHERE id = $1', [id]);
         return row ? this.mapDCI(row) : undefined;
     }
 
@@ -58,11 +39,10 @@ export class GlobalDCIService {
     }
 
     public async createDCI(data: Omit<DCI, 'id' | 'createdAt' | 'updatedAt'>): Promise<DCI> {
-        const db = await getGlobalDB();
         const normalizedName = this.normalizeName(data.name);
 
         // Check Duplicate
-        const existing = await get(db, 'SELECT id FROM global_dci WHERE lower(name) = lower(?)', [normalizedName]);
+        const existing = await globalQueryOne('SELECT id FROM global_dci WHERE lower(name) = lower($1)', [normalizedName]);
         if (existing) {
              throw new Error(`Une DCI avec le nom "${normalizedName}" existe déjà.`);
         }
@@ -70,9 +50,9 @@ export class GlobalDCIService {
         const newId = `DCI_${Date.now()}_${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
         const now = new Date().toISOString();
 
-        await run(db, `
+        await globalQuery(`
             INSERT INTO global_dci (id, name, atc_code, therapeutic_class, synonyms, created_at)
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES ($1, $2, $3, $4, $5, $6)
         `, [
             newId, 
             normalizedName, 
@@ -87,7 +67,7 @@ export class GlobalDCIService {
             id: newId,
             name: normalizedName,
             atcCode: data.atcCode?.trim(),
-            synonyms: data.synonyms, // ...
+            synonyms: data.synonyms,
             therapeuticClass: data.therapeuticClass,
             createdAt: now,
             updatedAt: now
@@ -95,7 +75,6 @@ export class GlobalDCIService {
     }
 
     public async updateDCI(id: string, updates: Partial<Omit<DCI, 'id' | 'createdAt' | 'updatedAt'>>): Promise<DCI> {
-        const db = await getGlobalDB();
         const current = await this.getDCIById(id);
         if (!current) throw new Error("DCI non trouvée");
 
@@ -103,7 +82,7 @@ export class GlobalDCIService {
         if (updates.name) {
             normalizedName = this.normalizeName(updates.name);
             if (normalizedName.toLowerCase() !== current.name.toLowerCase()) {
-                const existing = await get<any>(db, 'SELECT id FROM global_dci WHERE lower(name) = lower(?) AND id != ?', [normalizedName, id]);
+                const existing = await globalQueryOne('SELECT id FROM global_dci WHERE lower(name) = lower($1) AND id != $2', [normalizedName, id]);
                 if (existing) throw new Error(`Une DCI avec le nom "${normalizedName}" existe déjà.`);
             }
         }
@@ -112,10 +91,10 @@ export class GlobalDCIService {
         const therapeuticClass = updates.therapeuticClass !== undefined ? updates.therapeuticClass.trim() : current.therapeuticClass;
         const synonyms = updates.synonyms ? updates.synonyms.map(s => s.trim()).filter(s => s.length > 0) : current.synonyms;
 
-        await run(db, `
+        await globalQuery(`
             UPDATE global_dci 
-            SET name=?, atc_code=?, therapeutic_class=?, synonyms=?
-            WHERE id=?
+            SET name=$1, atc_code=$2, therapeutic_class=$3, synonyms=$4
+            WHERE id=$5
         `, [normalizedName, atcCode || null, therapeuticClass || null, JSON.stringify(synonyms), id]);
 
         this.invalidateCache();
@@ -130,8 +109,7 @@ export class GlobalDCIService {
     }
 
     public async deleteDCI(id: string): Promise<void> {
-        const db = await getGlobalDB();
-        await run(db, 'DELETE FROM global_dci WHERE id = ?', [id]);
+        await globalQuery('DELETE FROM global_dci WHERE id = $1', [id]);
         this.invalidateCache();
     }
 

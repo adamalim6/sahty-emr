@@ -561,10 +561,13 @@ export const QuarantineManager: React.FC<QuarantineManagerProps> = ({
                                                 <div className="col-span-2">
                                                    <input
                                                       type="number"
-                                                      placeholder="Qté"
-                                                      className="w-full text-center text-xs font-bold py-1.5 border border-slate-200 rounded bg-white text-red-700"
-                                                      value={ret.quantity || ''}
-                                                      onChange={(e) => updateReturn(item.productId, idx, 'quantity', parseInt(e.target.value) || 0)}
+                                                      placeholder="Btes"
+                                                      className="w-full text-center text-xs font-bold py-1.5 border border-slate-200 rounded bg-white text-red-700 focus:ring-1 focus:ring-red-500"
+                                                      value={ret.quantity ? ret.quantity / unitsPerBox : ''}
+                                                      onChange={(e) => {
+                                                         const val = parseFloat(e.target.value) || 0;
+                                                         updateReturn(item.productId, idx, 'quantity', Math.round(val * unitsPerBox));
+                                                      }}
                                                    />
                                                 </div>
                                              </div>

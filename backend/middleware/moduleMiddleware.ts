@@ -21,6 +21,13 @@ export const requireModule = (requiredModule: string) => {
             return;
         }
 
+        // DSI (ADMIN_STRUCTURE) users have implicit access to all tenant modules
+        // This is the "Administrateur Structure" role assigned during tenant creation
+        if (user.role_code === 'ADMIN_STRUCTURE' || user.role_id === 'role_admin_struct') {
+            next();
+            return;
+        }
+
         if (!userModules.includes(requiredModule)) {
             console.warn(`[Access Denied] User ${user.username} tried to access ${requiredModule} but only has [${userModules.join(', ')}]`);
             return res.status(403).json({ 

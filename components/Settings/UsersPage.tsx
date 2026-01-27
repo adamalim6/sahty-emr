@@ -6,7 +6,8 @@ import { UserModal } from './UserModal';
 
 export const UsersPage: React.FC = () => {
     const [users, setUsers] = useState<any[]>([]);
-    const [roles, setRoles] = useState<any[]>([]);
+    const [roles, setRoles] = useState<any[]>([]); // Filtered roles for modal dropdown
+    const [allRoles, setAllRoles] = useState<any[]>([]); // All roles for display/lookup
     const [services, setServices] = useState<any[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     
@@ -26,19 +27,19 @@ export const UsersPage: React.FC = () => {
                 api.getServices()
             ]);
             
-            // Filter out restricted roles (Super Admin & Admin Structure)
-            // These roles are reserved for Publisher or assigned during client creation.
-            const restrictedRoles = ['role_super_admin', 'role_admin_struct'];
-            const allowedRoles = rolesData.filter((r: any) => !restrictedRoles.includes(r.id));
+            // Store all roles for display purposes (role name lookup)
+            setAllRoles(rolesData);
+            
+            // Filter out restricted roles for the modal dropdown
+            // System roles are only assignable by SuperAdmin during tenant creation
+            const SYSTEM_ROLE_CODES = ['SUPER_ADMIN', 'ADMIN_STRUCTURE'];
+            const allowedRoles = rolesData.filter((r: any) => !SYSTEM_ROLE_CODES.includes(r.code));
             
             console.log('Users:', usersData);
-            console.log('Roles (Raw):', rolesData);
+            console.log('All Roles:', rolesData);
+            console.log('Allowed Roles for modal:', allowedRoles);
 
             setRoles(allowedRoles);
-            if (allowedRoles.length > 0) {
-                // Role handling moved to Modal or default state if needed
-                // setFormData(prev => ({ ...prev, role_id: allowedRoles[0].id }));
-            }
             setUsers(usersData);
             setServices(servicesData);
         } catch (e) {
@@ -70,8 +71,12 @@ export const UsersPage: React.FC = () => {
         }
     };
 
-    const getRoleName = (id: string) => roles.find(r => r.id === id)?.name || (id === 'role_admin_struct' ? 'Administrateur Structure' : id);
-    const isDSI = (user: any) => user.role_id === 'role_admin_struct';
+    // Use allRoles for lookup to correctly display system role names
+    const getRoleName = (id: string) => allRoles.find(r => r.id === id)?.name || 'Rôle inconnu';
+    const isDSI = (user: any) => {
+        const role = allRoles.find(r => r.id === user.role_id);
+        return role?.code === 'ADMIN_STRUCTURE';
+    };
 
     return (
         <div className="p-8 max-w-7xl mx-auto">
@@ -169,6 +174,7 @@ export const UsersPage: React.FC = () => {
                 onSave={handleSaveUser}
                 user={editingUser}
                 roles={roles}
+                allRoles={allRoles}
                 services={services}
             />
         </div>

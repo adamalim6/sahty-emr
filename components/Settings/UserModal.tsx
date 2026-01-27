@@ -5,7 +5,8 @@ interface UserModalProps {
     onClose: () => void;
     onSave: (formData: any) => Promise<void>;
     user?: any; // If editing
-    roles: any[];
+    roles: any[]; // Filtered assignable roles for dropdown
+    allRoles?: any[]; // All roles for isDSI lookup
     services: any[];
     lockedServiceId?: string; // New: For Service Personnel Tab context
 }
@@ -16,11 +17,21 @@ export const UserModal: React.FC<UserModalProps> = ({
     onSave, 
     user, 
     roles, 
+    allRoles,
     services,
     lockedServiceId 
 }) => {
+    // Use allRoles (if provided) for DSI lookup, fallback to roles
+    const lookupRoles = allRoles || roles;
     // Determine if DSI (Super Admin of Tenant) which has protections
-    const isDSI = (u: any) => u?.role_id === 'role_admin_struct';
+    const isDSI = (u: any) => {
+        if (!u || !u.role_id) return false;
+        // Legacy Check
+        if (u.role_id === 'role_admin_struct') return true;
+        // Dynamic Check via lookupRoles (includes all roles for proper resolution)
+        const role = lookupRoles.find(r => r.id === u.role_id);
+        return role?.code === 'ADMIN_STRUCTURE';
+    };
 
     const [formData, setFormData] = useState({
         username: '',
@@ -33,10 +44,10 @@ export const UserModal: React.FC<UserModalProps> = ({
         service_ids: [] as string[]
     });
 
-    // Filter roles if in Service Context (lockedServiceId present)
-    const displayedRoles = lockedServiceId 
-        ? roles.filter(r => !['role_super_admin', 'role_admin_struct'].includes(r.id))
-        : roles;
+    // RBAC: Always exclude system roles (SUPER_ADMIN, ADMIN_STRUCTURE) by code.
+    // These roles can only be assigned by SuperAdmin during tenant creation.
+    const SYSTEM_ROLE_CODES = ['SUPER_ADMIN', 'ADMIN_STRUCTURE'];
+    const displayedRoles = roles.filter(r => !SYSTEM_ROLE_CODES.includes(r.code));
 
     useEffect(() => {
         if (isOpen) {

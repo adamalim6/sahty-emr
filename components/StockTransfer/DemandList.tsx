@@ -78,8 +78,8 @@ const DemandList: React.FC = () => {
                                     <td className="p-3 text-slate-600">
                                         {new Date(demand.created_at).toLocaleDateString()} {new Date(demand.created_at).toLocaleTimeString().slice(0,5)}
                                     </td>
-                                    <td className="p-3 font-mono text-xs text-slate-500">{demand.id.slice(0, 8)}...</td>
-                                    <td className="p-3 font-medium">{demand.service_id}</td> {/* TODO: Resolve name */}
+                                    <td className="p-3 font-mono text-xs text-slate-500 font-bold">{demand.demand_ref || demand.id.slice(0, 8) + '...'}</td>
+                                    <td className="p-3 font-medium">{demand.service_name || demand.service_id}</td>
                                     <td className="p-3">
                                         {demand.priority === 'URGENT' ? (
                                             <span className="flex items-center gap-1 text-red-600 font-bold text-xs">
