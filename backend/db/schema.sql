@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS inventory_movements (
   from_location TEXT,       -- nullable for receipts
   to_location TEXT,         -- nullable for consumption
 
-  document_type TEXT NOT NULL, -- DELIVERY, REPLENISHMENT, DISPENSE, RETURN_SUPPLIER, RETURN_WARD, WASTE, DESTRUCTION, BORROW_IN, BORROW_OUT
+  document_type TEXT NOT NULL, -- DELIVERY_INJECTION, TRANSFER, DISPENSE, RETURN_INTERNAL, RETURN_SUPPLIER, WASTE, DESTRUCTION, BORROW_IN, BORROW_OUT
   document_id TEXT,         -- BL_01, RET_..., REQ_..., PRESC_...
 
   created_by TEXT,
@@ -117,29 +117,8 @@ CREATE TABLE IF NOT EXISTS po_items (
 
 CREATE INDEX IF NOT EXISTS idx_po_tenant ON purchase_orders(tenant_id);
 
--- 3.2 Replenishment Requests (Service -> Pharmacy)
-CREATE TABLE IF NOT EXISTS replenishment_requests (
-  request_id TEXT PRIMARY KEY,
-  tenant_id TEXT NOT NULL,
-  service_id TEXT NOT NULL,
-  status TEXT NOT NULL, -- PENDING, APPROVED, DISPENSED, REJECTED
-  requested_by TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS replenishment_items (
-  request_id TEXT NOT NULL,
-  tenant_id TEXT NOT NULL,
-  product_id TEXT NOT NULL,
-  qty_requested INTEGER NOT NULL,
-  qty_dispensed INTEGER DEFAULT 0,
-  
-  PRIMARY KEY (request_id, product_id),
-  FOREIGN KEY (request_id) REFERENCES replenishment_requests(request_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_replenishment_tenant ON replenishment_requests(tenant_id);
+-- NOTE: Legacy replenishment_requests and replenishment_items tables removed
+-- Use stock_demands and stock_demand_lines tables instead (see stockTransferService)
 
 -- 4. Settings Domain
 CREATE TABLE IF NOT EXISTS users (

@@ -21,7 +21,9 @@ export interface StockDemandLine {
     demand_id: string;
     product_id: string;
     qty_requested: number;
-    destination_location_id?: string;
+    target_stock_location_id?: string; // Business intent: where requester wants stock to go
+    target_location_code?: string;     // Resolved location code for display
+    target_location_name?: string;     // Resolved location name for display
 }
 
 export interface StockTransfer {
@@ -67,9 +69,9 @@ class StockTransferService {
             if (demand.items) {
                 for (const item of demand.items) {
                     await client.query(`
-                        INSERT INTO stock_demand_lines (demand_id, tenant_id, product_id, qty_requested, destination_location_id)
+                        INSERT INTO stock_demand_lines (demand_id, tenant_id, product_id, qty_requested, target_stock_location_id)
                         VALUES ($1, $2, $3, $4, $5)
-                    `, [demandId, tenantId, item.product_id, item.qty_requested, item.destination_location_id || null]);
+                    `, [demandId, tenantId, item.product_id, item.qty_requested, item.target_stock_location_id || null]);
                 }
             }
         });
@@ -118,8 +120,12 @@ class StockTransferService {
         if (rows.length === 0) return null;
         const row = rows[0];
 
+        // JOIN with locations to get target location name/code
         const items = await tenantQuery(tenantId, 
-            `SELECT * FROM stock_demand_lines WHERE demand_id = $1`, 
+            `SELECT sdl.*, l.location_id as target_location_code, l.name as target_location_name
+             FROM stock_demand_lines sdl
+             LEFT JOIN locations l ON sdl.target_stock_location_id = l.location_id
+             WHERE sdl.demand_id = $1`, 
             [demandId]
         );
 
@@ -134,7 +140,10 @@ class StockTransferService {
             items: items.map(i => ({
                 demand_id: i.demand_id,
                 product_id: i.product_id,
-                qty_requested: i.qty_requested
+                qty_requested: i.qty_requested,
+                target_stock_location_id: i.target_stock_location_id,
+                target_location_code: i.target_location_code,
+                target_location_name: i.target_location_name
             }))
         };
     }
@@ -214,15 +223,19 @@ class StockTransferService {
             }
 
             // ✅ Step 3 — Create stock_transfers header (Business Context)
-            // Assuming destination is the service linked to the demand
+            // Read target locations from demand lines to determine destination
             const demandRes = await client.query(`SELECT service_id, demand_ref FROM stock_demands WHERE id = $1`, [demandId]);
             const demand = demandRes.rows[0];
-            // We need a destination location ID for the service. For now, we might assume a convention or lookup.
-            // If service_id is a UUID, we might check if there's a primary location for it.
-            // FALLBACK: Use service_id as location_id if they map 1:1, or look it up. 
-            // NOTE: In current architecture, services might handle their own stock or it's just "OUT".
-            // Let's assume destination is the Service ID for now as per user previous patterns.
-            const destLocationId = demand.service_id; 
+            
+            // Get the first demand line's target_stock_location_id as the primary destination
+            // For now, we assume all lines in one fulfillment go to the same destination
+            // (Per-line destination transfers would require multiple stock_transfers records)
+            const demandLinesRes = await client.query(
+                `SELECT target_stock_location_id FROM stock_demand_lines WHERE demand_id = $1 LIMIT 1`, 
+                [demandId]
+            );
+            // Use target_stock_location_id if set, otherwise fallback to service_id
+            const destLocationId = demandLinesRes.rows[0]?.target_stock_location_id || demand.service_id;
 
             await client.query(`
                 INSERT INTO stock_transfers (id, tenant_id, demand_id, source_location_id, destination_location_id, status, validated_at, validated_by)

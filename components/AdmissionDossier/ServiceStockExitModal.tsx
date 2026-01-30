@@ -37,7 +37,7 @@ export const ServiceStockExitModal: React.FC<ServiceStockExitModalProps> = ({ is
     const loadData = async () => {
         try {
             const [inv, cat, allPacks] = await Promise.all([
-                api.getInventory(),
+                api.getInventory(undefined, 'SERVICE'), // Service stock for exit (client filters by serviceId later)
                 api.getCatalog(),
                 api.getSerializedPacks() // We might need a filter for service location here or strict equality on serviceId?
                 // Assuming getSerializedPacks returns all, we filter clientside for now for demo

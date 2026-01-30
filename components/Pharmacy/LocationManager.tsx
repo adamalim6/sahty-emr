@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StockLocation, InventoryItem } from '../../types/pharmacy';
 import { api } from '../../services/api';
 import { MapPin, Plus, Edit2, Trash2, X, Save, AlertCircle } from 'lucide-react';
@@ -10,7 +10,10 @@ interface LocationManagerProps {
   onUpdateLocations: (locations: StockLocation[]) => void;
 }
 
-export const LocationManager: React.FC<LocationManagerProps & { serviceId?: string, scope?: 'PHARMACY' | 'SERVICE' }> = ({ locations, inventoryItems, onUpdateLocations, serviceId, scope = 'PHARMACY' }) => {
+export const LocationManager: React.FC<LocationManagerProps & { serviceId?: string, scope?: 'PHARMACY' | 'SERVICE' }> = ({ locations: initialLocations, inventoryItems, onUpdateLocations, serviceId, scope = 'PHARMACY' }) => {
+  // Use context-based fetching instead of relying on parent props
+  const [locations, setLocations] = useState<StockLocation[]>(initialLocations);
+  const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -20,10 +23,33 @@ export const LocationManager: React.FC<LocationManagerProps & { serviceId?: stri
     isActive: true
   });
   const [error, setError] = useState('');
+  const [pendingLocationClass, setPendingLocationClass] = useState<'COMMERCIAL' | 'CHARITY'>('COMMERCIAL');
 
-  const openAddModal = () => {
+  // Fetch locations using context-based API on mount
+  useEffect(() => {
+    const fetchLocationsByContext = async () => {
+      setIsLoading(true);
+      try {
+        // Use CONFIG_LOCATIONS for PHARMACY (excludes VIRTUAL), STOCK_SERVICE for SERVICE
+        const context = scope === 'PHARMACY' ? 'CONFIG_LOCATIONS' : 'STOCK_SERVICE';
+        const locs = await api.getLocationsByContext(context, serviceId);
+        setLocations(locs);
+        onUpdateLocations(locs); // Sync with parent
+      } catch (err) {
+        console.error('Failed to fetch locations by context:', err);
+        // Fallback to initial locations if context API fails
+        setLocations(initialLocations);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchLocationsByContext();
+  }, [scope, serviceId]); // Re-fetch when scope or serviceId changes
+
+  const openAddModal = (locationClass: 'COMMERCIAL' | 'CHARITY' = 'COMMERCIAL') => {
     setEditingId(null);
     setFormData({ name: '', description: '', isActive: true });
+    setPendingLocationClass(locationClass);
     setError('');
     setIsModalOpen(true);
   };
@@ -60,20 +86,23 @@ export const LocationManager: React.FC<LocationManagerProps & { serviceId?: stri
         newLocations = newLocations.map(l =>
           l.id === editingId ? updatedLoc : l
         );
+        setLocations(newLocations); // Update local state
         onUpdateLocations(newLocations);
         setIsModalOpen(false);
       } else {
         const payload: any = {
           name: formData.name,
           description: formData.description || '',
-          type: 'SHELF',
+          type: 'PHYSICAL',
           isActive: formData.isActive,
           scope: scope, 
-          serviceId: scope === 'SERVICE' ? serviceId : undefined
+          serviceId: scope === 'SERVICE' ? serviceId : undefined,
+          locationClass: scope === 'SERVICE' ? 'COMMERCIAL' : pendingLocationClass
         };
 
         const newLoc = await api.createLocation(payload);
         newLocations.push(newLoc);
+        setLocations(newLocations); // Update local state
         onUpdateLocations(newLocations);
         setIsModalOpen(false);
       }
@@ -100,6 +129,7 @@ export const LocationManager: React.FC<LocationManagerProps & { serviceId?: stri
       try {
         await api.deleteLocation(id);
         const newLocations = locations.filter(l => l.id !== id);
+        setLocations(newLocations); // Update local state
         onUpdateLocations(newLocations);
       } catch (e: any) {
         if (e.message?.includes('403') || e.message?.toLowerCase().includes('forbidden')) {
@@ -118,13 +148,32 @@ export const LocationManager: React.FC<LocationManagerProps & { serviceId?: stri
           <h2 className="text-xl font-bold text-slate-900">Emplacements de Stockage</h2>
           <p className="text-slate-500 text-sm">Configurez les zones, étagères et réfrigérateurs.</p>
         </div>
-        <button
-          onClick={openAddModal}
-          className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium shadow-sm transition-colors"
-        >
-          <Plus size={18} />
-          <span>Nouvel Emplacement</span>
-        </button>
+        {scope === 'PHARMACY' ? (
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => openAddModal('COMMERCIAL')}
+              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-medium shadow-sm transition-colors"
+            >
+              <Plus size={18} />
+              <span>Nouvel Emplacement COMMERCIAL</span>
+            </button>
+            <button
+              onClick={() => openAddModal('CHARITY')}
+              className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg font-medium shadow-sm transition-colors"
+            >
+              <Plus size={18} />
+              <span>Nouvel Emplacement de DON</span>
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => openAddModal('COMMERCIAL')}
+            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium shadow-sm transition-colors"
+          >
+            <Plus size={18} />
+            <span>Nouvel Emplacement</span>
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -132,6 +181,7 @@ export const LocationManager: React.FC<LocationManagerProps & { serviceId?: stri
           <thead className="bg-slate-50 text-slate-500 font-semibold uppercase text-xs border-b border-slate-200">
             <tr>
               <th className="px-6 py-4">Statut</th>
+              <th className="px-6 py-4">Classe</th>
               <th className="px-6 py-4">Nom</th>
               <th className="px-6 py-4">Description</th>
               <th className="px-6 py-4 text-center">Articles Assignés</th>
@@ -139,6 +189,7 @@ export const LocationManager: React.FC<LocationManagerProps & { serviceId?: stri
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
+            {/* No UI filtering needed - context-based API already filters appropriately */}
             {locations.map(loc => {
               const itemCount = inventoryItems.filter(i => i.location === loc.name).length;
 
@@ -150,6 +201,14 @@ export const LocationManager: React.FC<LocationManagerProps & { serviceId?: stri
                         ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                         : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
                       {loc.isActive ? 'Actif' : 'Inactif'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold
+                      ${loc.locationClass === 'CHARITY'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-blue-100 text-blue-800'}`}>
+                      {loc.locationClass === 'CHARITY' ? 'Don' : 'Commercial'}
                     </span>
                   </td>
                   <td className="px-6 py-4 font-bold text-slate-900 flex items-center">

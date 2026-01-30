@@ -227,19 +227,18 @@ class StockReservationService {
         tenantId: string, 
         sessionId: string, 
         demandId: string, 
-        userId: string,
-        clientRequestId?: string
+        userId: string
     ): Promise<string | null> {
         return tenantTransaction(tenantId, async (client: PoolClient) => {
-            // Idempotency: Check if this request was already processed
-            if (clientRequestId) {
-                const existing = await client.query(
-                    `SELECT id FROM stock_transfers WHERE tenant_id = $1 AND client_request_id = $2`,
-                    [tenantId, clientRequestId]
-                );
-                if (existing.rows.length > 0) {
-                    return existing.rows[0].id;
-                }
+            // Idempotency: Check if a transfer already exists for this demand
+            // Using demand_id is more semantically correct since a demand can only have one committed transfer
+            const existingTransfer = await client.query(
+                `SELECT id FROM stock_transfers WHERE tenant_id = $1 AND demand_id = $2 AND status = 'VALIDATED'`,
+                [tenantId, demandId]
+            );
+            if (existingTransfer.rows.length > 0) {
+                console.log(`[commitSession] Idempotent: Transfer already exists for demand ${demandId}`);
+                return existingTransfer.rows[0].id;
             }
 
             // STEP 1: Lock all ACTIVE reservations for this session (FOR UPDATE)
@@ -299,9 +298,9 @@ class StockReservationService {
             await client.query(`
                 INSERT INTO stock_transfers (
                     id, tenant_id, demand_id, source_location_id, destination_location_id, 
-                    status, validated_at, validated_by, client_request_id
-                ) VALUES ($1, $2, $3, $4, $5, 'VALIDATED', NOW(), $6, $7)
-            `, [transferId, tenantId, demandId, sourceLocId, headerDestId, userId, clientRequestId || null]);
+                    status, validated_at, validated_by
+                ) VALUES ($1, $2, $3, $4, $5, 'VALIDATED', NOW(), $6)
+            `, [transferId, tenantId, demandId, sourceLocId, headerDestId, userId]);
 
             // STEP 4: Process each reservation
             for (const res of reservations.rows) {
@@ -332,26 +331,26 @@ class StockReservationService {
                     DO UPDATE SET qty_units = current_stock.qty_units + EXCLUDED.qty_units
                 `, [tenantId, res.product_id, res.lot, res.expiry, destId, take]);
 
-                // 4c. Insert inventory_movement (single movement, no document_type per user feedback)
+                // 4c. Insert inventory_movement
                 const moveId = uuidv4();
                 await client.query(`
                     INSERT INTO inventory_movements (
                         movement_id, tenant_id, product_id, lot, expiry, qty_units, 
-                        from_location, to_location, document_id, created_by
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                        from_location, to_location, document_type, document_id, created_by
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'TRANSFER', $9, $10)
                 `, [moveId, tenantId, res.product_id, res.lot, res.expiry, take, 
                     res.location_id, destId, transferId, userId]);
 
-                // 4d. Create stock_transfer_line (NULL for demand_line_id to avoid FK if not valid)
+                // 4d. Create stock_transfer_line (link back to demand_line_id for traceability)
                 const lineId = uuidv4();
                 
                 await client.query(`
                     INSERT INTO stock_transfer_lines (
                         id, tenant_id, transfer_id, product_id, lot, expiry, 
-                        qty_transferred, source_location_id, destination_location_id
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                        qty_transferred, source_location_id, destination_location_id, demand_line_id
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                 `, [lineId, tenantId, transferId, res.product_id, res.lot, res.expiry, 
-                    take, res.location_id, destId]);
+                    take, res.location_id, destId, res.demand_line_id || null]);
 
                 // 4e. Mark reservation as COMMITTED
                 await client.query(`

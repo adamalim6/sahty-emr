@@ -9,6 +9,9 @@ interface DemandLineBlockProps {
     line: {
         product_id: string; // The requested product
         qty_requested: number;
+        destination_location_id?: string;
+        target_stock_location_id?: string;  // Intent: where requester wants stock
+        target_location_code?: string;      // Resolved code for display
     };
     sessionId: string;
     cartItems: any[];
@@ -37,11 +40,11 @@ const DemandLineBlock: React.FC<DemandLineBlockProps> = ({ demandId, line, sessi
     const [prepMode, setPrepMode] = useState<'BOX' | 'UNIT'>('BOX');
     const [manualQty, setManualQty] = useState(1);
     
-    // Helpers
-    const UNITS_PER_BOX = 30; // TODO: Fetch from Product Config
+    // Helpers - Use actual product config (fallback to 1 if not available)
+    const unitsPerBox = selectedProduct?.unitsPerBox || 1;
     
-    const getQtyInUnits = (q: number) => prepMode === 'BOX' ? q * UNITS_PER_BOX : q;
-    const formatQty = (u: number) => prepMode === 'BOX' ? `${(u / UNITS_PER_BOX).toFixed(1)} Bts` : `${u} U`;
+    const getQtyInUnits = (q: number) => prepMode === 'BOX' ? q * unitsPerBox : q;
+    const formatQty = (u: number) => prepMode === 'BOX' ? `${(u / unitsPerBox).toFixed(1)} Bts` : `${u} U`;
 
     const isLotExpired = (dateStr: string) => new Date(dateStr) < new Date();
 
@@ -160,7 +163,7 @@ const DemandLineBlock: React.FC<DemandLineBlockProps> = ({ demandId, line, sessi
     const loadLots = async () => {
         setLoadingLots(true);
         try {
-            const inv = await api.getInventory(); 
+            const inv = await api.getInventory(undefined, 'PHARMACY'); // PHARMACY stock for fulfillment
             // Fix: API returns CamelCase (productId, qtyUnits)
             const relevant = inv.filter((i: any) => (i.productId === selectedProductId || i.product_id === selectedProductId) && (i.qtyUnits > 0 || i.qty_units > 0));
             setAvailableLots(relevant.sort((a: any, b: any) => new Date(a.expiry).getTime() - new Date(b.expiry).getTime())); 
@@ -207,6 +210,7 @@ const DemandLineBlock: React.FC<DemandLineBlockProps> = ({ demandId, line, sessi
                 lot: lotItem.lot,
                 expiry: lotItem.expiry,
                 location_id: lotItem.location, 
+                destination_location_id: line.destination_location_id, // Critical for Fulfillment routing
                 qty_units: Math.floor(qty) // Safety: Integer
             });
             refreshCart();
@@ -244,6 +248,13 @@ const DemandLineBlock: React.FC<DemandLineBlockProps> = ({ demandId, line, sessi
                     </div>
                     <div className="text-sm text-slate-500 font-mono">
                         DCI: {selectedProduct?.dci || 'N/A'} • Demandé: {line.qty_requested}
+                        {line.target_location_code && (
+                            <span className="ml-2 inline-flex items-center gap-1">
+                                • <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-xs font-bold">
+                                    → {line.target_location_code}
+                                </span>
+                            </span>
+                        )}
                     </div>
                 </div>
                 <div className="flex items-center gap-4">

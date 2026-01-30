@@ -89,7 +89,7 @@ export const ServiceDetailPage: React.FC = () => {
                 api.getGlobalRoles(), // Why twice? Previous edit error. Ignoring.
                 api.getServices(),
                 api.getLocations(serviceId, 'SERVICE'), 
-                api.getInventory() 
+                api.getInventory(serviceId, 'SERVICE') // Service stock for this service
             ]);
             
             setService(svc);

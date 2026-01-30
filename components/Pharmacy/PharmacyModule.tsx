@@ -19,9 +19,8 @@ import {
 import { StatCard } from './StatCard';
 import { InventoryTable } from './InventoryTable';
 import { SystemStockTable } from './SystemStockTable';
-import { RequestsAndTransfers } from './RequestsAndTransfers';
-import { ReplenishmentProcessing } from './ReplenishmentProcessing';
 import PharmacyDemandManager from '../StockTransfer/PharmacyDemandManager';
+import TransferManager from '../StockTransfer/TransferManager';
 import { InventorySessionList } from './InventorySessionList';
 import { JavaCodeModal } from './JavaCodeModal';
 import { ProductCatalog } from './ProductCatalog';
@@ -109,7 +108,7 @@ export const PharmacyModule: React.FC = () => {
         
         // Use allSettled to prevent one failure from blocking everything
         const results = await Promise.allSettled([
-          api.getInventory(),
+          api.getInventory(undefined, 'PHARMACY'), // Explicit PHARMACY scope
           api.getCatalog(), // Restore Catalog for StockEntry search
           api.getLocations(),
           api.getPartners(),
@@ -284,7 +283,7 @@ export const PharmacyModule: React.FC = () => {
       setDeliveryNotes(updatedNotes);
 
       // Refetch inventory to show new stock
-      const freshInventory = await api.getInventory();
+      const freshInventory = await api.getInventory(undefined, 'PHARMACY');
       setSystemItems(freshInventory);
 
       alert("Traitement quarantaine effectué. Stock mis à jour avec numéros de série.");
@@ -554,7 +553,7 @@ export const PharmacyModule: React.FC = () => {
         ) : view === 'requests' ? (
           <PharmacyDemandManager />
         ) : view === 'processing_request' ? (
-          <ReplenishmentProcessing onBack={() => navigate('/pharmacy/requests')} requestIdStr={selectedRequestId || undefined} />
+          <TransferManager />
         ) : view === 'inventory' ? (
           <>
             {!currentSession ? (

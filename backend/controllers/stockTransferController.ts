@@ -122,5 +122,24 @@ export const stockTransferController = {
             console.error('Error fetching transfer history:', error);
             res.status(500).json({ message: error.message });
         }
+    },
+
+    // --- SERVICE LOCATIONS (for EMR users) ---
+    async getServiceLocations(req: Request, res: Response) {
+        try {
+            const tenantId = getTenantId(req as any);
+            const serviceId = req.query.serviceId as string;
+            
+            if (!serviceId) {
+                return res.status(400).json({ message: 'serviceId is required' });
+            }
+            
+            // Fetch locations from the locations table filtered by service_id
+            const locations = await pharmacyService.getLocations(tenantId, serviceId, 'SERVICE');
+            res.json(locations);
+        } catch (error: any) {
+            console.error('Error fetching service locations:', error);
+            res.status(500).json({ message: error.message });
+        }
     }
 };

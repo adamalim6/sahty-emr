@@ -17,6 +17,7 @@ interface StockGroup {
     name: string;
     items: InventoryItem[];
     totalQty: number;
+    totalAvailableQty: number;  // Sum of available units (qty - reserved - pending)
     totalValue: number;
 }
 
@@ -66,6 +67,7 @@ export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, produ
                     name: productDef?.name || item.productId,
                     items: [],
                     totalQty: 0,
+                    totalAvailableQty: 0,
                     totalValue: 0
                 };
             }
@@ -73,8 +75,10 @@ export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, produ
             const group = groups[item.productId];
             group.items.push(item);
             
-            const qty = item.theoreticalQty; 
+            const qty = item.theoreticalQty;
+            const availableQty = item.availableUnits ?? item.theoreticalQty; // Fallback to total if not set
             group.totalQty += qty;
+            group.totalAvailableQty += availableQty;
 
             // Value Calc (Simplified for visualization, keeping existing logic mostly)
             let unitValue = item.unitPrice;
@@ -122,6 +126,7 @@ export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, produ
                     name: string;
                     items: InventoryItem[];
                     totalQty: number;
+                    totalAvailableQty: number;
                 }> = {};
 
                 group.items.forEach(item => {
@@ -133,11 +138,13 @@ export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, produ
                             id: locId,
                             name: locName,
                             items: [],
-                            totalQty: 0
+                            totalQty: 0,
+                            totalAvailableQty: 0
                         };
                     }
                     locationGroups[locId].items.push(item);
                     locationGroups[locId].totalQty += item.theoreticalQty;
+                    locationGroups[locId].totalAvailableQty += item.availableUnits ?? item.theoreticalQty;
                 });
 
                 // Display Classification
@@ -184,12 +191,18 @@ export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, produ
                                              {totalBoxes > 0 && totalBoxes < 0.01 ? '< 0.01' : totalBoxes.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                                          </span>
                                     </div>
-                                    <div className="w-px h-8 bg-slate-200"></div>
+                                    <div className="w-px h-10 bg-slate-200"></div>
                                     <div className="flex flex-col items-center">
                                          <span className="text-[10px] uppercase text-slate-400 font-bold flex items-center gap-1">
                                             <BoxSelect size={12} /> TOTAL UNITÉS
                                          </span>
                                          <span className="font-mono text-xl font-bold text-blue-600">{group.totalQty}</span>
+                                         <span 
+                                            className="text-xs text-slate-500 cursor-help"
+                                            title={`Stock physique: ${group.totalQty}\nRéservé: ${group.totalQty - group.totalAvailableQty}\nDisponible: ${group.totalAvailableQty}`}
+                                         >
+                                            Disponible: <span className="font-semibold text-emerald-600">{group.totalAvailableQty}</span>
+                                         </span>
                                     </div>
                                 </div>
                             </div>
@@ -248,11 +261,22 @@ export const SystemStockTable: React.FC<SystemStockTableProps> = ({ items, produ
                                                                     </span>
                                                                 </div>
 
-                                                                <div className="pt-2 border-t border-slate-700/50 flex justify-between items-center">
-                                                                    <span className="text-[10px] font-bold uppercase text-slate-500">Stock Unitaire</span>
-                                                                    <span className="font-mono text-2xl font-bold text-blue-400 group-hover:text-blue-300 transition-colors">
-                                                                        {item.theoreticalQty}
-                                                                    </span>
+                                                                <div className="pt-2 border-t border-slate-700/50">
+                                                                    <div className="flex justify-between items-center">
+                                                                        <span className="text-[10px] font-bold uppercase text-slate-500">Stock Unitaire</span>
+                                                                        <span className="font-mono text-2xl font-bold text-blue-400 group-hover:text-blue-300 transition-colors">
+                                                                            {item.theoreticalQty}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div 
+                                                                        className="flex justify-between items-center mt-1 cursor-help"
+                                                                        title={`Stock physique: ${item.theoreticalQty}\nRéservé: ${item.reservedUnits || 0}\nRetours en attente: ${item.pendingReturnUnits || 0}\nDisponible: ${item.availableUnits ?? item.theoreticalQty}`}
+                                                                    >
+                                                                        <span className="text-[10px] text-slate-500">Disponible</span>
+                                                                        <span className="text-sm font-semibold text-emerald-400">
+                                                                            {item.availableUnits ?? item.theoreticalQty}
+                                                                        </span>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div> 

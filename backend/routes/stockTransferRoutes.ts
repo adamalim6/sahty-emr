@@ -12,6 +12,9 @@ router.get('/demands/:demandId', authenticateToken, stockTransferController.getD
 router.put('/demands/:demandId/status', authenticateToken, stockTransferController.updateDemandStatus);
 router.get('/history/:productId', authenticateToken, stockTransferController.getTransferHistory);
 
+// Service Locations (for EMR users creating demands)
+router.get('/service-locations', authenticateToken, stockTransferController.getServiceLocations);
+
 // Transfers
 router.post('/transfers', authenticateToken, stockTransferController.createTransfer); // Draft
 router.get('/transfers/:transferId', authenticateToken, stockTransferController.getTransfer);

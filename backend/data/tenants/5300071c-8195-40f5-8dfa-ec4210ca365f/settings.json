@@ -1,0 +1,51 @@
+{
+  "users": [
+    {
+      "id": "c4ab0f5f-36ea-476f-8d90-40162f58dc71",
+      "client_id": "5300071c-8195-40f5-8dfa-ec4210ca365f",
+      "username": "euca",
+      "password_hash": "$2b$10$tUMFpF6aALkzmnCQ0nfXLOYkOwL0Jk8iOuOISClTnjUay.zeHFWm2",
+      "nom": "euca",
+      "prenom": "euca",
+      "user_type": "TENANT_SUPERADMIN",
+      "role_id": "c0060b11-6d1e-440b-9e4b-c2239a971830",
+      "active": true,
+      "service_ids": []
+    }
+  ],
+  "roles": [
+    {
+      "id": "ca93b90d-d136-498c-abac-080c0c215513",
+      "name": "Super Admin Global",
+      "code": "SUPER_ADMIN",
+      "permissions": [
+        "sa_clients",
+        "sa_organismes",
+        "sa_roles",
+        "sa_actes"
+      ]
+    },
+    {
+      "id": "c0060b11-6d1e-440b-9e4b-c2239a971830",
+      "name": "Administrateur Structure",
+      "code": "ADMIN_STRUCTURE",
+      "permissions": [
+        "st_users",
+        "st_services",
+        "st_rooms",
+        "st_pricing",
+        "st_roles"
+      ],
+      "modules": [
+        "SETTINGS",
+        "PHARMACY",
+        "EMR"
+      ]
+    }
+  ],
+  "services": [],
+  "unitTypes": [],
+  "serviceUnits": [],
+  "pricing": [],
+  "rooms": []
+}

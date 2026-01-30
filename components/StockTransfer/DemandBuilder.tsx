@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { useAuth, UserType } from '../../context/AuthContext';
-import { Plus, Search, Trash2, Send, AlertCircle, Box, Pill } from 'lucide-react';
+import { Plus, Search, Trash2, Send, AlertCircle, Box, Pill, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface DemandItem {
@@ -10,6 +10,7 @@ interface DemandItem {
     qty_requested: number;
     unitsPerBox: number;
     unitType: 'BOX' | 'UNIT';
+    target_stock_location_id?: string;
 }
 
 const DemandBuilder: React.FC = () => {
@@ -17,6 +18,7 @@ const DemandBuilder: React.FC = () => {
     const [services, setServices] = useState<any[]>([]);
     const [selectedServiceId, setSelectedServiceId] = useState<string>('');
     const [priority, setPriority] = useState<'ROUTINE' | 'URGENT'>('ROUTINE');
+    const [locations, setLocations] = useState<any[]>([]);
     
     const [searchTerm, setSearchTerm] = useState('');
     const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -27,6 +29,14 @@ const DemandBuilder: React.FC = () => {
     useEffect(() => {
         loadServices();
     }, []);
+
+    useEffect(() => {
+        if (selectedServiceId) {
+            loadLocations(selectedServiceId);
+        } else {
+            setLocations([]);
+        }
+    }, [selectedServiceId]);
 
     const loadServices = async () => {
         try {
@@ -39,6 +49,16 @@ const DemandBuilder: React.FC = () => {
         } catch (error) {
             console.error(error);
             toast.error('Erreur chargement services');
+        }
+    };
+    
+    const loadLocations = async (serviceId: string) => {
+        try {
+            // Fetch locations specifically for this service (accessible to EMR users)
+            const locs = await api.getServiceLocations(serviceId);
+            setLocations(locs || []);
+        } catch (e) {
+            console.error("Error loading locations", e);
         }
     };
 
@@ -63,13 +83,16 @@ const DemandBuilder: React.FC = () => {
         }
         
         const unitsPerBox = product.unitsPerBox || 1;
+        // Default location logic: prefer first available or empty
+        const defaultLoc = locations.length > 0 ? locations[0].id : undefined;
         
         setItems([...items, { 
             product_id: product.id, 
             product_name: product.name, 
             qty_requested: 1,
             unitsPerBox: unitsPerBox,
-            unitType: 'BOX' // Default to BOX as requested
+            unitType: 'BOX', // Default to BOX as requested
+            target_stock_location_id: defaultLoc
         }]);
         setSearchResults([]);
         setSearchTerm('');
@@ -78,6 +101,12 @@ const DemandBuilder: React.FC = () => {
     const updateQty = (index: number, qty: number) => {
         const newItems = [...items];
         newItems[index].qty_requested = qty;
+        setItems(newItems);
+    };
+
+    const updateLocation = (index: number, locationId: string) => {
+        const newItems = [...items];
+        newItems[index].target_stock_location_id = locationId;
         setItems(newItems);
     };
 
@@ -103,6 +132,11 @@ const DemandBuilder: React.FC = () => {
             toast.error('La liste est vide');
             return;
         }
+        // Validate Locations
+        if (items.some(i => !i.target_stock_location_id)) {
+             toast.error('Veuillez sélectionner un emplacement cible pour tous les produits');
+             return;
+        }
 
         setLoading(true);
         try {
@@ -114,7 +148,8 @@ const DemandBuilder: React.FC = () => {
                     const finalQty = i.unitType === 'BOX' ? (i.qty_requested * i.unitsPerBox) : i.qty_requested;
                     return { 
                         product_id: i.product_id, 
-                        qty_requested: finalQty
+                        qty_requested: finalQty,
+                        target_stock_location_id: i.target_stock_location_id
                     };
                 }),
                 requested_by: user?.username
@@ -132,7 +167,7 @@ const DemandBuilder: React.FC = () => {
     };
 
     return (
-        <div className="p-6 max-w-4xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200">
+        <div className="p-6 max-w-5xl mx-auto bg-white rounded-xl shadow-sm border border-slate-200">
             <h2 className="text-xl font-bold mb-6 text-slate-800 flex items-center gap-2">
                 <Plus className="w-6 h-6 text-blue-600" />
                 Nouvelle Demande de Stock
@@ -206,6 +241,7 @@ const DemandBuilder: React.FC = () => {
                     <thead className="bg-slate-50 border-b">
                         <tr>
                             <th className="p-3 font-semibold text-slate-700">Produit</th>
+                            <th className="p-3 font-semibold text-slate-700 w-48">Destination</th>
                             <th className="p-3 font-semibold text-slate-700 w-32">Type</th>
                             <th className="p-3 font-semibold text-slate-700 w-32">Quantité</th>
                             <th className="p-3 font-semibold text-slate-700 w-16"></th>
@@ -214,7 +250,7 @@ const DemandBuilder: React.FC = () => {
                     <tbody className="divide-y">
                         {items.length === 0 ? (
                             <tr>
-                                <td colSpan={4} className="p-8 text-center text-slate-400 italic">
+                                <td colSpan={5} className="p-8 text-center text-slate-400 italic">
                                     Aucun produit ajouté. Utilisez la recherche ci-dessus.
                                 </td>
                             </tr>
@@ -225,6 +261,21 @@ const DemandBuilder: React.FC = () => {
                                         <div className="font-medium text-slate-800">{item.product_name}</div>
                                         <div className="text-xs text-slate-400">
                                             {item.unitsPerBox > 1 ? `1 Boite = ${item.unitsPerBox} Unités` : 'Unitaire'}
+                                        </div>
+                                    </td>
+                                    <td className="p-3">
+                                        <div className="relative">
+                                            <MapPin className="absolute left-2 top-2.5 w-4 h-4 text-slate-400" />
+                                            <select
+                                                value={item.target_stock_location_id || ''}
+                                                onChange={(e) => updateLocation(idx, e.target.value)}
+                                                className="w-full pl-8 p-2 border border-slate-200 rounded-lg text-sm bg-white"
+                                            >
+                                                {locations.length === 0 && <option value="">Aucun emplacement</option>}
+                                                {locations.map(loc => (
+                                                    <option key={loc.id} value={loc.id}>{loc.name}</option>
+                                                ))}
+                                            </select>
                                         </div>
                                     </td>
                                     <td className="p-3">

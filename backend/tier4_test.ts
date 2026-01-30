@@ -70,8 +70,8 @@ async function main() {
     // Create a real PHARMACY location for testing (composite FKs require real location UUIDs)
     const testLocationId = uuidv4();
     await tenantQuery(tenantId, `
-        INSERT INTO locations (location_id, tenant_id, name, scope, type, is_active, status)
-        VALUES ($1, $2, 'Test Pharmacy T4', 'PHARMACY', 'PHYSICAL', true, 'ACTIVE')
+        INSERT INTO locations (location_id, tenant_id, name, scope, type, status)
+        VALUES ($1, $2, 'Test Pharmacy T4', 'PHARMACY', 'PHYSICAL', 'ACTIVE')
         ON CONFLICT (location_id) DO NOTHING
     `, [testLocationId, tenantId]);
     const sourceLocation = testLocationId; // Use UUID, not text string

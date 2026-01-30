@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { globalAdminService } from '../services/globalAdminService';
 import { settingsService } from '../services/settingsService';
-import { TenantStore } from '../utils/tenantStore';
+// TenantStore removed - using PostgreSQL for tenant list
 import { User } from '../models/auth';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-change-in-prod';
@@ -74,17 +74,19 @@ export const login = async (req: Request, res: Response) => {
             });
         }
 
-        // 2. Fallback: Scan All Tenants for Regular Users (Doctors, Nurses in <tenant>.db)
+        // 2. Fallback: Scan All Tenants for Regular Users (in Tenant PostgreSQL DBs)
         log('User not in Global DB. Scanning Tenants for regular user...');
-        const tenants = TenantStore.listTenants(); // Now likely returns folder names which are Tenant IDs
+        
+        // Use PostgreSQL client list instead of deleted data/tenants folder
+        const clients = await globalAdminService.getAllClients();
+        const tenants = clients.map((c: any) => c.id);
+        log(`Found ${tenants.length} tenants to scan: ${tenants.join(', ')}`);
         
         for (const tenantId of tenants) {
-            try {
-                // Skip if not a valid tenant directory (e.g. legacy_json_backup)
-                // TenantStore.listTenants filters for directories.
-                if (tenantId.startsWith('legacy_')) continue; 
-
+            try { 
+                log(`Checking tenant ${tenantId}...`);
                 const users = await settingsService.getUsers(tenantId);
+                log(`  -> Found ${users.length} users in tenant ${tenantId}`);
                 const user = users.find(u => u.username === username);
                 
                 if (user && user.active !== false) {

@@ -27,6 +27,7 @@ router.get('/loose-units', pharmacyController.getLooseUnits);
 
 // Locations
 router.get('/locations', pharmacyController.getLocations);
+router.get('/locations/by-context', pharmacyController.getLocationsByContext); // Context-based filtering
 router.post('/locations', pharmacyController.createLocation);
 router.put('/locations/:id', pharmacyController.updateLocation);
 router.delete('/locations/:id', pharmacyController.deleteLocation);
@@ -54,10 +55,7 @@ router.post('/quarantine/process', pharmacyController.processQuarantine);
 router.post('/dispensations/fefo', dispenseWithFEFO);
 router.get('/dispensations/admission/:admissionId', getDispensationsByAdmission);
 
-// Replenishment
-router.get('/replenishments', pharmacyController.getReplenishmentRequests);
-router.post('/replenishments', pharmacyController.createReplenishmentRequest);
-router.put('/replenishments/:id/status', pharmacyController.updateReplenishmentRequestStatus);
+// NOTE: Legacy replenishment routes removed - now using /stock-transfers/demands endpoints
 
 router.post('/service-dispense', pharmacyController.dispenseFromServiceStock);
 

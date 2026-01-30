@@ -92,10 +92,20 @@ export const api = {
     }),
     getAppointments: () => fetchJson<Appointment[]>('/emr/appointments'),
     getRooms: () => fetchJson<Room[]>('/emr/rooms'),
+    
+    // Service Stock (EMR-based - for nurses/clinical staff)
+    getServiceStock: (serviceId?: string) => {
+        const params = serviceId ? `?serviceId=${serviceId}` : '';
+        return fetchJson<any[]>(`/emr/service-stock${params}`);
+    },
+    getUserServices: () => fetchJson<{ id: string; name: string }[]>('/emr/user-services'),
 
     // Pharmacy
-    getInventory: (serviceId?: string) => {
-        const query = serviceId ? `?serviceId=${serviceId}` : '';
+    getInventory: (serviceId?: string, scope?: 'PHARMACY' | 'SERVICE') => {
+        const params = new URLSearchParams();
+        if (serviceId) params.append('serviceId', serviceId);
+        if (scope) params.append('scope', scope);
+        const query = params.toString() ? `?${params.toString()}` : '';
         return fetchJson<InventoryItem[]>(`/pharmacy/inventory${query}`);
     },
     getLooseUnits: (serviceId?: string) => fetchJson<any[]>(`/pharmacy/loose-units${serviceId ? `?serviceId=${serviceId}` : ''}`),
@@ -104,6 +114,16 @@ export const api = {
         return fetchJson<any>(`/pharmacy/catalog${query}`);
     },
     getLocations: (serviceId?: string, scope?: 'PHARMACY' | 'SERVICE') => fetchJson<StockLocation[]>(`/pharmacy/locations?serviceId=${serviceId || ''}&scope=${scope || 'PHARMACY'}`),
+    
+    /**
+     * Context-Based Location Access
+     * - CONFIG_LOCATIONS: Pharmacy Emplacements config (PHARMACY + PHYSICAL)
+     * - STOCK_PHARMACY: Stock Pharma page (PHARMACY + PHYSICAL)
+     * - STOCK_SERVICE: Stock Service page (SERVICE + PHYSICAL + serviceId)
+     * - SYSTEM_LOCATIONS: All locations including VIRTUAL
+     */
+    getLocationsByContext: (context: 'CONFIG_LOCATIONS' | 'STOCK_PHARMACY' | 'STOCK_SERVICE' | 'SYSTEM_LOCATIONS', serviceId?: string) => 
+        fetchJson<StockLocation[]>(`/pharmacy/locations/by-context?context=${context}${serviceId ? `&serviceId=${serviceId}` : ''}`),
     createLocation: (data: any) => fetchJson<StockLocation>('/pharmacy/locations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -273,19 +293,11 @@ export const api = {
         method: 'DELETE'
     }),
 
-    // Replenishment
-    getReplenishmentRequests: () => fetchJson<any[]>('/pharmacy/replenishments'),
-    createReplenishmentRequest: (data: any) => fetchJson<any>('/pharmacy/replenishments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    }),
-    updateReplenishmentRequestStatus: (id: string, status: string, processedRequest?: any) => fetchJson<any>(`/pharmacy/replenishments/${id}/status`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status, processedRequest })
-    }),
 
+    // NOTE: Legacy replenishment API methods removed - use stock transfer APIs instead
+    // getReplenishmentRequests -> getStockDemands
+    // createReplenishmentRequest -> createStockDemand
+    // updateReplenishmentRequestStatus -> updateStockDemandStatus
 
     // Dispensation
     dispenseWithFEFO: (data: any) => fetchJson<any>('/pharmacy/dispensations/fefo', {
@@ -444,6 +456,9 @@ export const api = {
     },
 
     getTransferHistory: (productId: string) => fetchJson<any[]>(`/stock-transfers/history/${productId}`),
+
+    // Service locations for demand creation (accessible to EMR users)
+    getServiceLocations: (serviceId: string) => fetchJson<StockLocation[]>(`/stock-transfers/service-locations?serviceId=${serviceId}`),
 
     // --- Stock Reservations (HOLD Engine) ---
     

@@ -1,11 +1,16 @@
 import { Router } from 'express';
 import { getPatients, getAdmissions, getAppointments, getRooms, closeAdmission, createAdmission, createPatient, updatePatient, getPatient, getConsumptionsByAdmission } from '../controllers/emrController';
+import { getServiceStock, getUserServices } from '../controllers/serviceStockController';
 import { authenticateToken, requireTenant } from '../middleware/authMiddleware';
 
 const router = Router();
 
 // Base Auth
 router.use(authenticateToken);
+
+// Service Stock - For nurses/clinical staff to view their department's stock
+router.get('/service-stock', requireTenant, getServiceStock);
+router.get('/user-services', requireTenant, getUserServices);
 
 // GLOBAL: Patients (Shared Directory)
 router.get('/patients', getPatients);

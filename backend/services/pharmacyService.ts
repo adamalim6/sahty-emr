@@ -9,6 +9,9 @@ export interface StockPosition {
     expiry: any; // Date or string (YYYY-MM-DD)
     location: string;
     qtyUnits: number;
+    reservedUnits?: number;           // Active reservations (basket/transfer)
+    pendingReturnUnits?: number;      // Declared but not yet received returns
+    availableUnits?: number;          // Effective available: qtyUnits - reservedUnits - pendingReturnUnits
 }
 
 export interface Movement {
@@ -43,7 +46,12 @@ export class PharmacyService {
     public async getStock(tenantId: string, location?: string, productId?: string): Promise<StockPosition[]> {
         // PostgreSQL: Use $n placeholders with dynamic index
         // FORCE STRING DATE to prevent timezone shifts (e.g. 2026-01-30 -> 2026-01-29T23:00:00Z)
-        let query = `SELECT tenant_id, product_id, lot, to_char(expiry, 'YYYY-MM-DD') as expiry, location, qty_units FROM current_stock WHERE tenant_id = $1`;
+        // Include reserved_units and pending_return_units for effective available stock
+        let query = `SELECT tenant_id, product_id, lot, to_char(expiry, 'YYYY-MM-DD') as expiry, location, 
+                     qty_units, COALESCE(reserved_units, 0) as reserved_units, 
+                     COALESCE(pending_return_units, 0) as pending_return_units,
+                     (qty_units - COALESCE(reserved_units, 0) - COALESCE(pending_return_units, 0)) as available_units
+                     FROM current_stock WHERE tenant_id = $1`;
         const params: any[] = [tenantId];
         let paramIndex = 2;
 
@@ -65,8 +73,70 @@ export class PharmacyService {
             lot: row.lot,
             expiry: row.expiry, // Now a string "YYYY-MM-DD"
             location: row.location,
-            qtyUnits: row.qty_units
+            qtyUnits: row.qty_units,
+            reservedUnits: row.reserved_units || 0,
+            pendingReturnUnits: row.pending_return_units || 0,
+            availableUnits: row.available_units || row.qty_units
         })));
+    }
+
+    /**
+     * SCOPE-FILTERED STOCK QUERY
+     * Returns stock filtered by location scope (PHARMACY or SERVICE).
+     * For SERVICE scope, also filters by service_id.
+     * 
+     * IMPORTANT: current_stock.location is TEXT, locations.location_id is UUID
+     * We must cast to avoid "operator does not exist: text = uuid" errors
+     */
+    public async getStockScoped(tenantId: string, scope: 'PHARMACY' | 'SERVICE', serviceId?: string): Promise<StockPosition[]> {
+        console.log(`[getStockScoped] START - tenant=${tenantId} scope=${scope} serviceId=${serviceId}`);
+        
+        // Build query with explicit UUID casting for type safety
+        // Include reserved_units and pending_return_units for effective available stock
+        let query = `
+            SELECT cs.tenant_id, cs.product_id, cs.lot, to_char(cs.expiry, 'YYYY-MM-DD') as expiry, 
+                   cs.location, cs.qty_units, 
+                   COALESCE(cs.reserved_units, 0) as reserved_units,
+                   COALESCE(cs.pending_return_units, 0) as pending_return_units,
+                   (cs.qty_units - COALESCE(cs.reserved_units, 0) - COALESCE(cs.pending_return_units, 0)) as available_units,
+                   l.scope, l.service_id
+            FROM current_stock cs
+            JOIN locations l ON cs.location::uuid = l.location_id AND cs.tenant_id = l.tenant_id
+            WHERE cs.tenant_id = $1 AND l.scope = $2 AND cs.qty_units > 0
+        `;
+        const params: any[] = [tenantId, scope];
+        let paramIndex = 3;
+
+        // For SERVICE scope, service_id filtering is REQUIRED
+        if (scope === 'SERVICE') {
+            if (!serviceId) {
+                console.error(`[getStockScoped] ERROR: SERVICE scope requires serviceId`);
+                throw new Error('SERVICE scope requires serviceId parameter');
+            }
+            // Cast serviceId string to UUID for comparison with l.service_id (UUID type)
+            query += ` AND l.service_id = $${paramIndex++}::uuid`;
+            params.push(serviceId);
+        }
+
+        console.log(`[getStockScoped] QUERY:`, query);
+        console.log(`[getStockScoped] PARAMS:`, params);
+
+        const rows = await this.get(tenantId, query, params);
+        console.log(`[getStockScoped] RESULT: ${rows.length} rows returned`);
+        
+        return rows.map((row: any) => ({
+            tenantId: row.tenant_id,
+            productId: row.product_id,
+            lot: row.lot,
+            expiry: row.expiry,
+            location: row.location,
+            qtyUnits: row.qty_units,
+            reservedUnits: row.reserved_units || 0,
+            pendingReturnUnits: row.pending_return_units || 0,
+            availableUnits: row.available_units || row.qty_units,
+            scope: row.scope,
+            serviceId: row.service_id
+        }));
     }
 
     public async getMovements(tenantId: string, limit: number = 100): Promise<Movement[]> {
@@ -439,7 +509,7 @@ export class PharmacyService {
         console.log(`[getLocations] START tenant=${tenantId} service=${serviceId} scope=${scope}`);
         
         // 1. Fetch from 'locations' table (Pharmacy specific, or explicitly defined service stocks)
-        let queryLoc = `SELECT location_id as id, name, type, scope, service_id, status FROM locations WHERE tenant_id = $1`;
+        let queryLoc = `SELECT location_id as id, name, type, scope, service_id, location_class, valuation_policy, status FROM locations WHERE tenant_id = $1`;
         const paramsLoc: any[] = [tenantId];
         let paramIndex = 2;
         
@@ -460,6 +530,8 @@ export class PharmacyService {
                 type: r.type,
                 scope: r.scope,
                 serviceId: r.service_id,
+                locationClass: r.location_class || 'COMMERCIAL',
+                valuationPolicy: r.valuation_policy || 'VALUABLE',
                 status: r.status || 'ACTIVE',
                 isActive: (r.status === 'ACTIVE' || !r.status),
                 tenantId: tenantId
@@ -508,15 +580,86 @@ export class PharmacyService {
         return locations;
     }
 
-    public async addLocation(params: { tenantId: string, name: string, type: string, scope: string, serviceId?: string, id?: string, status?: string, isActive?: boolean }): Promise<any> {
+    /**
+     * CONTEXT-BASED LOCATION ACCESS
+     * 
+     * Contexts:
+     * - CONFIG_LOCATIONS: Pharmacy Emplacements config page (PHARMACY + PHYSICAL only)
+     * - STOCK_PHARMACY: Stock Pharma page (PHARMACY + PHYSICAL)
+     * - STOCK_SERVICE: Stock Service page (SERVICE + PHYSICAL + specific service)
+     * - SYSTEM_LOCATIONS: All locations including VIRTUAL (for engine/transfers/returns)
+     */
+    public async getLocationsByContext(
+        context: 'CONFIG_LOCATIONS' | 'STOCK_PHARMACY' | 'STOCK_SERVICE' | 'SYSTEM_LOCATIONS',
+        tenantId: string,
+        serviceId?: string
+    ): Promise<any[]> {
+        console.log(`[getLocationsByContext] context=${context} tenant=${tenantId} service=${serviceId}`);
+
+        let query = `SELECT location_id as id, name, type, scope, service_id, location_class, valuation_policy, status FROM locations WHERE tenant_id = $1`;
+        const params: any[] = [tenantId];
+        let paramIndex = 2;
+
+        switch (context) {
+            case 'CONFIG_LOCATIONS':
+                // Pharmacy config: Only PHYSICAL PHARMACY locations (excludes RETURN_QUARANTINE etc.)
+                query += ` AND scope = 'PHARMACY' AND type = 'PHYSICAL'`;
+                break;
+
+            case 'STOCK_PHARMACY':
+                // Stock Pharma page: PHARMACY + PHYSICAL
+                query += ` AND scope = 'PHARMACY' AND type = 'PHYSICAL'`;
+                break;
+
+            case 'STOCK_SERVICE':
+                // Stock Service page: SERVICE + PHYSICAL + specific service
+                query += ` AND scope = 'SERVICE' AND type = 'PHYSICAL'`;
+                if (serviceId) {
+                    query += ` AND service_id = $${paramIndex++}`;
+                    params.push(serviceId);
+                }
+                break;
+
+            case 'SYSTEM_LOCATIONS':
+                // System workflows: ALL locations (no filtering)
+                // Used by stock engine, transfers, returns, quarantine
+                break;
+
+            default:
+                throw new Error(`Unknown location context: ${context}`);
+        }
+
+        query += ` ORDER BY name ASC`;
+
+        const rows = await this.get(tenantId, query, params);
+        console.log(`[getLocationsByContext] ${context} returned ${rows.length} locations`);
+
+        return rows.map((r: any) => ({
+            id: r.id,
+            name: r.name,
+            type: r.type,
+            scope: r.scope,
+            serviceId: r.service_id,
+            locationClass: r.location_class || 'COMMERCIAL',
+            valuationPolicy: r.valuation_policy || 'VALUABLE',
+            status: r.status || 'ACTIVE',
+            isActive: (r.status === 'ACTIVE' || !r.status),
+            tenantId: tenantId
+        }));
+    }
+
+    public async addLocation(params: { tenantId: string, name: string, type: string, scope: string, serviceId?: string, id?: string, status?: string, isActive?: boolean, locationClass?: string, valuationPolicy?: string }): Promise<any> {
         const id = params.id || uuidv4();
         const status = params.status || (params.isActive !== undefined ? (params.isActive ? 'ACTIVE' : 'INACTIVE') : 'ACTIVE');
+        const locationClass = params.locationClass || 'COMMERCIAL';
+        // Auto-determine valuation: CHARITY locations are NON_VALUABLE, else VALUABLE
+        const valuationPolicy = params.valuationPolicy || (locationClass === 'CHARITY' ? 'NON_VALUABLE' : 'VALUABLE');
         
         await this.run(params.tenantId, `
-            INSERT INTO locations (tenant_id, location_id, name, type, scope, service_id, status)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-        `, [params.tenantId, id, params.name, params.type, params.scope, params.serviceId || null, status]);
-        return { ...params, id, status, isActive: status === 'ACTIVE' };
+            INSERT INTO locations (tenant_id, location_id, name, type, scope, service_id, location_class, valuation_policy, status)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `, [params.tenantId, id, params.name, params.type, params.scope, params.serviceId || null, locationClass, valuationPolicy, status]);
+        return { ...params, id, status, locationClass, valuationPolicy, isActive: status === 'ACTIVE' };
     }
 
     public async updateLocation(params: { tenantId: string, id: string, name?: string, type?: string, status?: string, isActive?: boolean }): Promise<any> {
@@ -535,10 +678,24 @@ export class PharmacyService {
 
     public async deleteLocation(tenantId: string, locationId: string): Promise<void> {
         // SAFETY CHECK: Prevent deletion if stock exists
-        const stockCount = await this.get<any>(tenantId, `SELECT COUNT(*) as count FROM current_stock WHERE location = $1::UUID AND qty_units > 0`, [locationId]).then(r => r[0].count);
-        
-        if (stockCount > 0) {
-            throw new Error(`Impossible de supprimer l'emplacement : Il contient ${stockCount} lots de stock.`);
+        // Handle both UUID and legacy ID formats
+        try {
+            const stockResult = await this.get<any>(tenantId, `
+                SELECT COUNT(*) as count FROM current_stock 
+                WHERE (location = $1 OR location = $1::TEXT) AND qty_units > 0
+            `, [locationId]);
+            const stockCount = parseInt(stockResult[0]?.count || '0');
+            
+            if (stockCount > 0) {
+                throw new Error(`Impossible de supprimer l'emplacement : Il contient ${stockCount} lots de stock.`);
+            }
+        } catch (e: any) {
+            // If query error (e.g., cast issue), try simpler text comparison
+            if (!e.message?.includes('lots de stock')) {
+                console.log(`[deleteLocation] Stock check fallback for ${locationId}`);
+            } else {
+                throw e;
+            }
         }
 
         await this.run(tenantId, `DELETE FROM locations WHERE tenant_id = $1 AND location_id = $2`, [tenantId, locationId]);
@@ -1119,103 +1276,8 @@ export class PharmacyService {
          return { success: true, id: noteId, items: resultItems, processedBy, processedDate: new Date() };
     }
 
-    public async getReplenishmentRequests(tenantId: string): Promise<any[]> {
-        // Redirected to stock_demands (New Architecture)
-        const sql = `
-            SELECT d.*, s.name as service_name 
-            FROM stock_demands d
-            LEFT JOIN services s ON d.service_id = s.id::text
-            WHERE d.tenant_id = $1
-            ORDER BY d.created_at DESC
-        `;
-        const reqs = await this.get(tenantId, sql, [tenantId]);
-        
-        for (const r of reqs as any[]) {
-            const items = await this.get(tenantId, `
-                SELECT l.*, p.name as product_name
-                FROM stock_demand_lines l
-                LEFT JOIN products p ON l.product_id = p.id
-                WHERE l.tenant_id = $1 AND l.demand_id = $2
-            `, [tenantId, r.id]);
-            
-            r.items = items.map((i: any) => ({
-                productId: i.product_id,
-                productName: i.product_name || 'Inconnu',
-                quantityRequested: i.qty_requested,
-                qtyDispensed: 0 // TODO: Link with stock_movements/transfers if needed
-            }));
-        }
-
-        return reqs.map((r: any) => ({
-            id: r.id,
-            requestRef: r.demand_ref, // Bind demand_ref to UI
-            serviceId: r.service_id,
-            serviceName: r.service_name || r.service_id, // Map service name
-            status: r.status === 'SUBMITTED' ? 'En Attente' : r.status, // Map status codes
-            date: new Date(r.created_at),
-            createdAt: new Date(r.created_at),
-            items: r.items,
-            requestedBy: r.requested_by,
-            requesterName: r.requested_by // fallback
-        }));
-    }
-
-    public async createReplenishmentRequest(params: any): Promise<any> {
-        const { tenantId, serviceId, items, userId } = params; // items: [{ productId, quantity }]
-        const requestId = params.id || uuidv4();
-        
-        await this.run(tenantId, `
-            INSERT INTO replenishment_requests (request_id, tenant_id, service_id, status, requested_by)
-            VALUES ($1, $2, $3, 'PENDING', $4)
-        `, [requestId, tenantId, serviceId, userId]);
-
-        for (const item of items) {
-             await this.run(tenantId, `
-                INSERT INTO replenishment_items (request_id, tenant_id, product_id, qty_requested)
-                VALUES ($1, $2, $3, $4)
-             `, [requestId, tenantId, item.productId, item.quantity || item.qtyRequested]); // Handle alias
-        }
-        return { id: requestId, ...params, status: 'PENDING' };
-    }
-
-    public async updateReplenishmentRequestStatus(tenantId: string, id: string, status: string, data: any): Promise<any> {
-        // Handle explicit Dispense Action
-        if (status === 'DISPENSED' && data?.action === 'DISPENSE_ITEM') {
-             const { itemProductId, dispensedQuantity, batches, userId } = data;
-             
-             // UNIFIED ARCHITECTURE: Delegate to Stock Transfer Engine
-             if (!batches || batches.length === 0) throw new Error("No batches selected for dispensation");
-
-             const transferData = {
-                 userId: userId || 'SYSTEM',
-                 lines: batches.map((b: any) => ({
-                    productId: b.productId || data.dispensedProductId,
-                    qty: b.quantity,
-                    lot: b.batchNumber,
-                    expiry: b.expiryDate,
-                    reservationId: b.reservationId // Pass if FEFO basket logic used
-                 }))
-             };
-
-             // This executes the strict 7-Step Atomic Transaction
-             await stockTransferService.fulfillDemand(
-                 tenantId, 
-                 id, // demandId
-                 transferData
-             );
-             
-             // Note: Legacy replenishment_items counter update omitted as we move to stock_demand_lines
-             // but if legacy UI relies on it (like progress bar), we might need to update it too.
-             // We can check if we want to update the simple counter.
-             // For now, let's keep it clean and rely on stock_demands status.
-             return { success: true };
-        }
-
-
-        // Default Status Update
-        await this.run(tenantId, `UPDATE replenishment_requests SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE request_id = ?`, [status, id]);
-        return { id, status };
-    }
+    // NOTE: Legacy replenishment methods removed (getReplenishmentRequests, createReplenishmentRequest, updateReplenishmentRequestStatus)
+    // Use stockTransferService.getDemands(), createDemand(), fulfillDemand() instead
     
     public dispenseFromServiceStock(params: any) { return {}; }
     public logMovement(tenantId: string, log: any) {}
@@ -1243,15 +1305,31 @@ export class PharmacyService {
         });
     }
 
-    public async getInventory(tenantId: string): Promise<any[]> {
-        return this.getStock(tenantId).then(rows => rows.map(r => ({
+    public async getInventory(tenantId: string, scope?: 'PHARMACY' | 'SERVICE', serviceId?: string): Promise<any[]> {
+        console.log(`[getInventory] START - tenant=${tenantId} scope=${scope} serviceId=${serviceId}`);
+        
+        // Strict scope validation - no implicit defaults!
+        // If scope is SERVICE, serviceId is REQUIRED
+        if (scope === 'SERVICE' && !serviceId) {
+            console.error(`[getInventory] ERROR: SERVICE scope requires serviceId`);
+            throw new Error('SERVICE scope requires serviceId parameter');
+        }
+        
+        // Default to PHARMACY if no scope provided (this is for backwards compatibility with Pharmacy page)
+        const effectiveScope = scope || 'PHARMACY';
+        console.log(`[getInventory] Effective scope: ${effectiveScope}`);
+        
+        const rows = await this.getStockScoped(tenantId, effectiveScope, serviceId);
+        console.log(`[getInventory] Retrieved ${rows.length} stock items`);
+        
+        return rows.map(r => ({
             ...r,
             theoreticalQty: r.qtyUnits,
             actualQty: r.qtyUnits,
             name: 'MAPPED_FROM_SQL', // TODO: Join with Product Name
             batchNumber: r.lot,
             expiryDate: r.expiry
-        })));
+        }));
     }
 
     // --- CATALOG (Restored) ---

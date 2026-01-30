@@ -167,8 +167,8 @@ async function migrateLocationsArchitecture(tenantId: string): Promise<void> {
 
         for (const loc of systemLocations) {
             const result = await client.query(`
-                INSERT INTO locations (location_id, tenant_id, code, name, scope, type, is_system, is_active, status)
-                VALUES ($1, $2, $3, $4, 'SYSTEM', 'VIRTUAL', true, true, 'ACTIVE')
+                INSERT INTO locations (location_id, tenant_id, code, name, scope, type, is_system, status)
+                VALUES ($1, $2, $3, $4, 'SYSTEM', 'VIRTUAL', true, 'ACTIVE')
                 ON CONFLICT (tenant_id, code) WHERE code IS NOT NULL DO NOTHING
                 RETURNING location_id
             `, [uuidv4(), tenantId, loc.code, loc.name]);
@@ -330,7 +330,7 @@ async function migrateLocationsArchitecture(tenantId: string): Promise<void> {
             CREATE OR REPLACE FUNCTION prevent_system_location_deactivate()
             RETURNS trigger AS $$
             BEGIN
-                IF (OLD.scope = 'SYSTEM' OR OLD.is_system = true) AND NEW.is_active = false THEN
+                IF (OLD.scope = 'SYSTEM' OR OLD.is_system = true) AND NEW.status = 'INACTIVE' THEN
                     RAISE EXCEPTION 'Cannot deactivate SYSTEM locations (tenant_id=%, code=%)', OLD.tenant_id, OLD.code;
                 END IF;
                 RETURN NEW;
@@ -341,7 +341,7 @@ async function migrateLocationsArchitecture(tenantId: string): Promise<void> {
         await client.query(`DROP TRIGGER IF EXISTS trg_prevent_system_location_deactivate ON locations`);
         await client.query(`
             CREATE TRIGGER trg_prevent_system_location_deactivate
-            BEFORE UPDATE OF is_active ON locations
+            BEFORE UPDATE OF status ON locations
             FOR EACH ROW
             EXECUTE FUNCTION prevent_system_location_deactivate()
         `);

@@ -35,7 +35,7 @@ import { GlobalProductManager } from './components/SuperAdmin/GlobalProductManag
 import { GlobalDCIManager } from './components/SuperAdmin/GlobalDCIManager';
 import { EMDNSandboxPage } from './components/SuperAdmin/EMDNSandboxPage';
 import { RoleDetailPage } from './components/SuperAdmin/RoleDetailPage';
-import { ServiceStock } from './components/ServiceStock';
+import { ServiceStockPage } from './components/ServiceStock/ServiceStockPage';
 import ServiceStockManager from './components/StockTransfer/ServiceStockManager';
 import { EmrLocationManager } from './components/EmrLocationManager';
 import TransferManager from './components/StockTransfer/TransferManager';
@@ -89,7 +89,7 @@ const App: React.FC = () => {
             <Route path="calendar" element={<CalendarView />} />
             <Route path="waiting-room" element={<WaitingRoom />} />
             <Route path="map" element={<WardMap />} />
-            <Route path="service-stock" element={<ServiceStock />} />
+            <Route path="service-stock" element={<ServiceStockPage />} />
             <Route path="replenishment" element={<ServiceStockManager />} />
 
           </Route>

@@ -82,6 +82,20 @@ export class TenantProvisioningService {
                     console.warn(`[TenantProvisioning] Schema file not found: ${filePath}`);
                 }
             }
+            
+            // Create essential system locations
+            console.log(`[TenantProvisioning] Creating RETURN_QUARANTINE location...`);
+            await pool.query(`
+                INSERT INTO locations (
+                    location_id, tenant_id, name, type, scope, 
+                    location_class, valuation_policy, service_id, status, created_at
+                ) VALUES (
+                    gen_random_uuid(), $1, 'RETURN_QUARANTINE', 'VIRTUAL', 'PHARMACY',
+                    'COMMERCIAL', 'NON_VALUABLE', NULL, 'ACTIVE', NOW()
+                )
+                ON CONFLICT DO NOTHING
+            `, [tenantId]);
+            
             console.log(`[TenantProvisioning] Schema applied successfully.`);
         } finally {
             await pool.end();

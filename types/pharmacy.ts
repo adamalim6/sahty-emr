@@ -14,8 +14,11 @@ export interface StockLocation {
   description?: string;
   isActive: boolean;
   tenantId?: string;
+  type?: 'PHYSICAL' | 'VIRTUAL';
   scope?: 'PHARMACY' | 'SERVICE';
   serviceId?: string;
+  locationClass?: 'COMMERCIAL' | 'CHARITY';
+  valuationPolicy?: 'VALUABLE' | 'NON_VALUABLE';
 }
 
 export interface InventoryItem {
@@ -32,6 +35,9 @@ export interface InventoryItem {
   actualQty: number | null;
   lastUpdated?: Date;
   tenantId?: string;
+  reservedUnits?: number;           // Active reservations (basket/transfer)
+  pendingReturnUnits?: number;      // Declared but not yet received returns
+  availableUnits?: number;          // Effective available: theoreticalQty - reserved - pendingReturn
 }
 
 export enum InventoryStatus {

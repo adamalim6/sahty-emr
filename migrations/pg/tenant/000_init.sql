@@ -19,10 +19,9 @@ CREATE TABLE IF NOT EXISTS inventory_movements (
     from_location TEXT,
     to_location TEXT,
     document_type TEXT NOT NULL CHECK (document_type IN (
-        'DELIVERY', 'DELIVERY_INJECTION', 'REPLENISHMENT', 'DISPENSE', 
-        'RETURN_SUPPLIER', 'RETURN_WARD', 'WASTE', 'DESTRUCTION', 
-        'BORROW_IN', 'BORROW_OUT', 'TRANSFER_OUT', 'TRANSFER_IN',
-        'HOLD', 'RELEASE', 'COMMIT'
+        'DELIVERY_INJECTION', 'TRANSFER', 'DISPENSE', 
+        'RETURN_INTERNAL', 'RETURN_SUPPLIER', 'WASTE', 'DESTRUCTION', 
+        'BORROW_IN', 'BORROW_OUT'
     )),
     document_id TEXT,
     created_by TEXT,
@@ -42,8 +41,11 @@ CREATE TABLE IF NOT EXISTS current_stock (
     expiry DATE NOT NULL,
     location TEXT NOT NULL,
     qty_units INTEGER NOT NULL CHECK (qty_units >= 0),
+    reserved_units INTEGER NOT NULL DEFAULT 0,          -- active reservations (basket/transfer)
+    pending_return_units INTEGER NOT NULL DEFAULT 0,    -- declared but not yet received returns
     PRIMARY KEY (tenant_id, product_id, lot, location)
 );
+-- Effective available stock: available_units = qty_units - reserved_units - pending_return_units
 
 CREATE INDEX idx_stock_loc ON current_stock(tenant_id, location);
 CREATE INDEX idx_stock_prod ON current_stock(tenant_id, product_id);
@@ -297,9 +299,14 @@ CREATE TABLE IF NOT EXISTS locations (
     type TEXT,
     scope TEXT CHECK (scope IN ('PHARMACY', 'SERVICE')),
     service_id UUID REFERENCES services(id),
-    is_active BOOLEAN DEFAULT TRUE,
+    location_class TEXT CHECK (location_class IN ('COMMERCIAL', 'CHARITY')) DEFAULT 'COMMERCIAL',
+    valuation_policy TEXT NOT NULL DEFAULT 'VALUABLE' CHECK (valuation_policy IN ('VALUABLE', 'NON_VALUABLE')),
     status TEXT DEFAULT 'ACTIVE',
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    -- RETURN_QUARANTINE must always be ACTIVE
+    CONSTRAINT chk_return_quarantine_active CHECK (
+        NOT (name = 'RETURN_QUARANTINE' AND status != 'ACTIVE')
+    )
 );
 
 CREATE INDEX idx_loc_tenant ON locations(tenant_id);
@@ -470,3 +477,86 @@ CREATE TABLE IF NOT EXISTS _migration_issues (
     row_data JSONB,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- ============================================================================
+-- 8. RETURN WORKFLOW ENGINE
+-- ============================================================================
+
+-- 8.1 Stock Returns (Business Declaration)
+-- What the nurse/service declares they will return
+CREATE TABLE IF NOT EXISTS stock_returns (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id TEXT NOT NULL,
+    source_type TEXT NOT NULL CHECK (source_type IN ('SERVICE', 'ADMISSION')),
+    source_service_id UUID,  -- if source_type = SERVICE
+    created_by UUID NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    status TEXT NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT', 'SUBMITTED', 'CANCELLED', 'CLOSED'))
+);
+
+CREATE INDEX idx_returns_tenant ON stock_returns(tenant_id);
+CREATE INDEX idx_returns_status ON stock_returns(tenant_id, status);
+CREATE INDEX idx_returns_service ON stock_returns(source_service_id);
+
+-- 8.2 Stock Return Lines (Declared Products)
+-- What products and quantities are declared for return
+CREATE TABLE IF NOT EXISTS stock_return_lines (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    return_id UUID NOT NULL REFERENCES stock_returns(id) ON DELETE CASCADE,
+    product_id UUID NOT NULL,
+    lot TEXT NOT NULL,
+    expiry DATE NOT NULL,
+    source_location_id UUID NOT NULL,  -- department/admission stock location
+    qty_declared_units INTEGER NOT NULL CHECK (qty_declared_units > 0),
+    original_dispense_event_id UUID  -- nullable (for department stock returns)
+);
+
+CREATE INDEX idx_return_lines_return ON stock_return_lines(return_id);
+CREATE INDEX idx_return_lines_product ON stock_return_lines(product_id);
+
+-- 8.3 Return Receptions (Physical Arrivals)
+-- Each physical arrival of returned products
+CREATE TABLE IF NOT EXISTS return_receptions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    return_id UUID NOT NULL REFERENCES stock_returns(id) ON DELETE CASCADE,
+    received_by UUID NOT NULL,
+    received_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_receptions_return ON return_receptions(return_id);
+
+-- 8.4 Return Reception Lines (What Was Received)
+-- What was physically received in this batch
+CREATE TABLE IF NOT EXISTS return_reception_lines (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    reception_id UUID NOT NULL REFERENCES return_receptions(id) ON DELETE CASCADE,
+    return_line_id UUID NOT NULL REFERENCES stock_return_lines(id),
+    qty_received_units INTEGER NOT NULL CHECK (qty_received_units > 0)
+);
+
+CREATE INDEX idx_reception_lines_reception ON return_reception_lines(reception_id);
+CREATE INDEX idx_reception_lines_return_line ON return_reception_lines(return_line_id);
+
+-- 8.5 Return Decisions (Pharmacist Decision)
+-- Decision tied to a specific reception
+CREATE TABLE IF NOT EXISTS return_decisions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    reception_id UUID NOT NULL REFERENCES return_receptions(id) ON DELETE CASCADE,
+    decided_by UUID NOT NULL,
+    decided_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_decisions_reception ON return_decisions(reception_id);
+
+-- 8.6 Return Decision Lines (Outcome Allocation)
+-- Allocation of received qty to outcomes (REINTEGRATE, CHARITY, WASTE, DESTRUCTION)
+CREATE TABLE IF NOT EXISTS return_decision_lines (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    decision_id UUID NOT NULL REFERENCES return_decisions(id) ON DELETE CASCADE,
+    return_line_id UUID NOT NULL REFERENCES stock_return_lines(id),
+    qty_units INTEGER NOT NULL CHECK (qty_units > 0),
+    outcome TEXT NOT NULL CHECK (outcome IN ('REINTEGRATE', 'CHARITY', 'WASTE', 'DESTRUCTION'))
+);
+
+CREATE INDEX idx_decision_lines_decision ON return_decision_lines(decision_id);
+CREATE INDEX idx_decision_lines_return_line ON return_decision_lines(return_line_id);

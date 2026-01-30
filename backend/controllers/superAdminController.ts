@@ -146,11 +146,8 @@ export const createClient = async (req: Request, res: Response) => {
             throw new Error(`Failed to provision tenant database: ${dbErr.message}`);
         }
 
-        // 3. INITIALIZE TENANT REALM (CRITICAL FOR LOGIN)
+        // 3. INITIALIZE TENANT REALM - Sync default data to Tenant PostgreSQL DB
         try {
-            const { TenantStore } = require('../utils/tenantStore');
-            const store = new TenantStore(clientId);
-            
             // Define default roles for the new tenant with valid UUIDs
             const roleSuperAdminId = uuidv4();
             const roleAdminStructId = uuidv4();
@@ -208,20 +205,8 @@ export const createClient = async (req: Request, res: Response) => {
                 // Don't fail the request, but log critical error
             }
 
-            // Legacy JSON fallback (for safety)
-            const settings = {
-                users: [tenantUser],
-                roles: defaultRoles,
-                services: [],
-                unitTypes: [],
-                serviceUnits: [],
-                pricing: [],
-                rooms: []
-            };
-
-            store.save('settings', settings);
-            store.save('pharmacy', { inventory: [], catalog: [], locations: [], partners: [], stockOutHistory: [], replenishmentRequests: [] });
-            store.save('emr_admissions', { admissions: [], appointments: [], consumptions: [] });
+            // NOTE: Legacy JSON file creation removed (settings.json, pharmacy.json, emr_admissions.json)
+            // All tenant data now lives in PostgreSQL tenant databases
             
         } catch (e: any) {
             console.error("Failed to initialize tenant realm:", e);
