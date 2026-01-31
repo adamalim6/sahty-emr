@@ -39,6 +39,7 @@ import { ServiceStockPage } from './components/ServiceStock/ServiceStockPage';
 import ServiceStockManager from './components/StockTransfer/ServiceStockManager';
 import { EmrLocationManager } from './components/EmrLocationManager';
 import TransferManager from './components/StockTransfer/TransferManager';
+import { RetoursPage } from './components/EMR/RetoursPage';
 
 const ProtectedRoute = ({ role, permission, children }: { role?: string | UserType, permission?: string, children: React.ReactNode }) => {
   const { user, isAuthenticated, loading } = useAuth();
@@ -90,6 +91,7 @@ const App: React.FC = () => {
             <Route path="waiting-room" element={<WaitingRoom />} />
             <Route path="map" element={<WardMap />} />
             <Route path="service-stock" element={<ServiceStockPage />} />
+            <Route path="retours" element={<RetoursPage />} />
             <Route path="replenishment" element={<ServiceStockManager />} />
 
           </Route>

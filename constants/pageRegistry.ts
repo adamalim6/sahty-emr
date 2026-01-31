@@ -34,6 +34,7 @@ export const PAGE_REGISTRY = [
             { id: 'emr_admissions', name: 'Admissions', description: 'Gestion des entrées et séjours', route: '/admissions' },
             { id: 'emr_replenishment', name: 'Réapprovisionnement', description: 'Demandes de produits à la pharmacie', route: '/replenishment' },
             { id: 'emr_service_stock', name: 'Stock Service', description: 'Gestion du stock interne du service', route: '/service-stock' },
+            { id: 'emr_returns', name: 'Retours', description: 'Initiation des retours de stock service', route: '/retours' },
             { id: 'emr_waiting_room', name: 'Salle d\'Attente', description: 'File d\'attente des patients', route: '/waiting-room' },
             { id: 'emr_map', name: 'Plan du Service', description: 'Vue graphique des lits', route: '/map' },
             // Note: Dossier Medical and Calendar are contextual or sub-features, but likely accessible if 'Patients' is accessible. 

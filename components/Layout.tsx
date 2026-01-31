@@ -16,7 +16,8 @@ import {
   MapPin,
   Pill,
   Package,
-  FileText
+  FileText,
+  RotateCcw
 } from 'lucide-react';
 import { AIAssistant } from './AIAssistant';
 import { useAuth } from '../context/AuthContext';
@@ -48,6 +49,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     { id: 'emr_admissions', icon: ClipboardList, label: 'Admissions', to: '/admissions' },
     { id: 'emr_replenishment', icon: ClipboardList, label: 'Réapprovisionnement', to: '/replenishment' },
     { id: 'emr_service_stock', icon: Package, label: 'Stock Service', to: '/service-stock' },
+    { id: 'emr_returns', icon: RotateCcw, label: 'Retours', to: '/retours' },
     { id: 'emr_waiting_room', icon: Armchair, label: 'Salle d\'Attente', to: '/waiting-room' },
     { id: 'emr_map', icon: Map, label: 'Plan du Service', to: '/map' },
     { id: 'emr_calendar', icon: Calendar, label: 'Agenda', to: '/calendar' },
@@ -56,6 +58,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   ];
 
   // Filter based on user permissions
+  console.log('[Layout] User permissions:', user?.permissions);
+  console.log('[Layout] Looking for emr_returns?', user?.permissions?.includes('emr_returns'));
   const filteredNavItems = availableNavItems.filter(item => {
     if (!user) return false;
     // Super Admin Bypass (optional, but good for testing)
