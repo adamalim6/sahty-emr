@@ -86,7 +86,7 @@ export const updateClientDSI = async (req: Request, res: Response) => {
             await globalAdminService.createTenantAdmin({
                 username,
                 password_hash: bcrypt.hashSync(password, 10),
-                client_id: id,
+                tenantId: id,
                 nom: "Admin",
                 prenom: "DSI"
             });
@@ -132,7 +132,7 @@ export const createClient = async (req: Request, res: Response) => {
             password_hash: bcrypt.hashSync(req.body.admin_password, 10),
             nom: req.body.admin_nom || 'Directeur',
             prenom: req.body.admin_prenom || 'Admin',
-            client_id: clientId,
+            tenantId: clientId,
             role_id: 'role_admin_struct'
         });
 

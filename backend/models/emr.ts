@@ -56,7 +56,8 @@ export interface Patient {
 export interface Admission {
     id: string;
     nda: string;
-    patientId: string;
+    patientId: string; // Deprecated or mapped to Global
+    tenantPatientId?: string; // NEW
     reason: string;
     service: string;
     admissionDate: string;
@@ -73,6 +74,7 @@ export interface Admission {
 export interface Appointment {
     id: string;
     patientId: string;
+    tenantPatientId?: string; // NEW
     dateTime: string;
     service: string;
     reason: string;

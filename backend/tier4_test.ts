@@ -39,9 +39,9 @@ async function runTest(name: string, fn: () => Promise<void>): Promise<void> {
 
 async function setupStock(tenantId: string, productId: string, lot: string, expiry: string, location: string, qty: number) {
     await tenantQuery(tenantId, `
-        INSERT INTO current_stock (tenant_id, product_id, lot, expiry, location, qty_units)
+        INSERT INTO current_stock (tenant_id, product_id, lot, expiry, location_id, qty_units)
         VALUES ($1, $2, $3, $4, $5, $6)
-        ON CONFLICT(tenant_id, product_id, lot, location) 
+        ON CONFLICT(tenant_id, product_id, lot, location_id) 
         DO UPDATE SET qty_units = $6
     `, [tenantId, productId, lot, expiry, location, qty]);
 }
@@ -49,20 +49,22 @@ async function setupStock(tenantId: string, productId: string, lot: string, expi
 async function getStock(tenantId: string, productId: string, lot: string, location: string): Promise<number> {
     const rows = await tenantQuery(tenantId, `
         SELECT qty_units FROM current_stock 
-        WHERE tenant_id = $1 AND product_id = $2 AND lot = $3 AND location = $4
+        WHERE tenant_id = $1 AND product_id = $2 AND lot = $3 AND location_id = $4
     `, [tenantId, productId, lot, location]);
     return rows.length > 0 ? rows[0].qty_units : 0;
 }
 
 async function cleanupTest(tenantId: string, lot: string) {
     await tenantQuery(tenantId, `DELETE FROM medication_dispense_events WHERE lot = $1`, [lot]);
-    await tenantQuery(tenantId, `DELETE FROM stock_reservations WHERE lot = $1`, [lot]);
+    await tenantQuery(tenantId, `DELETE FROM stock_reservation_lines WHERE lot = $1`, [lot]);
+    // NOTE: We don't clean stock_reservations headers here as they are session-bound, not lot-bound
     await tenantQuery(tenantId, `DELETE FROM inventory_movements WHERE lot = $1`, [lot]);
     await tenantQuery(tenantId, `DELETE FROM current_stock WHERE lot = $1`, [lot]);
 }
 
 async function main() {
     const tenantId = process.argv[2] || 'demo_tenant';
+    const testUserId = uuidv4();
     const testProductId = uuidv4();
     const testLot = 'LOT-TIER4-TEST';
     const testExpiry = '2027-12-31';
@@ -75,6 +77,14 @@ async function main() {
         ON CONFLICT (location_id) DO NOTHING
     `, [testLocationId, tenantId]);
     const sourceLocation = testLocationId; // Use UUID, not text string
+
+    // Create DISPENSED location (required for dispense)
+    const dispensedLocationId = uuidv4();
+    await tenantQuery(tenantId, `
+        INSERT INTO locations (location_id, tenant_id, name, scope, type, status, location_class)
+        VALUES ($1, $2, 'DISPENSED', 'SYSTEM', 'VIRTUAL', 'ACTIVE', 'ROUTING')
+        ON CONFLICT (location_id) DO NOTHING
+    `, [dispensedLocationId, tenantId]);
 
     console.log('='.repeat(70));
     console.log('TIER 4 VALIDATION: Reservation-Aware Dispense');
@@ -97,22 +107,22 @@ async function main() {
         if (qty !== 100) throw new Error(`Expected 100, got ${qty}`);
     });
 
-    const reservationSessionId = `sess_${uuidv4()}`;
+    const reservationSessionId = uuidv4();
 
     await runTest('A.2 Reserve 80 units with hold()', async () => {
         await stockReservationService.hold(tenantId, {
             session_id: reservationSessionId,
-            user_id: 'test_user',
+            user_id: testUserId,
             product_id: testProductId,
             lot: testLot,
             expiry: testExpiry,
-            location_id: sourceLocation,
+            source_location_id: sourceLocation,
             qty_units: 80
         });
     });
 
     // Create a dummy user for testing
-    const testUserId = uuidv4();
+    // const testUserId = uuidv4(); // Moved to top
     // We don't strictly need to insert into users table unless FK constraint exists on dispense/movements.
     // inventory_movements.created_by is TEXT.
     // stock_reservations.user_id is TEXT? Schema says `user_id TEXT`.
@@ -174,8 +184,9 @@ async function main() {
 
     await runTest('A.6 Reservation still active with 80 units', async () => {
         const rows = await tenantQuery(tenantId, `
-            SELECT * FROM stock_reservations 
-            WHERE session_id = $1 AND status = 'ACTIVE' AND qty_units = 80
+            SELECT l.* FROM stock_reservation_lines l
+            JOIN stock_reservations r ON l.reservation_id = r.reservation_id
+            WHERE r.session_id = $1 AND r.status = 'ACTIVE' AND l.qty_units = 80
         `, [reservationSessionId]);
         if (rows.length !== 1) throw new Error('Reservation not found or qty changed');
     });
@@ -203,36 +214,7 @@ async function main() {
 
     // ... (C.2)
 
-    await runTest('C.2 Concurrent: hold(40) + dispense(40) - one must fail', async () => {
-        const sessHold = `sess_concurrent_hold_${uuidv4()}`;
-        
-        const results = await Promise.allSettled([
-            stockReservationService.hold(tenantId, {
-                session_id: sessHold,
-                user_id: 'user_hold',
-                product_id: testProductId,
-                lot: testLot2,
-                expiry: testExpiry,
-                location_id: sourceLocation,
-                qty_units: 40
-            }),
-            pharmacyService.dispense({
-                tenantId,
-                prescriptionId: undefined as any,
-                admissionId: undefined as any,
-                items: [{ productId: testProductId, qtyRequested: 40 }],
-                sourceLocation,
-                userId: testUserId
-            })
-        ]);
 
-        const successes = results.filter(r => r.status === 'fulfilled').length;
-        const failures = results.filter(r => r.status === 'rejected').length;
-
-        if (successes !== 1 || failures !== 1) {
-            throw new Error(`Expected 1 success + 1 failure, got ${successes}/${failures}`);
-        }
-    });
 
     await runTest('B.2 Source stock is now 0', async () => {
         const qty = await getStock(tenantId, testProductId, testLot, sourceLocation);
@@ -256,16 +238,16 @@ async function main() {
     });
 
     await runTest('C.2 Concurrent: hold(40) + dispense(40) - one must fail', async () => {
-        const sessHold = `sess_concurrent_hold_${uuidv4()}`;
+        const sessHold = uuidv4();
         
         const results = await Promise.allSettled([
             stockReservationService.hold(tenantId, {
                 session_id: sessHold,
-                user_id: 'user_hold',
+                user_id: uuidv4(),
                 product_id: testProductId,
                 lot: testLot2,
                 expiry: testExpiry,
-                location_id: sourceLocation,
+                source_location_id: sourceLocation,
                 qty_units: 40
             }),
             pharmacyService.dispense({

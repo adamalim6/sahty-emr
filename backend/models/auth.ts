@@ -15,7 +15,7 @@ export interface User {
     user_type: UserType;
     role_id: string;
     role_code?: string; // Added for safety checks
-    client_id: string | null; // Null for Publisher
+    tenantId: string | null; // Renamed from client_id (Standardized to UUID)
     INPE?: string;
     active?: boolean;
     permissions?: string[];

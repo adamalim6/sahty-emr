@@ -15,7 +15,7 @@ export class GlobalAdminService {
     private mapUser(admin: any): User {
         return {
             id: admin.id,
-            client_id: admin.client_id || 'GLOBAL',
+            tenantId: admin.client_id || 'GLOBAL',
             username: admin.username,
             password_hash: admin.password_hash,
             nom: admin.nom,
@@ -161,7 +161,7 @@ export class GlobalAdminService {
             'TENANT_SUPERADMIN',
             validRoleId,
             'ADMIN_STRUCTURE',
-            admin.client_id,
+            admin.tenantId,
             now
         ]);
 
@@ -170,7 +170,8 @@ export class GlobalAdminService {
             id: newId,
             user_type: 'TENANT_SUPERADMIN',
             role_code: 'ADMIN_STRUCTURE',
-            active: true
+            active: true,
+            tenantId: admin.tenantId
         } as User;
     }
 

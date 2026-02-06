@@ -1,8 +1,10 @@
-import { Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
-import { globalAdminService } from '../services/globalAdminService';
+/**
+ * Global Auth Controller - Refactored to use AuthService
+ * Handles SuperAdmin-only login endpoint.
+ */
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+import { Request, Response } from 'express';
+import { authService } from '../services/authService';
 
 export const loginGlobalAdmin = async (req: Request, res: Response) => {
     try {
@@ -12,40 +14,30 @@ export const loginGlobalAdmin = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Username and password are required' });
         }
 
-        const user = await globalAdminService.authenticate(username, password);
-        if (!user) {
+        const result = await authService.login(username, password);
+        
+        if (!result) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
-        if (user.role_code !== 'SUPER_ADMIN') {
-             // Security Trap: A non-superadmin managed to get into the global file?
-             // Should not happen if we seed correctly.
-             return res.status(403).json({ message: 'Access Denied: Not a Super Admin' });
+        // This endpoint is for SuperAdmins only
+        if (result.realm !== 'global') {
+            return res.status(403).json({ message: 'Access Denied: Not a Super Admin' });
         }
 
-        const token = jwt.sign(
-            { 
-                userId: user.id, 
-                username: user.username, 
-                role: 'SUPER_ADMIN', // Generic Role
-                realm: 'global'      // 🔐 REALM CLAIM
-            },
-            JWT_SECRET,
-            { expiresIn: '24h' }
-        );
-
-        res.json({
-            token,
+        return res.json({
+            token: result.token,
             user: {
-                id: user.id,
-                username: user.username,
-                nom: user.nom,
-                prenom: user.prenom,
+                id: result.user.id,
+                username: result.user.username,
+                nom: result.user.nom,
+                prenom: result.user.prenom,
                 role: 'SUPER_ADMIN'
             }
         });
+
     } catch (error) {
         console.error('Global login error:', error);
-        res.status(500).json({ message: 'Server error during login' });
+        return res.status(500).json({ message: 'Server error during login' });
     }
 };

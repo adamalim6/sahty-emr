@@ -4,7 +4,7 @@ import { Layout } from './components/Layout';
 import { PatientList } from './components/PatientList';
 import { AdmissionList } from './components/AdmissionList';
 import { CalendarView } from './components/CalendarView';
-import { ReturnsReception } from './components/Pharmacy/ReturnsReception';
+// Legacy ReturnsReception import removed - now handled by PharmacyModule
 import { ATCSandboxPage } from './components/SuperAdmin/ATCSandboxPage';
 import { Toaster } from 'react-hot-toast';
 import { WaitingRoom } from './components/WaitingRoom';
@@ -39,7 +39,7 @@ import { ServiceStockPage } from './components/ServiceStock/ServiceStockPage';
 import ServiceStockManager from './components/StockTransfer/ServiceStockManager';
 import { EmrLocationManager } from './components/EmrLocationManager';
 import TransferManager from './components/StockTransfer/TransferManager';
-import { RetoursPage } from './components/EMR/RetoursPage';
+import ReturnsManager from './components/Returns/ReturnsManager';
 
 const ProtectedRoute = ({ role, permission, children }: { role?: string | UserType, permission?: string, children: React.ReactNode }) => {
   const { user, isAuthenticated, loading } = useAuth();
@@ -71,6 +71,7 @@ const ProtectedRoute = ({ role, permission, children }: { role?: string | UserTy
 const App: React.FC = () => {
   return (
     <AuthProvider>
+      <Toaster position="top-center" />
       <HashRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -91,7 +92,7 @@ const App: React.FC = () => {
             <Route path="waiting-room" element={<WaitingRoom />} />
             <Route path="map" element={<WardMap />} />
             <Route path="service-stock" element={<ServiceStockPage />} />
-            <Route path="retours" element={<RetoursPage />} />
+            <Route path="retours" element={<ReturnsManager />} />
             <Route path="replenishment" element={<ServiceStockManager />} />
 
           </Route>
@@ -144,6 +145,20 @@ const App: React.FC = () => {
           <Route path="/pharmacy/processing/:demandId" element={
             <ProtectedRoute permission="ph_dashboard">
                <TransferManager />
+            </ProtectedRoute>
+          } />
+
+          {/* Explicit route for Return Reception Detail - REQUIRED for useParams to work */}
+          <Route path="/pharmacy/return-receptions/:id" element={
+            <ProtectedRoute permission="ph_dashboard">
+               <PharmacyModule />
+            </ProtectedRoute>
+          } />
+
+          {/* Explicit route for Reception Decision Page */}
+          <Route path="/pharmacy/reception-details/:id" element={
+            <ProtectedRoute permission="ph_dashboard">
+               <PharmacyModule />
             </ProtectedRoute>
           } />
 

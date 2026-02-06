@@ -72,14 +72,14 @@ export const getServiceStock = async (req: Request, res: Response) => {
                 cs.product_id,
                 cs.lot,
                 to_char(cs.expiry, 'YYYY-MM-DD') as expiry,
-                cs.location,
+                cs.location_id as location,
                 l.name as location_name,
                 cs.qty_units,
                 COALESCE(cs.reserved_units, 0) as reserved_units,
                 COALESCE(cs.pending_return_units, 0) as pending_return_units,
                 (cs.qty_units - COALESCE(cs.reserved_units, 0) - COALESCE(cs.pending_return_units, 0)) as available_units
             FROM current_stock cs
-            JOIN locations l ON cs.location::uuid = l.location_id AND cs.tenant_id = l.tenant_id
+            JOIN locations l ON cs.location_id = l.location_id AND cs.tenant_id = l.tenant_id
             WHERE cs.tenant_id = $1 
               AND l.scope = 'SERVICE'
               AND l.service_id = $2::uuid

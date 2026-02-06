@@ -3,8 +3,9 @@ import { Request, Response } from 'express';
 import { AuthRequest, getTenantId } from '../middleware/authMiddleware';
 import { settingsService, ServiceDefinition, UnitType, ServiceUnit, Pricing } from '../services/settingsService';
 import { globalAdminService } from '../services/globalAdminService';
+import { authUserRepository } from '../repositories/authUserRepository';
+import { authService } from '../services/authService';
 import { User, UserType } from '../models/auth';
-import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 
 const getContext = (req: Request) => {
@@ -16,7 +17,7 @@ const getContext = (req: Request) => {
 export const getMyUsers = async (req: AuthRequest, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const users = await settingsService.getUsers(tenantId);
+        const users = await authUserRepository.findAll(tenantId);
         // Mask password hash
         const safeUsers = users.map(u => {
             const { password_hash, ...rest } = u;
@@ -43,11 +44,11 @@ export const createMyUser = async (req: AuthRequest, res: Response) => {
             });
         }
 
-        const newUser: User = {
+        const newUser: Partial<User> = {
             id: uuidv4(),
-            client_id: tenantId,
+            tenantId: tenantId,
             username,
-            password_hash: bcrypt.hashSync(password, 10),
+            password_hash: authService.hashPassword(password),
             nom,
             prenom,
             user_type: UserType.TENANT_USER,
@@ -56,7 +57,7 @@ export const createMyUser = async (req: AuthRequest, res: Response) => {
             service_ids: service_ids || []
         };
 
-        const created = await settingsService.createUser(tenantId, newUser);
+        const created = await authUserRepository.create(newUser, tenantId);
         const { password_hash, ...safeUser } = created;
         res.status(201).json(safeUser);
     } catch (error: any) {
@@ -71,13 +72,11 @@ export const updateTenantUser = async (req: AuthRequest, res: Response) => {
         const updates = req.body;
         
         // Fetch current to check logic
-        const users = await settingsService.getUsers(tenantId);
-        const currentUser = users.find(u => u.id === id);
+        const currentUser = await authUserRepository.findById(id, tenantId);
         
         if (!currentUser) return res.status(404).json({ error: 'User not found' });
         
         // Check if user is DSI (Admin Structure)
-        // We need to check the role CODE, not just the ID string
         const userRole = (await settingsService.getRoles(tenantId)).find(r => r.id === currentUser.role_id);
         
         if (currentUser.role_id === 'role_admin_struct' || userRole?.code === 'ADMIN_STRUCTURE') {
@@ -85,11 +84,11 @@ export const updateTenantUser = async (req: AuthRequest, res: Response) => {
         }
 
         if (updates.password) {
-            updates.password_hash = bcrypt.hashSync(updates.password, 10);
+            updates.password_hash = authService.hashPassword(updates.password);
             delete updates.password;
         }
 
-        const updated = await settingsService.updateUser(tenantId, { ...updates, id });
+        const updated = await authUserRepository.update(id, updates, tenantId);
         const { password_hash, ...safeUser } = updated;
         res.json(safeUser);
     } catch (error: any) {

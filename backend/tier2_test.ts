@@ -126,8 +126,8 @@ async function main() {
             product_id: testProductId,
             lot: testLot,
             expiry: '2027-12-31',
-            location_id: testLocation,
-            destination_location_id: testDestLocation,
+            source_location_id: testLocation,
+            destination_source_location_id: testDestLocation,
             qty_units: 30
         });
         if (reservation.qty_units !== 30) throw new Error(`Expected 30 reserved, got ${reservation.qty_units}`);
@@ -146,7 +146,7 @@ async function main() {
             product_id: testProductId,
             lot: testLot,
             expiry: '2027-12-31',
-            location_id: testLocation,
+            source_location_id: testLocation,
             qty_units: 60
         });
     });
@@ -160,7 +160,7 @@ async function main() {
                 product_id: testProductId,
                 lot: testLot,
                 expiry: '2027-12-31',
-                location_id: testLocation,
+                source_location_id: testLocation,
                 qty_units: 20
             });
             throw new Error('Should have thrown INSUFFICIENT_AVAILABLE_STOCK');
@@ -198,7 +198,7 @@ async function main() {
             product_id: testProductId,
             lot: testLot,
             expiry: '2027-12-31',
-            location_id: testLocation,
+            source_location_id: testLocation,
             qty_units: 100
         });
         // Release for next tests
@@ -222,8 +222,8 @@ async function main() {
             product_id: testProductId,
             lot: testLot,
             expiry: '2027-12-31',
-            location_id: testLocation,
-            destination_location_id: testDestLocation,
+            source_location_id: testLocation,
+            destination_source_location_id: testDestLocation,
             qty_units: 50
         });
     });
@@ -294,7 +294,7 @@ async function main() {
                 product_id: testProductId,
                 lot: testLot,
                 expiry: '2027-12-31',
-                location_id: testLocation,
+                source_location_id: testLocation,
                 qty_units: 20
             }),
             stockReservationService.hold(tenantId, {
@@ -303,7 +303,7 @@ async function main() {
                 product_id: testProductId,
                 lot: testLot,
                 expiry: '2027-12-31',
-                location_id: testLocation,
+                source_location_id: testLocation,
                 qty_units: 20
             })
         ]);
@@ -333,19 +333,21 @@ async function main() {
     await runTest('E.2 Reserved <= OnHand per lot', async () => {
         const violations = await tenantQuery(tenantId, `
             SELECT 
-                cs.location, cs.product_id, cs.lot, cs.qty_units as onhand,
-                COALESCE(SUM(sr.qty_units), 0) as reserved
+                cs.location_id, cs.product_id, cs.lot, cs.qty_units as onhand,
+                COALESCE(sr.reserved_count, 0) as reserved
             FROM current_stock cs
-            LEFT JOIN stock_reservations sr ON 
-                sr.tenant_id = cs.tenant_id AND
-                sr.location_id = cs.location AND
-                sr.product_id = cs.product_id AND
-                sr.lot = cs.lot AND
-                sr.status = 'ACTIVE' AND
-                sr.expires_at > NOW()
+            LEFT JOIN (
+                SELECT sr.source_location_id, sr.product_id, sr.lot, COUNT(*) as reserved_count
+                FROM stock_reservation_lines sr, stock_reservations r
+                WHERE r.status = 'ACTIVE' AND r.reservation_id = sr.reservation_id
+                GROUP BY sr.source_location_id, sr.product_id, sr.lot
+            ) sr ON 
+                sr.source_location_id = cs.location_id AND
+                sr.product_id = cs.product_id AND 
+                sr.lot = cs.lot
             WHERE cs.tenant_id = $1
-            GROUP BY cs.location, cs.product_id, cs.lot, cs.qty_units
-            HAVING COALESCE(SUM(sr.qty_units), 0) > cs.qty_units
+            GROUP BY cs.location_id, cs.product_id, cs.lot, cs.qty_units
+            HAVING COALESCE(sr.reserved_count, 0) > cs.qty_units
         `, [tenantId]);
         if (violations.length > 0) {
             throw new Error(`Found ${violations.length} lots where reserved > onhand`);

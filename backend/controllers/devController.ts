@@ -94,7 +94,7 @@ export const resetData = (req: Request, res: Response) => {
             prenom: 'Admin',
             user_type: 'TENANT_SUPERADMIN',
             role_id: 'role_admin_struct',
-            client_id: 'demo'
+            tenantId: 'demo'
         };
         fs.writeFileSync(usersFile, JSON.stringify([demoDsiUser], null, 2));
         
@@ -103,7 +103,7 @@ export const resetData = (req: Request, res: Response) => {
         const adminsFile = path.join(GLOBAL_DIR, 'admins.json');
         const defaultAdmin: User = {
             id: 'global_admin',
-            client_id: 'GLOBAL', 
+            tenantId: 'GLOBAL', 
             username: 'admin',
             password_hash: bcrypt.hashSync('admin123', 10),
             nom: 'SuperAdmin',
@@ -135,7 +135,7 @@ export const resetData = (req: Request, res: Response) => {
         // Seed Admin User
         const adminUser: User = {
             id: 'user_admin',
-            client_id: tenantId,
+            tenantId: tenantId,
             username: 'admin',
             password_hash: bcrypt.hashSync('admin', 10),
             nom: 'Admin',

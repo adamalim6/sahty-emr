@@ -97,7 +97,7 @@ async function main() {
             product_id: testProductId,
             lot: testLot,
             expiry: '2027-12-31',
-            location_id: sourceLocation,
+            source_location_id: sourceLocation,
             qty_units: 80
         });
     });

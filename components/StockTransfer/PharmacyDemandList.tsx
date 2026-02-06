@@ -15,8 +15,12 @@ interface Demand {
     items?: any[];
 }
 
+import { useAuth } from '../../context/AuthContext';
+import toast from 'react-hot-toast';
+
 const PharmacyDemandList: React.FC = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [demands, setDemands] = useState<Demand[]>([]);
     const [loading, setLoading] = useState(true);
     const [filterStatus, setFilterStatus] = useState<string>('ALL');
@@ -34,6 +38,44 @@ const PharmacyDemandList: React.FC = () => {
             console.error(error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleProcess = async (demand: Demand) => {
+        console.log('[handleProcess] Called for demand:', demand.id);
+        const toastId = toast.loading('Vérification de la disponibilité...');
+        try {
+            // Attempt to claim
+            console.log('[handleProcess] Calling claimDemand...');
+            await api.claimDemand(demand.id);
+            console.log('[handleProcess] Claim successful, navigating...');
+            toast.dismiss(toastId);
+            navigate(`/pharmacy/processing/${demand.id}`);
+        } catch (error: any) {
+            toast.dismiss(toastId);
+            // Debug: Log the full error object
+            console.log('[handleProcess] Error caught:', error);
+            console.log('[handleProcess] error.message:', error.message);
+            console.log('[handleProcess] error.claimedBy:', error.claimedBy);
+            
+            // Check for locked demand - use claimedBy property as primary indicator
+            if (error.claimedBy || (error.message && (error.message.includes('being processed') || error.message.includes('DEMAND_LOCKED')))) {
+                const claimedBy = error.claimedBy || "un autre utilisateur";
+                const claimedAt = error.claimedAt 
+                    ? new Date(error.claimedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    : "";
+                
+                const msg = claimedAt 
+                    ? `Cette demande est en cours de traitement par ${claimedBy} depuis ${claimedAt}`
+                    : `Cette demande est en cours de traitement par ${claimedBy}`;
+                
+                toast.error(msg, { duration: 5000, icon: '🔒' });
+                
+                loadDemands();
+            } else {
+                console.log('[handleProcess] Generic error, message:', error.message);
+                toast.error(error.message || "Erreur lors de la réservation de la demande");
+            }
         }
     };
 
@@ -121,7 +163,7 @@ const PharmacyDemandList: React.FC = () => {
                                                 <button 
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        navigate(`/pharmacy/processing/${demand.id}`);
+                                                        handleProcess(demand);
                                                     }}
                                                     className="px-3 py-1.5 bg-blue-600 text-white hover:bg-blue-700 rounded-lg text-xs font-bold shadow-sm transition-all flex items-center gap-1"
                                                 >

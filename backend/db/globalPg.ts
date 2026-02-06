@@ -71,12 +71,26 @@ export async function getGlobalClient(): Promise<PoolClient> {
 /**
  * Execute a function within a transaction
  */
+export interface AuditContext {
+    userId: string;
+    clientInfo?: string;
+}
+
 export async function globalTransaction<T>(
-    fn: (client: PoolClient) => Promise<T>
+    fn: (client: PoolClient) => Promise<T>,
+    auditContext?: AuditContext
 ): Promise<T> {
     const client = await getGlobalClient();
     try {
         await client.query('BEGIN');
+
+        if (auditContext) {
+            await client.query(`SELECT set_config('sahty.current_user_id', $1, true)`, [auditContext.userId]);
+            if (auditContext.clientInfo) {
+                await client.query(`SELECT set_config('sahty.client_info', $1, true)`, [auditContext.clientInfo]); 
+            }
+        }
+
         const result = await fn(client);
         await client.query('COMMIT');
         return result;

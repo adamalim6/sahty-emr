@@ -36,7 +36,9 @@ import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-import { ReturnsReception } from './ReturnsReception';
+import { ReturnReceptionsPage } from './ReturnReceptionsPage';
+import { ReturnReceptionDetailPage } from './ReturnReceptionDetailPage';
+import { ReturnDecisionPage } from './ReturnDecisionPage';
 
 export const PharmacyModule: React.FC = () => {
   const { logout } = useAuth();
@@ -44,14 +46,26 @@ export const PharmacyModule: React.FC = () => {
   const location = useLocation();
 
   const getCurrentView = () => {
-    const path = location.pathname.split('/').pop() || 'dashboard';
     const parts = location.pathname.split('/');
+    const lastPart = parts.pop() || 'dashboard';
+    
+    // Check for Return Reception Detail: /pharmacy/return-receptions/:id
+    if (parts.includes('return-receptions') && lastPart !== 'return-receptions') {
+        return 'return_reception_detail';
+    }
+    // [NEW] Check for Reception Decision Page: /pharmacy/reception-details/:id
+    if (parts.includes('reception-details')) {
+        return 'reception_details';
+    }
+
+    if (lastPart === 'return-receptions') return 'return_receptions_list';
+
     if (parts.includes('processing')) {
         return 'processing_request';
     }
     // Mapping common routes to views
-    if (path === 'pharmacy') return 'dashboard';
-    return path as any; 
+    if (lastPart === 'pharmacy') return 'dashboard';
+    return lastPart as any; 
   };
 
   const view = getCurrentView();
@@ -96,10 +110,13 @@ export const PharmacyModule: React.FC = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      // Fetch for views that need live stock data
-      const needsStockData = ['stock', 'inventory', 'dashboard', 'returns', 'entry'].includes(view);
+      // Fetch for views that need live stock data - EXCLUDE returns as they have their own fetchers
+      const needsStockData = ['stock', 'inventory', 'dashboard', 'entry'].includes(view);
       
-      if (!needsStockData && !loading) return; 
+      if (!needsStockData) {
+          if (loading) setLoading(false);
+          return;
+      }
 
       setLoading(true); // Ensure loading state is shown during refresh
 
@@ -418,7 +435,7 @@ export const PharmacyModule: React.FC = () => {
           <button onClick={() => { navigate('/pharmacy/stockout'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'stockout' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             <LogOut size={20} /><span className="font-medium text-sm">Sorties / Destructions</span>
           </button>
-          <button onClick={() => { navigate('/pharmacy/returns'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'returns' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+          <button onClick={() => { navigate('/pharmacy/return-receptions'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${(view === 'return_receptions_list' || view === 'return_reception_detail') ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             <RotateCcw size={20} /><span className="font-medium text-sm">Réception Retours</span>
           </button>
           <button onClick={() => { navigate('/pharmacy/partners'); setCurrentSession(null); }} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${view === 'partners' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
@@ -463,6 +480,7 @@ export const PharmacyModule: React.FC = () => {
                           view === 'suppliers' ? 'Gestion des Fournisseurs' :
                             view === 'partners' ? 'Institutions Partenaires' :
                               view === 'stockout' ? 'Gestion des Sorties' :
+                                (view === 'return_receptions_list' || view === 'return_reception_detail') ? 'Réception des Retours' :
 
                                   view === 'inventory' ? (currentSession ? `Session : ${currentSession.id}` : 'Sessions d\'Inventaire') : 'État des Stocks Pharma'}
               </h2>
@@ -542,8 +560,12 @@ export const PharmacyModule: React.FC = () => {
           <QuarantineManager deliveryNotes={deliveryNotes} products={productCatalog} locations={locations} onProcessNote={handleQuarantineProcess} purchaseOrders={purchaseOrders} />
         ) : view === 'stockout' ? (
           <StockOutManager systemItems={systemItems} partners={partners} deliveryNotes={deliveryNotes} products={productCatalog} onConfirmStockOut={handleConfirmStockOut} stockOutHistory={stockOutHistory} />
-        ) : view === 'returns' ? (
-          <ReturnsReception />
+        ) : view === 'return_receptions_list' ? (
+          <ReturnReceptionsPage />
+        ) : view === 'return_reception_detail' ? (
+          <ReturnReceptionDetailPage />
+        ) : view === 'reception_details' ? (
+          <ReturnDecisionPage />
         ) : view === 'suppliers' ? (
           <SupplierManager suppliers={suppliers} onUpdateSuppliers={handleUpdateSuppliers} />
         ) : view === 'partners' ? (

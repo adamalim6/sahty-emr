@@ -60,7 +60,7 @@ export class SettingsService {
         const rows = await tenantQuery(tenantId, 'SELECT * FROM users', []);
         return rows.map(r => ({
             id: r.id,
-            client_id: r.client_id,
+            tenantId: r.tenant_id || r.client_id,
             username: r.username,
             password_hash: r.password_hash,
             nom: r.nom,
@@ -83,13 +83,13 @@ export class SettingsService {
         const existing = await tenantQuery(tenantId, 'SELECT id FROM users WHERE username = $1', [user.username]);
         if (existing.length > 0) throw new Error('Username taken');
 
-        user.client_id = tenantId;
+        user.tenantId = tenantId;
         
         await tenantQuery(tenantId, `
-            INSERT INTO users (id, client_id, username, password_hash, nom, prenom, user_type, role_id, inpe, service_ids, active)
+            INSERT INTO users (id, tenant_id, username, password_hash, nom, prenom, user_type, role_id, inpe, service_ids, active)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         `, [
-            user.id, user.client_id, user.username, user.password_hash, user.nom, user.prenom, 
+            user.id, user.tenantId, user.username, user.password_hash, user.nom, user.prenom, 
             user.user_type, user.role_id, user.INPE || null, JSON.stringify(user.service_ids || []), 
             user.active !== false
         ]);

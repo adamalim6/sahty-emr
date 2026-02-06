@@ -159,4 +159,21 @@ router.post('/commit', async (req, res) => {
     }
 });
 
+/**
+ * GET /active-for-demand/:demandId
+ * Used for Cart Persistence/Hydration on page refresh
+ */
+router.get('/active-for-demand/:demandId', async (req, res) => {
+    try {
+        const tenantId = getTenantId(req as any);
+        const { demandId } = req.params;
+        console.log(`[ActiveForDemand] Looking for active reservation for demand: ${demandId}`);
+        const cart = await stockReservationService.getActiveReservationForDemand(tenantId, demandId);
+        console.log(`[ActiveForDemand] Result:`, cart ? `Found session ${cart.header?.session_id} with ${cart.lines?.length || 0} lines` : 'No active reservation');
+        res.json(cart);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 export default router;

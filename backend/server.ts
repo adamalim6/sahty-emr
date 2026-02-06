@@ -53,9 +53,10 @@ app.use('/api/emr', authenticateToken, requireModule('EMR'), emrRoutes);
 app.use('/api/pharmacy', authenticateToken, requireModule('PHARMACY'), pharmacyRoutes);
 app.use('/api/pharmacy', authenticateToken, requireModule('PHARMACY'), serializedPackRoutes);
 app.use('/api/pharmacy', authenticateToken, requireModule('PHARMACY'), dispensationRoutes);
-app.use('/api/pharmacy/stock-reservations', authenticateToken, requireModule('PHARMACY'), stockReservationRoutes);
+// app.use('/api/pharmacy/stock-reservations', authenticateToken, requireModule('PHARMACY'), stockReservationRoutes); // MOVED below
 app.use('/api/prescriptions', authenticateToken, requireModule('PHARMACY'), prescriptionRoutes); 
 app.use('/api/stock-transfers', authenticateToken, stockTransferRoutes); 
+app.use('/api/stock-reservations', authenticateToken, stockReservationRoutes); // Shared API
 app.use('/api', authenticateToken, dispensationRoutes);
 
 // Health check

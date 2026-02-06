@@ -59,11 +59,23 @@ router.get('/dispensations/admission/:admissionId', getDispensationsByAdmission)
 
 router.post('/service-dispense', pharmacyController.dispenseFromServiceStock);
 
-// Returns
-router.post('/returns', pharmacyController.createReturnRequest);
-router.get('/returns', pharmacyController.getReturns);
-router.put('/returns/:id/process', pharmacyController.processReturn);
-router.get('/returns/admission/:admissionId', pharmacyController.getReturnsByAdmission);
+import { createReception, getReturns, getReturnDetails, getReceptions, createReturnDecision, getDecisions, getReceptionDetails } from '../controllers/stockReturnController';
+
+// ... other imports
+
+// Returns (New Engine)
+router.get('/returns', getReturns); // Reuse getReturns for list view
+router.get('/returns/:id', getReturnDetails); // Reuse details view
+router.get('/returns/:id/receptions', getReceptions); // [NEW] Reception History
+router.get('/receptions/:id', getReceptionDetails); // [NEW] Reception Details
+router.post('/receptions', createReception); // New Atomic Reception
+router.post('/receptions/:id/decision', createReturnDecision); // [NEW] Return Decision
+router.get('/receptions/:id/decisions', getDecisions); // [NEW] Decision History
+
+// Legacy Returns - Commented out or Removed
+// router.post('/returns', pharmacyController.createReturnRequest);
+// router.put('/returns/:id/process', pharmacyController.processReturn);
+// router.get('/returns/admission/:admissionId', pharmacyController.getReturnsByAdmission);
 
 
 

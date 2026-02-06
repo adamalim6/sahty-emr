@@ -93,13 +93,28 @@ export async function getTenantClient(tenantId: string): Promise<PoolClient> {
  * This is the primary way to execute multi-step operations safely.
  * The client is automatically released after the transaction.
  */
+export interface AuditContext {
+    userId: string;
+    clientInfo?: string; // IP or App Name
+}
+
 export async function tenantTransaction<T>(
     tenantId: string,
-    fn: (client: PoolClient) => Promise<T>
+    fn: (client: PoolClient) => Promise<T>,
+    auditContext?: AuditContext
 ): Promise<T> {
     const client = await getTenantClient(tenantId);
     try {
         await client.query('BEGIN');
+        
+        if (auditContext) {
+            await client.query(`SELECT set_config('sahty.current_user_id', $1, true)`, [auditContext.userId]);
+            if (auditContext.clientInfo) {
+                // client_info is standard postgres var
+                await client.query(`SELECT set_config('sahty.client_info', $1, true)`, [auditContext.clientInfo]); 
+            }
+        }
+
         const result = await fn(client);
         await client.query('COMMIT');
         return result;

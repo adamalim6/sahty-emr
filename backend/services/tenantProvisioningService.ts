@@ -84,13 +84,27 @@ export class TenantProvisioningService {
             }
             
             // Create essential system locations
-            console.log(`[TenantProvisioning] Creating RETURN_QUARANTINE location...`);
+            console.log(`[TenantProvisioning] Creating system locations...`);
+            
+            // RETURN_QUARANTINE
             await pool.query(`
                 INSERT INTO locations (
                     location_id, tenant_id, name, type, scope, 
                     location_class, valuation_policy, service_id, status, created_at
                 ) VALUES (
-                    gen_random_uuid(), $1, 'RETURN_QUARANTINE', 'VIRTUAL', 'PHARMACY',
+                    gen_random_uuid(), $1, 'RETURN_QUARANTINE', 'VIRTUAL', 'SYSTEM',
+                    'COMMERCIAL', 'NON_VALUABLE', NULL, 'ACTIVE', NOW()
+                )
+                ON CONFLICT DO NOTHING
+            `, [tenantId]);
+            
+            // WASTE Location (Mandatory System Location)
+            await pool.query(`
+                INSERT INTO locations (
+                    location_id, tenant_id, name, type, scope, 
+                    location_class, valuation_policy, service_id, status, created_at
+                ) VALUES (
+                    gen_random_uuid(), $1, 'WASTE', 'VIRTUAL', 'SYSTEM',
                     'COMMERCIAL', 'NON_VALUABLE', NULL, 'ACTIVE', NOW()
                 )
                 ON CONFLICT DO NOTHING

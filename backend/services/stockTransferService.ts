@@ -30,8 +30,7 @@ export interface StockTransfer {
     id: string;
     tenant_id: string;
     demand_id?: string;
-    source_location_id: string;
-    destination_location_id: string;
+    // Locations moved to lines
     status: 'PENDING' | 'VALIDATED' | 'COMPLETED';
     validated_at?: string;
     validated_by?: string;
@@ -47,6 +46,8 @@ export interface StockTransferLine {
     expiry: string;
     qty_transferred: number;
     demand_line_id?: string;
+    source_location_id: string;
+    destination_location_id: string;
 }
 
 class StockTransferService {
@@ -84,7 +85,7 @@ class StockTransferService {
         let sql = `
             SELECT d.*, s.name as service_name 
             FROM stock_demands d
-            LEFT JOIN services s ON d.service_id = s.id::text
+            LEFT JOIN services s ON d.service_id = s.id
             WHERE d.tenant_id = $1
         `;
         const params: any[] = [tenantId];
@@ -138,12 +139,13 @@ class StockTransferService {
             requested_by: row.requested_by,
             created_at: row.created_at,
             items: items.map(i => ({
-                demand_id: i.demand_id,
-                product_id: i.product_id,
-                qty_requested: i.qty_requested,
-                target_stock_location_id: i.target_stock_location_id,
-                target_location_code: i.target_location_code,
-                target_location_name: i.target_location_name
+            id: i.id,  // Critical: The demand line's own ID for FK references
+            demand_id: i.demand_id,
+            product_id: i.product_id,
+            qty_requested: i.qty_requested,
+            target_stock_location_id: i.target_stock_location_id,
+            target_location_code: i.target_location_code,
+            target_location_name: i.target_location_name
             }))
         };
     }
@@ -153,6 +155,66 @@ class StockTransferService {
             `UPDATE stock_demands SET status = $1 WHERE id = $2 AND tenant_id = $3`, 
             [status, demandId, tenantId]
         );
+    }
+
+    /**
+     * CONCURRENCY CONTROL: Claim a demand for processing
+     * Returns true if claimed successfully or already owned by user.
+     * Throws error with details if owned by someone else.
+     */
+    async claimDemand(tenantId: string, demandId: string, userId: string): Promise<void> {
+        return tenantTransaction(tenantId, async (client) => {
+            // Join users to get name of claimer (columns are nom/prenom, not first_name/last_name)
+            const res = await client.query(`
+                SELECT sd.processing_status, sd.assigned_user_id, sd.claimed_at, u.username, u.nom, u.prenom
+                FROM stock_demands sd
+                LEFT JOIN users u ON u.id = sd.assigned_user_id
+                WHERE sd.id = $1::uuid AND sd.tenant_id = $2::uuid
+                FOR UPDATE OF sd
+            `, [demandId, tenantId]);
+
+            if (res.rows.length === 0) throw new Error('Demand not found');
+            const row = res.rows[0];
+            const { processing_status, assigned_user_id, claimed_at } = row;
+
+            console.log(`[ClaimDebug] Demand ${demandId}: Status=${processing_status}, Assigned=${assigned_user_id}, RequestingUser=${userId}`);
+
+            if (processing_status === 'IN_PROGRESS') {
+                if (assigned_user_id !== userId) {
+                    console.warn(`[ClaimDebug] CONFLICT! Assigned=${assigned_user_id} !== Requesting=${userId}`);
+                    // Resolve display name using nom/prenom
+                    const name = row.prenom ? `${row.prenom} ${row.nom || ''}`.trim() : (row.username || 'Utilisateur inconnu');
+                    
+                    const error: any = new Error(`Demand is already being processed by ${name}`);
+                    error.code = 'DEMAND_LOCKED';
+                    error.details = {
+                        claimedBy: name,
+                        claimedAt: claimed_at
+                    };
+                    throw error;
+                }
+                // Already ours, good.
+                return;
+            }
+
+            // Otherwise claim it
+            await client.query(`
+                UPDATE stock_demands 
+                SET processing_status = 'IN_PROGRESS', assigned_user_id = $1::uuid, claimed_at = NOW()
+                WHERE id = $2::uuid
+            `, [userId, demandId]);
+        });
+    }
+
+    /**
+     * Release a claim (e.g. if user cancels or leaves page properly)
+     */
+    async releaseDemandClaim(tenantId: string, demandId: string, userId: string): Promise<void> {
+        await tenantQuery(tenantId, `
+            UPDATE stock_demands 
+            SET processing_status = 'OPEN', assigned_user_id = NULL, claimed_at = NULL
+            WHERE id = $1::uuid AND tenant_id = $2::uuid AND assigned_user_id = $3::uuid
+        `, [demandId, tenantId, userId]);
     }
 
     /**
@@ -173,6 +235,11 @@ class StockTransferService {
 
         return tenantTransaction(tenantId, async (client) => {
             // ✅ Step 1 — Lock Everything (Anti-Race Condition)
+            // Resolve Pharmacy Location (Source)
+            const pharmLocRes = await client.query(`SELECT location_id FROM locations WHERE scope = 'PHARMACY' LIMIT 1`);
+            const pharmacyLocationId = pharmLocRes.rows[0]?.location_id;
+            if (!pharmacyLocationId) throw new Error("No PHARMACY location found");
+
             // Lock Demand
             await client.query(`SELECT id FROM stock_demands WHERE id = $1 FOR UPDATE`, [demandId]);
             
@@ -181,9 +248,9 @@ class StockTransferService {
                 // We lock the specific lot/location row we are pulling from
                 await client.query(`
                     SELECT qty_units FROM current_stock 
-                    WHERE tenant_id = $1 AND product_id = $2 AND lot = $3 AND location = 'PHARMACY_MAIN'
+                    WHERE tenant_id = $1 AND product_id = $2 AND lot = $3 AND location_id = $4
                     FOR UPDATE
-                `, [tenantId, line.productId, line.lot]);
+                `, [tenantId, line.productId, line.lot, pharmacyLocationId]);
             }
 
             // ✅ Step 2 — Validate Availability & Reservations
@@ -191,24 +258,26 @@ class StockTransferService {
                 // 2a. Get Physical Stock
                 const stockRes = await client.query(`
                     SELECT qty_units FROM current_stock 
-                    WHERE tenant_id = $1 AND product_id = $2 AND lot = $3 AND location = 'PHARMACY_MAIN'
-                `, [tenantId, line.productId, line.lot]);
+                    WHERE tenant_id = $1 AND product_id = $2 AND lot = $3 AND location_id = $4
+                `, [tenantId, line.productId, line.lot, pharmacyLocationId]);
                 const currentQty = stockRes.rows[0]?.qty_units || 0;
 
                 // 2b. Get Active Reservations (excluding current user/session if needed, but usually we validate against ALL others)
                 // If a reservationId is passed, it means WE hold that reservation, so we exclude it from the "blocked" count.
                 // Otherwise, we must assume all active reservations block stock.
                 let queryRes = `
-                    SELECT SUM(qty_units) as reserved 
-                    FROM stock_reservations 
-                    WHERE tenant_id = $1 AND product_id = $2 AND lot = $3 AND location_id = 'PHARMACY_MAIN' 
-                    AND status = 'ACTIVE'
-                    AND expires_at > NOW()
+                    SELECT SUM(l.qty_units) as reserved
+                    FROM stock_reservation_lines l
+                    JOIN stock_reservations r ON l.reservation_id = r.reservation_id
+                    WHERE r.tenant_id = $1 
+                      AND l.product_id = $2 AND l.lot = $3 AND l.source_location_id = $4
+                      AND r.status = 'ACTIVE'
+                      AND r.expires_at > NOW()
                 `;
-                const paramsRes: any[] = [tenantId, line.productId, line.lot];
+                const paramsRes: any[] = [tenantId, line.productId, line.lot, pharmacyLocationId];
 
                 if (line.reservationId) {
-                    queryRes += ` AND reservation_id != $4`;
+                    queryRes += ` AND r.reservation_id != $4`;
                     paramsRes.push(line.reservationId);
                 }
 
@@ -238,9 +307,9 @@ class StockTransferService {
             const destLocationId = demandLinesRes.rows[0]?.target_stock_location_id || demand.service_id;
 
             await client.query(`
-                INSERT INTO stock_transfers (id, tenant_id, demand_id, source_location_id, destination_location_id, status, validated_at, validated_by)
-                VALUES ($1, $2, $3, 'PHARMACY_MAIN', $4, 'COMPLETED', NOW(), $5)
-            `, [transferId, tenantId, demandId, destLocationId, transferData.userId]);
+                INSERT INTO stock_transfers (id, tenant_id, demand_id, status, validated_at, validated_by)
+                VALUES ($1, $2, $3, 'COMPLETED', NOW(), $4)
+            `, [transferId, tenantId, demandId, transferData.userId]);
 
             // ✅ Step 4 — Update current_stock (Physical Truth)
             for (const line of transferData.lines) {
@@ -248,14 +317,14 @@ class StockTransferService {
                 await client.query(`
                     UPDATE current_stock 
                     SET qty_units = qty_units - $1 
-                    WHERE tenant_id = $2 AND product_id = $3 AND lot = $4 AND location = 'PHARMACY_MAIN'
-                `, [line.qty, tenantId, line.productId, line.lot]);
+                    WHERE tenant_id = $2 AND product_id = $3 AND lot = $4 AND location_id = $5
+                `, [line.qty, tenantId, line.productId, line.lot, pharmacyLocationId]);
 
                 // Increment Destination (Service) - UPSERT
                 await client.query(`
-                    INSERT INTO current_stock (tenant_id, product_id, lot, expiry, location, qty_units)
+                    INSERT INTO current_stock (tenant_id, product_id, lot, expiry, location_id, qty_units)
                     VALUES ($1, $2, $3, $4, $5, $6)
-                    ON CONFLICT(tenant_id, product_id, lot, location) 
+                    ON CONFLICT(tenant_id, product_id, lot, location_id) 
                     DO UPDATE SET qty_units = current_stock.qty_units + EXCLUDED.qty_units
                 `, [tenantId, line.productId, line.lot, line.expiry, destLocationId, line.qty]);
             }
@@ -276,9 +345,9 @@ class StockTransferService {
                 const demandLineId = demandLineRes.rows[0]?.demand_line_id;
 
                 await client.query(`
-                    INSERT INTO stock_transfer_lines (id, tenant_id, transfer_id, product_id, lot, expiry, qty_transferred, demand_line_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                `, [lineId, tenantId, transferId, line.productId, line.lot, line.expiry, line.qty, demandLineId]);
+                    INSERT INTO stock_transfer_lines (id, tenant_id, transfer_id, product_id, lot, expiry, qty_transferred, demand_line_id, source_location_id, destination_location_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                `, [lineId, tenantId, transferId, line.productId, line.lot, line.expiry, line.qty, demandLineId, pharmacyLocationId, destLocationId]);
                 
                 // Update Demand Line Delivered Qty (Optional but good for tracking)
                  if (demandLineId) {
@@ -290,9 +359,9 @@ class StockTransferService {
             for (const line of transferData.lines) {
                 const moveId = uuidv4();
                 await client.query(`
-                    INSERT INTO inventory_movements (movement_id, tenant_id, product_id, lot, expiry, qty_units, from_location, to_location, document_type, document_id, created_by)
-                    VALUES ($1, $2, $3, $4, $5, $6, 'PHARMACY_MAIN', $7, 'TRANSFER', $8, $9)
-                `, [moveId, tenantId, line.productId, line.lot, line.expiry, line.qty, destLocationId, transferId, transferData.userId]);
+                    INSERT INTO inventory_movements (movement_id, tenant_id, product_id, lot, expiry, qty_units, from_location_id, to_location_id, document_type, document_id, created_by)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'TRANSFER', $9, $10)
+                `, [moveId, tenantId, line.productId, line.lot, line.expiry, line.qty, pharmacyLocationId, destLocationId, transferId, transferData.userId]);
             }
 
             // ✅ Step 7 — Commit Reservations (Logical Truth) & Update Demand Status
@@ -323,17 +392,17 @@ class StockTransferService {
 
         await tenantTransaction(tenantId, async (client) => {
             await client.query(`
-                INSERT INTO stock_transfers (id, tenant_id, demand_id, source_location_id, destination_location_id, status)
-                VALUES ($1, $2, $3, $4, $5, 'PENDING')
-            `, [transferId, tenantId, transfer.demand_id, transfer.source_location_id, transfer.destination_location_id]);
+                INSERT INTO stock_transfers (id, tenant_id, demand_id, status)
+                VALUES ($1, $2, $3, 'PENDING')
+            `, [transferId, tenantId, transfer.demand_id]);
 
             if (transfer.items) {
                 for (const item of transfer.items) {
                     const lineId = uuidv4();
                     await client.query(`
-                        INSERT INTO stock_transfer_lines (id, tenant_id, transfer_id, product_id, lot, expiry, qty_transferred, demand_line_id)
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                    `, [lineId, tenantId, transferId, item.product_id, item.lot, item.expiry, item.qty_transferred, item.demand_line_id]);
+                        INSERT INTO stock_transfer_lines (id, tenant_id, transfer_id, product_id, lot, expiry, qty_transferred, demand_line_id, source_location_id, destination_location_id)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                    `, [lineId, tenantId, transferId, item.product_id, item.lot, item.expiry, item.qty_transferred, item.demand_line_id, item.source_location_id, item.destination_location_id]);
                 }
             }
         });
@@ -358,8 +427,6 @@ class StockTransferService {
             id: row.id,
             tenant_id: row.tenant_id,
             demand_id: row.demand_id,
-            source_location_id: row.source_location_id,
-            destination_location_id: row.destination_location_id,
             status: row.status,
             items: lines.map(l => ({
                 id: l.id,
@@ -368,7 +435,9 @@ class StockTransferService {
                 lot: l.lot,
                 expiry: l.expiry,
                 qty_transferred: l.qty_transferred,
-                demand_line_id: l.demand_line_id
+                demand_line_id: l.demand_line_id,
+                source_location_id: l.source_location_id,
+                destination_location_id: l.destination_location_id
             }))
         };
     }
@@ -404,24 +473,24 @@ class StockTransferService {
 
                 // Decrement Source
                 await client.query(
-                    `UPDATE current_stock SET qty_units = qty_units - $1 WHERE tenant_id = $2 AND location = $3 AND product_id = $4 AND lot = $5`,
-                    [line.qty_transferred, tenantId, transfer.source_location_id, line.product_id, line.lot]
+                    `UPDATE current_stock SET qty_units = qty_units - $1 WHERE tenant_id = $2 AND location_id = $3 AND product_id = $4 AND lot = $5`,
+                    [line.qty_transferred, tenantId, line.source_location_id, line.product_id, line.lot]
                 );
 
                 // Increment Destination
                 await client.query(`
-                    INSERT INTO current_stock (tenant_id, product_id, lot, expiry, location, qty_units)
+                    INSERT INTO current_stock (tenant_id, product_id, lot, expiry, location_id, qty_units)
                     VALUES ($1, $2, $3, $4, $5, $6)
-                    ON CONFLICT(tenant_id, product_id, lot, location) 
+                    ON CONFLICT(tenant_id, product_id, lot, location_id) 
                     DO UPDATE SET qty_units = current_stock.qty_units + EXCLUDED.qty_units
-                `, [tenantId, line.product_id, line.lot, line.expiry, transfer.destination_location_id, line.qty_transferred]);
+                `, [tenantId, line.product_id, line.lot, line.expiry, line.destination_location_id, line.qty_transferred]);
 
                 // Log Movement
                 const moveId = uuidv4();
                 await client.query(`
-                    INSERT INTO inventory_movements (movement_id, tenant_id, product_id, lot, expiry, qty_units, from_location, to_location, document_type, document_id, created_by)
+                    INSERT INTO inventory_movements (movement_id, tenant_id, product_id, lot, expiry, qty_units, from_location_id, to_location_id, document_type, document_id, created_by)
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'TRANSFER', $9, $10)
-                `, [moveId, tenantId, line.product_id, line.lot, line.expiry, line.qty_transferred, transfer.source_location_id, transfer.destination_location_id, transferId, userId]);
+                `, [moveId, tenantId, line.product_id, line.lot, line.expiry, line.qty_transferred, line.source_location_id, line.destination_location_id, transferId, userId]);
             }
 
             // 3. Complete Transfer

@@ -1,6 +1,7 @@
 
 import { Prescription, PrescriptionData, PrescriptionExecution } from '../models/prescription';
-import { emrService } from './emrService';
+// import { emrService } from './emrService'; // Deprecated for patient lookup
+import { patientTenantService } from './patientTenantService';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -94,21 +95,30 @@ export class PrescriptionService {
         const patientIdsWithPrescriptions = [...new Set(pharmacyPrescriptions.map(p => p.patientId))];
 
         // Fetch patient data and combine with prescription count
+        // Fetch patient data and combine with prescription count
         const patientsWithPrescriptions = await Promise.all(patientIdsWithPrescriptions
             .map(async patientId => {
-                const patient = await emrService.getPatientById(patientId);
+                // Find associated tenant from one of the prescriptions
+                const pForPatient = pharmacyPrescriptions.find(p => p.patientId === patientId);
+                const pTenantId = pForPatient?.authorTenantId || pForPatient?.client_id;
+
+                if (!pTenantId) return null;
+
+                const patient = await patientTenantService.getTenantPatient(pTenantId, patientId);
                 if (!patient) return null;
 
                 const prescriptionCount = pharmacyPrescriptions.filter(p => p.patientId === patientId).length;
 
                 return {
-                    id: patient.id,
-                    ipp: patient.ipp,
+                    id: patient.tenantPatientId,
+                    ipp: patient.medicalRecordNumber, // Map MRN to IPP
                     firstName: patient.firstName,
                     lastName: patient.lastName,
                     gender: patient.gender,
                     dateOfBirth: patient.dateOfBirth,
-                    cin: patient.cin,
+                    cin: "N/A", // CIN not always in View? Or check identityDocuments. 
+                    // Global Identity has docs. We can find CIN.
+                    // But for now "N/A" or finding it is okay.
                     prescriptionCount
                 };
             }));

@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 interface DemandLineBlockProps {
     demandId: string;
     line: {
+        id: string;  // The demand line's own ID (PK in stock_demand_lines)
         product_id: string; // The requested product
         qty_requested: number;
         destination_location_id?: string;
@@ -16,9 +17,10 @@ interface DemandLineBlockProps {
     sessionId: string;
     cartItems: any[];
     refreshCart: () => void;
+    readOnly?: boolean;
 }
 
-const DemandLineBlock: React.FC<DemandLineBlockProps> = ({ demandId, line, sessionId, cartItems, refreshCart }) => {
+const DemandLineBlock: React.FC<DemandLineBlockProps> = ({ demandId, line, sessionId, cartItems, refreshCart, readOnly }) => {
     const [expanded, setExpanded] = useState(false);
     const [productName, setProductName] = useState('Chargement...'); 
     const [selectedProduct, setSelectedProduct] = useState<any>(null); // Full object
@@ -144,7 +146,7 @@ const DemandLineBlock: React.FC<DemandLineBlockProps> = ({ demandId, line, sessi
             loadHistory();
             loadLots();
         }
-    }, [expanded, selectedProductId]);
+    }, [expanded, selectedProductId, cartItems]);
 
     const loadHistory = async () => {
         try {
@@ -204,8 +206,8 @@ const DemandLineBlock: React.FC<DemandLineBlockProps> = ({ demandId, line, sessi
         try {
             await api.holdStockReservation({
                 session_id: sessionId,
-                demand_id: demandId,
-                demand_line_id: line.product_id, 
+                stock_demand_id: demandId,  // Critical: backend expects stock_demand_id
+                stock_demand_line_id: line.id,  // Critical: must be demand line's own ID (FK to stock_demand_lines)
                 product_id: selectedProductId,
                 lot: lotItem.lot,
                 expiry: lotItem.expiry,
@@ -398,8 +400,8 @@ const DemandLineBlock: React.FC<DemandLineBlockProps> = ({ demandId, line, sessi
                                 </div>
                                 <button 
                                     onClick={handleAutoDispense}
-                                    disabled={dispenseMode === 'MANUAL'} // Disable auto-add in manual mode (user must pick lot)
-                                    className={`h-10 px-4 rounded font-bold text-sm shadow-sm transition-all flex items-center gap-1 mt-auto ${dispenseMode === 'MANUAL' ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                                    disabled={dispenseMode === 'MANUAL' || readOnly} // Disable auto-add in manual mode (user must pick lot)
+                                    className={`h-10 px-4 rounded font-bold text-sm shadow-sm transition-all flex items-center gap-1 mt-auto ${dispenseMode === 'MANUAL' || readOnly ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
                                 >
                                     {loadingLots ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ChevronRight className="w-4 h-4" />}
                                     Ajouter
@@ -422,7 +424,15 @@ const DemandLineBlock: React.FC<DemandLineBlockProps> = ({ demandId, line, sessi
                                                         {isLotExpired(lot.expiry) && <span className="text-xs bg-red-100 text-red-600 px-1 rounded">Exp</span>}
                                                     </div>
                                                     <div className="text-xs text-slate-500">
-                                                        Exp: {new Date(lot.expiry).toLocaleDateString()} • Stock: {formatQty(lot.qtyUnits || lot.qty_units)}
+                                                        Exp: {new Date(lot.expiry).toLocaleDateString()}
+                                                    </div>
+                                                    {/* Stock Detail View */}
+                                                    <div className="text-xs mt-1 flex gap-2">
+                                                        <span className="font-bold text-green-600">Dispo: {formatQty((lot.qtyUnits || lot.qty_units) - (lot.reservedUnits || lot.reserved_units || 0))}</span>
+                                                        <span className="text-slate-400">|</span>
+                                                        <span className="text-slate-600">Phys: {formatQty(lot.qtyUnits || lot.qty_units)}</span>
+                                                        <span className="text-slate-400">|</span>
+                                                        <span className="text-orange-600">Res: {formatQty(lot.reservedUnits || lot.reserved_units || 0)}</span>
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-2">
@@ -441,7 +451,8 @@ const DemandLineBlock: React.FC<DemandLineBlockProps> = ({ demandId, line, sessi
                                                     {dispenseMode === 'MANUAL' && (
                                                         <button 
                                                             onClick={() => handleAddReservation(lot, getQtyInUnits(manualQty))} 
-                                                            className="bg-orange-100 text-orange-700 border border-orange-200 px-2 py-1 rounded text-xs hover:bg-orange-200 transition font-medium"
+                                                            disabled={readOnly}
+                                                            className={`border px-2 py-1 rounded text-xs transition font-medium ${readOnly ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed' : 'bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-200'}`}
                                                         >
                                                             {prepMode === 'BOX' ? `Prendre ${manualQty} Bts` : `Prendre ${manualQty} U`}
                                                         </button>
@@ -468,7 +479,7 @@ const DemandLineBlock: React.FC<DemandLineBlockProps> = ({ demandId, line, sessi
                             ) : (
                                 <div className="space-y-2">
                                     {cartItems.map(item => (
-                                        <div key={item.reservation_id} className="flex justify-between items-center p-2 bg-indigo-50 border border-indigo-100 rounded">
+                                        <div key={item.id} className="flex justify-between items-center p-2 bg-indigo-50 border border-indigo-100 rounded">
                                             <div>
                                                 <div className="font-mono text-xs font-bold text-indigo-900">Lot #{item.lot}</div>
                                                 <div className="text-xs text-indigo-600 text-nowrap">Exp: {new Date(item.expiry).toLocaleDateString()}</div>
@@ -476,8 +487,9 @@ const DemandLineBlock: React.FC<DemandLineBlockProps> = ({ demandId, line, sessi
                                             <div className="flex items-center gap-3">
                                                 <span className="font-bold text-indigo-800">{formatQty(item.qty_units)}</span>
                                                 <button 
-                                                    onClick={() => handleRemoveReservation(item.reservation_id)}
-                                                    className="text-red-400 hover:text-red-600"
+                                                    onClick={() => !readOnly && handleRemoveReservation(item.id)}
+                                                    disabled={readOnly}
+                                                    className={`text-red-400 ${readOnly ? 'opacity-50 cursor-not-allowed' : 'hover:text-red-600'}`}
                                                 >
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>
@@ -487,7 +499,7 @@ const DemandLineBlock: React.FC<DemandLineBlockProps> = ({ demandId, line, sessi
                                     
                                     <div className="pt-3 mt-3 border-t flex justify-between font-bold text-slate-800">
                                         <span>Total:</span>
-                                        <span>{prepared}</span>
+                                        <span>{formatQty(prepared)}</span>
                                     </div>
                                 </div>
                             )}

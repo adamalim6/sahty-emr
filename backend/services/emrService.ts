@@ -1,115 +1,25 @@
 /**
  * EMR Service - PostgreSQL Version
- * Manages patients (global), admissions, appointments, and rooms (tenant)
+ * Manages admissions, appointments, and rooms (tenant).
+ * Patient Identity management has moved to patientGlobalService and patientTenantService.
  */
 
-import { Patient, Admission, Appointment, Room, Gender, AdmissionMedicationConsumption } from '../models/emr';
-import { globalQuery } from '../db/globalPg';
+import { Admission, Appointment, Room, AdmissionMedicationConsumption } from '../models/emr';
+// import { globalQuery } from '../db/globalPg'; // No longer needed
 import { tenantQuery, tenantTransaction } from '../db/tenantPg';
 
 export class EmrService {
     
-    // --- PATIENTS (GLOBAL) ---
-
-    async getAllPatients(): Promise<Patient[]> {
-        const rows = await globalQuery('SELECT * FROM patients', []);
-        return rows.map(this.mapPatient);
-    }
-
-    async getPatientById(id: string): Promise<Patient | undefined> {
-        const rows = await globalQuery('SELECT * FROM patients WHERE id = $1', [id]);
-        return rows.length > 0 ? this.mapPatient(rows[0]) : undefined;
-    }
-
-    async createPatient(data: Partial<Patient>): Promise<Patient> {
-        const newPatient: Patient = {
-            id: `PAT-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-            isProvisional: false,
-            firstName: '',
-            lastName: '',
-            dateOfBirth: '',
-            gender: Gender.Male,
-            ipp: `IPP-${Date.now()}`,
-            ...data
-        } as Patient;
-
-        await globalQuery(`
-            INSERT INTO patients (
-                id, ipp, "firstName", "lastName", "dateOfBirth", gender, cin, phone, email, 
-                address, city, country, nationality, "maritalStatus", profession, "bloodGroup", "isPayant",
-                insurance_data, emergency_contacts, guardian_data
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
-        `, [
-            newPatient.id, newPatient.ipp, newPatient.firstName, newPatient.lastName, newPatient.dateOfBirth, newPatient.gender, 
-            newPatient.cin, newPatient.phone, newPatient.email, newPatient.address, newPatient.city, newPatient.country,
-            newPatient.nationality, newPatient.maritalStatus, newPatient.profession, newPatient.bloodGroup, newPatient.isPayant,
-            JSON.stringify(newPatient.insurance || {}),
-            JSON.stringify(newPatient.emergencyContacts || []),
-            JSON.stringify(newPatient.guardian || {})
-        ]);
-
-        return newPatient;
-    }
-
-    async updatePatient(id: string, data: Partial<Patient>): Promise<Patient | null> {
-        const existing = await this.getPatientById(id);
-        if (!existing) return null;
-
-        const updated = { ...existing, ...data };
-        
-        await globalQuery(`
-            UPDATE patients SET 
-                ipp=$1, "firstName"=$2, "lastName"=$3, "dateOfBirth"=$4, gender=$5, cin=$6, phone=$7, email=$8, 
-                address=$9, city=$10, country=$11, nationality=$12, "maritalStatus"=$13, profession=$14, "bloodGroup"=$15, "isPayant"=$16,
-                insurance_data=$17, emergency_contacts=$18, guardian_data=$19
-            WHERE id=$20
-        `, [
-            updated.ipp, updated.firstName, updated.lastName, updated.dateOfBirth, updated.gender, 
-            updated.cin, updated.phone, updated.email, updated.address, updated.city, updated.country,
-            updated.nationality, updated.maritalStatus, updated.profession, updated.bloodGroup, updated.isPayant,
-            JSON.stringify(updated.insurance || {}),
-            JSON.stringify(updated.emergencyContacts || []),
-            JSON.stringify(updated.guardian || {}),
-            updated.id
-        ]);
-
-        return updated;
-    }
-    
-    private mapPatient(row: any): Patient {
-        return {
-            id: row.id,
-            ipp: row.ipp,
-            firstName: row.firstName || row.firstname,
-            lastName: row.lastName || row.lastname,
-            dateOfBirth: row.dateOfBirth || row.dateofbirth,
-            gender: row.gender,
-            cin: row.cin,
-            phone: row.phone,
-            email: row.email,
-            address: row.address,
-            city: row.city,
-            country: row.country,
-            nationality: row.nationality,
-            maritalStatus: row.maritalStatus || row.maritalstatus,
-            profession: row.profession,
-            bloodGroup: row.bloodGroup || row.bloodgroup,
-            isPayant: row.isPayant || row.ispayant,
-            insurance: row.insurance_data ? (typeof row.insurance_data === 'string' ? JSON.parse(row.insurance_data) : row.insurance_data) : undefined,
-            emergencyContacts: row.emergency_contacts ? (typeof row.emergency_contacts === 'string' ? JSON.parse(row.emergency_contacts) : row.emergency_contacts) : [],
-            guardian: row.guardian_data ? (typeof row.guardian_data === 'string' ? JSON.parse(row.guardian_data) : row.guardian_data) : undefined,
-            isProvisional: false
-        };
-    }
-
     // --- ADMISSIONS (TENANT) ---
 
     async getAllAdmissions(tenantId: string): Promise<Admission[]> {
+        // We now fetch tenant_patient_id as the primary reference
         const rows = await tenantQuery(tenantId, 'SELECT * FROM admissions', []);
         return rows.map(r => ({
             id: r.id,
             tenantId: r.tenant_id,
-            patientId: r.patient_id,
+            patientId: r.patient_id || '', // Legacy support or empty
+            tenantPatientId: r.tenant_patient_id, // New Field
             nda: r.nda,
             reason: r.reason,
             service: r.service_id,
@@ -126,21 +36,27 @@ export class EmrService {
 
     async createAdmission(tenantId: string, data: Admission): Promise<Admission> {
         const newAdmission = { ...data, tenantId }; 
-        
+        // Prefer tenantPatientId, fallback to patientId if provided (legacy UI might send patientId)
+        const patientIdToUse = data.tenantPatientId || data.patientId; 
+
         await tenantTransaction(tenantId, async (client) => {
             await client.query(`
-                INSERT INTO admissions (id, tenant_id, patient_id, nda, reason, service_id, admission_date, discharge_date, doctor_name, room_number, bed_label, status, currency)
+                INSERT INTO admissions (
+                    id, tenant_id, tenant_patient_id, nda, reason, service_id, 
+                    admission_date, discharge_date, doctor_name, room_number, bed_label, status, currency
+                )
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             `, [
-                newAdmission.id, tenantId, newAdmission.patientId, newAdmission.nda, newAdmission.reason, newAdmission.service,
+                newAdmission.id, tenantId, patientIdToUse, newAdmission.nda, newAdmission.reason, newAdmission.service,
                 newAdmission.admissionDate, newAdmission.dischargeDate, newAdmission.doctorName, newAdmission.roomNumber,
                 newAdmission.bedLabel, newAdmission.status, newAdmission.currency
             ]);
             
             // Occupy Room
-            if (newAdmission.roomNumber) {
+            if (newAdmission.roomNumber && newAdmission.service) {
+                // Assuming 'service' in Admission maps to 'service_id' in Rooms
                 await client.query(
-                    'UPDATE rooms SET is_occupied = true WHERE number = $1 AND section = $2', 
+                    'UPDATE rooms SET is_occupied = true WHERE number = $1 AND service_id = $2', 
                     [newAdmission.roomNumber, newAdmission.service]
                 );
             }
@@ -163,9 +79,9 @@ export class EmrService {
             );
 
             // Free Room
-            if (admission.room_number) {
+            if (admission.room_number && admission.service_id) {
                 await client.query(
-                    'UPDATE rooms SET is_occupied = false WHERE number = $1 AND section = $2', 
+                    'UPDATE rooms SET is_occupied = false WHERE number = $1 AND service_id = $2', 
                     [admission.room_number, admission.service_id]
                 );
             }
@@ -178,7 +94,8 @@ export class EmrService {
 
     async getAllAppointments(tenantId: string): Promise<Appointment[]> {
         const rows = await tenantQuery(tenantId, 'SELECT * FROM appointments', []);
-        return rows as any; // Todo Mapping
+        // TODO: Map rows to Appointment interface
+        return rows as any; 
     }
 
     // --- ROOMS (Bridge to Settings) ---
@@ -187,9 +104,12 @@ export class EmrService {
         const rows = await tenantQuery(tenantId, 'SELECT * FROM rooms', []);
         return rows.map(r => ({
             id: r.id,
-            service_id: r.service_id,
+            service_id: r.service_id, // This property might not exist on Room interface, check models/emr.ts. 
+            // It has 'section'. We might need to map service_id to section or just expose service_id?
+            // Room interface: id, number, section, isOccupied, patientId?, type.
+            // Let's assume section was used for service name or ID previously.
             number: r.number,
-            section: r.section,
+            section: r.section || r.service_id, // Fallback
             isOccupied: r.is_occupied,
             type: r.type
         }));
@@ -203,7 +123,7 @@ export class EmrService {
 
     async getConsumptionsByAdmission(tenantId: string, admissionId: string): Promise<AdmissionMedicationConsumption[]> {
         const rows = await tenantQuery(tenantId, 
-            'SELECT * FROM dispense_events WHERE admission_id = $1', 
+            'SELECT * FROM medication_dispense_events WHERE admission_id = $1', 
             [admissionId]
         );
         return rows.map(r => ({
@@ -211,13 +131,13 @@ export class EmrService {
             admissionId: r.admission_id,
             productId: r.product_id,
             productName: r.product_name || 'Unknown', 
-            quantity: r.qty,
+            quantity: r.qty_dispensed, // changed from qty to qty_dispensed based on 022 migration
             mode: 'BOX',
-            lotNumber: r.batch_id || '',
-            batchNumber: r.batch_id || '',
-            dispensedAt: r.created_at,
-            dispensedBy: r.user_id || 'Pharmacy',
-            expiryDate: undefined
+            lotNumber: r.lot || '', // changed from batch_id
+            batchNumber: r.lot || '',
+            dispensedAt: r.dispensed_at || r.created_at,
+            dispensedBy: r.dispensed_by || 'Pharmacy',
+            expiryDate: r.expiry
         }));
     }
 }

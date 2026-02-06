@@ -105,9 +105,9 @@ async function run() {
     
     console.log('\n3.1 Existing virtual stock check (should be 0 rows):');
     const proof = await tenantQuery(tenantId, `
-        SELECT cs.tenant_id, cs.location, cs.product_id, l.type, l.scope
+        SELECT cs.tenant_id, cs.location_id, cs.product_id, l.type, l.scope
         FROM current_stock cs
-        JOIN locations l ON l.tenant_id = cs.tenant_id AND l.location_id = cs.location
+        JOIN locations l ON l.tenant_id = cs.tenant_id AND l.location_id = cs.location_id
         WHERE l.type = 'VIRTUAL' OR l.scope = 'SYSTEM'
     `, []);
     console.log(`   Result: ${proof.length} rows`);
@@ -164,9 +164,9 @@ async function run() {
     
     // Find a PHYSICAL location that has stock
     const physicalWithStock = await tenantQuery(tenantId, `
-        SELECT cs.location, l.name, l.type, l.scope
+        SELECT cs.location_id, l.name, l.type, l.scope
         FROM current_stock cs
-        JOIN locations l ON l.location_id = cs.location AND l.tenant_id = cs.tenant_id
+        JOIN locations l ON l.location_id = cs.location_id AND l.tenant_id = cs.tenant_id
         WHERE l.type = 'PHYSICAL'
         LIMIT 1
     `, []);

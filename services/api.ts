@@ -28,8 +28,9 @@ async function fetchJson<T>(endpoint: string, options?: RequestInit): Promise<T>
         // 403 Forbidden - DO NOT LOGOUT the user. Just throw error.
         
         let errorMessage = response.statusText;
+        let errorBody: any = {};
         try {
-            const errorBody = await response.json();
+            errorBody = await response.json();
             if (errorBody && errorBody.error) {
                 errorMessage = errorBody.error;
             } else if (errorBody && errorBody.message) {
@@ -39,7 +40,9 @@ async function fetchJson<T>(endpoint: string, options?: RequestInit): Promise<T>
             // Failed to parse error body, stick with status text
         }
 
-        throw new Error(errorMessage);
+        const error = new Error(errorMessage);
+        Object.assign(error, errorBody); // Attach all properties (claimedBy, claimedAt, etc.)
+        throw error;
     }
     return response.json();
 }
@@ -90,8 +93,7 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }),
-    getAppointments: () => fetchJson<Appointment[]>('/emr/appointments'),
-    getRooms: () => fetchJson<Room[]>('/emr/rooms'),
+    // Pharmacy Attributes
     
     // Service Stock (EMR-based - for nurses/clinical staff)
     getServiceStock: (serviceId?: string) => {
@@ -137,6 +139,10 @@ export const api = {
     deleteLocation: (id: string) => fetchJson<void>(`/pharmacy/locations/${id}`, {
         method: 'DELETE'
     }),
+    getReturnQuarantineLocation: async () => {
+        const locations = await fetchJson<StockLocation[]>(`/pharmacy/locations?scope=PHARMACY`);
+        return locations.find(l => l.name === 'RETURN_QUARANTINE');
+    },
     getPartners: () => fetchJson<PartnerInstitution[]>('/pharmacy/partners'),
     createPartner: (data: any) => fetchJson<PartnerInstitution>('/pharmacy/partners', {
         method: 'POST',
@@ -462,31 +468,77 @@ export const api = {
 
     // --- Stock Reservations (HOLD Engine) ---
     
-    holdStockReservation: (data: any) => fetchJson<any>('/pharmacy/stock-reservations/hold', {
+    holdStockReservation: (data: any) => fetchJson<any>('/stock-reservations/hold', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }),
     
-    releaseStockReservation: (reservationId: string) => fetchJson<any>('/pharmacy/stock-reservations/release', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reservation_id: reservationId })
+    releaseStockReservation: (reservationId: string) => fetchJson<any>(`/stock-reservations/line/${reservationId}`, {
+        method: 'DELETE'
     }),
     
-    refreshStockReservationSession: (sessionId: string) => fetchJson<any>('/pharmacy/stock-reservations/refresh-session', {
+    releaseStockReservationSession: (sessionId: string) => fetchJson<any>('/stock-reservations/release-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: sessionId })
     }),
     
-    getStockReservationCart: (sessionId: string) => fetchJson<any[]>(`/pharmacy/stock-reservations/cart/${sessionId}`),
+    getStockReservationCart: (sessionId: string) => fetchJson<any>(`/stock-reservations/cart/${sessionId}`),
+
+    getActiveReservationForDemand: (demandId: string) => fetchJson<any | null>(`/stock-reservations/active-for-demand/${demandId}`),
     
-    commitStockReservationSession: (sessionId: string, relatedDemandId: string) => fetchJson<any>('/pharmacy/stock-reservations/commit', {
+    commitStockReservationSession: (sessionId: string, relatedDemandId: string) => fetchJson<any>('/stock-reservations/commit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: sessionId, related_demand_id: relatedDemandId })
-    })
+    }),
+
+    // --- Concurrency Control ---
+    claimDemand: (demandId: string) => fetchJson<any>(`/stock-transfers/demands/${demandId}/claim`, { method: 'POST' }),
+
+    releaseDemand: (demandId: string) => fetchJson<any>(`/stock-transfers/demands/${demandId}/release`, { method: 'POST' }),
+    // --- Stock Returns (Service -> Pharmacy) ---
+    // --- Stock Returns (Service -> Pharmacy) ---
+    getReturns: (serviceId?: string) => {
+        const query = serviceId ? `?serviceId=${serviceId}` : '';
+        return fetchJson<any[]>(`/emr/returns${query}`);
+    },
+    getReturnDetails: (id: string) => fetchJson<any>(`/emr/returns/${id}`),
+    createReturn: (data: { serviceId: string, reservationId: string }) => fetchJson<any>('/emr/returns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+
+    // --- Stock Receptions (Pharmacy) ---
+    getPharmacyReturns: (status?: string, serviceId?: string) => {
+        const params = new URLSearchParams();
+        if (status) params.append('status', status);
+        if (serviceId) params.append('serviceId', serviceId);
+        return fetchJson<any[]>(`/pharmacy/returns?${params.toString()}`);
+    },
+    getPharmacyReturnDetails: (id: string) => fetchJson<any>(`/pharmacy/returns/${id}`),
+    
+    // [NEW] Get Receptions History for a Return
+    getReturnReceptions: (returnId: string) => fetchJson<any[]>(`/pharmacy/returns/${returnId}/receptions`),
+
+    getReceptionDetails: (receptionId: string) => fetchJson<any>(`/pharmacy/receptions/${receptionId}`),
+
+    createReception: (data: { returnId: string, lines: { returnLineId: string, qtyReceived: number }[] }) => fetchJson<any>('/pharmacy/receptions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+
+    // [NEW] Return Decisions
+    createReturnDecision: (receptionId: string, decisions: { returnLineId: string; qty: number; outcome: 'COMMERCIAL' | 'CHARITY' | 'WASTE'; destinationLocationId?: string }[]) => fetchJson<any>(`/pharmacy/receptions/${receptionId}/decision`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decisions })
+    }),
+
+    getReceptionsDecisions: (receptionId: string) => fetchJson<any[]>(`/pharmacy/receptions/${receptionId}/decisions`)
 };
 
 // Type for patient with prescription data

@@ -16,12 +16,12 @@ CREATE TABLE IF NOT EXISTS inventory_movements (
     lot TEXT NOT NULL,
     expiry DATE NOT NULL,
     qty_units INTEGER NOT NULL,  -- negative = out, positive = in
-    from_location TEXT,
-    to_location TEXT,
+    from_location_id TEXT,
+    to_location_id TEXT,
     document_type TEXT NOT NULL CHECK (document_type IN (
         'DELIVERY_INJECTION', 'TRANSFER', 'DISPENSE', 
         'RETURN_INTERNAL', 'RETURN_SUPPLIER', 'WASTE', 'DESTRUCTION', 
-        'BORROW_IN', 'BORROW_OUT'
+        'BORROW_IN', 'BORROW_OUT', 'RETURN_DECISION'
     )),
     document_id TEXT,
     created_by TEXT,
@@ -39,15 +39,15 @@ CREATE TABLE IF NOT EXISTS current_stock (
     product_id UUID NOT NULL,
     lot TEXT NOT NULL,
     expiry DATE NOT NULL,
-    location TEXT NOT NULL,
+    location_id TEXT NOT NULL,
     qty_units INTEGER NOT NULL CHECK (qty_units >= 0),
     reserved_units INTEGER NOT NULL DEFAULT 0,          -- active reservations (basket/transfer)
     pending_return_units INTEGER NOT NULL DEFAULT 0,    -- declared but not yet received returns
-    PRIMARY KEY (tenant_id, product_id, lot, location)
+    PRIMARY KEY (tenant_id, product_id, lot, location_id)
 );
 -- Effective available stock: available_units = qty_units - reserved_units - pending_return_units
 
-CREATE INDEX idx_stock_loc ON current_stock(tenant_id, location);
+CREATE INDEX idx_stock_loc ON current_stock(tenant_id, location_id);
 CREATE INDEX idx_stock_prod ON current_stock(tenant_id, product_id);
 CREATE INDEX idx_stock_expiry ON current_stock(expiry);
 
@@ -297,7 +297,7 @@ CREATE TABLE IF NOT EXISTS locations (
     tenant_id TEXT NOT NULL,
     name TEXT NOT NULL,
     type TEXT,
-    scope TEXT CHECK (scope IN ('PHARMACY', 'SERVICE')),
+    scope TEXT CHECK (scope IN ('PHARMACY', 'SERVICE', 'SYSTEM')),
     service_id UUID REFERENCES services(id),
     location_class TEXT CHECK (location_class IN ('COMMERCIAL', 'CHARITY')) DEFAULT 'COMMERCIAL',
     valuation_policy TEXT NOT NULL DEFAULT 'VALUABLE' CHECK (valuation_policy IN ('VALUABLE', 'NON_VALUABLE')),
@@ -306,6 +306,10 @@ CREATE TABLE IF NOT EXISTS locations (
     -- RETURN_QUARANTINE must always be ACTIVE
     CONSTRAINT chk_return_quarantine_active CHECK (
         NOT (name = 'RETURN_QUARANTINE' AND status != 'ACTIVE')
+    ),
+    -- WASTE must always be ACTIVE
+    CONSTRAINT chk_waste_active CHECK (
+        NOT (name = 'WASTE' AND status != 'ACTIVE')
     )
 );
 
@@ -549,13 +553,14 @@ CREATE TABLE IF NOT EXISTS return_decisions (
 CREATE INDEX idx_decisions_reception ON return_decisions(reception_id);
 
 -- 8.6 Return Decision Lines (Outcome Allocation)
--- Allocation of received qty to outcomes (REINTEGRATE, CHARITY, WASTE, DESTRUCTION)
+-- Allocation of received qty to outcomes (COMMERCIAL, CHARITY, WASTE)
 CREATE TABLE IF NOT EXISTS return_decision_lines (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     decision_id UUID NOT NULL REFERENCES return_decisions(id) ON DELETE CASCADE,
     return_line_id UUID NOT NULL REFERENCES stock_return_lines(id),
     qty_units INTEGER NOT NULL CHECK (qty_units > 0),
-    outcome TEXT NOT NULL CHECK (outcome IN ('REINTEGRATE', 'CHARITY', 'WASTE', 'DESTRUCTION'))
+    outcome TEXT NOT NULL CHECK (outcome IN ('COMMERCIAL', 'CHARITY', 'WASTE')),
+    destination_location_id UUID REFERENCES locations(location_id)
 );
 
 CREATE INDEX idx_decision_lines_decision ON return_decision_lines(decision_id);

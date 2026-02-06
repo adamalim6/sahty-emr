@@ -26,7 +26,10 @@ export const stockTransferController = {
     async createDemand(req: Request, res: Response) {
         try {
             const tenantId = getTenantId(req as any);
-            const demandId = await stockTransferService.createDemand(tenantId, req.body);
+            const userId = (req as any).user?.userId;
+            // Use authenticated user's ID instead of whatever is passed in body
+            const demandData = { ...req.body, requested_by: userId };
+            const demandId = await stockTransferService.createDemand(tenantId, demandData);
             res.status(201).json({ id: demandId });
         } catch (error: any) {
             console.error('Error creating demand:', error);
@@ -72,6 +75,42 @@ export const stockTransferController = {
         }
     },
 
+    async claimDemand(req: Request, res: Response) {
+        try {
+            const tenantId = getTenantId(req as any);
+            const { demandId } = req.params;
+            const userId = (req as any).user?.userId;
+            console.log(`[ClaimDemand] Request: tenant=${tenantId}, demand=${demandId}, user=${userId}`);
+            await stockTransferService.claimDemand(tenantId, demandId, userId);
+            console.log(`[ClaimDemand] Success: demand=${demandId}`);
+            res.json({ success: true });
+        } catch (error: any) {
+            console.error('[ClaimDemand] Error:', error.message, 'Code:', error.code, 'Stack:', error.stack?.split('\n')[0]);
+            if (error.code === 'DEMAND_LOCKED') {
+                return res.status(409).json({
+                    error: error.message,
+                    message: error.message,
+                    claimedBy: error.details?.claimedBy,
+                    claimedAt: error.details?.claimedAt
+                });
+            }
+            res.status(500).json({ error: error.message, message: error.message });
+        }
+    },
+
+    async releaseDemand(req: Request, res: Response) {
+        try {
+            const tenantId = getTenantId(req as any);
+            const { demandId } = req.params;
+            const userId = (req as any).user?.userId;
+            await stockTransferService.releaseDemandClaim(tenantId, demandId, userId);
+            res.json({ success: true });
+        } catch (error: any) {
+            console.error('Error releasing demand claim:', error);
+            res.status(500).json({ message: error.message });
+        }
+    },
+
     // --- TRANSFERS ---
 
     async createTransfer(req: Request, res: Response) {
@@ -103,7 +142,7 @@ export const stockTransferController = {
             const tenantId = getTenantId(req as any);
             const { transferId } = req.params;
 
-            const userId = (req as any).user?.id || 'SYSTEM'; 
+            const userId = (req as any).user?.userId || 'SYSTEM'; 
             await stockTransferService.executeTransfer(tenantId, transferId, userId);
             res.json({ success: true });
         } catch (error: any) {

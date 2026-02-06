@@ -47,7 +47,7 @@ export class PharmacyService {
         // PostgreSQL: Use $n placeholders with dynamic index
         // FORCE STRING DATE to prevent timezone shifts (e.g. 2026-01-30 -> 2026-01-29T23:00:00Z)
         // Include reserved_units and pending_return_units for effective available stock
-        let query = `SELECT tenant_id, product_id, lot, to_char(expiry, 'YYYY-MM-DD') as expiry, location, 
+        let query = `SELECT tenant_id, product_id, lot, to_char(expiry, 'YYYY-MM-DD') as expiry, location_id as location, 
                      qty_units, COALESCE(reserved_units, 0) as reserved_units, 
                      COALESCE(pending_return_units, 0) as pending_return_units,
                      (qty_units - COALESCE(reserved_units, 0) - COALESCE(pending_return_units, 0)) as available_units
@@ -56,7 +56,7 @@ export class PharmacyService {
         let paramIndex = 2;
 
         if (location) {
-            query += ` AND location = $${paramIndex++}`;
+            query += ` AND location_id = $${paramIndex++}`;
             params.push(location);
         }
         if (productId) {
@@ -95,13 +95,13 @@ export class PharmacyService {
         // Include reserved_units and pending_return_units for effective available stock
         let query = `
             SELECT cs.tenant_id, cs.product_id, cs.lot, to_char(cs.expiry, 'YYYY-MM-DD') as expiry, 
-                   cs.location, cs.qty_units, 
+                   cs.location_id as location, cs.qty_units, 
                    COALESCE(cs.reserved_units, 0) as reserved_units,
                    COALESCE(cs.pending_return_units, 0) as pending_return_units,
                    (cs.qty_units - COALESCE(cs.reserved_units, 0) - COALESCE(cs.pending_return_units, 0)) as available_units,
                    l.scope, l.service_id
             FROM current_stock cs
-            JOIN locations l ON cs.location::uuid = l.location_id AND cs.tenant_id = l.tenant_id
+            JOIN locations l ON cs.location_id = l.location_id AND cs.tenant_id = l.tenant_id
             WHERE cs.tenant_id = $1 AND l.scope = $2 AND cs.qty_units > 0
         `;
         const params: any[] = [tenantId, scope];
@@ -143,8 +143,8 @@ export class PharmacyService {
         const query = `
             SELECT 
                 movement_id, tenant_id, product_id, lot, to_char(expiry, 'YYYY-MM-DD') as expiry, 
-                qty_units, from_location, to_location, document_type, document_id, created_by, created_at
-            FROM inventory_movements 
+                qty_units, from_location_id as from_location, to_location_id as to_location, document_type, document_id, created_by, created_at
+            FROM inventory_movements  
             WHERE tenant_id = $1 
             ORDER BY created_at DESC 
             LIMIT $2`;
@@ -231,31 +231,32 @@ export class PharmacyService {
                 // STEP 1: Lock all stock rows for this product (prevents concurrent modification)
                 await client.query(`
                     SELECT qty_units FROM current_stock 
-                    WHERE tenant_id = $1 AND location = $2::UUID AND product_id = $3
+                    WHERE tenant_id = $1 AND location_id = $2 AND product_id = $3
                     FOR UPDATE
                 `, [tenantId, sourceLocation, item.productId]);
 
                 // STEP 2: Calculate available = physical - active_reservations (FEFO ordering)
                 const availablePositions = await client.query(`
                     SELECT 
-                        cs.product_id, cs.lot, cs.expiry, cs.location, cs.qty_units,
+                        cs.product_id, cs.lot, cs.expiry, cs.location_id as location, cs.qty_units,
                         COALESCE(reserved.total, 0) as reserved_qty,
                         (cs.qty_units - COALESCE(reserved.total, 0)) as available_qty
                     FROM current_stock cs
                     LEFT JOIN (
-                        SELECT product_id, lot, expiry, location_id, SUM(qty_units) as total
-                        FROM stock_reservations
-                        WHERE tenant_id = $1 
-                          AND status = 'ACTIVE' 
-                          AND expires_at > NOW()
-                        GROUP BY product_id, lot, expiry, location_id
+                        SELECT l.product_id, l.lot, l.expiry, l.source_location_id as location_id, SUM(l.qty_units) as total
+                        FROM stock_reservation_lines l
+                        JOIN stock_reservations r ON l.reservation_id = r.reservation_id
+                        WHERE r.tenant_id = $1 
+                          AND r.status = 'ACTIVE' 
+                          AND r.expires_at > NOW()
+                        GROUP BY l.product_id, l.lot, l.expiry, l.source_location_id
                     ) reserved ON 
                         reserved.product_id = cs.product_id AND
                         reserved.lot = cs.lot AND
                         reserved.expiry = cs.expiry AND
-                        reserved.location_id::UUID = cs.location
+                        reserved.location_id = cs.location_id
                     WHERE cs.tenant_id = $1 
-                      AND cs.location = $2::UUID 
+                      AND cs.location_id = $2 
                       AND cs.product_id = $3
                       AND cs.qty_units > 0
                     ORDER BY cs.expiry ASC
@@ -275,7 +276,7 @@ export class PharmacyService {
                         UPDATE current_stock
                         SET qty_units = qty_units - $1
                         WHERE tenant_id = $2
-                          AND location = $3::UUID
+                          AND location_id = $3
                           AND product_id = $4
                           AND lot = $5
                           AND expiry = $6
@@ -294,7 +295,7 @@ export class PharmacyService {
                     // Lookup tenant-specific DISPENSED location (NEVER use hardcoded global UUID)
                     const dispensedLocResult = await client.query(`
                         SELECT location_id FROM locations 
-                        WHERE tenant_id = $1 AND code = 'DISPENSED' AND scope = 'SYSTEM'
+                        WHERE tenant_id = $1 AND name = 'DISPENSED' AND scope = 'SYSTEM'
                     `, [tenantId]);
                     
                     if (dispensedLocResult.rows.length === 0) {
@@ -307,7 +308,7 @@ export class PharmacyService {
                     await client.query(`
                         INSERT INTO inventory_movements (
                             movement_id, tenant_id, product_id, lot, expiry, qty_units, 
-                            from_location, to_location, document_type, document_id, created_by
+                            from_location_id, to_location_id, document_type, document_id, created_by
                         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                     `, [movementId, tenantId, position.product_id, position.lot, position.expiry, -take, 
                         sourceLocation, DISPENSED_LOCATION_ID, 'DISPENSE', dispenseId, userId]);
@@ -359,30 +360,31 @@ export class PharmacyService {
                 // STEP 1: First, lock all stock rows for this product (prevents concurrent modification)
                 await client.query(`
                     SELECT qty_units FROM current_stock 
-                    WHERE tenant_id = $1 AND location = $2 AND product_id = $3
+                    WHERE tenant_id = $1 AND location_id = $2 AND product_id = $3
                     FOR UPDATE
                 `, [tenantId, fromLocation, item.productId]);
 
                 // STEP 2: Now calculate available = physical - active_reservations (no FOR UPDATE with aggregates)
                 const availablePositions = await client.query(`
                     SELECT 
-                        cs.product_id, cs.lot, cs.expiry, cs.location, cs.qty_units,
+                        cs.product_id, cs.lot, cs.expiry, cs.location_id as location, cs.qty_units,
                         COALESCE(reserved.total, 0) as reserved_qty,
                         (cs.qty_units - COALESCE(reserved.total, 0)) as available_qty
                     FROM current_stock cs
                     LEFT JOIN (
-                        SELECT product_id, lot, location_id, SUM(qty_units) as total
-                        FROM stock_reservations
-                        WHERE tenant_id = $1 
-                          AND status = 'ACTIVE' 
-                          AND expires_at > NOW()
-                        GROUP BY product_id, lot, location_id
+                        SELECT l.product_id, l.lot, l.source_location_id as location_id, SUM(l.qty_units) as total
+                        FROM stock_reservation_lines l
+                        JOIN stock_reservations r ON l.reservation_id = r.reservation_id
+                        WHERE r.tenant_id = $1 
+                          AND r.status = 'ACTIVE' 
+                          AND r.expires_at > NOW()
+                        GROUP BY l.product_id, l.lot, l.source_location_id
                     ) reserved ON 
                         reserved.product_id = cs.product_id AND
                         reserved.lot = cs.lot AND
-                        reserved.location_id = cs.location
+                        reserved.location_id = cs.location_id
                     WHERE cs.tenant_id = $1 
-                      AND cs.location = $2 
+                      AND cs.location_id = $2 
                       AND cs.product_id = $3
                       AND cs.qty_units > 0
                     ORDER BY cs.expiry ASC
@@ -402,7 +404,7 @@ export class PharmacyService {
                         UPDATE current_stock
                         SET qty_units = qty_units - $1
                         WHERE tenant_id = $2
-                          AND location = $3
+                          AND location_id = $3
                           AND product_id = $4
                           AND lot = $5
                           AND qty_units >= $1
@@ -415,9 +417,9 @@ export class PharmacyService {
 
                     // INCREMENT destination stock (atomic upsert)
                     await client.query(`
-                        INSERT INTO current_stock (tenant_id, product_id, lot, expiry, location, qty_units)
+                        INSERT INTO current_stock (tenant_id, product_id, lot, expiry, location_id, qty_units)
                         VALUES ($1, $2, $3, $4, $5, $6)
-                        ON CONFLICT(tenant_id, product_id, lot, location) 
+                        ON CONFLICT(tenant_id, product_id, lot, location_id) 
                         DO UPDATE SET qty_units = current_stock.qty_units + EXCLUDED.qty_units
                     `, [tenantId, position.product_id, position.lot, position.expiry, toLocation, take]);
 
@@ -426,7 +428,7 @@ export class PharmacyService {
                     await client.query(`
                         INSERT INTO inventory_movements (
                             movement_id, tenant_id, product_id, lot, expiry, qty_units, 
-                            from_location, to_location, document_id, created_by
+                            from_location_id, to_location_id, document_id, created_by
                         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                     `, [movementId, tenantId, position.product_id, position.lot, position.expiry, take, 
                         fromLocation, toLocation, documentId || 'MANUAL_TRANSFER', userId]);
@@ -470,9 +472,9 @@ export class PharmacyService {
             // PATH 1 & 2: INSERT or INCREMENT (positive delta)
             // Uses ON CONFLICT for atomic upsert - safe because adding stock never violates constraint
             const sql = `
-                INSERT INTO current_stock (tenant_id, product_id, lot, expiry, location, qty_units)
+                INSERT INTO current_stock (tenant_id, product_id, lot, expiry, location_id, qty_units)
                 VALUES ($1, $2, $3, $4, $5, $6)
-                ON CONFLICT(tenant_id, product_id, lot, location) 
+                ON CONFLICT(tenant_id, product_id, lot, location_id) 
                 DO UPDATE SET qty_units = current_stock.qty_units + EXCLUDED.qty_units
             `;
             await this.run(tenantId, sql, [tenantId, productId, lot, expStr, location, deltaQty]);
@@ -487,7 +489,7 @@ export class PharmacyService {
                 WHERE tenant_id = $2
                   AND product_id = $3
                   AND lot = $4
-                  AND location = $5
+                  AND location_id = $5
                   AND qty_units >= $1
                 RETURNING qty_units
             `;
@@ -682,7 +684,7 @@ export class PharmacyService {
         try {
             const stockResult = await this.get<any>(tenantId, `
                 SELECT COUNT(*) as count FROM current_stock 
-                WHERE (location = $1 OR location = $1::TEXT) AND qty_units > 0
+                WHERE location_id = $1 AND qty_units > 0
             `, [locationId]);
             const stockCount = parseInt(stockResult[0]?.count || '0');
             

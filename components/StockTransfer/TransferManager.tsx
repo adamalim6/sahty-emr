@@ -23,20 +23,96 @@ const TransferManager: React.FC = () => {
     // Global Cart State (Map of demandLineId -> Reservations)
     const [cart, setCart] = useState<Map<string, any[]>>(new Map());
     
-    // Session Init
+    // Session Init & Concurrency Lock
     useEffect(() => {
-        // Generate or recover session (TODO: Recover from localStorage?)
-        const sid = uuidv4();
-        setSessionId(sid);
-        loadDemand();
-        
-        // Heartbeat
-        const interval = setInterval(() => {
-            if(sid) api.refreshStockReservationSession(sid).catch(console.error);
-        }, 60000); // 1 min
+        let active = true;
 
-        return () => clearInterval(interval);
-    }, [demandId]);
+        const initSession = async () => {
+            if (!demandId) return;
+
+            try {
+                // 1. Claim Demand (Concurrency Lock)
+                await api.claimDemand(demandId);
+            } catch (error: any) {
+                // STRICT BLOCKING: If 409, redirect immediately
+                if (error.message && (error.message.includes('being processed') || error.message.includes('DEMAND_LOCKED'))) {
+                    const claimedBy = (error as any).claimedBy || "un autre utilisateur";
+                    const claimedAt = (error as any).claimedAt 
+                        ? new Date((error as any).claimedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        : "";
+                    
+                    toast.error(`Cette demande est actuellement traitée par ${claimedBy} depuis ${claimedAt}`, {
+                        duration: 5000,
+                        icon: '🔒'
+                    });
+                    
+                    navigate('/pharmacy/requests');
+                    return; // Stop execution
+                }
+                console.error("Claim error", error);
+                // If other error, maybe continue? Or block? 
+                // Creating a session without a claim is bad.
+                // Let's block generally if claim fails.
+                 navigate('/pharmacy/requests');
+                 return;
+            }
+
+            // 2. Hydrate or Create Session
+            if (!active) return;
+            
+            try {
+                const existingSession = await api.getActiveReservationForDemand(demandId);
+                
+                if (existingSession && existingSession.header) {
+                    console.log("Restoring active session:", existingSession.header.session_id);
+                    if (active) {
+                        setSessionId(existingSession.header.session_id);
+                        
+                        // Hydrate cart from existing lines
+                        if (existingSession.lines && existingSession.lines.length > 0) {
+                            console.log("Hydrating cart from DB:", existingSession.lines.length, "items");
+                            const newCart = new Map();
+                            existingSession.lines.forEach((item: any) => {
+                                const key = item.product_id;
+                                const list = newCart.get(key) || [];
+                                list.push(item);
+                                newCart.set(key, list);
+                            });
+                            setCart(newCart);
+                        }
+                    }
+                } else {
+                    // Start new session
+                    const sid = uuidv4();
+                    if (active) setSessionId(sid);
+                }
+            } catch (e) {
+                console.error("Hydration error", e);
+                // Fallback new session
+                if (active) setSessionId(uuidv4());
+            }
+
+            if (active) loadDemand();
+        };
+
+        if (demandId) {
+            initSession();
+        }
+
+        // Heartbeat & Cleanup
+        const interval = setInterval(() => {
+            if(sessionId) api.refreshStockReservationSession(sessionId).catch(console.error);
+        }, 60000); 
+
+        return () => {
+            active = false;
+            clearInterval(interval);
+            // On unmount/leave, release the claim
+            if (demandId) {
+                api.releaseDemand(demandId).catch(console.error);
+            }
+        };
+    }, [demandId]); // sessionId is set inside, don't depend on it to avoid loops
 
     const loadDemand = async () => {
         try {
@@ -54,7 +130,8 @@ const TransferManager: React.FC = () => {
     // Cart Actions (passed to children)
     const refreshCart = async () => {
         try {
-            const items = await api.getStockReservationCart(sessionId);
+            const response = await api.getStockReservationCart(sessionId);
+            const items = response.lines || [];
             // Group by demand_line_id
             const newCart = new Map();
             items.forEach((item: any) => {
