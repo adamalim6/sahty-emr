@@ -114,35 +114,18 @@ export class SettingsService {
         return user;
     }
 
-    // --- ROLES ---
+    // --- ROLES (read from reference.global_roles — replicated from sahty_global) ---
     async getRoles(tenantId: string): Promise<Role[]> {
-        const rows = await tenantQuery(tenantId, 'SELECT * FROM roles', []);
+        const rows = await tenantQuery(tenantId, 'SELECT * FROM reference.global_roles', []);
         return rows.map(r => ({
             id: r.id,
             name: r.name,
             code: r.code,
+            description: r.description,
             permissions: r.permissions ? (typeof r.permissions === 'string' ? JSON.parse(r.permissions) : r.permissions) : [],
-            modules: r.modules ? (typeof r.modules === 'string' ? JSON.parse(r.modules) : r.modules) : []
+            modules: r.modules ? (typeof r.modules === 'string' ? JSON.parse(r.modules) : r.modules) : [],
+            assignable_by: r.assignable_by
         }));
-    }
-
-    async createRole(tenantId: string, role: Role): Promise<Role> {
-        await tenantQuery(tenantId, `
-            INSERT INTO roles (id, name, code, permissions, modules)
-            VALUES ($1, $2, $3, $4, $5)
-            ON CONFLICT(id) DO UPDATE SET
-                name=EXCLUDED.name,
-                code=EXCLUDED.code,
-                permissions=EXCLUDED.permissions,
-                modules=EXCLUDED.modules
-        `, [
-            role.id, 
-            role.name, 
-            role.code, 
-            JSON.stringify(role.permissions || []),
-            JSON.stringify(role.modules || [])
-        ]);
-        return role;
     }
     
     // --- SERVICES ---

@@ -1,14 +1,23 @@
 
 import { Request, Response } from 'express';
 import { globalActesService } from '../services/globalActesService';
+import { referenceDataService } from '../services/referenceDataService';
 
 export const getActes = async (req: Request, res: Response) => {
     try {
+        const tenantId = (req as any).user?.tenantId;
+        const isTenantUser = tenantId && tenantId !== 'GLOBAL';
+
         const page = parseInt(req.query.page as string) || 1;
         const limit = parseInt(req.query.limit as string) || 50;
         const search = req.query.search as string;
 
-        const result = await globalActesService.getAllPaginated(page, limit, search);
+        let result;
+        if (isTenantUser) {
+            result = await referenceDataService.getGlobalActesPaginated(tenantId, page, limit, search);
+        } else {
+            result = await globalActesService.getAllPaginated(page, limit, search);
+        }
         
         res.json({
             data: result.data,

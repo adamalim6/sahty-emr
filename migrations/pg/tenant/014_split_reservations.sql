@@ -79,10 +79,21 @@ ALTER TABLE stock_reservations DROP COLUMN IF EXISTS destination_location_id;
 ALTER TABLE stock_reservations DROP COLUMN IF EXISTS qty_units;
 
 -- Rename cancelled_at → released_at (single non-commit terminal state)
-ALTER TABLE stock_reservations RENAME COLUMN cancelled_at TO released_at;
+-- Wrapped in DO block for idempotency (fresh tenants already have released_at)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'stock_reservations' AND column_name = 'cancelled_at') THEN
+        ALTER TABLE stock_reservations RENAME COLUMN cancelled_at TO released_at;
+    END IF;
+END $$;
 
 -- Rename demand_id → stock_demand_id for clarity
-ALTER TABLE stock_reservations RENAME COLUMN demand_id TO stock_demand_id;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'stock_reservations' AND column_name = 'demand_id') THEN
+        ALTER TABLE stock_reservations RENAME COLUMN demand_id TO stock_demand_id;
+    END IF;
+END $$;
 
 -- Update status constraint: ACTIVE | RELEASED | COMMITTED
 ALTER TABLE stock_reservations DROP CONSTRAINT IF EXISTS stock_reservations_status_check;

@@ -146,34 +146,21 @@ export const createClient = async (req: Request, res: Response) => {
             throw new Error(`Failed to provision tenant database: ${dbErr.message}`);
         }
 
-        // 3. INITIALIZE TENANT REALM - Sync default data to Tenant PostgreSQL DB
+        // 3. INITIALIZE TENANT REALM - Sync admin user to Tenant PostgreSQL DB
         try {
-            // Define default roles for the new tenant with valid UUIDs
-            const roleSuperAdminId = uuidv4();
-            const roleAdminStructId = uuidv4();
+            // Look up ADMIN_STRUCTURE role from reference.global_roles (seeded by referenceSync)
+            const { tenantQuery } = require('../db/tenantPg');
+            const adminStructRows = await tenantQuery(clientId, 
+                "SELECT id FROM reference.global_roles WHERE code = 'ADMIN_STRUCTURE' LIMIT 1", []);
+            const roleAdminStructId = adminStructRows.length > 0 
+                ? adminStructRows[0].id 
+                : null;
 
-            const defaultRoles = [
-              {
-                "id": roleSuperAdminId,
-                "name": "Super Admin Global",
-                "code": "SUPER_ADMIN",
-                "permissions": ["sa_clients", "sa_organismes", "sa_roles", "sa_actes"]
-              },
-              {
-                "id": roleAdminStructId,
-                "name": "Administrateur Structure",
-                "code": "ADMIN_STRUCTURE",
-                "permissions": ["st_users", "st_services", "st_rooms", "st_pricing", "st_roles"],
-                "modules": ["SETTINGS", "PHARMACY", "EMR"] 
-              }
-            ];
+            if (!roleAdminStructId) {
+                console.warn('[CreateClient] ADMIN_STRUCTURE role not found in reference.global_roles');
+            }
 
-            // Create valid tenant user for internal checks? 
-            // Note: Login now checks Global DB. But SettingsService reads Tenant DB.
-            // If we don't put user in Tenant DB, Settings won't list them in "Manage Users".
-            // So we MUST sync DSI to Tenant DB too for visibility.
-            
-            const tenantUserId = uuidv4(); // Generate valid UUID for tenant user
+            const tenantUserId = uuidv4();
             const tenantUser = {
                 id: tenantUserId, 
                 client_id: clientId,
@@ -182,36 +169,21 @@ export const createClient = async (req: Request, res: Response) => {
                 nom: req.body.admin_nom || 'Directeur',
                 prenom: req.body.admin_prenom || 'Admin',
                 user_type: 'TENANT_SUPERADMIN',
-                role_id: roleAdminStructId, // Use the valid UUID generated above
+                role_id: roleAdminStructId,
                 active: true,
                 service_ids: []
             };
 
-            // 4. SYNC TO TENANT SQL DB (Required for Settings Module)
-            try {
-                const { settingsService } = require('../services/settingsService');
-                
-                // Seed Roles First (FK for User)
-                for (const role of defaultRoles) {
-                    await settingsService.createRole(clientId, role);
-                }
-                console.log(`[CreateClient] Synced ${defaultRoles.length} Roles to Tenant SQL ${clientId}`);
-
-                // Seed Admin User
-                await settingsService.createUser(clientId, tenantUser);
-                console.log(`[CreateClient] Synced Admin ${tenantUser.username} to Tenant SQL ${clientId}`);
-            } catch (sqlErr: any) {
-                console.error(`[CreateClient] Failed to sync Tenant SQL: ${sqlErr.message}`);
-                // Don't fail the request, but log critical error
-            }
-
-            // NOTE: Legacy JSON file creation removed (settings.json, pharmacy.json, emr_admissions.json)
-            // All tenant data now lives in PostgreSQL tenant databases
-            
-        } catch (e: any) {
-            console.error("Failed to initialize tenant realm:", e);
+            // Roles are already in reference.global_roles (seeded by referenceSync during provisioning)
+            // Only need to sync the admin user to tenant DB for Settings Module visibility
+            const { settingsService } = require('../services/settingsService');
+            await settingsService.createUser(clientId, tenantUser);
+            console.log(`[CreateClient] Synced Admin ${tenantUser.username} to Tenant SQL ${clientId}`);
+        } catch (sqlErr: any) {
+            console.error(`[CreateClient] Failed to sync Tenant SQL: ${sqlErr.message}`);
+            // Don't fail the request, but log critical error
         }
-        
+
         res.json(newClient);
     } catch (e: any) {
         res.status(500).json({ error: e.message });

@@ -706,7 +706,7 @@ export class PharmacyService {
     // --- 6. SUPPLIERS (SQL) ---
 
     public async getSuppliers(tenantId: string): Promise<any[]> {
-        const { globalSupplierService } = require('./globalSupplierService');
+        const { referenceDataService } = require('./referenceDataService');
         
         // 1. Fetch Local
         const localSuppliers = await this.get(tenantId, `SELECT * FROM suppliers WHERE tenant_id = $1`, [tenantId]).then(rows => rows.map((r: any) => ({
@@ -721,7 +721,7 @@ export class PharmacyService {
         })));
 
         // 2. Fetch Global
-        const globalSuppliersRaw = await globalSupplierService.getAll();
+        const globalSuppliersRaw = await referenceDataService.getSuppliers(tenantId);
         const globalSuppliers = globalSuppliersRaw.map((g: any) => ({
             id: g.id,
             name: g.name,
@@ -730,7 +730,7 @@ export class PharmacyService {
             address: g.address,
             tenantId: 'GLOBAL',
             source: 'GLOBAL',
-            isActive: g.isActive
+            isActive: g.is_active === true || g.is_active === 1 // Handle snake_case from DB
         }));
 
         // 3. Merge
@@ -904,11 +904,11 @@ export class PharmacyService {
     }
     
     public async getProductConfig(tenantId: string, productId: string) {
-        const { globalProductService } = require('./globalProductService');
-        const { globalSupplierService } = require('./globalSupplierService');
+        const { referenceDataService } = require('./referenceDataService');
+        // Global Supplier Service removed, use referenceDataService for suppliers too
 
         // 1. Global Product
-        const globalProduct = await globalProductService.getProductById(productId);
+        const globalProduct = await referenceDataService.getProductById(tenantId, productId);
         if (!globalProduct) throw new Error("Global Product Not Found");
 
         // 2. Tenant Config
@@ -932,7 +932,7 @@ export class PharmacyService {
 
         // 4. Resolve Supplier Names
         const tenantLocalSuppliers = await this.get<any>(tenantId, `SELECT * FROM suppliers WHERE tenant_id = $1`, [tenantId]);
-        const globalSupplierDefs = await globalSupplierService.getAll();
+        const globalSupplierDefs = await referenceDataService.getSuppliers(tenantId); // Use Reference
         const allSuppliers = [...globalSupplierDefs, ...tenantLocalSuppliers];
 
         const mappedSuppliers = await Promise.all(dbSuppliers.map(async (s: any) => {
@@ -987,10 +987,9 @@ export class PharmacyService {
     }
 
     public getProductById(tenantId: string, id: string) {
-        // Proxy to global
-
-        const { globalProductService } = require('./globalProductService');
-        return globalProductService.getProductById(id);
+        // Proxy to reference
+        const { referenceDataService } = require('./referenceDataService');
+        return referenceDataService.getProductById(tenantId, id);
     }
     
     // Legacy support for controller
@@ -1338,8 +1337,7 @@ export class PharmacyService {
 
 
     public async getCatalogPaginated(tenantId: string, page: number, limit: number, query: string = '', status: 'ALL' | 'ACTIVE' | 'INACTIVE' = 'ALL') {
-        const { globalProductService } = require('./globalProductService');
-        const { globalSupplierService } = require('./globalSupplierService');
+        const { referenceDataService } = require('./referenceDataService');
 
         // 1. Fetch Tenant Configs (SQL)
         const dbConfigs = await this.get<any>(tenantId, `SELECT * FROM product_configs WHERE tenant_id = $1`, [tenantId]);
@@ -1383,11 +1381,11 @@ export class PharmacyService {
         }
 
         // 3. Fetch Global Products
-        const { data: globalProducts, total, totalPages } = await globalProductService.getProductsPaginated(page, limit, query, idsFilter);
+        const { data: globalProducts, total, totalPages } = await referenceDataService.getProductsPaginated(tenantId, page, limit, query, idsFilter);
 
         // 4. Reference Data (Suppliers)
         const tenantLocalSuppliers = await this.get<any>(tenantId, `SELECT * FROM suppliers WHERE tenant_id = $1`, [tenantId]); // Only local definitions
-        const globalSupplierDefs = await globalSupplierService.getAll();
+        const globalSupplierDefs = await referenceDataService.getSuppliers(tenantId);
         const allSuppliers = [...globalSupplierDefs, ...tenantLocalSuppliers];
 
         // 5. Merge

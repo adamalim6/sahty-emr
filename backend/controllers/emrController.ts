@@ -147,6 +147,51 @@ export const createPerson = async (req: Request, res: Response) => {
 };
 
 
+// --- CHART MERGE ---
+
+export const getDuplicateCharts = async (req: Request, res: Response) => {
+    try {
+        const { tenantId } = getContext(req);
+        const groups = await patientTenantService.findDuplicateCharts(tenantId);
+        res.json(groups);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const mergePatientCharts = async (req: Request, res: Response) => {
+    try {
+        const { tenantId, user } = getContext(req);
+        const { sourceId, targetId, reason } = req.body;
+
+        if (!sourceId || !targetId) {
+            return res.status(400).json({ message: 'sourceId and targetId are required' });
+        }
+        if (sourceId === targetId) {
+            return res.status(400).json({ message: 'Source and target must be different charts' });
+        }
+
+        const event = await patientTenantService.mergeTenantPatients(
+            tenantId, sourceId, targetId, reason, user?.id
+        );
+        res.status(200).json(event);
+    } catch (error: any) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+export const getPatientMergeHistory = async (req: Request, res: Response) => {
+    try {
+        const { tenantId } = getContext(req);
+        const { id } = req.params;
+        const history = await patientTenantService.getMergeHistory(tenantId, id);
+        res.json(history);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+
 // --- TENANT SCOPED (Admissions, Appointments, Rooms, Consumptions) ---
 
 export const getAdmissions = async (req: Request, res: Response) => {

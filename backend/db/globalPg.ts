@@ -2,7 +2,7 @@
  * PostgreSQL Global Database Connection Pool
  * 
  * Provides a shared connection pool to the sahty_global database.
- * Used for accessing global reference data (products, actes, patients, etc.)
+ * Used for accessing global reference data (products, actes, suppliers, etc.)
  */
 
 import { Pool, PoolClient } from 'pg';

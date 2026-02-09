@@ -23,10 +23,10 @@ CREATE INDEX IF NOT EXISTS idx_rooms_service ON rooms(service_id);
 -- ============================================================================
 
 -- Stock queries by product + location (common pattern)
-CREATE INDEX IF NOT EXISTS idx_stock_prod_loc ON current_stock(tenant_id, product_id, location);
+CREATE INDEX IF NOT EXISTS idx_stock_prod_loc ON current_stock(tenant_id, product_id, location_id);
 
 -- Stock queries by expiry (FEFO sorting)
-CREATE INDEX IF NOT EXISTS idx_stock_fefo ON current_stock(tenant_id, location, expiry, product_id);
+CREATE INDEX IF NOT EXISTS idx_stock_fefo ON current_stock(tenant_id, location_id, expiry, product_id);
 
 -- Reservation cleanup job (find expired)
 CREATE INDEX IF NOT EXISTS idx_res_cleanup ON stock_reservations(expires_at) 
@@ -39,8 +39,8 @@ CREATE INDEX IF NOT EXISTS idx_mov_product ON inventory_movements(product_id, cr
 CREATE INDEX IF NOT EXISTS idx_rx_status ON prescriptions(tenant_id, status);
 
 -- Active locations only
-CREATE INDEX IF NOT EXISTS idx_loc_active ON locations(tenant_id, is_active) 
-    WHERE is_active = TRUE;
+CREATE INDEX IF NOT EXISTS idx_loc_active ON locations(tenant_id, status) 
+    WHERE status = 'ACTIVE';
 
 -- Product configs - enabled products
 CREATE INDEX IF NOT EXISTS idx_config_enabled ON product_configs(tenant_id, is_enabled) 

@@ -18,7 +18,11 @@ import {
     getPatientNetwork,
     addRelationship,
     addEmergencyContact,
-    createPerson
+    createPerson,
+    // Chart Merge
+    getDuplicateCharts,
+    mergePatientCharts,
+    getPatientMergeHistory
 } from '../controllers/emrController';
 
 import { getServiceStock, getUserServices } from '../controllers/serviceStockController';
@@ -47,17 +51,24 @@ router.post('/global', requireTenant, createGlobalPatient);
 router.get('/config', requireTenant, getGlobalConfig); // For doc types, countries
 
 // --- TENANT PATIENTS (Linkage) ---
-// "Get Patients" = Get Tenant Patient List
+// "Get Patients" = Get Tenant Patient List (ACTIVE only)
 router.get('/patients', requireTenant, getPatients);
 
 // "Create Patient" = Register Tenant Patient Link
 router.post('/patients', requireTenant, createPatient);
 
+// --- CHART MERGE (must be before /patients/:id to avoid route conflict) ---
+router.get('/patients/duplicates', requireTenant, getDuplicateCharts);
+router.post('/patients/merge', requireTenant, mergePatientCharts);
+
 // Update Tenant Patient (e.g. status)
 router.put('/patients/:id', requireTenant, updatePatient);
 
-// Get Tenant Patient Detail
+// Get Tenant Patient Detail (resolves merge chains automatically)
 router.get('/patients/:id', requireTenant, getPatient);
+
+// Merge history for a chart
+router.get('/patients/:id/merge-history', requireTenant, getPatientMergeHistory);
 
 // --- PATIENT NETWORK ---
 router.get('/patients/:id/network', requireTenant, getPatientNetwork);
