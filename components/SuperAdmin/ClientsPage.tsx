@@ -2,11 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
-import { Plus, Search, Building2 } from 'lucide-react';
+import { Plus, Search, Building2, Users } from 'lucide-react';
 
 export const ClientsPage: React.FC = () => {
     const navigate = useNavigate();
     const [clients, setClients] = useState<any[]>([]);
+    const [groups, setGroups] = useState<any[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     
@@ -17,39 +18,56 @@ export const ClientsPage: React.FC = () => {
         siege_social: '',
         representant_legal: '',
         admin_username: '',
-        admin_password: '', // Should be generated or input
+        admin_password: '',
         admin_nom: '',
         admin_prenom: '',
-        country: 'MAROC'
+        country: 'MAROC',
+        tenancy_mode: 'STANDALONE',
+        group_id: ''
     });
 
     useEffect(() => {
         loadClients();
+        loadGroups();
     }, []);
 
     const loadClients = async () => {
         try {
-            const data = await api.getClients();
+            const data = await api.getTenants();
             setClients(data);
         } catch (e) {
-            console.error('Failed to load clients', e);
+            console.error('Failed to load tenants', e);
+        }
+    };
+
+    const loadGroups = async () => {
+        try {
+            const data = await api.getGroups();
+            setGroups(data);
+        } catch (e) {
+            console.error('Failed to load groups', e);
         }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (isSubmitting) return; // Guard against double-click
+        if (isSubmitting) return;
         setIsSubmitting(true);
         try {
-            await api.createClient(formData);
+            const payload = {
+                ...formData,
+                group_id: formData.tenancy_mode === 'GROUP_MANAGED' ? formData.group_id : null
+            };
+            await api.createTenant(payload);
             setIsModalOpen(false);
             setFormData({
                 type: 'HOPITAL', designation: '', siege_social: '', representant_legal: '',
-                admin_username: '', admin_password: '', admin_nom: '', admin_prenom: '', country: 'MAROC'
+                admin_username: '', admin_password: '', admin_nom: '', admin_prenom: '', 
+                country: 'MAROC', tenancy_mode: 'STANDALONE', group_id: ''
             });
             loadClients();
         } catch (e) {
-            alert('Failed to create client');
+            alert('Failed to create tenant');
         } finally {
             setIsSubmitting(false);
         }
@@ -82,9 +100,17 @@ export const ClientsPage: React.FC = () => {
                             <div className="p-3 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
                                 <Building2 className="text-blue-600" size={24} />
                             </div>
-                            <span className="px-3 py-1 bg-slate-100 text-slate-600 text-xs font-semibold rounded-full">
-                                {client.type}
-                            </span>
+                            <div className="flex items-center space-x-2">
+                                {client.tenancy_mode === 'GROUP_MANAGED' && (
+                                    <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full flex items-center space-x-1">
+                                        <Users size={12} />
+                                        <span>Groupe</span>
+                                    </span>
+                                )}
+                                <span className="px-3 py-1 bg-slate-100 text-slate-600 text-xs font-semibold rounded-full">
+                                    {client.type}
+                                </span>
+                            </div>
                         </div>
                         <h3 className="text-lg font-bold text-slate-800 mb-1 group-hover:text-blue-600 transition-colors">{client.designation}</h3>
                         <p className="text-sm text-slate-500 mb-4">{client.siege_social}</p>
@@ -154,8 +180,8 @@ export const ClientsPage: React.FC = () => {
                                         <label className="block text-sm font-medium text-slate-700 mb-1">Pays / Région</label>
                                         <select 
                                             className="w-full border rounded-lg p-2"
-                                            value={(formData as any).country}
-                                            onChange={e => setFormData({...formData, country: e.target.value} as any)}
+                                            value={formData.country}
+                                            onChange={e => setFormData({...formData, country: e.target.value})}
                                         >
                                             <option value="MAROC">Maroc</option>
                                             <option value="ARABIE_SAOUDITE">Arabie Saoudite</option>
@@ -165,6 +191,55 @@ export const ClientsPage: React.FC = () => {
                                         </select>
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* Tenancy Mode */}
+                            <div className="space-y-4 pt-4 border-t border-slate-100">
+                                <h3 className="text-sm font-bold text-purple-600 uppercase tracking-wider">Mode de Rattachement</h3>
+                                <div className="flex space-x-4">
+                                    <label className={`flex-1 p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                                        formData.tenancy_mode === 'STANDALONE' 
+                                            ? 'border-purple-500 bg-purple-50' 
+                                            : 'border-slate-200 hover:border-slate-300'
+                                    }`}>
+                                        <input 
+                                            type="radio" name="tenancy_mode" value="STANDALONE" className="sr-only"
+                                            checked={formData.tenancy_mode === 'STANDALONE'}
+                                            onChange={() => setFormData({...formData, tenancy_mode: 'STANDALONE', group_id: ''})}
+                                        />
+                                        <div className="font-semibold text-slate-800">Autonome</div>
+                                        <p className="text-xs text-slate-500 mt-1">Structure indépendante</p>
+                                    </label>
+                                    <label className={`flex-1 p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                                        formData.tenancy_mode === 'GROUP_MANAGED' 
+                                            ? 'border-purple-500 bg-purple-50' 
+                                            : 'border-slate-200 hover:border-slate-300'
+                                    }`}>
+                                        <input 
+                                            type="radio" name="tenancy_mode" value="GROUP_MANAGED" className="sr-only"
+                                            checked={formData.tenancy_mode === 'GROUP_MANAGED'}
+                                            onChange={() => setFormData({...formData, tenancy_mode: 'GROUP_MANAGED'})}
+                                        />
+                                        <div className="font-semibold text-slate-800">Rattaché à un Groupe</div>
+                                        <p className="text-xs text-slate-500 mt-1">Authentification centralisée</p>
+                                    </label>
+                                </div>
+                                {formData.tenancy_mode === 'GROUP_MANAGED' && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Groupe</label>
+                                        <select 
+                                            className="w-full border rounded-lg p-2"
+                                            value={formData.group_id}
+                                            onChange={e => setFormData({...formData, group_id: e.target.value})}
+                                            required
+                                        >
+                                            <option value="">— Sélectionner un groupe —</option>
+                                            {groups.map(g => (
+                                                <option key={g.id} value={g.id}>{g.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Tenant Admin Info */}

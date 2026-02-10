@@ -101,12 +101,16 @@ class AuthService {
             const isTenantAdmin = globalUser.tenantId && globalUser.tenantId !== 'GLOBAL';
             const realm = isTenantAdmin ? 'tenant' : 'global';
             
-            // Default modules for tenant admins
+            // Default modules + permissions for tenant admins (global realm)
             const modules = isTenantAdmin ? ['SETTINGS', 'PHARMACY', 'EMR'] : [];
+            const permissions = isTenantAdmin 
+                ? ['st_users', 'st_services', 'st_rooms', 'st_pricing', 'st_roles', 'st_pharmacy_view', 'st_emr_view']
+                : [];
 
             const token = this.generateToken(globalUser, realm, {
                 tenantId: globalUser.tenantId ?? undefined,
-                modules
+                modules,
+                permissions
             });
 
             const { password_hash, ...safeUser } = globalUser;
@@ -115,15 +119,16 @@ class AuthService {
                 user: safeUser,
                 realm,
                 tenantId: globalUser.tenantId ?? undefined,
-                modules
+                modules,
+                permissions
             };
         }
 
         // 2. Try Tenant DBs (Regular Users)
-        const clients = await globalAdminService.getAllClients();
+        const tenants = await globalAdminService.getAllTenants();
         
-        for (const client of clients) {
-            const tenantId = client.id;
+        for (const tenant of tenants) {
+            const tenantId = tenant.id;
             try {
                 const tenantUser = await authUserRepository.findByUsername(username, tenantId);
                 
@@ -138,8 +143,13 @@ class AuthService {
                         userRole = await globalAdminService.getGlobalRole(tenantUser.role_id);
                     }
 
-                    const permissions = (userRole as any)?.permissions || [];
-                    const modules = (userRole as any)?.modules || [];
+                    const permissions: string[] = (userRole as any)?.permissions || [];
+                    let modules: string[] = (userRole as any)?.modules || [];
+
+                    // Safety net: ADMIN_STRUCTURE role should have all modules
+                    if (userRole?.code === 'ADMIN_STRUCTURE' && modules.length === 0) {
+                        modules = ['SETTINGS', 'PHARMACY', 'EMR'];
+                    }
 
                     const token = this.generateToken(tenantUser, 'tenant', {
                         tenantId,

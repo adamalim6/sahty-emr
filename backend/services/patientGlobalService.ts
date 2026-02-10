@@ -6,7 +6,8 @@ import {
     Country,
     CreateGlobalPatientPayload 
 } from '../models/patientGlobal';
-import { globalQuery, globalTransaction } from '../db/globalPg';
+import { globalQuery } from '../db/globalPg';
+import { identityQuery, identityTransaction } from '../db/identityPg';
 
 
 import { identityService, CreateIdentityPayload } from './identityService';
@@ -19,7 +20,7 @@ export class PatientGlobalService {
         const patient = await this.getById(id);
         if (!patient) return null;
 
-        const docsRows = await globalQuery(`
+        const docsRows = await identityQuery(`
             SELECT * FROM identity.master_patient_documents WHERE master_patient_id = $1
         `, [id]);
 
@@ -29,8 +30,8 @@ export class PatientGlobalService {
     }
 
     async findByDocument(documentNumber: string): Promise<GlobalPatient | null> {
-        // Find patient via document
-        const rows = await globalQuery(`
+        // Find patient via document (Identity DB)
+        const rows = await identityQuery(`
             SELECT p.* 
             FROM identity.master_patients p
             JOIN identity.master_patient_documents d ON p.id = d.master_patient_id
@@ -47,32 +48,25 @@ export class PatientGlobalService {
 
     async getByIds(ids: string[]): Promise<GlobalPatient[]> {
         if (ids.length === 0) return [];
-        // Postgres ANY($1) syntax for array
-        const rows = await globalQuery(`SELECT * FROM identity.master_patients WHERE id = ANY($1)`, [ids]);
+        // Postgres ANY($1) syntax for array (Identity DB)
+        const rows = await identityQuery(`SELECT * FROM identity.master_patients WHERE id = ANY($1)`, [ids]);
         return rows.map(this.mapPatient);
     }
 
     // --- MASTERS ---
 
     async getDocumentTypes(): Promise<IdentityDocumentType[]> {
+        // Reference Data -> Global DB
         const rows = await globalQuery(`SELECT * FROM public.identity_document_types ORDER BY label`);
         return rows.map(r => ({
-            id: r.code, // Start using code as ID or keep mapping? Interface calls for "id". Let's use code contextually if possible, but interface might expect UUID?
-            // Existing interface likely expects UUID if it was identity_document_types.document_type_id.
-            // But we changed to Code PK. 
-            // We should check the model 'IdentityDocumentType'.
-            // For now, mapping code to id to satisfy type, or assume code is acceptable string ID.
+            id: r.code, 
             code: r.code,
             label: r.label
         }));
     }
 
     async getCountries(): Promise<Country[]> {
-        // Countries are still in reference.countries on global? Or public?
-        // referenceSchemaSpec says they are in reference.countries for tenants.
-        // For global, they were likely in public.countries. 
-        // Migration didn't drop public.countries. 
-        // We will assume they are still there or in identity? No, not in identity.
+        // Reference Data -> Global DB
         const rows = await globalQuery(`SELECT * FROM countries ORDER BY name`);
         return rows.map(r => ({
             id: r.country_id,
@@ -84,9 +78,16 @@ export class PatientGlobalService {
     // --- WRITE ---
 
     async createIdentity(payload: CreateGlobalPatientPayload): Promise<GlobalPatient> {
-        // This effectively creates a Master Patient
-        return await globalTransaction(async (client) => {
-            // 1. Insert Master Patient
+        // 1. Pre-validate Document Types against Reference DB (Global)
+        // We cannot query Global DB inside Identity DB transaction
+        for (const doc of payload.documents) {
+            const typeRes = await globalQuery(`SELECT code FROM public.identity_document_types WHERE code = $1`, [doc.documentTypeCode]);
+            if (!typeRes.length) throw new Error(`Invalid Document Type: ${doc.documentTypeCode}`);
+        }
+
+        // 2. Execute Write Transaction on Identity DB
+        return await identityTransaction(async (client) => {
+            // Insert Master Patient
             const pRes = await client.query(`
                 INSERT INTO identity.master_patients (first_name, last_name, dob, sex)
                 VALUES ($1, $2, $3, $4)
@@ -95,12 +96,10 @@ export class PatientGlobalService {
             
             const patient = pRes.rows[0];
 
-            // 2. Insert Documents
+            // Insert Documents
             for (const doc of payload.documents) {
-                // Check Type Code
-                const typeRes = await client.query(`SELECT code FROM public.identity_document_types WHERE code = $1`, [doc.documentTypeCode]);
-                if (!typeRes.rows.length) throw new Error(`Invalid Document Type: ${doc.documentTypeCode}`);
-                
+                // No FK check here (we validated above against Global DB)
+                // Constraint uq_document will catch duplicates
                 await client.query(`
                     INSERT INTO identity.master_patient_documents
                     (master_patient_id, document_type_code, document_number, is_primary)

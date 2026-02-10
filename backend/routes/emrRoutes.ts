@@ -77,6 +77,8 @@ router.post('/patients/:id/emergency-contacts', requireTenant, addEmergencyConta
 router.post('/persons', requireTenant, createPerson);
 
 
+import { getAdmissionStays, assignBed, transferBed } from '../controllers/placementController';
+
 // --- CLINICAL WORKFLOWS ---
 router.use('/admissions', requireTenant);
 router.use('/appointments', requireTenant);
@@ -90,5 +92,10 @@ router.put('/admissions/:id/close', closeAdmission);
 router.get('/admissions/:id/consumptions', getConsumptionsByAdmission);
 
 router.post('/admissions', createAdmission);
+
+// --- ADMISSION STAYS & TRANSFERS ---
+router.get('/admissions/:admissionId/stays', requireTenant, getAdmissionStays);
+router.post('/admissions/:admissionId/stays', requireTenant, assignBed);
+router.post('/admissions/:admissionId/transfer', requireTenant, transferBed);
 
 export default router;

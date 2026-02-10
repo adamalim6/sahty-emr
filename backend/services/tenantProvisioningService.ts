@@ -1,8 +1,9 @@
 
 import { Pool } from 'pg';
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 import { getTenantDbName } from '../db/tenantPg';
+import { identityQuery } from '../db/identityPg';
 
 export class TenantProvisioningService {
     private static instance: TenantProvisioningService;
@@ -28,7 +29,17 @@ export class TenantProvisioningService {
         return TenantProvisioningService.instance;
     }
 
+
     public async createTenantDatabase(tenantId: string): Promise<void> {
+        // SAFETY CHECK: Ensure Identity DB is reachable
+        try {
+            const { getIdentityPool } = require('../db/identityPg');
+            await getIdentityPool().query('SELECT 1');
+        } catch (e: any) {
+            console.error(`[TenantProvisioning] CRITICAL: sahty_identity DB not reachable: ${e.message}`);
+            throw new Error(`Cannot provision tenant: Identity DB unreachable.`);
+        }
+
         const dbName = getTenantDbName(tenantId);
         console.log(`[TenantProvisioning] Checking database ${dbName}...`);
         
@@ -57,7 +68,7 @@ export class TenantProvisioningService {
     }
 
     private async applySchema(tenantId: string, dbName: string): Promise<void> {
-        console.log(`[TenantProvisioning] Applying schema to ${dbName}...`);
+        console.log(`[TenantProvisioning] Applying baseline schema to ${dbName}...`);
         
         // Connect specifically to the new DB
         const pool = new Pool({
@@ -70,165 +81,81 @@ export class TenantProvisioningService {
 
         try {
             // ================================================================
-            // PHASE 1a: Base Schema (root-level migrations/pg/tenant/)
-            // Creates ALL core tables, adds tier2 columns, and indexes
+            // PHASE 1: Apply Clean Baseline Schema
+            // Single SQL file creates ALL schemas/tables/indexes/triggers
             // ================================================================
-            const rootSchemaDir = path.join(__dirname, '../../migrations/pg/tenant');
-            const baseFiles = [
-                '000_init.sql',              // Core tables (inventory, stock, settings, EMR, returns)
-                '001_tier2_additions.sql',    // Reservation engine columns
-                '010_indexes.sql',           // Performance indexes
-            ];
-
-            for (const file of baseFiles) {
-                const filePath = path.join(rootSchemaDir, file);
-                if (fs.existsSync(filePath)) {
-                    console.log(`[TenantProvisioning] Running ${file}...`);
-                    const sql = fs.readFileSync(filePath, 'utf-8');
-                    await pool.query(sql);
-                } else {
-                    console.error(`[TenantProvisioning] CRITICAL: Schema file not found: ${filePath}`);
-                    throw new Error(`Required schema file not found: ${file}`);
-                }
+            const baselineFile = path.join(__dirname, '../migrations/pg/tenant/baseline_tenant_schema.sql');
+            if (!fs.existsSync(baselineFile)) {
+                throw new Error(`CRITICAL: baseline_tenant_schema.sql not found at ${baselineFile}`);
             }
-            
-            console.log(`[TenantProvisioning] Phase 1a (Base Schema) applied successfully.`);
+            const baselineSql = fs.readFileSync(baselineFile, 'utf-8');
+            await pool.query(baselineSql);
+            console.log(`[TenantProvisioning] Phase 1 (Baseline Schema) applied — all 5 schemas created.`);
 
-            // Create essential system locations BEFORE incremental migrations
-            // Migration 021 reads tenant_id from existing locations — they must exist.
-            // NOTE: At this point, locations.tenant_id is still TEXT (not UUID — that's migration 025)
+            // ================================================================
+            // PHASE 2: Create System Locations
+            // ================================================================
             console.log(`[TenantProvisioning] Creating system locations...`);
             
-            // RETURN_QUARANTINE
             await pool.query(`
                 INSERT INTO locations (
                     location_id, tenant_id, name, type, scope, 
                     location_class, valuation_policy, service_id, status, created_at
-                ) VALUES (
-                    gen_random_uuid(), $1, 'RETURN_QUARANTINE', 'VIRTUAL', 'SYSTEM',
-                    'COMMERCIAL', 'NON_VALUABLE', NULL, 'ACTIVE', NOW()
-                )
+                ) VALUES 
+                (gen_random_uuid(), $1, 'RETURN_QUARANTINE', 'VIRTUAL', 'SYSTEM',
+                 'COMMERCIAL', 'NON_VALUABLE', NULL, 'ACTIVE', NOW()),
+                (gen_random_uuid(), $1, 'WASTE', 'VIRTUAL', 'SYSTEM',
+                 'COMMERCIAL', 'NON_VALUABLE', NULL, 'ACTIVE', NOW())
                 ON CONFLICT DO NOTHING
             `, [tenantId]);
-            
-            // WASTE Location (Mandatory System Location)
-            await pool.query(`
-                INSERT INTO locations (
-                    location_id, tenant_id, name, type, scope, 
-                    location_class, valuation_policy, service_id, status, created_at
-                ) VALUES (
-                    gen_random_uuid(), $1, 'WASTE', 'VIRTUAL', 'SYSTEM',
-                    'COMMERCIAL', 'NON_VALUABLE', NULL, 'ACTIVE', NOW()
-                )
-                ON CONFLICT DO NOTHING
-            `, [tenantId]);
-
-            // ================================================================
-            // PHASE 1b: Incremental Migrations (evolve base schema to current state)
-            // These add columns, normalize constraints, split tables, etc.
-            // ================================================================
-            const incrementalFiles = [
-                '011_add_demand_ref.sql',
-                '011_add_demand_processing_cols.sql',
-                '012_normalize_document_type.sql',
-                '013_drop_client_request_id.sql',
-                '014_split_reservations.sql',
-                '015_add_return_lineage.sql',
-                '016_add_return_reference.sql',
-                '017_add_reception_reference.sql',
-                '018_add_return_reception_type.sql',
-                '019_add_partially_received_status.sql',
-                '020_return_decisions_update.sql',
-                '021_return_decisions_locations.sql',
-                '022_patient_tenant_rework.sql',  // patients_tenant, contacts, addresses, insurances
-                '023_patient_network.sql',        // persons, relationships, emergency contacts, guardians
-                '024_universal_audit.sql',        // audit_log + triggers
-                '025_standardize_tenant_ids.sql', // TEXT -> UUID tenant_id conversions
-            ];
-
-            for (const file of incrementalFiles) {
-                const filePath = path.join(rootSchemaDir, file);
-                if (fs.existsSync(filePath)) {
-                    console.log(`[TenantProvisioning] Running ${file}...`);
-                    const sql = fs.readFileSync(filePath, 'utf-8');
-                    await pool.query(sql);
-                } else {
-                    console.error(`[TenantProvisioning] CRITICAL: Schema file not found: ${filePath}`);
-                    throw new Error(`Required schema file not found: ${file}`);
-                }
-            }
-            
-            console.log(`[TenantProvisioning] Phase 1b (Incremental Migrations) applied successfully.`);
-
-            // ================================================================
-            // PHASE 2: Identity Schema (backend/migrations/pg/tenant/)
-            // These create the identity schema and refactor patients_tenant
-            // ================================================================
-            const identitySchemaDir = path.join(__dirname, '../migrations/pg/tenant');
-            const identityFiles = [
-                '001_identity_schema_tenant.sql',   // identity schema + master_patients
-                '002_refactor_patient_tenant.sql',   // Add master_patient_id to patients_tenant
-                '003_drop_global_patient_id.sql',    // Remove legacy global_patient_id
-            ];
-
-            for (const file of identityFiles) {
-                const filePath = path.join(identitySchemaDir, file);
-                if (fs.existsSync(filePath)) {
-                    console.log(`[TenantProvisioning] Running identity/${file}...`);
-                    const sql = fs.readFileSync(filePath, 'utf-8');
-                    await pool.query(sql);
-                } else {
-                    console.error(`[TenantProvisioning] CRITICAL: Identity file not found: ${filePath}`);
-                    throw new Error(`Required identity file not found: ${file}`);
-                }
-            }
-
-            console.log(`[TenantProvisioning] Phase 2 (Identity Schema) applied successfully.`);
+            console.log(`[TenantProvisioning] Phase 2 (System Locations) created.`);
 
             // ================================================================
             // PHASE 3: Reference Data Sync (Global -> Tenant)
+            // Populates reference.global_products, global_roles, etc.
             // ================================================================
             const { syncTenantReference } = require('../scripts/referenceSync');
             await syncTenantReference(pool, tenantId);
             console.log(`[TenantProvisioning] Phase 3 (Reference Sync) complete.`);
-            
-            // ================================================================
-            // PHASE 4: Post-Sync Migrations (require reference tables to exist)
-            // ================================================================
-            const postSyncFiles = [
-                '004_fix_tenant_document_types.sql', // FK update to reference.identity_document_types
-            ];
 
-            for (const file of postSyncFiles) {
-                const filePath = path.join(identitySchemaDir, file);
-                if (fs.existsSync(filePath)) {
-                    console.log(`[TenantProvisioning] Running post-sync/${file}...`);
-                    const sql = fs.readFileSync(filePath, 'utf-8');
-                    await pool.query(sql);
-                } else {
-                    console.warn(`[TenantProvisioning] Post-sync file not found: ${filePath}`);
-                }
+            // ================================================================
+            // PHASE 4: Register Identity Sync Cursor
+            // New tenants start at current max outbox_seq
+            // ================================================================
+            try {
+                const seqRes = await identityQuery(
+                    `SELECT COALESCE(MAX(outbox_seq), 0) as max_seq FROM identity_sync.outbox_events`
+                );
+                const maxSeq = parseInt(seqRes[0]?.max_seq || '0', 10);
+
+                await identityQuery(`
+                    INSERT INTO identity_sync.tenant_cursors (tenant_id, last_outbox_seq, updated_at)
+                    VALUES ($1, $2, NOW())
+                    ON CONFLICT (tenant_id) DO UPDATE SET last_outbox_seq = $2, updated_at = NOW()
+                `, [tenantId, maxSeq]);
+
+                console.log(`[TenantProvisioning] Phase 4 (Identity Sync Cursor) registered at seq ${maxSeq}.`);
+            } catch (err: any) {
+                console.warn(`[TenantProvisioning] Could not register sync cursor: ${err.message}`);
             }
 
             // ================================================================
-            // PHASE 5: Post-Identity Structural Migrations
-            // These require master_patient_id (from Phase 2) to exist
+            // PHASE 5: Apply Auth Sync Schema
+            // Creates auth_sync schema + outbox/inbox/triggers for ALL tenants.
+            // Sync worker only processes GROUP_MANAGED tenants, but schema
+            // is always present for seamless future conversion.
             // ================================================================
-            const postIdentityFiles = [
-                '026_local_chart_merge.sql',      // Merge pointers + events (needs master_patient_id)
-                '027_remove_public_roles.sql',     // Drop legacy public.roles (now using reference.global_roles)
-            ];
-
-            for (const file of postIdentityFiles) {
-                const filePath = path.join(rootSchemaDir, file);
-                if (fs.existsSync(filePath)) {
-                    console.log(`[TenantProvisioning] Running post-identity/${file}...`);
-                    const sql = fs.readFileSync(filePath, 'utf-8');
-                    await pool.query(sql);
+            try {
+                const authSyncFile = path.join(__dirname, '../migrations/pg/tenant/setup_auth_sync_tenant.sql');
+                if (fs.existsSync(authSyncFile)) {
+                    const authSyncSql = fs.readFileSync(authSyncFile, 'utf-8');
+                    await pool.query(authSyncSql);
+                    console.log(`[TenantProvisioning] Phase 5 (Auth Sync Schema) applied.`);
                 } else {
-                    console.error(`[TenantProvisioning] CRITICAL: Post-identity file not found: ${filePath}`);
-                    throw new Error(`Required post-identity file not found: ${file}`);
+                    console.warn(`[TenantProvisioning] Auth sync SQL not found at ${authSyncFile} — skipping.`);
                 }
+            } catch (err: any) {
+                console.warn(`[TenantProvisioning] Could not apply auth sync schema: ${err.message}`);
             }
 
             console.log(`[TenantProvisioning] Schema fully applied to ${dbName}.`);

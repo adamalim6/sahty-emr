@@ -43,11 +43,33 @@ router.get('/services/:id/units', getServiceUnits);
 router.post('/services/:id/units', requireModule('SETTINGS'), createServiceUnit);
 router.delete('/services/units/:unitId', requireModule('SETTINGS'), deleteServiceUnit);
 
+import {
+    getBeds, createBed, updateBedStatus, deactivateBed,
+    getServiceRooms, createPhysicalRoom, updatePhysicalRoom, deactivatePhysicalRoom,
+    getBedOccupancy
+} from '../controllers/placementController';
+
 // --- ROOMS (Read Open, Write Protected) ---
 router.get('/rooms', getRooms);
 router.post('/rooms', requireModule('SETTINGS'), createRoom);
 router.put('/rooms/:id', requireModule('SETTINGS'), updateRoom);
 router.delete('/rooms/:id', requireModule('SETTINGS'), deleteRoom);
+
+// --- PHYSICAL ROOMS (by service) ---
+router.get('/physical-rooms', getServiceRooms);
+router.get('/physical-rooms/service/:serviceId', getServiceRooms);
+router.post('/physical-rooms', requireModule('SETTINGS'), createPhysicalRoom);
+router.put('/physical-rooms/:id', requireModule('SETTINGS'), updatePhysicalRoom);
+router.delete('/physical-rooms/:id', requireModule('SETTINGS'), deactivatePhysicalRoom);
+
+// --- BEDS ---
+router.get('/rooms/:roomId/beds', getBeds);
+router.post('/rooms/:roomId/beds', requireModule('SETTINGS'), createBed);
+router.put('/beds/:bedId/status', requireModule('SETTINGS'), updateBedStatus);
+router.delete('/beds/:bedId', requireModule('SETTINGS'), deactivateBed);
+
+// --- BED OCCUPANCY (by service) ---
+router.get('/occupancy/:serviceId', getBedOccupancy);
 
 // --- PRICING ---
 router.get('/pricing', getPricing); // Pricing view might be needed?

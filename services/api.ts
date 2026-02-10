@@ -176,20 +176,38 @@ export const api = {
     getPatientsWithPrescriptions: () =>
         fetchJson<PatientWithPrescriptions[]>('/prescriptions/patients/with-prescriptions'),
 
-    // Super Admin
-    getClients: () => fetchJson<any[]>('/super-admin/clients'),
-    getClientDetails: (id: string) => fetchJson<any>(`/super-admin/clients/${id}`),
-    createClient: (data: any) => fetchJson<any>('/super-admin/clients', {
+    // Super Admin — Tenants
+    getTenants: () => fetchJson<any[]>('/super-admin/tenants'),
+    getTenantDetails: (id: string) => fetchJson<any>(`/super-admin/tenants/${id}`),
+    createTenant: (data: any) => fetchJson<any>('/super-admin/tenants', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }),
-    updateClient: (id: string, data: any) => fetchJson<any>(`/super-admin/clients/${id}`, {
+    updateTenant: (id: string, data: any) => fetchJson<any>(`/super-admin/tenants/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }),
-    updateClientDSI: (id: string, data: any) => fetchJson<any>(`/super-admin/clients/${id}/dsi`, {
+    updateTenantDSI: (id: string, data: any) => fetchJson<any>(`/super-admin/tenants/${id}/dsi`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    // Backwards-compat aliases
+    getClients: () => fetchJson<any[]>('/super-admin/tenants'),
+    getClientDetails: (id: string) => fetchJson<any>(`/super-admin/tenants/${id}`),
+    createClient: (data: any) => fetchJson<any>('/super-admin/tenants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    updateClient: (id: string, data: any) => fetchJson<any>(`/super-admin/tenants/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    updateClientDSI: (id: string, data: any) => fetchJson<any>(`/super-admin/tenants/${id}/dsi`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -380,6 +398,23 @@ export const api = {
     }),
 
     deleteGlobalSupplier: (id: string) => fetchJson<any>(`/super-admin/suppliers/${id}`, {
+        method: 'DELETE'
+    }),
+
+    // Groups
+    getGroups: () => fetchJson<any[]>('/super-admin/groups'),
+    getGroup: (id: string) => fetchJson<any>(`/super-admin/groups/${id}`),
+    createGroup: (data: any) => fetchJson<any>('/super-admin/groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    updateGroup: (id: string, data: any) => fetchJson<any>(`/super-admin/groups/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    deleteGroup: (id: string) => fetchJson<any>(`/super-admin/groups/${id}`, {
         method: 'DELETE'
     }),
 

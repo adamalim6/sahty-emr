@@ -1,10 +1,11 @@
 import express from 'express';
 import { 
-    getClients, createClient, updateClient, deleteClient,
-    getClientDetails, updateClientDSI, 
+    getTenants, createTenant, updateTenant, deleteTenant,
+    getTenantDetails, updateClientDSI, 
     getOrganismes, createOrganisme, 
     getRoles, getRole, createRole, updateRole,
-    getGlobalSuppliers, createGlobalSupplier, updateGlobalSupplier, deleteGlobalSupplier // Updated imports
+    getGlobalSuppliers, createGlobalSupplier, updateGlobalSupplier, deleteGlobalSupplier,
+    getGroups, getGroup, createGroup, updateGroup, deleteGroup
 } from '../controllers/superAdminController';
 import { loginGlobalAdmin } from '../controllers/globalAuthController';
 import { authenticateGlobalAdmin } from '../middleware/globalAuthMiddleware';
@@ -14,21 +15,27 @@ const router = express.Router();
 // Global Login
 router.post('/login', loginGlobalAdmin);
 
-// Clients
-router.get('/clients', authenticateGlobalAdmin, getClients);
-router.post('/clients', authenticateGlobalAdmin, createClient);
-router.get('/clients/:id', authenticateGlobalAdmin, getClientDetails);
-router.put('/clients/:id', authenticateGlobalAdmin, updateClient);
+// Tenants (primary routes)
+router.get('/tenants', authenticateGlobalAdmin, getTenants);
+router.post('/tenants', authenticateGlobalAdmin, createTenant);
+router.get('/tenants/:id', authenticateGlobalAdmin, getTenantDetails);
+router.put('/tenants/:id', authenticateGlobalAdmin, updateTenant);
+router.put('/tenants/:id/dsi', authenticateGlobalAdmin, updateClientDSI);
+router.delete('/tenants/:id', authenticateGlobalAdmin, deleteTenant);
+
+// Backwards-compat aliases (legacy /clients routes)
+router.get('/clients', authenticateGlobalAdmin, getTenants);
+router.post('/clients', authenticateGlobalAdmin, createTenant);
+router.get('/clients/:id', authenticateGlobalAdmin, getTenantDetails);
+router.put('/clients/:id', authenticateGlobalAdmin, updateTenant);
 router.put('/clients/:id/dsi', authenticateGlobalAdmin, updateClientDSI);
-router.delete('/clients/:id', authenticateGlobalAdmin, deleteClient);
+router.delete('/clients/:id', authenticateGlobalAdmin, deleteTenant);
 
 // Organismes
 router.get('/organismes', authenticateGlobalAdmin, getOrganismes);
 router.post('/organismes', authenticateGlobalAdmin, createOrganisme);
 
 // Roles
-// Note: Roles can be read by tenants via settings, these are likely managing GLOBAL templates if any? 
-// Or managing tenant roles as superadmin.
 router.get('/roles', authenticateGlobalAdmin, getRoles);
 router.get('/roles/:id', authenticateGlobalAdmin, getRole);
 router.post('/roles', authenticateGlobalAdmin, createRole);
@@ -39,5 +46,12 @@ router.get('/suppliers', authenticateGlobalAdmin, getGlobalSuppliers);
 router.post('/suppliers', authenticateGlobalAdmin, createGlobalSupplier);
 router.put('/suppliers/:id', authenticateGlobalAdmin, updateGlobalSupplier);
 router.delete('/suppliers/:id', authenticateGlobalAdmin, deleteGlobalSupplier);
+
+// Groups
+router.get('/groups', authenticateGlobalAdmin, getGroups);
+router.post('/groups', authenticateGlobalAdmin, createGroup);
+router.get('/groups/:id', authenticateGlobalAdmin, getGroup);
+router.put('/groups/:id', authenticateGlobalAdmin, updateGroup);
+router.delete('/groups/:id', authenticateGlobalAdmin, deleteGroup);
 
 export default router;

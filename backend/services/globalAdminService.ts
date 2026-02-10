@@ -196,34 +196,39 @@ export class GlobalAdminService {
         }
     }
 
-    // --- Clients Management ---
-    public async getAllClients(): Promise<any[]> {
-        return globalQuery('SELECT * FROM clients ORDER BY created_at DESC');
+    // --- Tenants Management ---
+    public async getAllTenants(): Promise<any[]> {
+        return globalQuery('SELECT * FROM tenants ORDER BY created_at DESC');
     }
+    // Backwards-compat alias
+    public async getAllClients(): Promise<any[]> { return this.getAllTenants(); }
 
-    public async getClientById(id: string): Promise<any> {
-        return globalQueryOne('SELECT * FROM clients WHERE id = $1', [id]);
+    public async getTenantById(id: string): Promise<any> {
+        return globalQueryOne('SELECT * FROM tenants WHERE id = $1', [id]);
     }
+    public async getClientById(id: string): Promise<any> { return this.getTenantById(id); }
 
-    public async createClient(client: any): Promise<any> {
+    public async createTenant(tenant: any): Promise<any> {
         const now = new Date().toISOString();
         
         await globalQuery(`
-            INSERT INTO clients (id, type, designation, siege_social, representant_legal, country, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
+            INSERT INTO tenants (id, type, designation, siege_social, representant_legal, country, tenancy_mode, group_id, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9)
         `, [
-            client.id, 
-            client.type, 
-            client.designation, 
-            client.siege_social, 
-            client.representant_legal, 
-            client.country || 'MAROC', 
+            tenant.id, 
+            tenant.type, 
+            tenant.designation, 
+            tenant.siege_social, 
+            tenant.representant_legal, 
+            tenant.country || 'MAROC',
+            tenant.tenancy_mode || 'STANDALONE',
+            tenant.group_id || null,
             now
         ]);
-        return client;
+        return tenant;
     }
 
-    public async updateClient(id: string, updates: any): Promise<any> {
+    public async updateTenant(id: string, updates: any): Promise<any> {
         const fields: string[] = [];
         const values: any[] = [];
         let paramIndex = 1;
@@ -239,13 +244,13 @@ export class GlobalAdminService {
 
         if (fields.length > 0) {
             values.push(id);
-            await globalQuery(`UPDATE clients SET ${fields.join(', ')} WHERE id = $${paramIndex}`, values);
+            await globalQuery(`UPDATE tenants SET ${fields.join(', ')} WHERE id = $${paramIndex}`, values);
         }
-        return this.getClientById(id);
+        return this.getTenantById(id);
     }
     
-    public async deleteClient(id: string): Promise<void> {
-        await globalQuery('DELETE FROM clients WHERE id = $1', [id]);
+    public async deleteTenant(id: string): Promise<void> {
+        await globalQuery('DELETE FROM tenants WHERE id = $1', [id]);
         await globalQuery('UPDATE users SET active = FALSE WHERE client_id = $1', [id]);
     }
 

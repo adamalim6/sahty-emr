@@ -208,12 +208,7 @@ export const getRooms = async (req: AuthRequest, res: Response) => {
 export const createRoom = async (req: AuthRequest, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const newRoom: UnitType = {
-            id: `room_${Date.now()}`,
-            tenantId,
-            ...req.body
-        };
-        const created = await settingsService.createUnitType(tenantId, newRoom);
+        const created = await settingsService.createUnitType(tenantId, req.body);
         res.status(201).json(created);
     } catch (error: any) {
         res.status(400).json({ message: error.message });

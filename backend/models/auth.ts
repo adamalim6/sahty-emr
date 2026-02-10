@@ -23,13 +23,18 @@ export interface User {
     service_ids?: string[];
 }
 
-export interface Client {
+export interface Tenant {
     id: string;
     type: 'HOPITAL' | 'CLINIQUE' | 'CABINET';
     designation: string;
     siege_social: string;
     representant_legal: string;
+    group_id?: string | null;
+    tenancy_mode?: 'STANDALONE' | 'GROUP_MANAGED';
 }
+
+// Backwards-compat alias
+export type Client = Tenant;
 
 export interface Role {
     id: string;

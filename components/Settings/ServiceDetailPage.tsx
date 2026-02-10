@@ -17,7 +17,6 @@ interface Service {
 interface RoomType {
     id: string;
     name: string;
-    unit_category: 'CHAMBRE' | 'PLATEAU_TECHNIQUE' | 'BOOTH_CONSULTATION';
     number_of_beds: number | null;
 }
 
@@ -48,7 +47,6 @@ export const ServiceDetailPage: React.FC = () => {
 
     // Modal State
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [addCategory, setAddCategory] = useState<'CHAMBRE' | 'PLATEAU_TECHNIQUE' | 'BOOTH_CONSULTATION'>('CHAMBRE');
     const [newUnitName, setNewUnitName] = useState('');
     const [selectedTypeId, setSelectedTypeId] = useState('');
 
@@ -147,8 +145,7 @@ export const ServiceDetailPage: React.FC = () => {
         }
     };
 
-    const openAddModal = (category: 'CHAMBRE' | 'PLATEAU_TECHNIQUE' | 'BOOTH_CONSULTATION') => {
-        setAddCategory(category);
+    const openAddModal = () => {
         setNewUnitName('');
         setSelectedTypeId('');
         setIsAddModalOpen(true);
@@ -166,36 +163,14 @@ export const ServiceDetailPage: React.FC = () => {
     
     // getRoleName moved to top
 
-    const renderEmptyState = (category: 'CHAMBRE' | 'PLATEAU_TECHNIQUE' | 'BOOTH_CONSULTATION') => (
-        <div className="border border-dashed border-slate-300 rounded-xl p-8 flex flex-col items-center justify-center text-center bg-slate-50/50">
-            <div className="bg-slate-100 p-3 rounded-full mb-3 text-slate-400">
-                {category === 'CHAMBRE' ? <Bed size={24} /> : 
-                 category === 'PLATEAU_TECHNIQUE' ? <Activity size={24} /> : 
-                 <Stethoscope size={24} />}
-            </div>
-            <p className="text-slate-500 font-medium mb-1">Aucune unité configurée</p>
-            <p className="text-slate-400 text-sm mb-4">Commencez par ajouter {category === 'CHAMBRE' ? 'une chambre' : category === 'PLATEAU_TECHNIQUE' ? 'un plateau' : 'un box'}</p>
-            <button 
-                onClick={() => openAddModal(category)}
-                className="text-sm bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors shadow-sm font-medium"
-            >
-                Ajouter {category === 'CHAMBRE' ? 'une Chambre' : category === 'PLATEAU_TECHNIQUE' ? 'un Plateau' : 'un Box'}
-            </button>
-        </div>
-    );
-
-    const renderUnitCard = (unit: ServiceUnit, category: 'CHAMBRE' | 'PLATEAU_TECHNIQUE' | 'BOOTH_CONSULTATION') => {
+    const renderUnitCard = (unit: ServiceUnit) => {
         return (
             <div key={unit.id} className="group relative bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition-all duration-200 flex flex-col justify-between min-h-[140px]">
                 {/* Header */}
                 <div className="flex justify-between items-start mb-3">
                     <div>
                         <h4 className="text-lg font-bold text-slate-800 leading-tight">{unit.name}</h4>
-                        <span className={`inline-block mt-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium border ${
-                            category === 'CHAMBRE' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                            category === 'PLATEAU_TECHNIQUE' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                            'bg-violet-50 text-violet-700 border-violet-100'
-                        }`}>
+                        <span className="inline-block mt-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium border bg-blue-50 text-blue-700 border-blue-100">
                             {unit.type?.name || 'Type Inconnu'}
                         </span>
                     </div>
@@ -203,7 +178,7 @@ export const ServiceDetailPage: React.FC = () => {
 
                 {/* Content */}
                 <div className="mt-auto">
-                    {category === 'CHAMBRE' && unit.type?.number_of_beds && (
+                    {unit.type?.number_of_beds && (
                         <div>
                              <div className="flex items-center space-x-1.5 mb-2">
                                 {[...Array(unit.type.number_of_beds)].map((_, i) => (
@@ -212,22 +187,8 @@ export const ServiceDetailPage: React.FC = () => {
                                     </div>
                                 ))}
                             </div>
-                            <span className="text-xs text-slate-400 font-medium">{unit.type.number_of_beds} lits disponibles</span>
+                            <span className="text-xs text-slate-400 font-medium">{unit.type.number_of_beds} lits</span>
                         </div>
-                    )}
-                    
-                    {category === 'PLATEAU_TECHNIQUE' && (
-                         <div className="flex items-center text-slate-400 text-sm mt-2">
-                            <Activity size={16} className="mr-2" />
-                            <span>Plateau Technique</span>
-                         </div>
-                    )}
-
-                    {category === 'BOOTH_CONSULTATION' && (
-                         <div className="flex items-center text-slate-400 text-sm mt-2">
-                            <Stethoscope size={16} className="mr-2" />
-                            <span>Consultation</span>
-                         </div>
                     )}
                 </div>
 
@@ -243,42 +204,7 @@ export const ServiceDetailPage: React.FC = () => {
         );
     };
 
-    const renderSection = (title: string, subtitle: string, category: 'CHAMBRE' | 'PLATEAU_TECHNIQUE' | 'BOOTH_CONSULTATION', icon: React.ReactNode) => {
-        const units = serviceUnits.filter(u => u.type?.unit_category === category);
-        
-        return (
-            <div className="mb-10">
-                <div className="flex items-end justify-between mb-6 border-b border-slate-100 pb-4">
-                    <div className="flex items-center space-x-3">
-                        <div className={`p-2 rounded-lg ${
-                            category === 'CHAMBRE' ? 'bg-blue-50 text-blue-600' :
-                            category === 'PLATEAU_TECHNIQUE' ? 'bg-emerald-50 text-emerald-600' :
-                            'bg-violet-50 text-violet-600'
-                        }`}>
-                            {icon}
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-bold text-slate-800 leading-none mb-1">{title}</h3>
-                            <p className="text-sm text-slate-500 leading-none">{subtitle}</p>
-                        </div>
-                    </div>
-                    
-                    <button 
-                        onClick={() => openAddModal(category)}
-                        className="text-sm font-medium bg-slate-800 text-white px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors flex items-center shadow-sm"
-                    >
-                        <Plus size={16} className="mr-1.5" /> Ajouter
-                    </button>
-                </div>
 
-                {units.length === 0 ? renderEmptyState(category) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        {units.map(unit => renderUnitCard(unit, category))}
-                    </div>
-                )}
-            </div>
-        );
-    };
 
     if (loading) return <div className="p-8 text-center text-slate-500">Chargement...</div>;
     if (!service) return null;
@@ -349,25 +275,42 @@ export const ServiceDetailPage: React.FC = () => {
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm min-h-[400px]">
                     {activeTab === 'PLAN' && (
                         <div className="p-8">
-                            {renderSection(
-                                'Chambres d\'Hospitalisation', 
-                                'Zones d\'hébergement des patients', 
-                                'CHAMBRE',
-                                <Bed size={20} />
-                            )}
-                            
-                            {renderSection(
-                                'Plateaux Techniques', 
-                                'Blocs opératoires, salles d\'imagerie et laboratoires', 
-                                'PLATEAU_TECHNIQUE',
-                                <Activity size={20} />
-                            )}
-                            
-                            {renderSection(
-                                'Box de Consultation', 
-                                'Points d\'accueil et de consultation externe', 
-                                'BOOTH_CONSULTATION',
-                                <Stethoscope size={20} />
+                            <div className="flex items-end justify-between mb-6 border-b border-slate-100 pb-4">
+                                <div className="flex items-center space-x-3">
+                                    <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
+                                        <Bed size={20} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-slate-800 leading-none mb-1">Chambres & Unités</h3>
+                                        <p className="text-sm text-slate-500 leading-none">Espaces physiques rattachés à ce service</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => openAddModal()}
+                                    className="text-sm font-medium bg-slate-800 text-white px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors flex items-center shadow-sm"
+                                >
+                                    <Plus size={16} className="mr-1.5" /> Ajouter une Chambre
+                                </button>
+                            </div>
+
+                            {serviceUnits.length === 0 ? (
+                                <div className="border border-dashed border-slate-300 rounded-xl p-8 flex flex-col items-center justify-center text-center bg-slate-50/50">
+                                    <div className="bg-slate-100 p-3 rounded-full mb-3 text-slate-400">
+                                        <Bed size={24} />
+                                    </div>
+                                    <p className="text-slate-500 font-medium mb-1">Aucune chambre configurée</p>
+                                    <p className="text-slate-400 text-sm mb-4">Commencez par ajouter une chambre à ce service</p>
+                                    <button
+                                        onClick={() => openAddModal()}
+                                        className="text-sm bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors shadow-sm font-medium"
+                                    >
+                                        Ajouter une Chambre
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                    {serviceUnits.map(unit => renderUnitCard(unit))}
+                                </div>
                             )}
                         </div>
                     )}
@@ -509,7 +452,7 @@ export const ServiceDetailPage: React.FC = () => {
                         <div className="bg-white rounded-xl w-full max-w-md shadow-2xl overflow-hidden">
                             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                                 <h2 className="text-lg font-bold text-slate-800">
-                                    Ajouter {addCategory === 'CHAMBRE' ? 'une Chambre' : addCategory === 'PLATEAU_TECHNIQUE' ? 'un Plateau' : 'un Box'}
+                                    Ajouter une Chambre
                                 </h2>
                                 <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
                                     <span className="text-2xl">&times;</span>
@@ -519,26 +462,24 @@ export const ServiceDetailPage: React.FC = () => {
                             <form onSubmit={handleAddUnit} className="p-6 space-y-5">
                                 <div>
                                     <label className="block text-sm font-semibold text-slate-700 mb-1.5">Type d'unité <span className="text-red-500">*</span></label>
-                                    <select 
+                                     <select 
                                         className="w-full border border-slate-300 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-slate-700"
                                         value={selectedTypeId}
                                         onChange={e => setSelectedTypeId(e.target.value)}
                                         required
                                     >
                                         <option value="">Sélectionner un type...</option>
-                                        {roomTypes
-                                            .filter(t => t.unit_category === addCategory)
-                                            .map(t => (
+                                        {roomTypes.map(t => (
                                                 <option key={t.id} value={t.id}>
                                                     {t.name} {t.number_of_beds ? `(${t.number_of_beds} lits)` : ''}
                                                 </option>
                                             ))
                                         }
                                     </select>
-                                    {roomTypes.filter(t => t.unit_category === addCategory).length === 0 && (
+                                    {roomTypes.length === 0 && (
                                         <div className="mt-2 p-3 bg-amber-50 text-amber-700 text-xs rounded-lg flex items-start">
                                             <span className="mr-2">⚠️</span>
-                                            Aucun type configuré. Allez dans "Chambres" pour créer des types d'unités avant de pouvoir en ajouter ici.
+                                            Aucun type configuré. Allez dans "Chambres" pour créer des types d'unités.
                                         </div>
                                     )}
                                 </div>
@@ -550,7 +491,7 @@ export const ServiceDetailPage: React.FC = () => {
                                         className="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-slate-700"
                                         value={newUnitName}
                                         onChange={e => setNewUnitName(e.target.value)}
-                                        placeholder={addCategory === 'CHAMBRE' ? "ex: 104" : "ex: Salle 1"}
+                                        placeholder="ex: Chambre 104"
                                         required
                                     />
                                 </div>

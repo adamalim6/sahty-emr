@@ -233,33 +233,9 @@ CREATE INDEX idx_transfer_line_transfer ON stock_transfer_lines(transfer_id);
 -- 4. SETTINGS DOMAIN
 -- ============================================================================
 
--- 4.1 Users (Tenant-level)
-CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    client_id TEXT NOT NULL,
-    username TEXT NOT NULL,
-    password_hash TEXT,
-    nom TEXT,
-    prenom TEXT,
-    user_type TEXT,
-    role_id UUID,
-    inpe TEXT,
-    service_ids JSONB,  -- Array of service IDs
-    active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_users_client ON users(client_id);
-CREATE INDEX idx_users_username ON users(username);
-
--- 4.2 Roles
-CREATE TABLE IF NOT EXISTS roles (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL,
-    code TEXT,
-    permissions JSONB,
-    modules JSONB
-);
+-- NOTE: public.users and public.roles are REMOVED.
+-- Users are managed in auth.users + auth.credentials (created by 005_create_auth_schema.sql)
+-- Roles are managed in reference.global_roles (synced from sahty_global)
 
 -- 4.3 Services
 CREATE TABLE IF NOT EXISTS services (

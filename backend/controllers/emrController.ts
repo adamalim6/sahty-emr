@@ -241,10 +241,12 @@ export const getAppointments = async (req: Request, res: Response) => {
     }
 };
 
+import { placementService } from '../services/placementService';
+
 export const getRooms = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const rooms = await emrService.getAllRooms(tenantId);
+        const rooms = await placementService.getAllRooms(tenantId);
         res.json(rooms);
     } catch (error: any) {
         res.status(500).json({ message: error.message });

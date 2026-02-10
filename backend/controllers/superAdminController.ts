@@ -28,24 +28,25 @@ const writeJson = (filename: string, data: any) => {
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
 };
 
-// --- Clients (Tenants) ---
-export const getClients = async (req: Request, res: Response) => {
+// --- Tenants ---
+export const getTenants = async (req: Request, res: Response) => {
     try {
-        const clients = await globalAdminService.getAllClients();
-        res.json(clients);
+        const tenants = await globalAdminService.getAllTenants();
+        res.json(tenants);
     } catch (e: any) {
         res.status(500).json({ error: e.message });
     }
-    // Legacy: const clients = readJson('clients.json');
 };
+// Backwards-compat alias
+export const getClients = getTenants;
 
-export const getClientDetails = async (req: Request, res: Response) => {
+export const getTenantDetails = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const client = await globalAdminService.getClientById(id);
+        const tenant = await globalAdminService.getTenantById(id);
         
-        if (!client) {
-            return res.status(404).json({ error: 'Client not found' });
+        if (!tenant) {
+            return res.status(404).json({ error: 'Tenant not found' });
         }
         
         // Find associated DSI (Tenant Super Admin) from Global DB
@@ -53,7 +54,7 @@ export const getClientDetails = async (req: Request, res: Response) => {
         
         // Return combined data
         res.json({
-            ...client,
+            ...tenant,
             dsi: dsi ? {
                 username: dsi.username,
                 nom: dsi.nom,
@@ -64,6 +65,7 @@ export const getClientDetails = async (req: Request, res: Response) => {
         res.status(500).json({ error: e.message });
     }
 };
+export const getClientDetails = getTenantDetails;
 
 export const updateClientDSI = async (req: Request, res: Response) => {
     try {
@@ -107,42 +109,37 @@ export const updateClientDSI = async (req: Request, res: Response) => {
 
 import { v4 as uuidv4 } from 'uuid';
 
-export const createClient = async (req: Request, res: Response) => {
+export const createTenant = async (req: Request, res: Response) => {
     try {
         // Validate DSI Info first
         if (!req.body.admin_username || !req.body.admin_password) {
             return res.status(400).json({ error: 'Les informations du compte DSI (Login/Mot de passe) sont obligatoires.' });
         }
 
-        const clientId = uuidv4();
+        const tenantId = uuidv4();
         
-        // 1. Create Client in Global SQL DB
-        const newClient = await globalAdminService.createClient({ 
-            id: clientId, 
+        // 1. Create Tenant in Global SQL DB
+        const newTenant = await globalAdminService.createTenant({ 
+            id: tenantId, 
             type: req.body.type,
             designation: req.body.designation,
             siege_social: req.body.siege_social,
             representant_legal: req.body.representant_legal,
-            country: req.body.country || 'MAROC'
+            country: req.body.country || 'MAROC',
+            tenancy_mode: req.body.tenancy_mode || 'STANDALONE',
+            group_id: req.body.group_id || null
         });
         
-        // 2. Create DSI User in Global DB
-        await globalAdminService.createTenantAdmin({
-            username: req.body.admin_username,
-            password_hash: bcrypt.hashSync(req.body.admin_password, 10),
-            nom: req.body.admin_nom || 'Directeur',
-            prenom: req.body.admin_prenom || 'Admin',
-            tenantId: clientId,
-            role_id: 'role_admin_struct'
-        });
+        // NOTE: DSI user is created ONLY in tenant.auth.users (step 3 below)
+        // sahty_global.users is reserved for platform superadmins only
 
         // 2.5. PROVISION TENANT DATABASE
         try {
-            console.log(`[createClient] Provisioning tenant DB for ${clientId}...`);
-            await tenantProvisioningService.createTenantDatabase(clientId);
-            console.log(`[createClient] Tenant DB provisioned.`);
+            console.log(`[createTenant] Provisioning tenant DB for ${tenantId}...`);
+            await tenantProvisioningService.createTenantDatabase(tenantId);
+            console.log(`[createTenant] Tenant DB provisioned.`);
         } catch (dbErr: any) {
-            console.error("[createClient] Failed to provision tenant DB:", dbErr);
+            console.error("[createTenant] Failed to provision tenant DB:", dbErr);
             throw new Error(`Failed to provision tenant database: ${dbErr.message}`);
         }
 
@@ -150,20 +147,20 @@ export const createClient = async (req: Request, res: Response) => {
         try {
             // Look up ADMIN_STRUCTURE role from reference.global_roles (seeded by referenceSync)
             const { tenantQuery } = require('../db/tenantPg');
-            const adminStructRows = await tenantQuery(clientId, 
+            const adminStructRows = await tenantQuery(tenantId, 
                 "SELECT id FROM reference.global_roles WHERE code = 'ADMIN_STRUCTURE' LIMIT 1", []);
             const roleAdminStructId = adminStructRows.length > 0 
                 ? adminStructRows[0].id 
                 : null;
 
             if (!roleAdminStructId) {
-                console.warn('[CreateClient] ADMIN_STRUCTURE role not found in reference.global_roles');
+                console.warn('[createTenant] ADMIN_STRUCTURE role not found in reference.global_roles');
             }
 
             const tenantUserId = uuidv4();
             const tenantUser = {
                 id: tenantUserId, 
-                client_id: clientId,
+                client_id: tenantId,
                 username: req.body.admin_username,
                 password_hash: bcrypt.hashSync(req.body.admin_password, 10),
                 nom: req.body.admin_nom || 'Directeur',
@@ -177,42 +174,45 @@ export const createClient = async (req: Request, res: Response) => {
             // Roles are already in reference.global_roles (seeded by referenceSync during provisioning)
             // Only need to sync the admin user to tenant DB for Settings Module visibility
             const { settingsService } = require('../services/settingsService');
-            await settingsService.createUser(clientId, tenantUser);
-            console.log(`[CreateClient] Synced Admin ${tenantUser.username} to Tenant SQL ${clientId}`);
+            await settingsService.createUser(tenantId, tenantUser);
+            console.log(`[createTenant] Synced Admin ${tenantUser.username} to Tenant SQL ${tenantId}`);
         } catch (sqlErr: any) {
-            console.error(`[CreateClient] Failed to sync Tenant SQL: ${sqlErr.message}`);
+            console.error(`[createTenant] Failed to sync Tenant SQL: ${sqlErr.message}`);
             // Don't fail the request, but log critical error
         }
 
-        res.json(newClient);
+        res.json(newTenant);
     } catch (e: any) {
         res.status(500).json({ error: e.message });
     }
 };
+export const createClient = createTenant;
 
-export const updateClient = async (req: Request, res: Response) => {
+export const updateTenant = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const updated = await globalAdminService.updateClient(id, req.body);
+        const updated = await globalAdminService.updateTenant(id, req.body);
         if (updated) {
             res.json(updated);
         } else {
-            res.status(404).json({ error: 'Client not found' });
+            res.status(404).json({ error: 'Tenant not found' });
         }
     } catch (e: any) {
         res.status(500).json({ error: e.message });
     }
 };
+export const updateClient = updateTenant;
 
-export const deleteClient = async (req: Request, res: Response) => {
+export const deleteTenant = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        await globalAdminService.deleteClient(id);
+        await globalAdminService.deleteTenant(id);
         res.json({ success: true });
     } catch (e: any) {
         res.status(500).json({ error: e.message });
     }
 };
+export const deleteClient = deleteTenant;
 
 // --- Organismes (SQL) ---
 export const getOrganismes = async (req: Request, res: Response) => {
@@ -316,6 +316,55 @@ export const updateGlobalSupplier = async (req: Request, res: Response) => {
 export const deleteGlobalSupplier = async (req: Request, res: Response) => {
     try {
         await globalSupplierService.delete(req.params.id);
+        res.json({ success: true });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+};
+
+// --- Groups ---
+import { groupService } from '../services/groupService';
+
+export const getGroups = async (req: Request, res: Response) => {
+    try {
+        const groups = await groupService.listGroups();
+        res.json(groups);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+};
+
+export const getGroup = async (req: Request, res: Response) => {
+    try {
+        const group = await groupService.getGroupById(req.params.id);
+        if (!group) return res.status(404).json({ error: 'Group not found' });
+        res.json(group);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+};
+
+export const createGroup = async (req: Request, res: Response) => {
+    try {
+        const group = await groupService.createGroup(req.body);
+        res.json(group);
+    } catch (e: any) {
+        res.status(400).json({ error: e.message });
+    }
+};
+
+export const updateGroup = async (req: Request, res: Response) => {
+    try {
+        const group = await groupService.updateGroup(req.params.id, req.body);
+        res.json(group);
+    } catch (e: any) {
+        res.status(400).json({ error: e.message });
+    }
+};
+
+export const deleteGroup = async (req: Request, res: Response) => {
+    try {
+        await groupService.deleteGroup(req.params.id);
         res.json({ success: true });
     } catch (e: any) {
         res.status(500).json({ error: e.message });

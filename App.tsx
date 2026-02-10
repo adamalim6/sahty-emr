@@ -31,6 +31,7 @@ import { ReadOnlyRoleDetailPage } from './components/Settings/ReadOnlyRoleDetail
 // Correct import for Super Admin
 import { RolesPage as SuperAdminRolesPage } from './components/SuperAdmin/RolesPage';
 import { SuppliersPage } from './components/SuperAdmin/SuppliersPage';
+import { GroupsPage } from './components/SuperAdmin/GroupsPage';
 import { GlobalProductManager } from './components/SuperAdmin/GlobalProductManager';
 import { GlobalDCIManager } from './components/SuperAdmin/GlobalDCIManager';
 import { EMDNSandboxPage } from './components/SuperAdmin/EMDNSandboxPage';
@@ -134,6 +135,7 @@ const App: React.FC = () => {
              <Route path="roles" element={<SuperAdminRolesPage />} />
              <Route path="roles/:id" element={<RoleDetailPage />} />
              <Route path="suppliers" element={<SuppliersPage />} />
+             <Route path="groups" element={<GroupsPage />} />
              <Route path="products" element={<GlobalProductManager />} />
              <Route path="dci" element={<GlobalDCIManager />} />
              <Route path="atc-sandbox" element={<ATCSandboxPage />} />

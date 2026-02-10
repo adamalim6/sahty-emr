@@ -1,5 +1,5 @@
 
-import { globalQuery, globalTransaction, getGlobalPool } from '../db/globalPg';
+import { identityQuery, identityTransaction, getIdentityPool } from '../db/identityPg';
 import { tenantQuery, tenantTransaction, getTenantPool } from '../db/tenantPg';
 import { Pool } from 'pg';
 
@@ -28,18 +28,18 @@ export class IdentityService {
     // --- Context Helpers ---
 
     private getPool(tenantId: string): Pool {
-        return tenantId === 'GLOBAL' ? getGlobalPool() : getTenantPool(tenantId);
+        return tenantId === 'GLOBAL' ? getIdentityPool() : getTenantPool(tenantId);
     }
 
     private async queryOne(tenantId: string, sql: string, params: any[] = []): Promise<any> {
         return tenantId === 'GLOBAL' 
-            ? (await globalQuery(sql, params))[0] 
+            ? (await identityQuery(sql, params))[0] 
             : (await tenantQuery(tenantId, sql, params))[0];
     }
 
     private async query(tenantId: string, sql: string, params: any[] = []): Promise<any[]> {
         return tenantId === 'GLOBAL' 
-            ? await globalQuery(sql, params)
+            ? await identityQuery(sql, params)
             : await tenantQuery(tenantId, sql, params);
     }
 

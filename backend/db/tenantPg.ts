@@ -165,7 +165,7 @@ export function getActiveTenantIds(): string[] {
 export function getPoolStats(): Record<string, { total: number; idle: number; waiting: number }> {
     const stats: Record<string, { total: number; idle: number; waiting: number }> = {};
     
-    for (const [tenantId, pool] of pools) {
+    for (const [tenantId, pool] of Array.from(pools)) {
         stats[tenantId] = {
             total: pool.totalCount,
             idle: pool.idleCount,

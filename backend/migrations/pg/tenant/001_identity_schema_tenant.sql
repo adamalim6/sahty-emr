@@ -3,20 +3,7 @@
 CREATE SCHEMA IF NOT EXISTS identity;
 
 -- 2. Create Lookup Tables
-CREATE TABLE IF NOT EXISTS identity.document_types (
-    code TEXT PRIMARY KEY,
-    label TEXT NOT NULL,
-    validation_regex TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Seed basic types (mirror global)
-INSERT INTO identity.document_types (code, label) VALUES 
-('CIN', 'Carte Nationale d''Identité'),
-('PASSPORT', 'Passeport'),
-('RESIDENCY_CARD', 'Carte de Séjour')
-ON CONFLICT (code) DO NOTHING;
+-- (identity.document_types is now managed via Reference Data from sahty_global)
 
 -- 3. Create Master Patients Table
 CREATE TABLE IF NOT EXISTS identity.master_patients (
@@ -38,7 +25,7 @@ CREATE INDEX IF NOT EXISTS idx_master_patients_status ON identity.master_patient
 CREATE TABLE IF NOT EXISTS identity.master_patient_documents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     master_patient_id UUID NOT NULL REFERENCES identity.master_patients(id) ON DELETE CASCADE,
-    document_type_code TEXT NOT NULL REFERENCES identity.document_types(code),
+    document_type_code TEXT NOT NULL, -- Managed via Reference Data (no FK to identity schema)
     document_number TEXT NOT NULL,
     issuing_country_code TEXT,
     is_primary BOOLEAN NOT NULL DEFAULT FALSE,

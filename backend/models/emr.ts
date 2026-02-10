@@ -53,28 +53,101 @@ export interface Patient {
     };
 }
 
+// ============================================================================
+// ADMISSIONS (refactored)
+// ============================================================================
 export interface Admission {
     id: string;
-    nda: string;
-    patientId: string; // Deprecated or mapped to Global
-    tenantPatientId?: string; // NEW
+    tenantId?: string;
+    tenantPatientId?: string;
+    admissionNumber?: string;
     reason: string;
-    service: string;
+    attendingPhysicianUserId?: string;
+    admittingServiceId?: string;
+    responsibleServiceId?: string;
+    currentServiceId?: string;
     admissionDate: string;
     dischargeDate?: string;
-    doctorName: string;
-    roomNumber?: string;
-    bedLabel?: string;
-    type?: string;
     status: 'En cours' | 'Sorti' | 'Annulé';
     currency?: string;
-    tenantId?: string;
+
+    // Legacy compat — mapped from old columns during transition
+    /** @deprecated use admissionNumber */
+    nda?: string;
+    /** @deprecated use attendingPhysicianUserId */
+    doctorName?: string;
+    /** @deprecated use currentServiceId/admittingServiceId */
+    service?: string;
+    /** @deprecated placement belongs to patient_stays */
+    roomNumber?: string;
+    /** @deprecated placement belongs to patient_stays */
+    bedLabel?: string;
+    /** @deprecated use tenantPatientId */
+    patientId?: string;
+    type?: string;
 }
 
+// ============================================================================
+// PHYSICAL PLACEMENT MODEL
+// ============================================================================
+
+export interface RoomType {
+    id: string;
+    name: string;
+    description?: string;
+    unitCategory: 'CHAMBRE' | 'PLATEAU_TECHNIQUE' | 'BOOTH_CONSULTATION';
+    numberOfBeds?: number | null;
+    isActive?: boolean;
+    createdAt?: string;
+}
+
+export interface Room {
+    id: string;
+    serviceId: string;
+    roomTypeId: string;
+    name: string;
+    description?: string;
+    isActive?: boolean;
+    createdAt?: string;
+    // Joined data
+    roomTypeName?: string;
+}
+
+export type BedStatus = 'AVAILABLE' | 'OCCUPIED' | 'MAINTENANCE';
+
+export interface Bed {
+    id: string;
+    roomId: string;
+    label: string;
+    status: BedStatus;
+    isActive?: boolean;
+    createdAt?: string;
+    // Joined data
+    roomName?: string;
+    currentPatientName?: string;
+}
+
+export interface PatientStay {
+    id: string;
+    admissionId: string;
+    tenantPatientId: string;
+    bedId: string;
+    startedAt: string;
+    endedAt?: string | null;
+    createdAt?: string;
+    // Joined data
+    bedLabel?: string;
+    roomName?: string;
+    serviceName?: string;
+}
+
+// ============================================================================
+// APPOINTMENTS
+// ============================================================================
 export interface Appointment {
     id: string;
     patientId: string;
-    tenantPatientId?: string; // NEW
+    tenantPatientId?: string;
     dateTime: string;
     service: string;
     reason: string;
@@ -82,15 +155,9 @@ export interface Appointment {
     status: 'scheduled' | 'arrived' | 'late' | 'in-progress' | 'completed' | 'cancelled';
 }
 
-export interface Room {
-    id: string;
-    number: string;
-    section: string;
-    isOccupied: boolean;
-    patientId?: string;
-    type: 'single' | 'double' | 'icu';
-}
-
+// ============================================================================
+// LEGACY — kept for backward compat
+// ============================================================================
 export interface UserSettings {
     cin: string;
     passport?: string;

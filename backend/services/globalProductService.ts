@@ -166,7 +166,7 @@ export class GlobalProductService {
             // Post-update Propagation for Moroccan PH rule
             if ((phChanged || pfhtChanged) && mergedProduct.type === 'Médicament' && mergedProduct.marketInfo?.ph) {
                 // Get all tenants from clients table in global DB
-                const tenantsResult = await client.query('SELECT id FROM clients');
+                const tenantsResult = await client.query('SELECT id FROM tenants');
                 const tenants = tenantsResult.rows;
                 
                 for (const tenant of tenants) {

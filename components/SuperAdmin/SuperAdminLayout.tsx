@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, Settings, Shield, LogOut, Building, Truck, Package } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Settings, Shield, LogOut, Building, Truck, Package, FolderTree } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export const SuperAdminLayout: React.FC = () => {
@@ -23,6 +23,10 @@ export const SuperAdminLayout: React.FC = () => {
                     <NavLink to="/super-admin/clients" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
                         <Users size={20} />
                         <span>Clients / Tenants</span>
+                    </NavLink>
+                    <NavLink to="/super-admin/groups" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+                        <FolderTree size={20} />
+                        <span>Groupes</span>
                     </NavLink>
                     <NavLink to="/super-admin/organismes" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
                         <Building size={20} />

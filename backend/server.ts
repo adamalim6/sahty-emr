@@ -20,6 +20,11 @@ import stockTransferRoutes from './routes/stockTransferRoutes';
 import stockReservationRoutes from './routes/stockReservationRoutes';
 import { authenticateToken } from './middleware/authMiddleware';
 import { requireModule } from './middleware/moduleMiddleware';
+import { startIdentitySyncWorker } from './workers/identitySyncWorker';
+import { identitySyncService } from './services/identitySyncService';
+import { startAuthSyncWorker } from './workers/authSyncWorker';
+import { authSyncService } from './services/authSyncService';
+import { globalQuery } from './db/globalPg';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -64,6 +69,38 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date() });
 });
 
+// Identity Sync diagnostics
+app.get('/api/dev/sync-status', async (req, res) => {
+    try {
+        const status = await identitySyncService.getStatus();
+        res.json(status);
+    } catch (err: any) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Auth Sync diagnostics
+app.get('/api/dev/auth-sync-status', async (req, res) => {
+    try {
+        // Find all groups with auth_sync
+        const groups = await globalQuery(`SELECT db_name FROM groups WHERE db_name IS NOT NULL`);
+        const statuses = [];
+        for (const g of groups) {
+            try {
+                const status = await authSyncService.getStatus(g.db_name);
+                statuses.push(status);
+            } catch (err: any) {
+                statuses.push({ groupDbName: g.db_name, error: err.message });
+            }
+        }
+        res.json(statuses);
+    } catch (err: any) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    startIdentitySyncWorker();
+    startAuthSyncWorker();
 });

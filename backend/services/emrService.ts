@@ -1,68 +1,99 @@
 /**
- * EMR Service - PostgreSQL Version
- * Manages admissions, appointments, and rooms (tenant).
- * Patient Identity management has moved to patientGlobalService and patientTenantService.
+ * EMR Service - PostgreSQL Version (Refactored)
+ * Manages admissions, appointments, and medication consumption (tenant).
+ * Physical placement (rooms/beds/stays) is now in placementService.ts.
  */
 
-import { Admission, Appointment, Room, AdmissionMedicationConsumption } from '../models/emr';
-// import { globalQuery } from '../db/globalPg'; // No longer needed
+import { Admission, Appointment, AdmissionMedicationConsumption } from '../models/emr';
 import { tenantQuery, tenantTransaction } from '../db/tenantPg';
+import { placementService } from './placementService';
 
 export class EmrService {
     
     // --- ADMISSIONS (TENANT) ---
 
     async getAllAdmissions(tenantId: string): Promise<Admission[]> {
-        // We now fetch tenant_patient_id as the primary reference
-        const rows = await tenantQuery(tenantId, 'SELECT * FROM admissions', []);
+        const rows = await tenantQuery(tenantId, `
+            SELECT a.*,
+                   pt.first_name AS patient_first_name,
+                   pt.last_name AS patient_last_name
+            FROM admissions a
+            LEFT JOIN patients_tenant pt ON pt.tenant_patient_id = a.tenant_patient_id
+            ORDER BY a.admission_date DESC
+        `, []);
         return rows.map(r => ({
             id: r.id,
             tenantId: r.tenant_id,
-            patientId: r.patient_id || '', // Legacy support or empty
-            tenantPatientId: r.tenant_patient_id, // New Field
-            nda: r.nda,
+            tenantPatientId: r.tenant_patient_id,
+            admissionNumber: r.admission_number,
             reason: r.reason,
-            service: r.service_id,
+            attendingPhysicianUserId: r.attending_physician_user_id,
+            admittingServiceId: r.admitting_service_id,
+            responsibleServiceId: r.responsible_service_id,
+            currentServiceId: r.current_service_id,
             admissionDate: r.admission_date,
             dischargeDate: r.discharge_date,
-            doctorName: r.doctor_name,
-            roomNumber: r.room_number,
-            bedLabel: r.bed_label,
             status: r.status,
             currency: r.currency,
-            type: undefined
+            // Legacy compat fields
+            nda: r.admission_number,
+            service: r.current_service_id,
+            patientId: r.tenant_patient_id,
         }));
     }
 
-    async createAdmission(tenantId: string, data: Admission): Promise<Admission> {
-        const newAdmission = { ...data, tenantId }; 
-        // Prefer tenantPatientId, fallback to patientId if provided (legacy UI might send patientId)
-        const patientIdToUse = data.tenantPatientId || data.patientId; 
+    async createAdmission(tenantId: string, data: Partial<Admission>): Promise<Admission> {
+        return await tenantTransaction(tenantId, async (client) => {
+            const id = data.id || require('uuid').v4();
 
-        await tenantTransaction(tenantId, async (client) => {
+            // Generate admission_number: ADM-YYYY-NNNNNN
+            const seqResult = await client.query(`SELECT nextval('admission_number_seq') AS seq`);
+            const seq = seqResult.rows[0].seq;
+            const year = new Date().getFullYear();
+            const admissionNumber = data.admissionNumber || `ADM-${year}-${String(seq).padStart(6, '0')}`;
+
+            // Resolve tenantPatientId (new way) or patientId (legacy)
+            const tenantPatientId = data.tenantPatientId || data.patientId || null;
+
+            // Resolve service IDs — use specific fields or fall back to legacy 'service'
+            const admittingServiceId = data.admittingServiceId || data.service || null;
+            const responsibleServiceId = data.responsibleServiceId || data.service || null;
+            const currentServiceId = data.currentServiceId || data.service || null;
+
             await client.query(`
                 INSERT INTO admissions (
-                    id, tenant_id, tenant_patient_id, nda, reason, service_id, 
-                    admission_date, discharge_date, doctor_name, room_number, bed_label, status, currency
+                    id, tenant_id, tenant_patient_id, admission_number, reason,
+                    attending_physician_user_id, admitting_service_id, responsible_service_id, current_service_id,
+                    admission_date, discharge_date, status, currency
                 )
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
             `, [
-                newAdmission.id, tenantId, patientIdToUse, newAdmission.nda, newAdmission.reason, newAdmission.service,
-                newAdmission.admissionDate, newAdmission.dischargeDate, newAdmission.doctorName, newAdmission.roomNumber,
-                newAdmission.bedLabel, newAdmission.status, newAdmission.currency
+                id, tenantId, tenantPatientId, admissionNumber, data.reason || null,
+                data.attendingPhysicianUserId || null, admittingServiceId, responsibleServiceId, currentServiceId,
+                data.admissionDate || new Date().toISOString(), data.dischargeDate || null,
+                data.status || 'En cours', data.currency || 'MAD'
             ]);
-            
-            // Occupy Room
-            if (newAdmission.roomNumber && newAdmission.service) {
-                // Assuming 'service' in Admission maps to 'service_id' in Rooms
-                await client.query(
-                    'UPDATE rooms SET is_occupied = true WHERE number = $1 AND service_id = $2', 
-                    [newAdmission.roomNumber, newAdmission.service]
-                );
-            }
+
+            return {
+                id,
+                tenantId,
+                tenantPatientId,
+                admissionNumber,
+                reason: data.reason || '',
+                attendingPhysicianUserId: data.attendingPhysicianUserId,
+                admittingServiceId,
+                responsibleServiceId,
+                currentServiceId,
+                admissionDate: data.admissionDate || new Date().toISOString(),
+                dischargeDate: data.dischargeDate,
+                status: data.status || 'En cours',
+                currency: data.currency || 'MAD',
+                // Legacy compat
+                nda: admissionNumber,
+                service: currentServiceId,
+                patientId: tenantPatientId,
+            } as Admission;
         });
-        
-        return newAdmission;
     }
 
     async closeAdmission(tenantId: string, id: string): Promise<Admission | null> {
@@ -78,41 +109,56 @@ export class EmrService {
                 [dischargeDate, id]
             );
 
-            // Free Room
-            if (admission.room_number && admission.service_id) {
-                await client.query(
-                    'UPDATE rooms SET is_occupied = false WHERE number = $1 AND service_id = $2', 
-                    [admission.room_number, admission.service_id]
-                );
+            // End any active stay and free the bed
+            const activeStays = await client.query(
+                `SELECT id, bed_id FROM patient_stays WHERE admission_id = $1 AND ended_at IS NULL`, [id]);
+            
+            for (const stay of activeStays.rows) {
+                await client.query(`UPDATE patient_stays SET ended_at = $2 WHERE id = $1`, [stay.id, dischargeDate]);
+                // Free the bed if no other active stays
+                const otherStays = await client.query(
+                    `SELECT id FROM patient_stays WHERE bed_id = $1 AND ended_at IS NULL AND id != $2 LIMIT 1`,
+                    [stay.bed_id, stay.id]);
+                if (otherStays.rows.length === 0) {
+                    await client.query(`UPDATE beds SET status = 'AVAILABLE' WHERE id = $1`, [stay.bed_id]);
+                }
             }
         });
 
-        return { ...admission, status: 'Sorti', dischargeDate, service: admission.service_id };
+        return {
+            id: admission.id,
+            tenantId: admission.tenant_id,
+            tenantPatientId: admission.tenant_patient_id,
+            admissionNumber: admission.admission_number,
+            reason: admission.reason,
+            attendingPhysicianUserId: admission.attending_physician_user_id,
+            admittingServiceId: admission.admitting_service_id,
+            responsibleServiceId: admission.responsible_service_id,
+            currentServiceId: admission.current_service_id,
+            admissionDate: admission.admission_date,
+            dischargeDate: dischargeDate,
+            status: 'Sorti',
+            currency: admission.currency,
+            nda: admission.admission_number,
+            service: admission.current_service_id,
+        } as Admission;
+    }
+
+    async changeCurrentService(tenantId: string, admissionId: string, serviceId: string): Promise<void> {
+        await tenantQuery(tenantId,
+            `UPDATE admissions SET current_service_id = $2 WHERE id = $1`, [admissionId, serviceId]);
+    }
+
+    async changeResponsibleService(tenantId: string, admissionId: string, serviceId: string): Promise<void> {
+        await tenantQuery(tenantId,
+            `UPDATE admissions SET responsible_service_id = $2 WHERE id = $1`, [admissionId, serviceId]);
     }
 
     // --- APPOINTMENTS (TENANT) ---
 
     async getAllAppointments(tenantId: string): Promise<Appointment[]> {
         const rows = await tenantQuery(tenantId, 'SELECT * FROM appointments', []);
-        // TODO: Map rows to Appointment interface
         return rows as any; 
-    }
-
-    // --- ROOMS (Bridge to Settings) ---
-
-    async getAllRooms(tenantId: string): Promise<Room[]> {
-        const rows = await tenantQuery(tenantId, 'SELECT * FROM rooms', []);
-        return rows.map(r => ({
-            id: r.id,
-            service_id: r.service_id, // This property might not exist on Room interface, check models/emr.ts. 
-            // It has 'section'. We might need to map service_id to section or just expose service_id?
-            // Room interface: id, number, section, isOccupied, patientId?, type.
-            // Let's assume section was used for service name or ID previously.
-            number: r.number,
-            section: r.section || r.service_id, // Fallback
-            isOccupied: r.is_occupied,
-            type: r.type
-        }));
     }
 
     // --- CONSUMPTIONS (TENANT) ---
@@ -131,9 +177,9 @@ export class EmrService {
             admissionId: r.admission_id,
             productId: r.product_id,
             productName: r.product_name || 'Unknown', 
-            quantity: r.qty_dispensed, // changed from qty to qty_dispensed based on 022 migration
-            mode: 'BOX',
-            lotNumber: r.lot || '', // changed from batch_id
+            quantity: r.qty_dispensed,
+            mode: 'BOX' as const,
+            lotNumber: r.lot || '',
             batchNumber: r.lot || '',
             dispensedAt: r.dispensed_at || r.created_at,
             dispensedBy: r.dispensed_by || 'Pharmacy',
