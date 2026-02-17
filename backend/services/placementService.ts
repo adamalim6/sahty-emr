@@ -80,7 +80,7 @@ export class PlacementService {
         }
         await tenantQuery(tenantId, `UPDATE rooms SET is_active = false WHERE id = $1`, [id]);
         // Also deactivate all beds in this room
-        await tenantQuery(tenantId, `UPDATE beds SET is_active = false WHERE room_id = $1`, [id]);
+        await tenantQuery(tenantId, `UPDATE beds SET status = 'INACTIVE' WHERE room_id = $1`, [id]);
     }
 
     private mapRoom(r: any): Room {
@@ -105,7 +105,7 @@ export class PlacementService {
             SELECT b.*, r.name AS room_name
             FROM beds b
             JOIN rooms r ON r.id = b.room_id
-            WHERE b.room_id = $1 AND b.is_active = true
+            WHERE b.room_id = $1 AND b.status != 'INACTIVE'
             ORDER BY b.label
         `, [roomId]);
         return rows.map(this.mapBed);
@@ -157,7 +157,7 @@ export class PlacementService {
         if (activeStay.length > 0) {
             throw new Error('Cannot deactivate bed with an active stay');
         }
-        await tenantQuery(tenantId, `UPDATE beds SET is_active = false WHERE id = $1`, [bedId]);
+        await tenantQuery(tenantId, `UPDATE beds SET status = 'INACTIVE' WHERE id = $1`, [bedId]);
     }
 
     private mapBed(r: any): Bed {
@@ -166,7 +166,6 @@ export class PlacementService {
             roomId: r.room_id,
             label: r.label,
             status: r.status,
-            isActive: r.is_active,
             createdAt: r.created_at,
             roomName: r.room_name,
         };
@@ -187,7 +186,7 @@ export class PlacementService {
 
             // Guard: bed not occupied
             const bedCheck = await client.query(
-                `SELECT status FROM beds WHERE id = $1 AND is_active = true`, [bedId]);
+                `SELECT status FROM beds WHERE id = $1 AND status != 'INACTIVE'`, [bedId]);
             if (bedCheck.rows.length === 0) throw new Error('Bed not found or inactive');
             if (bedCheck.rows[0].status === 'OCCUPIED') throw new Error('Bed is already occupied');
             if (bedCheck.rows[0].status === 'MAINTENANCE') throw new Error('Bed is under maintenance');
@@ -227,7 +226,7 @@ export class PlacementService {
 
             // Guard: target bed available
             const targetBed = await client.query(
-                `SELECT status FROM beds WHERE id = $1 AND is_active = true`, [toBedId]);
+                `SELECT status FROM beds WHERE id = $1 AND status != 'INACTIVE'`, [toBedId]);
             if (targetBed.rows.length === 0) throw new Error('Target bed not found or inactive');
             if (targetBed.rows[0].status === 'OCCUPIED') throw new Error('Target bed is already occupied');
             if (targetBed.rows[0].status === 'MAINTENANCE') throw new Error('Target bed is under maintenance');
@@ -293,7 +292,7 @@ export class PlacementService {
             JOIN rooms r ON r.id = b.room_id
             LEFT JOIN patient_stays ps ON ps.bed_id = b.id AND ps.ended_at IS NULL
             LEFT JOIN patients_tenant pt ON pt.tenant_patient_id = ps.tenant_patient_id
-            WHERE r.service_id = $1 AND r.is_active = true AND b.is_active = true
+            WHERE r.service_id = $1 AND r.is_active = true AND b.status != 'INACTIVE'
             ORDER BY r.name, b.label
         `, [serviceId]);
         return rows;

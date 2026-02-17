@@ -6,7 +6,7 @@ import {
     
     // Services
     getServices, getService, createService, updateService, deleteService,
-    getServiceUnits, createServiceUnit, deleteServiceUnit,
+    getServiceUnits, createServiceUnit, deleteServiceUnit, deactivateServiceUnit, reactivateServiceUnit,
     
     // Rooms
     getRooms, createRoom, updateRoom, deleteRoom,
@@ -42,6 +42,8 @@ router.delete('/services/:id', requireModule('SETTINGS'), deleteService);
 router.get('/services/:id/units', getServiceUnits);
 router.post('/services/:id/units', requireModule('SETTINGS'), createServiceUnit);
 router.delete('/services/units/:unitId', requireModule('SETTINGS'), deleteServiceUnit);
+router.put('/services/units/:unitId/deactivate', requireModule('SETTINGS'), deactivateServiceUnit);
+router.put('/services/units/:unitId/reactivate', requireModule('SETTINGS'), reactivateServiceUnit);
 
 import {
     getBeds, createBed, updateBedStatus, deactivateBed,

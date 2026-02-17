@@ -71,7 +71,6 @@ CREATE TABLE IF NOT EXISTS identity.master_patients (
     last_name         TEXT NOT NULL,
     dob               DATE,
     sex               TEXT,
-    nationality_code  TEXT,
     status            TEXT NOT NULL DEFAULT 'ACTIVE',
     created_at        TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at        TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
@@ -794,7 +793,6 @@ CREATE TABLE IF NOT EXISTS patients_tenant (
     tenant_id                      UUID NOT NULL,
     medical_record_number          TEXT,
     status                         TEXT DEFAULT 'ACTIVE',
-    nationality_id                 UUID,
     created_at                     TIMESTAMPTZ DEFAULT now(),
     master_patient_id              UUID REFERENCES identity.master_patients(id),
     mpi_link_status                TEXT NOT NULL DEFAULT 'UNLINKED',

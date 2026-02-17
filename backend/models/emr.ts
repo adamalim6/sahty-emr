@@ -40,7 +40,6 @@ export interface Patient {
     city?: string;
     zipCode?: string;
     address?: string;
-    nationality?: string;
     maritalStatus?: string;
     profession?: string;
     bloodGroup?: string;
@@ -113,14 +112,13 @@ export interface Room {
     roomTypeName?: string;
 }
 
-export type BedStatus = 'AVAILABLE' | 'OCCUPIED' | 'MAINTENANCE';
+export type BedStatus = 'AVAILABLE' | 'OCCUPIED' | 'MAINTENANCE' | 'INACTIVE';
 
 export interface Bed {
     id: string;
     roomId: string;
     label: string;
     status: BedStatus;
-    isActive?: boolean;
     createdAt?: string;
     // Joined data
     roomName?: string;

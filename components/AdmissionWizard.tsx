@@ -43,6 +43,7 @@ import {
 import { MOCK_PATIENTS, generateIPP, calculateAge, generateNDA } from '../constants';
 import { Patient, Gender, Admission } from '../types';
 import { api } from '../services/api';
+import { PatientIdentityForm } from './PatientIdentityForm';
 
 interface WizardProps {
   isOpen: boolean;
@@ -202,34 +203,9 @@ const CardSection = ({ title, icon: Icon, children, colorClass = "text-emerald-6
   </div>
 );
 
-const DuplicateConflictModal = ({ patient, onCancel, onRedirect }: { patient: Patient, onCancel: () => void, onRedirect: () => void }) => (
-  <div className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
-    <div className="bg-white border-2 border-red-500 rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-300">
-      <div className="flex flex-col items-center text-center">
-        <div className="w-20 h-20 bg-red-100 text-red-600 rounded-3xl flex items-center justify-center mb-6 shadow-inner"><AlertOctagon size={40} strokeWidth={2.5} /></div>
-        <h3 className="text-2xl font-black text-slate-900 mb-2 uppercase tracking-tight">Doublon Identifié</h3>
-        <p className="text-slate-600 mb-8 font-medium leading-relaxed">
-          Le N° de pièce d'identité est déjà attribué au patient <br />
-          <span className="font-black text-red-600 text-lg uppercase">{patient.lastName} {patient.firstName}</span>.<br /><br />
-          Voulez vous êtres redirigé vers le profil concerné ?
-        </p>
-        <div className="flex w-full gap-3">
-          <button onClick={onCancel} className="flex-1 px-4 py-4 text-slate-400 font-black hover:text-slate-600 uppercase text-[10px] tracking-widest border border-slate-200 rounded-2xl transition-all">Annuler</button>
-          <button onClick={onRedirect} className="flex-1 px-4 py-4 bg-red-600 text-white font-black uppercase text-[10px] tracking-widest rounded-2xl hover:bg-red-700 shadow-xl transition-all flex items-center justify-center active:scale-95">Rediriger <ChevronRight size={18} className="ml-2" /></button>
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
 export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
   const [step, setStep] = useState(1);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [duplicateConflict, setDuplicateConflict] = useState<Patient | null>(null);
-  const [showErrors, setShowErrors] = useState(false);
   const [selectedBedId, setSelectedBedId] = useState<string | null>(null);
-  const [apiPatients, setApiPatients] = useState<Patient[]>([]);
   const navigate = useNavigate();
 
   // --- DYNAMIC DATA FETCHING ---
@@ -348,45 +324,6 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
     setSelectedBedId(null);
   };
 
-  const filteredPatients = useMemo(() => {
-    const term = searchTerm.toLowerCase().trim();
-    if (!term) return apiPatients;
-    return apiPatients.filter(p =>
-      `${p.firstName} ${p.lastName}`.toLowerCase().includes(term) ||
-      p.ipp.toLowerCase().includes(term) ||
-      p.cin?.toLowerCase().includes(term)
-    );
-  }, [searchTerm, apiPatients]);
-
-  const isMinor = patientData.dateOfBirth ? calculateAge(patientData.dateOfBirth) < 18 : false;
-
-  const isStep1Valid = useMemo(() => {
-    const baseValid = !!(patientData.lastName && patientData.firstName && patientData.dateOfBirth && patientData.cin);
-    if (!baseValid) return false;
-    if (isMinor) return !!(patientData.guardian?.lastName && patientData.guardian?.firstName && patientData.guardian?.relationship);
-    return true;
-  }, [patientData, isMinor]);
-
-  const handlePatientSelect = (p: Patient) => {
-    setPatientData({
-      ...p,
-      insurance: p.insurance || { mainOrg: '', relationship: 'Lui-même', registrationNumber: '' },
-      emergencyContacts: (p.emergencyContacts && p.emergencyContacts.length > 0) ? p.emergencyContacts : [{ name: '', relationship: 'Père', phone: '' }],
-      guardian: p.guardian || { firstName: '', lastName: '', phone: '', relationship: 'Père', idType: 'CIN', idNumber: '', address: '', habilitation: '' }
-    });
-    setIsSearchOpen(false);
-    setShowErrors(false);
-  };
-
-  const handleContinueAdmission = () => {
-    if (!isStep1Valid) { setShowErrors(true); return; }
-    if (patientData.cin) {
-      const duplicate = MOCK_PATIENTS.find(p => p.id !== patientData.id && p.cin?.toLowerCase() === patientData.cin?.toLowerCase());
-      if (duplicate) { setDuplicateConflict(duplicate); return; }
-    }
-    setStep(2);
-  };
-
   const handleCreateAdmission = async () => {
     if (!admissionData.type || !admissionData.doctorName) return;
 
@@ -406,32 +343,17 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
     });
 
     try {
-      let finalPatientId = patientData.id;
+      const finalPatientId = patientData.id;
 
-      // If no patient ID (new patient), create the patient first
       if (!finalPatientId) {
-        const newPatientData = {
-          firstName: patientData.firstName,
-          lastName: patientData.lastName,
-          dateOfBirth: patientData.dateOfBirth,
-          gender: patientData.gender,
-          phone: patientData.phone,
-          cin: patientData.cin,
-          profession: patientData.profession,
-          bloodGroup: patientData.bloodGroup,
-          nationality: patientData.nationality, // Assuming these fields exist in Patient type
-          address: patientData.address,
-          insurance: patientData.insurance,
-          guardian: patientData.guardian
-        };
-        const createdPatient = await api.createPatient(newPatientData);
-        finalPatientId = createdPatient.id;
+        console.error("No patient ID found for admission creation.");
+        return;
       }
 
       const newAdmission: Admission = {
         id: newId,
         nda: newNDA,
-        patientId: finalPatientId || "1", 
+        patientId: finalPatientId, 
         reason: admissionData.reason,
         service: admissionData.service,
         admissionDate: new Date().toISOString(),
@@ -447,17 +369,9 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
       onClose();
       navigate(`/admission/${newId}`);
     } catch (error) {
-      console.error('Error creating admission or patient:', error);
-      alert('Erreur lors de la création de l\'admission (ou du patient)');
+      console.error('Error creating admission:', error);
+      alert('Erreur lors de la création de l\'admission');
     }
-  };
-
-  const handleInsuranceChange = (field: string, value: string) => {
-    setPatientData(prev => ({ ...prev, insurance: { ...(prev.insurance || { mainOrg: '', relationship: 'Lui-même' }), [field]: value } }));
-  };
-
-  const handleGuardianChange = (field: string, value: string) => {
-    setPatientData(prev => ({ ...prev, guardian: { ...(prev.guardian || { firstName: '', lastName: '', phone: '', relationship: 'Père', idType: 'CIN', idNumber: '', address: '', habilitation: '' }), [field]: value } }));
   };
 
   if (!isOpen) return null;
@@ -490,94 +404,25 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
 
         <div className="flex-1 overflow-y-auto bg-slate-50/50 p-8">
           {step === 1 ? (
-            <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-300">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-left">
-                <CardSection title="1. Informations Patient" icon={User} action={<button onClick={() => setIsSearchOpen(true)} className="bg-indigo-600 text-white px-4 py-2 rounded-xl font-black uppercase text-[10px] flex items-center shadow-md active:scale-95 transition-all"><Search size={14} className="mr-2" />Rechercher existant</button>}>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <InputField label="IPP" value={patientData.ipp} disabled icon={Fingerprint} />
-                    <GenderToggle value={patientData.gender as Gender} onChange={(g: any) => setPatientData({ ...patientData, gender: g })} />
-                    <InputField label="Nom" required value={patientData.lastName} error={showErrors && !patientData.lastName} onChange={(e: any) => setPatientData({ ...patientData, lastName: e.target.value.toUpperCase() })} />
-                    <InputField label="Prénom" required value={patientData.firstName} error={showErrors && !patientData.firstName} onChange={(e: any) => setPatientData({ ...patientData, firstName: e.target.value })} />
-                    <InputField label="Naissance" required type="date" value={patientData.dateOfBirth} error={showErrors && !patientData.dateOfBirth} onChange={(e: any) => setPatientData({ ...patientData, dateOfBirth: e.target.value })} icon={Calendar} />
-                    <InputField label="Tél" value={patientData.phone} onChange={(e: any) => setPatientData({ ...patientData, phone: e.target.value.replace(/[^0-9+]/g, '') })} icon={Phone} />
-                    <div className="grid grid-cols-2 gap-5 sm:col-span-2">
-                      <SelectField label="Nature ID" options={["CIN", "Passeport", "Séjour"]} value="CIN" required />
-                      <InputField label="N° Pièce Identité" required value={patientData.cin} error={showErrors && !patientData.cin} onChange={(e: any) => setPatientData({ ...patientData, cin: e.target.value })} />
-                    </div>
-                    <InputField label="Profession" value={patientData.profession} onChange={(e: any) => setPatientData({ ...patientData, profession: e.target.value })} icon={Briefcase} />
-                    <div className="flex flex-col space-y-1.5">
-                      <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Groupe Sanguin</label>
-                      <select value={patientData.bloodGroup} onChange={(e: any) => setPatientData({ ...patientData, bloodGroup: e.target.value })} className="bg-white border border-slate-200 rounded-xl py-2 px-4 text-sm font-bold text-red-600 outline-none focus:ring-4 focus:ring-emerald-500/10">
-                        <option value="">Inconnu</option>
-                        <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
-                        <option>AB+</option><option>AB-</option><option>O+</option><option>O-</option>
-                      </select>
-                    </div>
-                  </div>
-                </CardSection>
-
-                <div className="space-y-8">
-                  <CardSection title="2. Contacts d'urgence" icon={Users} colorClass="text-indigo-600" bgClass="bg-indigo-50" action={<button onClick={() => setPatientData({ ...patientData, emergencyContacts: [...(patientData.emergencyContacts || []), { name: '', relationship: 'Ami(e)', phone: '' }] })} className="bg-indigo-600 text-white px-3 py-1 rounded-lg text-xs font-bold transition-all active:scale-95 shadow-sm">+ Ajouter</button>}>
-                    <div className="space-y-4">
-                      {patientData.emergencyContacts?.map((c, i) => (
-                        <div key={i} className="p-4 bg-slate-50 border rounded-xl relative transition-all hover:border-indigo-200">
-                          {patientData.emergencyContacts!.length > 1 && (
-                            <button onClick={() => setPatientData({ ...patientData, emergencyContacts: patientData.emergencyContacts?.filter((_, idx) => idx !== i) })} className="absolute top-2 right-2 text-slate-300 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
-                          )}
-                          <InputField label="Nom" value={c.name} onChange={(e: any) => { const nc = [...patientData.emergencyContacts!]; nc[i].name = e.target.value; setPatientData({ ...patientData, emergencyContacts: nc }); }} />
-                          <div className="grid grid-cols-2 gap-4 mt-4">
-                            <SelectField label="Relation" options={['Père', 'Mère', 'Conjoint', 'Ami(e)']} value={c.relationship} onChange={(e: any) => { const nc = [...patientData.emergencyContacts!]; nc[i].relationship = e.target.value; setPatientData({ ...patientData, emergencyContacts: nc }); }} />
-                            <InputField label="Tél" value={c.phone} onChange={(e: any) => { const nc = [...patientData.emergencyContacts!]; nc[i].phone = e.target.value.replace(/[^0-9+]/g, ''); setPatientData({ ...patientData, emergencyContacts: nc }); }} icon={Phone} />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardSection>
-                  {isMinor && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-left animate-in zoom-in-95">
-                      <div className="flex items-center space-x-3 mb-5"><div className="p-2 bg-amber-500 text-white rounded-lg shadow-sm"><Baby size={20} /></div><h4 className="font-bold text-amber-900 text-xs uppercase tracking-tight">3. Tuteur Légal (Mineur)</h4></div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <InputField label="Nom" required value={patientData.guardian?.lastName} error={showErrors && !patientData.guardian?.lastName} onChange={(e: any) => handleGuardianChange('lastName', e.target.value.toUpperCase())} />
-                        <InputField label="Prénom" required value={patientData.guardian?.firstName} error={showErrors && !patientData.guardian?.firstName} onChange={(e: any) => handleGuardianChange('firstName', e.target.value)} />
-                        <SelectField label="Lien" options={['Père', 'Mère', 'Oncle', 'Frère', 'Soeur', 'Tuteur légal']} value={patientData.guardian?.relationship} error={showErrors && !patientData.guardian?.relationship} onChange={(e: any) => handleGuardianChange('relationship', e.target.value)} required />
-                        <InputField label="Tél" value={patientData.guardian?.phone} onChange={(e: any) => handleGuardianChange('phone', e.target.value.replace(/[^0-9+]/g, ''))} icon={Phone} />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <CardSection title="4. Localisation & Nationalité" icon={MapPin} colorClass="text-blue-600" bgClass="bg-blue-50">
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-5">
-                  <SelectField label="Pays" options={['Maroc', 'France', 'Espagne', 'Sénégal', 'USA']} value={patientData.country} onChange={(e: any) => setPatientData({ ...patientData, country: e.target.value })} icon={Globe} />
-                  <InputField label="Ville" value={patientData.city} onChange={(e: any) => setPatientData({ ...patientData, city: e.target.value })} icon={MapPin} />
-                  <InputField label="CP" value={patientData.zipCode} onChange={(e: any) => setPatientData({ ...patientData, zipCode: e.target.value })} />
-                  <SelectField label="Nationalité" options={['Marocaine', 'Française', 'Espagnole', 'Sénégalaise']} value={patientData.nationality} onChange={(e: any) => setPatientData({ ...patientData, nationality: e.target.value })} icon={Flag} />
-                  <div className="sm:col-span-4"><InputField label="Adresse Actuelle" value={patientData.address} onChange={(e: any) => setPatientData({ ...patientData, address: e.target.value })} icon={MapPin} /></div>
-                </div>
-              </CardSection>
-
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden text-left mb-10">
-                <div className="px-5 py-3 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50">
-                  <div className="flex items-center space-x-3"><div className="p-2 bg-violet-50 text-violet-600 rounded-lg"><CreditCard size={18} /></div><h4 className="font-bold text-slate-800 text-xs uppercase tracking-tight">5. Assurance</h4></div>
-                  <label onClick={() => setPatientData({ ...patientData, isPayant: !patientData.isPayant })} className={`flex items-center space-x-4 cursor-pointer px-4 py-1.5 rounded-xl border transition-all ${patientData.isPayant ? 'bg-emerald-50 border-emerald-500 shadow-sm' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${patientData.isPayant ? 'text-emerald-700' : 'text-slate-500'}`}>Patient Payant (Direct)</span>
-                    <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center ${patientData.isPayant ? 'bg-white border-emerald-500 text-emerald-600' : 'bg-white border-slate-300 text-transparent'}`}><Check size={14} strokeWidth={4} /></div>
-                  </label>
-                </div>
-                <div className={`p-5 transition-opacity ${patientData.isPayant ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
-                  {!patientData.isPayant ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                      <SelectField label="Organisme" options={['CNSS', 'CNOPS', 'AXA', 'WAFA', 'CIMR']} value={patientData.insurance?.mainOrg} onChange={(e: any) => handleInsuranceChange('mainOrg', e.target.value)} required icon={Building2} />
-                      <div className="grid grid-cols-2 gap-4">
-                        <SelectField label="Lien Assuré" options={['Lui-même', 'Conjoint', 'Enfant', 'Père', 'Mère']} value={patientData.insurance?.relationship} onChange={(e: any) => handleInsuranceChange('relationship', e.target.value)} required />
-                        <InputField label="N° Immatriculation" value={patientData.insurance?.registrationNumber} onChange={(e: any) => handleInsuranceChange('registrationNumber', e.target.value.replace(/[^0-9+]/g, ''))} icon={Hash} />
-                      </div>
-                    </div>
-                  ) : <div className="text-center py-4 text-slate-400 text-xs italic">Mode paiement direct activé. Aucun organisme de tiers-payant requis.</div>}
-                </div>
-              </div>
-            </div>
+             <div className="animate-in slide-in-from-bottom-4 duration-300">
+               <PatientIdentityForm 
+                  onSubmit={async (patientId) => {
+                      try {
+                          const patient = await api.getPatient(patientId);
+                          setPatientData({
+                              ...patient,
+                              insurance: patient.insurance || { mainOrg: '', relationship: 'Lui-même', registrationNumber: '' },
+                              emergencyContacts: (patient.emergencyContacts && patient.emergencyContacts.length > 0) ? patient.emergencyContacts : [{ name: '', relationship: 'Père', phone: '' }],
+                              guardian: patient.guardian || { firstName: '', lastName: '', phone: '', relationship: 'Père', idType: 'CIN', idNumber: '', address: '', habilitation: '' }
+                          });
+                          setStep(2);
+                      } catch (e) {
+                          console.error("Failed to fetch patient details", e);
+                      }
+                  }}
+                  onCancel={onClose}
+               />
+             </div>
           ) : (
             <div className="space-y-8 animate-in slide-in-from-right-4 duration-300 text-left">
               {/* Patient Banner */}
@@ -696,93 +541,29 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
           )}
       </div>
 
-        {/* Footer */}
-        <div className="px-8 py-5 bg-white border-t flex justify-between items-center shrink-0">
-          <div>{step === 2 && <button onClick={() => setStep(1)} className="text-slate-400 font-black uppercase text-xs hover:text-slate-900 transition-colors border border-transparent hover:border-slate-100 px-4 py-2 rounded-xl">Retour</button>}</div>
-          <div className="flex space-x-4">
-            <button onClick={onClose} className="px-6 py-2.5 text-slate-400 font-black uppercase text-xs hover:text-slate-600">Annuler</button>
-            <button
-              onClick={step === 1 ? handleContinueAdmission : handleCreateAdmission}
-              className={`px-10 py-3 rounded-xl font-black uppercase text-xs transition-all shadow-xl flex items-center active:scale-95 ${step === 1
-                ? isStep1Valid
-                  ? 'bg-slate-900 text-white hover:bg-black shadow-slate-900/20'
-                  : 'bg-slate-300 text-slate-100 cursor-not-allowed grayscale'
-                : (admissionData.type && admissionData.doctorName)
-                  ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-600/30'
-                  : 'bg-slate-300 text-slate-100 cursor-not-allowed grayscale'
-                }`}
-            >
-              <span>{step === 1 ? 'Suivant' : "Créer l'admission"}</span>
-              <ChevronRight size={18} className="ml-2" />
-            </button>
+        {/* Footer - Only for Step 2 */}
+        {step === 2 && (
+          <div className="px-8 py-5 bg-white border-t flex justify-between items-center shrink-0">
+            <div><button onClick={() => setStep(1)} className="text-slate-400 font-black uppercase text-xs hover:text-slate-900 transition-colors border border-transparent hover:border-slate-100 px-4 py-2 rounded-xl">Retour</button></div>
+            <div className="flex space-x-4">
+              <button onClick={onClose} className="px-6 py-2.5 text-slate-400 font-black uppercase text-xs hover:text-slate-600">Annuler</button>
+              <button
+                onClick={handleCreateAdmission}
+                className={`px-10 py-3 rounded-xl font-black uppercase text-xs transition-all shadow-xl flex items-center active:scale-95 ${
+                  (admissionData.type && admissionData.doctorName && admissionData.service)
+                    ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-600/30'
+                    : 'bg-slate-300 text-slate-100 cursor-not-allowed grayscale'
+                  }`}
+              >
+                <span>Créer l'admission</span>
+                <ChevronRight size={18} className="ml-2" />
+              </button>
+            </div>
           </div>
-        </div>
+        )}
     </div>
 
-      {/* Duplicate Conflict Modal */}
-      {duplicateConflict && (
-        <DuplicateConflictModal
-          patient={duplicateConflict}
-          onCancel={() => setDuplicateConflict(null)}
-          onRedirect={() => { navigate(`/patient/${duplicateConflict.id}`); setDuplicateConflict(null); onClose(); }}
-        />
-      )}
-
-      {/* Search Overlay */}
-      {isSearchOpen && (
-        <div className="fixed top-0 left-0 w-screen h-screen z-[200] flex items-center justify-center bg-slate-900/95 p-4 animate-in fade-in duration-200 backdrop-blur-xl">
-          <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col h-[70vh] border border-white/20">
-            <div className="p-8 border-b border-slate-100 bg-slate-50/50">
-              <div className="flex items-center justify-between mb-6">
-                <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-600">Moteur de Recherche Patient</h4>
-                <button onClick={() => setIsSearchOpen(false)} className="p-2 text-slate-400 hover:text-slate-900 transition-colors bg-white rounded-full shadow-sm"><X size={20} /></button>
-              </div>
-              <div className="relative group">
-                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={24} />
-                <input
-                  type="text"
-                  placeholder="Nom, Prénom, IPP ou CIN..."
-                  className="w-full bg-white border-2 border-slate-100 rounded-3xl pl-16 pr-8 py-5 text-lg text-slate-800 focus:ring-8 focus:ring-indigo-500/5 focus:border-indigo-500 shadow-inner transition-all outline-none font-bold placeholder:text-slate-300"
-                  autoFocus
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-auto p-4 bg-slate-50/30">
-              <table className="w-full text-left border-separate border-spacing-y-3">
-                <tbody>
-                  {filteredPatients.map((p) => (
-                    <tr key={p.id} onClick={() => handlePatientSelect(p)} className="group cursor-pointer transition-all">
-                      <td className="bg-white rounded-l-3xl p-4 border-l border-y border-slate-100 group-hover:bg-indigo-600 group-hover:border-indigo-600 transition-all">
-                        <div className="flex items-center space-x-5">
-                          <div className="h-14 w-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-white/20 group-hover:text-white transition-all shadow-inner border border-slate-100 group-hover:border-transparent">
-                            <User size={28} />
-                          </div>
-                          <div>
-                            <span className="font-black text-slate-800 uppercase text-lg group-hover:text-white transition-all leading-tight block">{p.lastName} {p.firstName}</span>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest group-hover:text-indigo-200 transition-all">{calculateAge(p.dateOfBirth)} ANS • {p.gender}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="bg-white rounded-r-3xl p-4 border-r border-y border-slate-100 group-hover:bg-indigo-600 group-hover:border-indigo-600 transition-all text-right pr-8">
-                        <div className="flex flex-col items-end">
-                          <span className="text-slate-900 font-black font-mono group-hover:text-white transition-all text-sm">{p.ipp}</span>
-                          {p.cin && <span className="text-[10px] font-black text-slate-300 uppercase mt-1 group-hover:text-indigo-200 transition-all tracking-tighter">{p.cin}</span>}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="p-8 border-t border-slate-100 flex justify-end bg-white">
-              <button onClick={() => setIsSearchOpen(false)} className="px-10 py-3 bg-slate-900 hover:bg-black rounded-2xl text-white font-black uppercase text-[10px] tracking-[0.2em] transition-all shadow-xl active:scale-95">Fermer</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Search Overlay - REMOVED */}
     </div>
   );
 };

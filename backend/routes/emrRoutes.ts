@@ -14,6 +14,9 @@ import {
     searchGlobalPatient,
     createGlobalPatient,
     getGlobalConfig,
+    // Universal Access
+    searchUniversalPatient,
+    importGlobalPatient,
     // Patient Network
     getPatientNetwork,
     addRelationship,
@@ -22,7 +25,10 @@ import {
     // Chart Merge
     getDuplicateCharts,
     mergePatientCharts,
-    getPatientMergeHistory
+    getPatientMergeHistory,
+    getTenantOrganismes,
+    getTenantCountries,
+    getTenantIdentityDocumentTypes
 } from '../controllers/emrController';
 
 import { getServiceStock, getUserServices } from '../controllers/serviceStockController';
@@ -50,11 +56,24 @@ router.get('/global/search', requireTenant, searchGlobalPatient);
 router.post('/global', requireTenant, createGlobalPatient);
 router.get('/config', requireTenant, getGlobalConfig); // For doc types, countries
 
+// --- REFERENCE DATA (TENANT) ---
+router.get('/reference/organismes', requireTenant, getTenantOrganismes);
+router.get('/reference/countries', requireTenant, getTenantCountries);
+router.get('/reference/identity-document-types', requireTenant, getTenantIdentityDocumentTypes);
+
 // --- TENANT PATIENTS (Linkage) ---
 // "Get Patients" = Get Tenant Patient List (ACTIVE only)
 router.get('/patients', requireTenant, getPatients);
 
-// "Create Patient" = Register Tenant Patient Link
+// --- CHARTS & REGISTRATION ---
+
+// Universal Search (Local -> Global)
+router.get('/patients/universal-search', requireTenant, searchUniversalPatient);
+
+// Import Global Patient to Local
+router.post('/patients/import', requireTenant, importGlobalPatient);
+
+// "Create Patient" = Register New Tenant Patient
 router.post('/patients', requireTenant, createPatient);
 
 // --- CHART MERGE (must be before /patients/:id to avoid route conflict) ---

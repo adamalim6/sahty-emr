@@ -6,16 +6,19 @@ export enum Gender {
 
 export interface Patient {
   id: string;
-  isProvisional: boolean; // Statut de complétude
-  ipp: string;
+  tenantPatientId?: string; // New
+  status?: 'ACTIVE' | 'PROVISIONAL' | 'VERIFIED' | 'MERGED' | 'INACTIVE'; // New
+  isProvisional?: boolean; // Deprecated, kept for compat (calculated from status)
+  ipp: string; // medicalRecordNumber
   firstName: string;
   lastName: string;
   dateOfBirth: string;
   gender: Gender;
   phone?: string;
   email?: string;
-  cin?: string;
+  cin?: string; // kept for list view compat (mapped from first doc)
   avatar?: string;
+  identityDocuments?: { documentType: string; documentNumber: string; issuingCountry?: string }[]; // New
 
   // Infos Complémentaires
   fatherName?: string;

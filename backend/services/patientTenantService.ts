@@ -6,11 +6,15 @@ import {
     PatientDetail,
     CreateTenantPatientPayload,
     PatientTenantMergeEvent,
-    MergeChartGroup
+    MergeChartGroup,
+    GlobalIdentityDocument // Import this model
 } from '../models/patientTenant';
 import { patientGlobalService } from './patientGlobalService'; 
 import { identityService } from './identityService';
 import { tenantQuery, tenantTransaction } from '../db/tenantPg';
+
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 export class PatientTenantService {
 
@@ -18,17 +22,25 @@ export class PatientTenantService {
 
     async getAllTenantPatients(tenantId: string): Promise<PatientDetail[]> {
         // Fetch Tenant Patients (Limit 100 for now)
+        // Join with documents to get at least one ID (preference for CIN)
         const rows = await tenantQuery(tenantId, `
-            SELECT * FROM patients_tenant 
-            WHERE status = 'ACTIVE'
-            ORDER BY created_at DESC 
+            SELECT pt.*, pd.document_number as primary_doc_number 
+            FROM patients_tenant pt
+            LEFT JOIN LATERAL (
+                SELECT document_number 
+                FROM patient_documents d 
+                WHERE d.patient_id = pt.tenant_patient_id
+                ORDER BY d.is_primary DESC, CASE WHEN document_type_code = 'CIN' THEN 1 ELSE 2 END ASC
+                LIMIT 1
+            ) pd ON true
+            ORDER BY pt.created_at DESC 
             LIMIT 100
         `, []);
         
         if (rows.length === 0) return [];
         
         return rows.map(r => ({
-            id: r.master_patient_id, // Use master ID only
+            id: r.master_patient_id || r.tenant_patient_id, // Use master ID if linked, else tenant ID (for PROVISIONAL)
             firstName: r.first_name || 'Inconnu',
             lastName: r.last_name || 'Inconnu',
             dateOfBirth: r.dob, 
@@ -43,8 +55,13 @@ export class PatientTenantService {
             contacts: [], 
             addresses: [],
             insurances: [],
-            identityDocuments: [],
-            nationality: undefined
+            // Map primary doc to identityDocuments for consistency, or we could add a 'cin' field to PatientDetail if we change the type
+            identityDocuments: r.primary_doc_number ? [{
+                documentType: 'CIN', // Simplified for list view
+                documentNumber: r.primary_doc_number,
+                issuingCountry: 'MA',
+                isPrimary: true
+            }] : []
         }));
     }
 
@@ -87,9 +104,12 @@ export class PatientTenantService {
             contacts,
             addresses,
             insurances,
-            identityDocuments: [], 
-            
-            nationality: undefined 
+            identityDocuments: localDocs.map(d => ({
+                documentType: d.document_type_code,
+                documentNumber: d.document_number,
+                issuingCountry: d.issuing_country_code,
+                isPrimary: d.is_primary
+            }))
         };
     }
 
@@ -146,46 +166,195 @@ export class PatientTenantService {
         return tenantQuery(tenantId, `SELECT * FROM patient_documents WHERE patient_id = $1`, [id]);
     }
 
+    // --- UNIVERSAL SEARCH & IMPORT ---
+
+    async searchUniversal(tenantId: string, query: string) {
+        // 1. Local Tenant Search
+        const localRows = await tenantQuery(tenantId, `
+            SELECT pt.*, imp.first_name, imp.last_name, imp.dob, imp.sex 
+            FROM patients_tenant pt
+            JOIN identity.master_patients imp ON pt.master_patient_id = imp.id
+            WHERE (imp.first_name ILIKE $1 OR imp.last_name ILIKE $1 OR pt.medical_record_number ILIKE $1)
+            AND pt.status = 'ACTIVE'
+            LIMIT 20
+        `, [`%${query}%`]);
+
+        const localResults = localRows.map(r => ({
+            source: 'LOCAL_TENANT',
+            id: r.tenant_patient_id,
+            firstName: r.first_name || 'Inconnu',
+            lastName: r.last_name || 'Inconnu',
+            dob: r.dob,
+            sex: r.sex,
+            ipp: r.medical_record_number,
+            status: 'VERIFIED' // Local patients are effectively verified or provisional, but exist locally
+        }));
+
+        if (localResults.length > 0) return localResults;
+
+        // 2. Local Identity Search (Patients that exist in local Identity DB but not linked to this tenant yet? Rare but possible)
+        // For now, we skip to Global if not found locally.
+
+        // 3. Global Identity Search
+        try {
+            const globalPatients = await identityService.searchPatients('GLOBAL', query);
+            const globalResults = globalPatients.map(p => ({
+                source: 'GLOBAL_IDENTITY',
+                id: p.id,
+                firstName: p.firstName,
+                lastName: p.lastName,
+                dob: p.dob,
+                sex: p.sex,
+                status: 'VERIFIED'
+            }));
+            return globalResults;
+        } catch (err) {
+            console.warn("Global search failed (offline?):", err);
+            return [];
+        }
+    }
+
+    async importGlobalPatient(tenantId: string, globalId: string): Promise<string> {
+        // 1. Fetch from Global
+        const globalPatient = await identityService.getPatientById('GLOBAL', globalId);
+        if (!globalPatient) throw new Error("Global patient not found");
+
+        const globalDocs = await identityService.getPatientDocuments('GLOBAL', globalId);
+
+        // 2. Import to Local (via createTenantPatient with VERIFIED status)
+        const payload: CreateTenantPatientPayload = {
+            firstName: globalPatient.firstName,
+            lastName: globalPatient.lastName,
+            sex: globalPatient.sex,
+            dob: globalPatient.dob,
+            status: 'VERIFIED',
+            masterPatientId: globalPatient.id,
+            identityDocuments: globalDocs.map(d => ({
+                documentType: d.document_type_code,
+                documentNumber: d.document_number,
+                issuingCountry: d.issuing_country_code
+            }))
+        };
+
+        return this.createTenantPatient(tenantId, payload);
+    }
+
     // --- WRITE ---
 
     async createTenantPatient(tenantId: string, payload: CreateTenantPatientPayload): Promise<string> {
-        return await tenantTransaction(tenantId, async (client) => {
-            // 1. Fetch Identity details
-            let firstName = 'Inconnu';
-            let lastName = 'Inconnu';
-            let dob = null;
-            let sex = null;
+        // VALIDATION RULES
+        const status = payload.status || 'PROVISIONAL'; // Default if missing, but UI should provide it
+        
+        if (status === 'UNKNOWN') {
+            if (!payload.sex) throw new Error("SEX is required for UNKNOWN status");
+            payload.firstName = payload.firstName || 'INCONNU';
+            payload.lastName = payload.lastName || 'INCONNU';
+        } else if (status === 'PROVISIONAL') {
+            if (!payload.firstName || !payload.lastName) throw new Error("First and Last Name required for PROVISIONAL");
+            if (!payload.dob && !payload.sex) throw new Error("DOB or SEX required for PROVISIONAL");
+        } else if (status === 'VERIFIED') {
+            if (!payload.firstName || !payload.lastName || !payload.dob || !payload.sex) throw new Error("Full identity required for VERIFIED");
+            if (!payload.identityDocuments || payload.identityDocuments.length === 0) throw new Error("At least one document required for VERIFIED");
+        }
 
-            if (payload.masterPatientId) {
-                const identity = await identityService.getPatientById('GLOBAL', payload.masterPatientId);
-                if (identity) {
-                    firstName = identity.firstName;
-                    lastName = identity.lastName;
-                    dob = identity.dob;
-                    sex = identity.sex;
+        return await tenantTransaction(tenantId, async (client) => {
+            // ============================================================
+            // ALL WRITES USE THE SAME TRANSACTION CLIENT
+            // Both identity.* and public.* schemas are in the same tenant DB.
+            // If ANY step fails, everything rolls back atomically.
+            // ============================================================
+
+            // 1–2. MPI Identity Resolution
+            // Before creating anything, check if any submitted document already exists.
+            // If it does, reuse that master_patient_id. If not, create a new one.
+            let masterId = payload.masterPatientId || null;
+
+            if (!masterId && payload.identityDocuments && payload.identityDocuments.length > 0) {
+                // Lookup: does any of the submitted documents already exist?
+                for (const d of payload.identityDocuments) {
+                    const existing = await client.query(`
+                        SELECT master_patient_id FROM identity.master_patient_documents
+                        WHERE document_type_code = $1 AND document_number = $2 AND issuing_country_code = $3
+                        LIMIT 1
+                    `, [d.documentType, d.documentNumber, d.issuingCountry || 'MA']);
+                    if (existing.rows.length > 0) {
+                        masterId = existing.rows[0].master_patient_id;
+                        break; // Resolved — reuse this master patient
+                    }
                 }
             }
 
-            // 2. Create Link
+            if (!masterId) {
+                // No existing identity found — create new master patient
+                const identityRes = await client.query(`
+                    INSERT INTO identity.master_patients (first_name, last_name, dob, sex)
+                    VALUES ($1, $2, $3, $4)
+                    RETURNING id
+                `, [
+                    payload.firstName || 'INCONNU',
+                    payload.lastName || 'INCONNU',
+                    payload.dob || null,
+                    payload.sex || null
+                ]);
+                masterId = identityRes.rows[0].id;
+
+                // Insert identity documents (only for newly created master patients)
+                if (payload.identityDocuments) {
+                    for (const d of payload.identityDocuments) {
+                        await client.query(`
+                            INSERT INTO identity.master_patient_documents 
+                            (master_patient_id, document_type_code, document_number, issuing_country_code, is_primary)
+                            VALUES ($1, $2, $3, $4, $5)
+                        `, [masterId, d.documentType, d.documentNumber, d.issuingCountry || 'MA', d.isPrimary || false]);
+                    }
+                }
+            }
+
+            // 3. Generate unique MRN (IPP) — format: IPP-YYMMDD-XXXX
+            const now = new Date();
+            const yy = String(now.getFullYear()).slice(-2);
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            const datePrefix = `${yy}${mm}${dd}`;
+            
+            // Count existing patients created today to get next sequence number
+            const seqRes = await client.query(`
+                SELECT COUNT(*)::int AS cnt FROM patients_tenant 
+                WHERE medical_record_number LIKE $1
+            `, [`IPP-${datePrefix}-%`]);
+            const seq = (seqRes.rows[0].cnt || 0) + 1;
+            const mrn = `IPP-${datePrefix}-${String(seq).padStart(4, '0')}`;
+
+            // 4. Create Tenant Patient Record (public.patients_tenant)
             const linkRes = await client.query(`
                 INSERT INTO patients_tenant 
-                (tenant_id, master_patient_id, medical_record_number, nationality_id, first_name, last_name, dob, sex, mpi_link_status)
+                (tenant_id, master_patient_id, medical_record_number, first_name, last_name, dob, sex, status, mpi_link_status)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'LINKED')
                 RETURNING tenant_patient_id
             `, [
                 tenantId, 
-                payload.masterPatientId, 
-                payload.medicalRecordNumber, 
-                payload.nationalityId,
-                firstName,
-                lastName,
-                dob,
-                sex
+                masterId, 
+                mrn, 
+                payload.firstName,
+                payload.lastName,
+                payload.dob,
+                payload.sex,
+                status
             ]);
             
             const tenantPatientId = linkRes.rows[0].tenant_patient_id;
 
-            // 3. Contacts
+            // 5. Patient Documents (public.patient_documents)
+            if (payload.identityDocuments) {
+                for (const d of payload.identityDocuments) {
+                    await client.query(`
+                        INSERT INTO patient_documents (patient_id, document_type_code, document_number, issuing_country_code, is_primary)
+                        VALUES ($1, $2, $3, $4, $5)
+                    `, [tenantPatientId, d.documentType, d.documentNumber, d.issuingCountry || 'MA', d.isPrimary || false]);
+                }
+            }
+
+            // 6. Contacts (public.patient_contacts)
             if (payload.contacts) {
                 for (const c of payload.contacts) {
                     await client.query(`
@@ -195,7 +364,7 @@ export class PatientTenantService {
                 }
             }
 
-            // 4. Addresses
+            // 7. Addresses (public.patient_addresses)
             if (payload.addresses) {
                 for (const a of payload.addresses) {
                     await client.query(`
@@ -205,24 +374,241 @@ export class PatientTenantService {
                 }
             }
 
-            // 5. Insurances
+            // ============================================================
+            // PERSON RESOLUTION ENGINE
+            // Collect all person-like blocks, deduplicate, resolve once.
+            // Each real-world person is created at most once in `persons`.
+            // ============================================================
+            interface PersonCandidate {
+                firstName: string;
+                lastName: string;
+                phone?: string | null;
+                email?: string | null;
+                document?: { typeCode: string; number: string; countryCode: string } | null;
+            }
+
+            // Key generation: document-based (strong) or name+phone (fallback)
+            const docKey = (d: { typeCode: string; number: string; countryCode: string }) =>
+                `DOC:${d.typeCode}|${d.number}|${d.countryCode}`.toUpperCase();
+            const nameKey = (firstName: string, lastName: string, phone?: string | null) =>
+                `NAME:${(firstName || '').trim().toUpperCase()}|${(lastName || '').trim().toUpperCase()}|${(phone || '').replace(/\s/g, '')}`;
+
+            // Map: dedup key → PersonCandidate
+            const personCandidates = new Map<string, PersonCandidate>();
+
+            // Helper: register a person candidate, returns its dedup key
+            const registerPerson = (p: PersonCandidate): string => {
+                // Primary key: document-based if available
+                let key = p.document ? docKey(p.document) : nameKey(p.firstName, p.lastName, p.phone);
+                if (!personCandidates.has(key)) {
+                    personCandidates.set(key, p);
+                }
+                return key;
+            };
+
+            // --- Collect from Legal Guardians ---
+            const guardianPersonKeys: (string | null)[] = [];
+            if (payload.legalGuardians) {
+                for (const lg of payload.legalGuardians) {
+                    if (lg.guardianType === 'EXTERNAL_PERSON' && lg.firstName && lg.lastName) {
+                        const key = registerPerson({
+                            firstName: lg.firstName,
+                            lastName: lg.lastName,
+                            phone: lg.phone,
+                            email: lg.email,
+                            document: null, // Guardians currently don't have document data in form
+                        });
+                        guardianPersonKeys.push(key);
+                    } else {
+                        guardianPersonKeys.push(null); // EXISTING_PATIENT — no person to create
+                    }
+                }
+            }
+
+            // --- Collect from Insurance Subscribers ---
+            const insurancePersonKeys: (string | null)[] = [];
             if (payload.insurances) {
-                for (const i of payload.insurances) {
+                for (const ins of payload.insurances) {
+                    const subType = ins.subscriberType || 'PATIENT';
+                    if (subType === 'PERSON' && ins.subscriberFirstName && ins.subscriberLastName) {
+                        const doc = ins.subscriberDocument && ins.subscriberDocument.documentNumber
+                            ? { typeCode: ins.subscriberDocument.documentTypeCode, number: ins.subscriberDocument.documentNumber, countryCode: ins.subscriberDocument.issuingCountryCode || 'MA' }
+                            : null;
+                        const key = registerPerson({
+                            firstName: ins.subscriberFirstName,
+                            lastName: ins.subscriberLastName,
+                            phone: ins.subscriberPhone,
+                            email: ins.subscriberEmail,
+                            document: doc,
+                        });
+                        insurancePersonKeys.push(key);
+                    } else {
+                        insurancePersonKeys.push(null); // PATIENT or PATIENT_RELATION — no person to create
+                    }
+                }
+            }
+
+            // --- Collect from Emergency Contacts ---
+            const emergencyPersonKeys: (string | null)[] = [];
+            if (payload.emergencyContacts) {
+                for (const ec of payload.emergencyContacts) {
+                    const parts = (ec.name || '').split(' ');
+                    const fn = parts[0] || '.';
+                    const ln = parts.slice(1).join(' ') || '.';
+                    const key = registerPerson({
+                        firstName: fn,
+                        lastName: ln,
+                        phone: ec.phone,
+                        email: null,
+                        document: null,
+                    });
+                    emergencyPersonKeys.push(key);
+                }
+            }
+
+            // --- Resolve all unique persons: lookup DB → reuse or create ---
+            const resolvedPersonIds = new Map<string, string>(); // dedup key → person_id
+
+            for (const [key, candidate] of personCandidates.entries()) {
+                let personId: string | null = null;
+
+                // Try document-based lookup first
+                if (candidate.document) {
+                    const existing = await client.query(`
+                        SELECT person_id FROM person_documents
+                        WHERE document_type_code = $1 AND document_number = $2 AND issuing_country_code = $3
+                        LIMIT 1
+                    `, [candidate.document.typeCode, candidate.document.number, candidate.document.countryCode]);
+                    if (existing.rows.length > 0) {
+                        personId = existing.rows[0].person_id;
+                    }
+                }
+
+                if (!personId) {
+                    // Create new person
+                    const personRes = await client.query(`
+                        INSERT INTO persons (tenant_id, first_name, last_name, phone, email)
+                        VALUES ($1, $2, $3, $4, $5)
+                        RETURNING person_id
+                    `, [tenantId, candidate.firstName, candidate.lastName, candidate.phone || null, candidate.email || null]);
+                    personId = personRes.rows[0].person_id;
+
+                    // Insert person document if available
+                    if (candidate.document) {
+                        await client.query(`
+                            INSERT INTO person_documents (person_id, document_type_code, document_number, issuing_country_code)
+                            VALUES ($1, $2, $3, $4)
+                        `, [personId, candidate.document.typeCode, candidate.document.number, candidate.document.countryCode]);
+                    }
+                }
+
+                resolvedPersonIds.set(key, personId!);
+            }
+
+            // ============================================================
+            // ROLE TABLE INSERTS — use resolved person_ids from the map
+            // ============================================================
+
+            // 8. Insurances (versioned, with subscriber entity linking)
+            if (payload.insurances) {
+                for (let i = 0; i < payload.insurances.length; i++) {
+                    const ins = payload.insurances[i];
+                    let subscriberPatientId: string | null = null;
+                    let subscriberPersonId: string | null = null;
+                    let subType = ins.subscriberType || 'PATIENT';
+                    let subRelType = ins.subscriberRelationshipType || 'SELF';
+
+                    if (subType === 'PATIENT') {
+                        subscriberPatientId = tenantPatientId;
+                        subRelType = 'SELF';
+                    } else if (subType === 'PATIENT_RELATION') {
+                        subscriberPatientId = ins.subscriberPatientId || null;
+                    } else if (subType === 'PERSON') {
+                        const personKey = insurancePersonKeys[i];
+                        subscriberPersonId = personKey ? (resolvedPersonIds.get(personKey) || null) : null;
+                    }
+
                     await client.query(`
                         INSERT INTO patient_insurances 
-                        (tenant_patient_id, insurance_org_id, policy_number, plan_name, subscriber_name, coverage_valid_from, coverage_valid_to)
-                        VALUES ($1, $2, $3, $4, $5, $6, $7)
+                        (tenant_patient_id, insurance_org_id, policy_number, plan_name, subscriber_name,
+                         coverage_valid_from, coverage_valid_to, row_valid_from, row_valid_to,
+                         subscriber_type, subscriber_patient_id, subscriber_person_id, subscriber_relationship_type)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NULL, $8, $9, $10, $11)
                     `, [
-                        tenantPatientId, 
-                        i.insuranceOrgId, 
-                        i.policyNumber, 
-                        i.planName, 
-                        i.subscriberName,
-                        i.coverageValidFrom,
-                        i.coverageValidTo
+                        tenantPatientId,
+                        ins.insuranceOrgId,
+                        ins.policyNumber || null,
+                        ins.planName || null,
+                        ins.subscriberName || null,
+                        ins.coverageValidFrom || null,
+                        ins.coverageValidTo || null,
+                        subType,
+                        subscriberPatientId,
+                        subscriberPersonId,
+                        subRelType
                     ]);
                 }
             }
+
+            // 9. Emergency Contacts
+            if (payload.emergencyContacts) {
+                for (let i = 0; i < payload.emergencyContacts.length; i++) {
+                    const ec = payload.emergencyContacts[i];
+                    const personKey = emergencyPersonKeys[i];
+                    const personId = personKey ? (resolvedPersonIds.get(personKey) || null) : null;
+
+                    if (personId) {
+                        await client.query(`
+                            INSERT INTO patient_emergency_contacts (tenant_id, tenant_patient_id, related_person_id, relationship_label)
+                            VALUES ($1, $2, $3, $4)
+                        `, [tenantId, tenantPatientId, personId, ec.relationship]);
+                    }
+                }
+            }
+
+            // 10. Legal Guardians → writes to 3 tables per guardian
+            if (payload.legalGuardians) {
+                let guardianPriority = 0;
+                for (let i = 0; i < payload.legalGuardians.length; i++) {
+                    const lg = payload.legalGuardians[i];
+                    guardianPriority++;
+                    let relatedPersonId: string | null = null;
+                    let relatedPatientId: string | null = null;
+
+                    if (lg.guardianType === 'EXTERNAL_PERSON') {
+                        const personKey = guardianPersonKeys[i];
+                        relatedPersonId = personKey ? (resolvedPersonIds.get(personKey) || null) : null;
+                    } else if (lg.guardianType === 'EXISTING_PATIENT') {
+                        relatedPatientId = lg.relatedPatientId || null;
+                    }
+
+                    const validFrom = lg.validFrom || new Date().toISOString().split('T')[0];
+                    const validTo = lg.validTo || null;
+
+                    // A) patient_legal_guardians
+                    await client.query(`
+                        INSERT INTO patient_legal_guardians 
+                        (tenant_id, tenant_patient_id, related_person_id, related_patient_id, legal_basis, valid_from, valid_to, is_primary)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                    `, [tenantId, tenantPatientId, relatedPersonId, relatedPatientId, lg.legalBasis || null, validFrom, validTo, lg.isPrimary || false]);
+
+                    // B) patient_relationships
+                    await client.query(`
+                        INSERT INTO patient_relationships 
+                        (tenant_id, subject_patient_id, related_person_id, related_patient_id, relationship_type, valid_from, valid_to)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    `, [tenantId, tenantPatientId, relatedPersonId, relatedPatientId, lg.relationshipType, validFrom, validTo]);
+
+                    // C) patient_decision_makers
+                    await client.query(`
+                        INSERT INTO patient_decision_makers 
+                        (tenant_id, tenant_patient_id, related_person_id, related_patient_id, role, priority, valid_from, valid_to)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                    `, [tenantId, tenantPatientId, relatedPersonId, relatedPatientId, 'LEGAL_GUARDIAN', lg.isPrimary ? 1 : guardianPriority + 1, validFrom, validTo]);
+                }
+            }
+
+            // 11. Relationships (Not implemented in form yet, but ready in backend)
 
             return tenantPatientId;
         });

@@ -28,7 +28,7 @@ const ENTITY_TABLES: Record<string, string> = {
 const ENTITY_COLUMNS: Record<string, string[]> = {
     'master_patients': [
         'id', 'first_name', 'last_name', 'dob', 'sex',
-        'nationality_code', 'status', 'created_at', 'updated_at'
+        'status', 'created_at', 'updated_at'
     ],
     'master_patient_documents': [
         'id', 'master_patient_id', 'document_type_code', 'document_number',

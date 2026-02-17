@@ -53,7 +53,6 @@ async function main() {
                 last_name TEXT NOT NULL,
                 dob DATE,
                 sex TEXT,
-                nationality_code TEXT,
                 status TEXT NOT NULL DEFAULT 'ACTIVE', -- ACTIVE, MERGED, DECEASED, INACTIVE
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

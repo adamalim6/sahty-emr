@@ -319,8 +319,8 @@ export class SettingsService {
             // 3. Auto-create beds
             for (let i = 1; i <= numberOfBeds; i++) {
                 await client.query(`
-                    INSERT INTO beds (id, room_id, label, status, is_active)
-                    VALUES (gen_random_uuid(), $1, $2, 'AVAILABLE', true)
+                    INSERT INTO beds (id, room_id, label, status)
+                    VALUES (gen_random_uuid(), $1, $2, 'AVAILABLE')
                 `, [room.id, `Lit ${i}`]);
             }
 
@@ -339,39 +339,72 @@ export class SettingsService {
 
     async deleteServiceUnit(tenantId: string, unitId: string): Promise<void> {
         await tenantTransaction(tenantId, async (client) => {
-            // Check no active stays on any bed in this room
+            // Check if ANY beds have ever been linked to patient_stays (past or present)
+            const anyStays = await client.query(`
+                SELECT ps.id FROM patient_stays ps
+                JOIN beds b ON b.id = ps.bed_id
+                WHERE b.room_id = $1
+                LIMIT 1
+            `, [unitId]);
+            if (anyStays.rows.length > 0) {
+                throw new Error('Impossible de supprimer : cette chambre a un historique de séjours. Utilisez la désactivation.');
+            }
+            // No history — hard delete beds then room
+            await client.query('DELETE FROM beds WHERE room_id = $1', [unitId]);
+            await client.query('DELETE FROM rooms WHERE id = $1', [unitId]);
+        });
+    }
+
+    async deactivateServiceUnit(tenantId: string, unitId: string): Promise<void> {
+        await tenantTransaction(tenantId, async (client) => {
+            // Check no ACTIVE stays (cannot deactivate while patients are in the room)
             const activeStays = await client.query(`
                 SELECT ps.id FROM patient_stays ps
                 JOIN beds b ON b.id = ps.bed_id
                 WHERE b.room_id = $1 AND ps.ended_at IS NULL
+                LIMIT 1
             `, [unitId]);
             if (activeStays.rows.length > 0) {
-                throw new Error('Impossible de supprimer : des patients occupent cette chambre');
+                throw new Error('Impossible de désactiver : des patients occupent cette chambre');
             }
-            // Soft-delete beds then room
-            await client.query('UPDATE beds SET is_active = false WHERE room_id = $1', [unitId]);
+            // Soft-deactivate beds (status=INACTIVE) then room (is_active=false)
+            await client.query("UPDATE beds SET status = 'INACTIVE' WHERE room_id = $1", [unitId]);
             await client.query('UPDATE rooms SET is_active = false WHERE id = $1', [unitId]);
+        });
+    }
+
+    async reactivateServiceUnit(tenantId: string, unitId: string): Promise<void> {
+        await tenantTransaction(tenantId, async (client) => {
+            await client.query('UPDATE rooms SET is_active = true WHERE id = $1', [unitId]);
+            await client.query("UPDATE beds SET status = 'AVAILABLE' WHERE room_id = $1 AND status = 'INACTIVE'", [unitId]);
         });
     }
 
     async getServiceUnits(tenantId: string, serviceId?: string): Promise<ServiceUnit[]> {
         let sql = `
-            SELECT r.id, r.service_id, r.room_type_id as unit_type_id, r.name
+            SELECT r.id, r.service_id, r.room_type_id as unit_type_id, r.name, r.is_active,
+                   EXISTS(
+                       SELECT 1 FROM patient_stays ps
+                       JOIN beds b ON b.id = ps.bed_id
+                       WHERE b.room_id = r.id
+                   ) AS has_stays
             FROM rooms r
-            WHERE r.is_active = true
+            WHERE 1=1
         `;
         const params: any[] = [];
         if (serviceId) {
             sql += ' AND r.service_id = $1';
             params.push(serviceId);
         }
-        sql += ' ORDER BY r.name';
+        sql += ' ORDER BY r.is_active DESC, r.name';
         const rows = await tenantQuery(tenantId, sql, params);
         return rows.map(r => ({
             id: r.id,
             service_id: r.service_id,
             unit_type_id: r.unit_type_id,
             name: r.name,
+            is_active: r.is_active,
+            has_stays: r.has_stays,
             created_at: new Date().toISOString(),
             tenantId,
         }));

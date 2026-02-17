@@ -9,7 +9,6 @@ export interface IdentityPatient {
     lastName: string;
     dob?: string;
     sex?: string;
-    nationalityCode?: string;
     status: string;
     createdAt: Date;
     updatedAt: Date;
@@ -20,7 +19,6 @@ export interface CreateIdentityPayload {
     lastName: string;
     dob?: string;
     sex?: string;
-    nationalityCode?: string;
 }
 
 export class IdentityService {
@@ -64,21 +62,24 @@ export class IdentityService {
         return rows.map(this.mapPatient);
     }
 
+    async getPatientDocuments(tenantId: string, masterPatientId: string): Promise<any[]> {
+        return await this.query(tenantId, `SELECT * FROM identity.master_patient_documents WHERE master_patient_id = $1`, [masterPatientId]);
+    }
+
     // --- WRITE ---
 
     async createPatient(tenantId: string, payload: CreateIdentityPayload): Promise<IdentityPatient> {
         const sql = `
             INSERT INTO identity.master_patients 
-            (first_name, last_name, dob, sex, nationality_code)
-            VALUES ($1, $2, $3, $4, $5)
+            (first_name, last_name, dob, sex)
+            VALUES ($1, $2, $3, $4)
             RETURNING *
         `;
         const params = [
             payload.firstName, 
             payload.lastName, 
             payload.dob || null, 
-            payload.sex || null, 
-            payload.nationalityCode || null
+            payload.sex || null
         ];
 
         const row = await this.queryOne(tenantId, sql, params);
@@ -94,7 +95,6 @@ export class IdentityService {
             lastName: row.last_name,
             dob: row.dob instanceof Date ? row.dob.toISOString().split('T')[0] : row.dob,
             sex: row.sex,
-            nationalityCode: row.nationality_code,
             status: row.status,
             createdAt: row.created_at,
             updatedAt: row.updated_at

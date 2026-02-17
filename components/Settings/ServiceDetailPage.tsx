@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
-import { ArrowLeft, Box, Users, Package, Plus, Trash2, Bed, Activity, Stethoscope, LayoutGrid, Shield, Search } from 'lucide-react';
+import { ArrowLeft, Box, Users, Package, Plus, Trash2, Bed, Activity, Stethoscope, LayoutGrid, Shield, Search, Power, RotateCcw } from 'lucide-react';
 import { UserModal } from './UserModal';
 import { LocationManager } from '../Pharmacy/LocationManager';
 
@@ -25,6 +25,8 @@ interface ServiceUnit {
     name: string;
     unit_type_id: string;
     service_id: string;
+    is_active?: boolean;
+    has_stays?: boolean;
     type?: RoomType;
 }
 
@@ -136,12 +138,31 @@ export const ServiceDetailPage: React.FC = () => {
     };
 
     const handleDeleteUnit = async (unitId: string) => {
-        if (!window.confirm('Supprimer cette unité du service ?')) return;
+        if (!window.confirm('Supprimer définitivement cette chambre et ses lits ?')) return;
         try {
             await api.deleteServiceUnit(unitId);
             setServiceUnits(serviceUnits.filter(u => u.id !== unitId));
-        } catch (e) {
-            alert('Erreur lors de la suppression');
+        } catch (e: any) {
+            alert(e.message || 'Erreur lors de la suppression');
+        }
+    };
+
+    const handleDeactivateUnit = async (unitId: string) => {
+        if (!window.confirm('Désactiver cette chambre ? Elle ne sera plus disponible pour de nouveaux séjours.')) return;
+        try {
+            await api.deactivateServiceUnit(unitId);
+            setServiceUnits(serviceUnits.map(u => u.id === unitId ? { ...u, is_active: false } : u));
+        } catch (e: any) {
+            alert(e.message || 'Erreur lors de la désactivation');
+        }
+    };
+
+    const handleReactivateUnit = async (unitId: string) => {
+        try {
+            await api.reactivateServiceUnit(unitId);
+            setServiceUnits(serviceUnits.map(u => u.id === unitId ? { ...u, is_active: true } : u));
+        } catch (e: any) {
+            alert(e.message || 'Erreur lors de la réactivation');
         }
     };
 
@@ -164,13 +185,26 @@ export const ServiceDetailPage: React.FC = () => {
     // getRoleName moved to top
 
     const renderUnitCard = (unit: ServiceUnit) => {
+        const isInactive = unit.is_active === false;
+        
         return (
-            <div key={unit.id} className="group relative bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition-all duration-200 flex flex-col justify-between min-h-[140px]">
+            <div key={unit.id} className={`group relative rounded-xl border p-5 transition-all duration-200 flex flex-col justify-between min-h-[140px] ${
+                isInactive 
+                    ? 'bg-slate-50 border-slate-200 opacity-60' 
+                    : 'bg-white border-slate-200 hover:shadow-md'
+            }`}>
                 {/* Header */}
                 <div className="flex justify-between items-start mb-3">
                     <div>
-                        <h4 className="text-lg font-bold text-slate-800 leading-tight">{unit.name}</h4>
-                        <span className="inline-block mt-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium border bg-blue-50 text-blue-700 border-blue-100">
+                        <div className="flex items-center gap-2">
+                            <h4 className={`text-lg font-bold leading-tight ${isInactive ? 'text-slate-400' : 'text-slate-800'}`}>{unit.name}</h4>
+                            {isInactive && (
+                                <span className="px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">Désactivée</span>
+                            )}
+                        </div>
+                        <span className={`inline-block mt-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium border ${
+                            isInactive ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-blue-50 text-blue-700 border-blue-100'
+                        }`}>
                             {unit.type?.name || 'Type Inconnu'}
                         </span>
                     </div>
@@ -182,7 +216,7 @@ export const ServiceDetailPage: React.FC = () => {
                         <div>
                              <div className="flex items-center space-x-1.5 mb-2">
                                 {[...Array(unit.type.number_of_beds)].map((_, i) => (
-                                    <div key={i} className="bg-slate-50 text-slate-400 p-1.5 rounded md:rounded-lg border border-slate-100" title={`Lit ${i+1}`}>
+                                    <div key={i} className={`p-1.5 rounded md:rounded-lg border ${isInactive ? 'bg-slate-100 text-slate-300 border-slate-200' : 'bg-slate-50 text-slate-400 border-slate-100'}`} title={`Lit ${i+1}`}>
                                         <Bed size={18} />
                                     </div>
                                 ))}
@@ -192,14 +226,42 @@ export const ServiceDetailPage: React.FC = () => {
                     )}
                 </div>
 
-                 {/* Delete Action - Visible on Hover */}
-                 <button 
-                    onClick={() => handleDeleteUnit(unit.id)}
-                    className="absolute top-3 right-3 p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all transform scale-90 group-hover:scale-100"
-                    title="Supprimer"
-                >
-                    <Trash2 size={16} />
-                </button>
+                {/* Action Buttons - Visible on Hover */}
+                <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    {isInactive ? (
+                        /* Reactivate button for inactive rooms */
+                        <button 
+                            onClick={() => handleReactivateUnit(unit.id)}
+                            className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all transform scale-90 group-hover:scale-100"
+                            title="Réactiver cette chambre"
+                        >
+                            <RotateCcw size={16} />
+                        </button>
+                    ) : (
+                        /* Both Deactivate + Delete buttons for active rooms */
+                        <>
+                            <button 
+                                onClick={() => handleDeactivateUnit(unit.id)}
+                                className="p-1.5 text-slate-300 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all transform scale-90 group-hover:scale-100"
+                                title="Désactiver"
+                            >
+                                <Power size={16} />
+                            </button>
+                            <button 
+                                onClick={() => handleDeleteUnit(unit.id)}
+                                className={`p-1.5 rounded-lg transition-all transform scale-90 group-hover:scale-100 ${
+                                    unit.has_stays 
+                                        ? 'text-slate-200 cursor-not-allowed' 
+                                        : 'text-slate-300 hover:text-red-500 hover:bg-red-50'
+                                }`}
+                                title={unit.has_stays ? 'Suppression impossible (historique de séjours)' : 'Supprimer définitivement'}
+                                disabled={unit.has_stays}
+                            >
+                                <Trash2 size={16} />
+                            </button>
+                        </>
+                    )}
+                </div>
             </div>
         );
     };

@@ -82,7 +82,13 @@ export const api = {
 
     // EMR
     getPatients: () => fetchJson<Patient[]>('/emr/patients'),
-    createPatient: (data: any) => fetchJson<Patient>('/emr/patients', {
+    getPatient: (id: string) => fetchJson<Patient>(`/emr/patients/${id}`),
+    createPatient: (data: any) => fetchJson<{ tenantPatientId: string }>('/emr/patients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    addEmergencyContact: (patientId: string, data: any) => fetchJson<any>(`/emr/patients/${patientId}/emergency-contact`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -93,6 +99,17 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }),
+    
+    // Patient Registration Refactor
+    searchUniversal: (query: string) => fetchJson<any[]>(`/emr/patients/universal-search?query=${encodeURIComponent(query)}`),
+    importGlobalPatient: (globalId: string) => fetchJson<{ tenantPatientId: string }>('/emr/patients/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ globalId })
+    }),
+    getTenantOrganismes: () => fetchJson<any[]>('/emr/reference/organismes'),
+    getTenantCountries: () => fetchJson<any[]>('/emr/reference/countries'),
+    getTenantIdentityDocumentTypes: () => fetchJson<any[]>('/emr/reference/identity-document-types'),
     // Pharmacy Attributes
     
     // Service Stock (EMR-based - for nurses/clinical staff)
@@ -273,6 +290,12 @@ export const api = {
     }),
     deleteServiceUnit: (unitId: string) => fetchJson<any>(`/settings/services/units/${unitId}`, {
         method: 'DELETE'
+    }),
+    deactivateServiceUnit: (unitId: string) => fetchJson<any>(`/settings/services/units/${unitId}/deactivate`, {
+        method: 'PUT'
+    }),
+    reactivateServiceUnit: (unitId: string) => fetchJson<any>(`/settings/services/units/${unitId}/reactivate`, {
+        method: 'PUT'
     }),
 
     getTenantRooms: (params?: any) => {

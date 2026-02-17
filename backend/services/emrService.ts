@@ -186,6 +186,20 @@ export class EmrService {
             expiryDate: r.expiry
         }));
     }
+
+    // --- REFERENCE DATA (TENANT) ---
+
+    async getOrganismes(tenantId: string) {
+        return await tenantQuery(tenantId, 'SELECT * FROM reference.organismes WHERE active = TRUE ORDER BY designation', []);
+    }
+
+    async getCountries(tenantId: string) {
+        return await tenantQuery(tenantId, 'SELECT * FROM reference.countries ORDER BY name', []);
+    }
+
+    async getIdentityDocumentTypes(tenantId: string) {
+        return await tenantQuery(tenantId, 'SELECT code, label FROM reference.identity_document_types ORDER BY code', []);
+    }
 }
 
 export const emrService = new EmrService();

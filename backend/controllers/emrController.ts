@@ -50,6 +50,36 @@ export const getGlobalConfig = async (req: Request, res: Response) => {
     }
 };
 
+// --- UNIVERSAL SEARCH & IMPORT (New Refactor) ---
+
+export const searchUniversalPatient = async (req: Request, res: Response) => {
+    try {
+        const { tenantId } = getContext(req);
+        const { query } = req.query;
+        if (typeof query !== 'string' || query.length < 2) {
+            return res.json([]); 
+        }
+        const results = await patientTenantService.searchUniversal(tenantId, query);
+        res.json(results);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const importGlobalPatient = async (req: Request, res: Response) => {
+    try {
+        const { tenantId } = getContext(req);
+        const { globalId } = req.body;
+        if (!globalId) {
+            return res.status(400).json({ message: 'globalId is required' });
+        }
+        const localId = await patientTenantService.importGlobalPatient(tenantId, globalId);
+        res.status(201).json({ tenantPatientId: localId });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 // --- TENANT PATIENTS ---
 
 export const getPatients = async (req: Request, res: Response) => {
@@ -259,6 +289,36 @@ export const getConsumptionsByAdmission = async (req: Request, res: Response) =>
         const { id } = req.params;
         const consumptions = await emrService.getConsumptionsByAdmission(tenantId, id);
         res.json(consumptions);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const getTenantOrganismes = async (req: Request, res: Response) => {
+    try {
+        const { tenantId } = getContext(req);
+        const organismes = await emrService.getOrganismes(tenantId);
+        res.json(organismes);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const getTenantCountries = async (req: Request, res: Response) => {
+    try {
+        const { tenantId } = getContext(req);
+        const countries = await emrService.getCountries(tenantId);
+        res.json(countries);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const getTenantIdentityDocumentTypes = async (req: Request, res: Response) => {
+    try {
+        const { tenantId } = getContext(req);
+        const docTypes = await emrService.getIdentityDocumentTypes(tenantId);
+        res.json(docTypes);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
