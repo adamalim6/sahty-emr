@@ -69,6 +69,9 @@ export interface Admission {
     dischargeDate?: string;
     status: 'En cours' | 'Sorti' | 'Annulé';
     currency?: string;
+    admissionType?: string;
+    arrivalMode?: string;
+    provenance?: string;
 
     // Legacy compat — mapped from old columns during transition
     /** @deprecated use admissionNumber */
@@ -81,6 +84,7 @@ export interface Admission {
     roomNumber?: string;
     /** @deprecated placement belongs to patient_stays */
     bedLabel?: string;
+    bedId?: string; // New field for patient_stays linkage
     /** @deprecated use tenantPatientId */
     patientId?: string;
     type?: string;

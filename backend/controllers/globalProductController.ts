@@ -14,10 +14,11 @@ export const getAllProducts = async (req: Request, res: Response) => {
             const limit = parseInt(req.query.limit as string) || 20;
             const q = (req.query.q as string) || '';
             const idsFilter = req.query.ids ? (req.query.ids as string).split(',') : undefined;
+            const dciId = req.query.dciId ? (req.query.dciId as string) : undefined;
             
             let result;
             if (isTenantUser) {
-                result = await referenceDataService.getProductsPaginated(tenantId, page, limit, q, idsFilter);
+                result = await referenceDataService.getProductsPaginated(tenantId, page, limit, q, idsFilter, dciId);
             } else {
                 result = await globalProductService.getProductsPaginated(page, limit, q, idsFilter);
             }

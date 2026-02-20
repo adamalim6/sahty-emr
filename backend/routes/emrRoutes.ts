@@ -16,7 +16,7 @@ import {
     getGlobalConfig,
     // Universal Access
     searchUniversalPatient,
-    importGlobalPatient,
+    // importGlobalPatient removed
     // Patient Network
     getPatientNetwork,
     addRelationship,
@@ -28,7 +28,11 @@ import {
     getPatientMergeHistory,
     getTenantOrganismes,
     getTenantCountries,
-    getTenantIdentityDocumentTypes
+    getTenantIdentityDocumentTypes,
+    searchCoverages,
+    getHospitalServices,
+    getHospitalDoctors,
+    getServiceBedOccupancy
 } from '../controllers/emrController';
 
 import { getServiceStock, getUserServices } from '../controllers/serviceStockController';
@@ -60,6 +64,12 @@ router.get('/config', requireTenant, getGlobalConfig); // For doc types, countri
 router.get('/reference/organismes', requireTenant, getTenantOrganismes);
 router.get('/reference/countries', requireTenant, getTenantCountries);
 router.get('/reference/identity-document-types', requireTenant, getTenantIdentityDocumentTypes);
+router.get('/hospital/services', requireTenant, getHospitalServices);
+router.get('/hospital/doctors', requireTenant, getHospitalDoctors);
+router.get('/services/:serviceId/occupancy', requireTenant, getServiceBedOccupancy);
+
+// --- COVERAGES ---
+router.get('/coverages/search', requireTenant, searchCoverages);
 
 // --- TENANT PATIENTS (Linkage) ---
 // "Get Patients" = Get Tenant Patient List (ACTIVE only)
@@ -70,8 +80,8 @@ router.get('/patients', requireTenant, getPatients);
 // Universal Search (Local -> Global)
 router.get('/patients/universal-search', requireTenant, searchUniversalPatient);
 
-// Import Global Patient to Local
-router.post('/patients/import', requireTenant, importGlobalPatient);
+// Import Global Patient to Local - REMOVED (Legacy)
+// router.post('/patients/import', requireTenant, importGlobalPatient);
 
 // "Create Patient" = Register New Tenant Patient
 router.post('/patients', requireTenant, createPatient);

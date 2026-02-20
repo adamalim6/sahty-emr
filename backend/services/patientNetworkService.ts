@@ -1,161 +1,167 @@
 
 import { tenantQuery, tenantTransaction } from '../db/tenantPg';
 import { 
-    Person, 
-    CreatePersonPayload, 
-    PatientRelationship, 
-    PatientEmergencyContact, 
-    PatientLegalGuardian, 
-    PatientDecisionMaker 
-} from '../models/patientNetwork';
+    PatientRelationshipLink
+} from '../models/patientTenant';
+
+// Re-exporting legacy interfaces or defining new ones if needed by controller
+// The controller uses `PatientRelationship`, `PatientEmergencyContact`, etc.
+// I should map them to the new schema or update the controller.
+// For now, I'll keep the methods signature if possible but return the new IDs.
 
 export class PatientNetworkService {
 
-    // --- PERSONS (Non-Patient) ---
-
-    async createPerson(tenantId: string, payload: CreatePersonPayload): Promise<string> {
-        const res = await tenantQuery(tenantId, `
-            INSERT INTO persons (tenant_id, first_name, last_name, phone, email)
-            VALUES ($1, $2, $3, $4, $5)
-            RETURNING person_id
-        `, [tenantId, payload.firstName, payload.lastName, payload.phone, payload.email]);
-        return res[0].person_id;
+    // --- PERSONS (Deprecated) ---
+    async createPerson(tenantId: string, payload: any): Promise<string> {
+        throw new Error("The 'persons' table has been removed in the Identity Refactor. Use 'createTenantPatient' or add a relationship with external details.");
     }
 
-    async getPerson(tenantId: string, personId: string): Promise<Person | null> {
-        const res = await tenantQuery(tenantId, `SELECT * FROM persons WHERE person_id = $1`, [personId]);
-        if (!res.length) return null;
-        const r = res[0];
-        return {
-            personId: r.person_id,
-            tenantId: r.tenant_id,
-            firstName: r.first_name,
-            lastName: r.last_name,
-            phone: r.phone,
-            email: r.email,
-            createdAt: r.created_at
-        };
+    async getPerson(tenantId: string, personId: string): Promise<any | null> {
+        // We could verify if it's a patient, but 'persons' table is gone.
+        return null; 
     }
 
-    // --- RELATIONSHIPS ---
+    // --- RELATIONSHIPS (Unified) ---
 
-    async addRelationship(tenantId: string, data: Partial<PatientRelationship>): Promise<string> {
+    async addRelationship(tenantId: string, data: any): Promise<string> {
+        // data: { subjectPatientId, relatedPatientId, relatedPersonId (ignored), relationshipType, validFrom, validTo }
+        // We map this to patient_relationship_links
+        
         return await tenantTransaction(tenantId, async (client) => {
-            // Validate exclusivity
-            if (data.relatedPatientId && data.relatedPersonId) throw new Error("Cannot link both patient and person");
-            if (!data.relatedPatientId && !data.relatedPersonId) throw new Error("Must link either patient or person");
-
             const res = await client.query(`
-                INSERT INTO patient_relationships 
-                (tenant_id, subject_patient_id, related_patient_id, related_person_id, relationship_type, valid_from, valid_to)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                INSERT INTO patient_relationship_links 
+                (tenant_id, subject_tenant_patient_id, related_tenant_patient_id, relationship_type_code, valid_from, valid_to)
+                VALUES ($1, $2, $3, $4, $5, $6)
                 RETURNING relationship_id
             `, [
-                tenantId, data.subjectPatientId, data.relatedPatientId, data.relatedPersonId, 
-                data.relationshipType, data.validFrom, data.validTo
+                tenantId, 
+                data.subjectPatientId, 
+                data.relatedPatientId || null, // If null, valid only if external fields provided?
+                data.relationshipType || 'OTHER',
+                data.validFrom || null,
+                data.validTo || null
             ]);
             return res.rows[0].relationship_id;
         });
     }
 
-    async getRelationships(tenantId: string, patientId: string): Promise<PatientRelationship[]> {
-        const res = await tenantQuery(tenantId, `SELECT * FROM patient_relationships WHERE subject_patient_id = $1`, [patientId]);
-        return res.map(r => ({
+    async getNetwork(tenantId: string, patientId: string) {
+        // Fetch all links
+        const rows = await tenantQuery(tenantId, `
+            SELECT * FROM patient_relationship_links 
+            WHERE subject_tenant_patient_id = $1
+            ORDER BY priority ASC, created_at DESC
+        `, [patientId]);
+
+        // Map to legacy buckets for Controller compatibility
+        const relationships = rows.map(r => ({
             relationshipId: r.relationship_id,
             tenantId: r.tenant_id,
-            subjectPatientId: r.subject_patient_id,
-            relatedPatientId: r.related_patient_id,
-            relatedPersonId: r.related_person_id,
-            relationshipType: r.relationship_type,
+            subjectPatientId: r.subject_tenant_patient_id,
+            relatedPatientId: r.related_tenant_patient_id,
+            relationshipType: r.relationship_type_code,
             validFrom: r.valid_from,
             validTo: r.valid_to,
-            createdAt: r.created_at
+            createdAt: r.created_at,
+            // External details
+            relatedFirstName: r.related_first_name,
+            relatedLastName: r.related_last_name
         }));
+
+        const emergencyContacts = rows.filter(r => r.is_emergency_contact).map(r => ({
+            emergencyContactId: r.relationship_id, // Reusing relationship_id
+            tenantId: r.tenant_id,
+            tenantPatientId: r.subject_tenant_patient_id,
+            relatedPatientId: r.related_tenant_patient_id,
+            relationshipLabel: r.relationship_type_code,
+            priority: r.priority,
+            createdAt: r.created_at,
+             // External
+             name: r.related_first_name && r.related_last_name ? `${r.related_first_name} ${r.related_last_name}` : 
+                   r.related_first_name || r.related_last_name || 'Inconnu'
+        }));
+
+        const legalGuardians = rows.filter(r => r.is_legal_guardian).map(r => ({
+            legalGuardianId: r.relationship_id,
+            tenantId: r.tenant_id,
+            tenantPatientId: r.subject_tenant_patient_id,
+            relatedPatientId: r.related_tenant_patient_id,
+            relationshipType: r.relationship_type_code,
+            validFrom: r.valid_from,
+            validTo: r.valid_to,
+            // External
+            firstName: r.related_first_name,
+            lastName: r.related_last_name
+        }));
+
+        const decisionMakers = rows.filter(r => r.is_decision_maker).map(r => ({
+            decisionMakerId: r.relationship_id,
+            tenantId: r.tenant_id,
+            tenantPatientId: r.subject_tenant_patient_id,
+            priority: r.priority,
+            role: r.relationship_type_code, // approximating 'role'
+             // External
+            firstName: r.related_first_name,
+            lastName: r.related_last_name
+        }));
+
+        return {
+            relationships,
+            emergencyContacts,
+            legalGuardians,
+            decisionMakers
+        };
     }
 
-    // --- EMERGENCY CONTACTS ---
+    // --- SPECIFIC ADDS ---
 
-    async addEmergencyContact(tenantId: string, data: Partial<PatientEmergencyContact>): Promise<string> {
+    async addEmergencyContact(tenantId: string, data: any): Promise<string> {
         return await tenantTransaction(tenantId, async (client) => {
+             // If payload has 'name', split it for external
+             let firstName = null; 
+             let lastName = null;
+             if (data.name) {
+                 const parts = data.name.split(' ');
+                 firstName = parts[0];
+                 lastName = parts.slice(1).join(' ');
+             }
+
              const res = await client.query(`
-                INSERT INTO patient_emergency_contacts
-                (tenant_id, tenant_patient_id, related_patient_id, related_person_id, relationship_label, priority)
-                VALUES ($1, $2, $3, $4, $5, $6)
-                RETURNING emergency_contact_id
+                INSERT INTO patient_relationship_links
+                (tenant_id, subject_tenant_patient_id, related_tenant_patient_id, related_first_name, related_last_name, relationship_type_code, is_emergency_contact, priority)
+                VALUES ($1, $2, $3, $4, $5, $6, true, $7)
+                RETURNING relationship_id
             `, [
-                tenantId, data.tenantPatientId, data.relatedPatientId, data.relatedPersonId,
-                data.relationshipLabel, data.priority
+                tenantId, 
+                data.tenantPatientId, 
+                data.relatedPatientId || null,
+                firstName, lastName,
+                data.relationshipLabel || 'OTHER', 
+                data.priority || 1
             ]);
-            return res.rows[0].emergency_contact_id;
+            return res.rows[0].relationship_id;
         });
     }
 
-    async getEmergencyContacts(tenantId: string, patientId: string): Promise<PatientEmergencyContact[]> {
-        const res = await tenantQuery(tenantId, `SELECT * FROM patient_emergency_contacts WHERE tenant_patient_id = $1 ORDER BY priority ASC`, [patientId]);
-        return res.map(r => ({
-            emergencyContactId: r.emergency_contact_id,
-            tenantId: r.tenant_id,
-            tenantPatientId: r.tenant_patient_id,
-            relatedPatientId: r.related_patient_id,
-            relatedPersonId: r.related_person_id,
-            relationshipLabel: r.relationship_label,
-            priority: r.priority,
-            createdAt: r.created_at
-        }));
+    async addLegalGuardian(tenantId: string, data: any): Promise<string> {
+         // data: { tenantPatientId, relatedPatientId, firstName, lastName, relationshipType, ... }
+         return await tenantTransaction(tenantId, async (client) => {
+            const res = await client.query(`
+                INSERT INTO patient_relationship_links
+                (tenant_id, subject_tenant_patient_id, related_tenant_patient_id, related_first_name, related_last_name, relationship_type_code, is_legal_guardian, valid_from, valid_to)
+                VALUES ($1, $2, $3, $4, $5, $6, true, $7, $8)
+                RETURNING relationship_id
+            `, [
+                tenantId,
+                data.tenantPatientId,
+                data.relatedPatientId || null,
+                data.firstName, data.lastName,
+                data.relationshipType || 'GUARDIAN', // Default?
+                data.validFrom, data.validTo
+            ]);
+            return res.rows[0].relationship_id;
+        });
     }
-
-    // --- LEGAL & DECISION MAKERS ---
-
-    async addLegalGuardian(tenantId: string, data: Partial<PatientLegalGuardian>): Promise<string> {
-         const res = await tenantQuery(tenantId, `
-            INSERT INTO patient_legal_guardians
-            (tenant_id, tenant_patient_id, related_patient_id, related_person_id, valid_from, valid_to, legal_basis)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-            RETURNING legal_guardian_id
-        `, [
-            tenantId, data.tenantPatientId, data.relatedPatientId, data.relatedPersonId,
-            data.validFrom, data.validTo, data.legalBasis
-        ]);
-        return res[0].legal_guardian_id;
-    }
-
-    async addDecisionMaker(tenantId: string, data: Partial<PatientDecisionMaker>): Promise<string> {
-        const res = await tenantQuery(tenantId, `
-           INSERT INTO patient_decision_makers
-           (tenant_id, tenant_patient_id, related_patient_id, related_person_id, role, priority, valid_from, valid_to)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-           RETURNING decision_maker_id
-       `, [
-           tenantId, data.tenantPatientId, data.relatedPatientId, data.relatedPersonId,
-           data.role, data.priority, data.validFrom, data.validTo
-       ]);
-       return res[0].decision_maker_id;
-   }
-
-   // --- AGGREGATION ---
-
-   async getNetwork(tenantId: string, patientId: string) {
-       const [relationships, emergencyContacts, legalGuardians, decisionMakers] = await Promise.all([
-           this.getRelationships(tenantId, patientId),
-           this.getEmergencyContacts(tenantId, patientId),
-           tenantQuery(tenantId, `SELECT * FROM patient_legal_guardians WHERE tenant_patient_id = $1`, [patientId]),
-           tenantQuery(tenantId, `SELECT * FROM patient_decision_makers WHERE tenant_patient_id = $1 ORDER BY priority ASC`, [patientId])
-       ]);
-
-       // Helper to fetch details could be optimizing here (e.g. bulk fetch Person/Patient names)
-       // For now, return raw IDs and let Frontend/Controller orchestrate enrichment if needed?
-       // Ideally the service returns enriched data.
-       // Let's stick to raw structured data, separate "getPersonName" helper if needed. 
-       // Frontend often needs names. 
-       // TODO: Implement enrichment if UI requires it in one shot. 
-
-       return {
-           relationships,
-           emergencyContacts,
-           legalGuardians: legalGuardians.map(r => ({ ...r, legalGuardianId: r.legal_guardian_id })),
-           decisionMakers: decisionMakers.map(r => ({ ...r, decisionMakerId: r.decision_maker_id }))
-       };
-   }
 }
 
 export const patientNetworkService = new PatientNetworkService();

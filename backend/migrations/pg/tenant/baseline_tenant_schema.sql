@@ -792,7 +792,10 @@ CREATE TABLE IF NOT EXISTS patients_tenant (
     tenant_patient_id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id                      UUID NOT NULL,
     medical_record_number          TEXT,
-    status                         TEXT DEFAULT 'ACTIVE',
+    lifecycle_status               TEXT NOT NULL DEFAULT 'ACTIVE'
+        CHECK (lifecycle_status IN ('ACTIVE', 'MERGED', 'INACTIVE')),
+    identity_status                TEXT NOT NULL DEFAULT 'PROVISIONAL'
+        CHECK (identity_status IN ('UNKNOWN', 'PROVISIONAL', 'VERIFIED')),
     created_at                     TIMESTAMPTZ DEFAULT now(),
     master_patient_id              UUID REFERENCES identity.master_patients(id),
     mpi_link_status                TEXT NOT NULL DEFAULT 'UNLINKED',
@@ -807,7 +810,7 @@ CREATE INDEX IF NOT EXISTS idx_patients_tenant_tenant ON patients_tenant (tenant
 CREATE INDEX IF NOT EXISTS idx_patients_tenant_mrn ON patients_tenant (tenant_id, medical_record_number);
 CREATE UNIQUE INDEX IF NOT EXISTS uniq_active_chart_per_master
     ON patients_tenant (tenant_id, master_patient_id)
-    WHERE status = 'ACTIVE' AND master_patient_id IS NOT NULL;
+    WHERE lifecycle_status = 'ACTIVE' AND master_patient_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS persons (
     person_id  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -868,6 +871,112 @@ CREATE TABLE IF NOT EXISTS patient_documents (
 );
 CREATE INDEX IF NOT EXISTS idx_patient_documents_patient_id ON patient_documents (patient_id);
 CREATE INDEX IF NOT EXISTS idx_patient_documents_lookup ON patient_documents (document_type_code, document_number);
+
+-- 15.b Identity IDs (Migration 041) — Replaces patient_documents for new identity model
+CREATE TABLE IF NOT EXISTS identity_ids (
+    identity_id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id            UUID NOT NULL,
+    tenant_patient_id    UUID NOT NULL REFERENCES patients_tenant(tenant_patient_id) ON DELETE CASCADE,
+    identity_type_code   TEXT NOT NULL,
+    identity_value       TEXT NOT NULL,
+    issuing_country_code TEXT,
+    is_primary           BOOLEAN NOT NULL DEFAULT FALSE,
+    status               TEXT NOT NULL DEFAULT 'ACTIVE',
+    created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_identity_ids_patient ON identity_ids(tenant_id, tenant_patient_id);
+CREATE INDEX IF NOT EXISTS idx_identity_ids_lookup ON identity_ids(tenant_id, identity_type_code, identity_value);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_mrn_per_tenant ON identity_ids(tenant_id, identity_type_code, identity_value) WHERE identity_type_code = 'LOCAL_MRN' AND status = 'ACTIVE';
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_nid_per_tenant ON identity_ids(tenant_id, identity_type_code, identity_value, issuing_country_code) WHERE identity_type_code IN ('NATIONAL_ID', 'PASSPORT', 'CIN') AND status = 'ACTIVE';
+
+-- 15.c Patient Identity Change Log (Migration 041)
+CREATE TABLE IF NOT EXISTS patient_identity_change (
+    change_id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id           UUID NOT NULL,
+    tenant_patient_id   UUID NOT NULL REFERENCES patients_tenant(tenant_patient_id) ON DELETE CASCADE,
+    changed_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    changed_by_user_id  UUID,
+    change_source       TEXT NOT NULL,
+    field_path          TEXT NOT NULL,
+    old_value           TEXT,
+    new_value           TEXT,
+    reason              TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_identity_change_patient ON patient_identity_change(tenant_id, tenant_patient_id);
+
+-- 15.d Patient Relationship Links (Migration 041 + 045)
+CREATE TABLE IF NOT EXISTS patient_relationship_links (
+    relationship_id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id                    UUID NOT NULL,
+    subject_tenant_patient_id    UUID NOT NULL REFERENCES patients_tenant(tenant_patient_id) ON DELETE CASCADE,
+    related_tenant_patient_id    UUID REFERENCES patients_tenant(tenant_patient_id) ON DELETE SET NULL,
+    related_first_name           TEXT,
+    related_last_name            TEXT,
+    related_identity_type_code   TEXT,
+    related_identity_value       TEXT,
+    related_issuing_country_code TEXT,
+    related_phone                TEXT,
+    relationship_type_code       TEXT NOT NULL,
+    is_legal_guardian             BOOLEAN NOT NULL DEFAULT FALSE,
+    is_decision_maker             BOOLEAN NOT NULL DEFAULT FALSE,
+    is_emergency_contact          BOOLEAN NOT NULL DEFAULT FALSE,
+    priority                     INTEGER,
+    is_primary                   BOOLEAN NOT NULL DEFAULT FALSE,
+    valid_from                   DATE,
+    valid_to                     DATE,
+    created_at                   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_rel_links_subject ON patient_relationship_links(tenant_id, subject_tenant_patient_id);
+CREATE INDEX IF NOT EXISTS idx_rel_links_related ON patient_relationship_links(tenant_id, related_tenant_patient_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_rel_patient ON patient_relationship_links(tenant_id, subject_tenant_patient_id, related_tenant_patient_id, relationship_type_code) WHERE related_tenant_patient_id IS NOT NULL;
+
+-- 15.e Coverages & Members (Migration 041 + 046)
+CREATE TABLE IF NOT EXISTS coverages (
+    coverage_id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id          UUID NOT NULL,
+    organisme_id       UUID NOT NULL REFERENCES reference.organismes(id),
+    policy_number      TEXT NOT NULL,
+    group_number       TEXT,
+    plan_name          TEXT,
+    coverage_type_code TEXT,
+    effective_from     DATE,
+    effective_to       DATE,
+    status             TEXT NOT NULL DEFAULT 'ACTIVE',
+    -- Subscriber denormalization (intentional redundancy with coverage_members SELF row)
+    subscriber_tenant_patient_id UUID REFERENCES patients_tenant(tenant_patient_id),
+    subscriber_first_name        TEXT,
+    subscriber_last_name         TEXT,
+    subscriber_identity_type     TEXT,
+    subscriber_identity_value    TEXT,
+    subscriber_issuing_country   TEXT,
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_coverages_lookup ON coverages(tenant_id, organisme_id, policy_number);
+
+CREATE TABLE IF NOT EXISTS coverage_members (
+    coverage_member_id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id                    UUID NOT NULL,
+    coverage_id                  UUID NOT NULL REFERENCES coverages(coverage_id) ON DELETE CASCADE,
+    tenant_patient_id            UUID REFERENCES patients_tenant(tenant_patient_id) ON DELETE CASCADE, -- Nullable (Mig 046)
+    relationship_to_subscriber_code TEXT,
+
+    -- External Subscriber Fields (Mig 046)
+    member_first_name            TEXT,
+    member_last_name             TEXT,
+    member_identity_type         TEXT,
+    member_identity_value        TEXT,
+    member_issuing_country       TEXT,
+
+    created_at                   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+-- Ensure uniqueness for patient members
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_coverage_member ON coverage_members(coverage_id, tenant_patient_id) WHERE tenant_patient_id IS NOT NULL;
+-- Ensure max one 'SELF' subscriber per coverage
+CREATE UNIQUE INDEX IF NOT EXISTS idx_coverage_subscriber_unique ON coverage_members(coverage_id) WHERE relationship_to_subscriber_code = 'SELF';
+
+
 
 CREATE TABLE IF NOT EXISTS patient_relationships (
     relationship_id    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -940,6 +1049,9 @@ CREATE TABLE IF NOT EXISTS admissions (
     admitting_service_id          UUID REFERENCES services(id),
     responsible_service_id        UUID REFERENCES services(id),
     current_service_id            UUID REFERENCES services(id),
+    admission_type                TEXT,
+    arrival_mode                  TEXT,
+    provenance                    TEXT,
     admission_date                TIMESTAMPTZ NOT NULL,
     discharge_date                TIMESTAMPTZ,
     status                        TEXT,
@@ -1110,5 +1222,154 @@ CREATE TABLE IF NOT EXISTS _migration_issues (
 );
 
 -- ============================================================================
--- END OF BASELINE
+
 -- ============================================================================
+-- 18. MISSING TABLES (COVERAGES & MEMBERS) - RECONSTRUCTED
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS coverages (
+    coverage_id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id         UUID NOT NULL,
+    organisme_id      UUID NOT NULL, -- References reference.organismes(id)
+    policy_number     TEXT,
+    group_number      TEXT,
+    plan_name         TEXT,
+    coverage_type_code TEXT,
+    effective_from    DATE,
+    effective_to      DATE,
+    status            TEXT NOT NULL DEFAULT 'ACTIVE',
+    created_at        TIMESTAMPTZ DEFAULT now(),
+    updated_at        TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_coverages_tenant ON coverages(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_coverages_organisme ON coverages(organisme_id);
+
+CREATE TABLE IF NOT EXISTS coverage_members (
+    coverage_member_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id          UUID NOT NULL,
+    coverage_id        UUID NOT NULL REFERENCES coverages(coverage_id) ON DELETE CASCADE,
+    tenant_patient_id  UUID NOT NULL REFERENCES patients_tenant(tenant_patient_id) ON DELETE CASCADE,
+    relationship_to_subscriber_code TEXT NOT NULL,
+    created_at         TIMESTAMPTZ DEFAULT now(),
+    updated_at         TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_cov_mem_coverage ON coverage_members(coverage_id);
+CREATE INDEX IF NOT EXISTS idx_cov_mem_patient ON coverage_members(tenant_patient_id);
+
+-- ============================================================================
+-- 19. EPIC COVERAGE REFACTOR (Migration 047 Tables)
+-- ============================================================================
+
+-- Coverage Change History (Audit Log for Master Tables)
+CREATE TABLE IF NOT EXISTS coverage_change_history (
+  change_id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id              uuid NOT NULL,
+
+  coverage_id            uuid NOT NULL,
+  coverage_member_id     uuid NULL,
+
+  change_type_code       text NOT NULL,
+  field_name             text NULL,
+  old_value              text NULL,
+  new_value              text NULL,
+
+  change_source          text NOT NULL,
+  changed_by_user_id     uuid NULL,
+  change_reason          text NULL,
+
+  changed_at             timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_coverage_history_coverage ON coverage_change_history (tenant_id, coverage_id);
+CREATE INDEX IF NOT EXISTS idx_coverage_history_member ON coverage_change_history (tenant_id, coverage_member_id);
+CREATE INDEX IF NOT EXISTS idx_coverage_history_date ON coverage_change_history (tenant_id, changed_at DESC);
+
+-- Admission Snapshot Tables
+
+-- admission_coverages
+CREATE TABLE IF NOT EXISTS admission_coverages (
+  admission_coverage_id   uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id               uuid NOT NULL,
+  admission_id            uuid NOT NULL REFERENCES admissions(id),
+
+  coverage_id             uuid NOT NULL REFERENCES coverages(coverage_id),
+
+  filing_order            integer NOT NULL,
+
+  -- Snapshot of key billing fields
+  organisme_id            uuid NOT NULL,
+  policy_number           text NULL,
+  group_number            text NULL,
+  plan_name               text NULL,
+  coverage_type_code      text NULL,
+
+  -- Snapshot of subscriber identity
+  subscriber_first_name   text NULL,
+  subscriber_last_name    text NULL,
+  subscriber_identity_type text NULL,
+  subscriber_identity_value text NULL,
+  subscriber_issuing_country text NULL,
+
+  created_at              timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_adm_cov_admission ON admission_coverages (tenant_id, admission_id);
+CREATE INDEX IF NOT EXISTS idx_adm_cov_coverage ON admission_coverages (tenant_id, coverage_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_adm_cov_order ON admission_coverages (tenant_id, admission_id, filing_order);
+
+-- admission_coverage_members
+CREATE TABLE IF NOT EXISTS admission_coverage_members (
+  admission_coverage_member_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id                    uuid NOT NULL,
+
+  admission_coverage_id        uuid NOT NULL REFERENCES admission_coverages(admission_coverage_id) ON DELETE CASCADE,
+
+  tenant_patient_id            uuid NULL,
+
+  -- Snapshot of member identity
+  member_first_name            text NULL,
+  member_last_name             text NULL,
+  relationship_to_subscriber_code text NULL,
+  member_identity_type         text NULL,
+  member_identity_value        text NULL,
+  member_issuing_country       text NULL,
+
+  created_at                   timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_adm_mem_coverage ON admission_coverage_members (tenant_id, admission_coverage_id);
+CREATE INDEX IF NOT EXISTS idx_adm_mem_patient ON admission_coverage_members (tenant_id, tenant_patient_id);
+
+-- Admission Coverage Change History
+CREATE TABLE IF NOT EXISTS admission_coverage_change_history (
+  change_id                      uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id                      uuid NOT NULL,
+
+  admission_id                   uuid NOT NULL,
+  admission_coverage_id          uuid NULL,
+  admission_coverage_member_id   uuid NULL,
+
+  change_type_code               text NOT NULL,
+
+  field_name                     text NULL,
+  old_value                      text NULL,
+  new_value                      text NULL,
+
+  change_source                  text NOT NULL,
+  changed_by_user_id             uuid NULL,
+  change_reason                  text NULL,
+
+  changed_at                     timestamptz NOT NULL DEFAULT now(),
+
+  CHECK (
+    admission_coverage_id IS NOT NULL
+    OR admission_coverage_member_id IS NOT NULL
+  )
+);
+
+CREATE INDEX IF NOT EXISTS idx_adm_hist_admission ON admission_coverage_change_history (tenant_id, admission_id);
+CREATE INDEX IF NOT EXISTS idx_adm_hist_coverage ON admission_coverage_change_history (tenant_id, admission_coverage_id);
+CREATE INDEX IF NOT EXISTS idx_adm_hist_date ON admission_coverage_change_history (tenant_id, changed_at DESC);
+

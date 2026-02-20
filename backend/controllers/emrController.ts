@@ -66,19 +66,23 @@ export const searchUniversalPatient = async (req: Request, res: Response) => {
     }
 };
 
-export const importGlobalPatient = async (req: Request, res: Response) => {
+export const searchCoverages = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const { globalId } = req.body;
-        if (!globalId) {
-            return res.status(400).json({ message: 'globalId is required' });
+        const { organismeId, policyNumber } = req.query;
+
+        if (typeof organismeId !== 'string' || typeof policyNumber !== 'string') {
+             return res.status(400).json({ message: 'organismeId and policyNumber are required' });
         }
-        const localId = await patientTenantService.importGlobalPatient(tenantId, globalId);
-        res.status(201).json({ tenantPatientId: localId });
+
+        const coverages = await patientTenantService.searchCoverages(tenantId, organismeId, policyNumber);
+        res.json(coverages);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 };
+
+// importGlobalPatient removed (legacy)
 
 // --- TENANT PATIENTS ---
 
@@ -105,7 +109,8 @@ export const getPatient = async (req: Request, res: Response) => {
 
         res.json(patient);
     } catch (error: any) {
-        res.status(500).json({ message: error.message });
+        console.error('Error in getPatient:', error);
+        res.status(500).json({ error: error.message || 'Internal Server Error' });
     }
 };
 
@@ -123,8 +128,16 @@ export const createPatient = async (req: Request, res: Response) => {
 };
 
 export const updatePatient = async (req: Request, res: Response) => {
-    // Legacy update - deprecated or needs specific update logic (e.g. add info)
-    res.status(501).json({ message: "Update Patient not implemented in new architecture yet" });
+    try {
+        const { tenantId } = getContext(req);
+        const { id } = req.params;
+        const payload = req.body;
+        const userId = (req as any).user?.id || (req as any).user?.userId || null;
+        const tenantPatientId = await patientTenantService.updateTenantPatient(tenantId, id, payload, userId);
+        res.json({ tenantPatientId });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
 };
 
 
@@ -229,6 +242,40 @@ export const getAdmissions = async (req: Request, res: Response) => {
         const { tenantId } = getContext(req);
         const admissions = await emrService.getAllAdmissions(tenantId);
         res.json(admissions);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// --- ADMISSIONS ---
+
+export const getHospitalServices = async (req: Request, res: Response) => {
+    try {
+        const { tenantId } = getContext(req);
+        const services = await emrService.getHospitalServices(tenantId);
+        res.json(services);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const getHospitalDoctors = async (req: Request, res: Response) => {
+    try {
+        const { tenantId } = getContext(req);
+        const doctors = await emrService.getHospitalDoctors(tenantId);
+        res.json(doctors);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const getServiceBedOccupancy = async (req: Request, res: Response) => {
+    try {
+        const { tenantId } = getContext(req);
+        const { serviceId } = req.params;
+        const { placementService } = await import('../services/placementService'); // Dynamic import to avoid cycles if any
+        const occupancy = await placementService.getActiveBedOccupancy(tenantId, serviceId);
+        res.json(occupancy);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
     }

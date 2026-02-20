@@ -111,7 +111,7 @@ export class SettingsService {
             VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now())
         `, [
             user.id, user.username, user.prenom || '', user.nom || '', displayName,
-            user.INPE || null,
+            (user.INPE || (user as any).inpe || '').trim() || null,
             user.active !== false
         ]);
 
@@ -162,7 +162,7 @@ export class SettingsService {
                 is_active=$5, updated_at=now()
             WHERE user_id=$6
         `, [
-            user.prenom || '', user.nom || '', displayName, user.INPE || null,
+            user.prenom || '', user.nom || '', displayName, (user.INPE || (user as any).inpe || '').trim() || null,
             user.active !== false, user.id
         ]);
 

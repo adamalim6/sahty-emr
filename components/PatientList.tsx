@@ -16,7 +16,6 @@ import {
   MapPin,
   Users,
   Smartphone,
-  Lock,
   Calendar,
   Phone,
   Mail,
@@ -134,28 +133,38 @@ export const PatientList: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredPatients.map(patient => (
-          <div key={patient.id} onClick={() => {
-            if (patient.isProvisional) {
-              setFormData({
-                ...patient,
-                insurance: patient.insurance || { mainOrg: '', relationship: 'Lui-même', registrationNumber: '' },
-                guardian: patient.guardian || { firstName: '', lastName: '', phone: '', relationship: 'Père', idType: 'CIN', idNumber: '', address: '', habilitation: '' },
-                emergencyContacts: (patient.emergencyContacts && patient.emergencyContacts.length > 0) ? patient.emergencyContacts : [{ name: '', relationship: 'Père', phone: '' }]
-              });
-              setModalMode('complet');
-              setIsModalOpen(true);
-            } else {
-              navigate(`/patient/${patient.id}`);
-            }
-          }} className="bg-white rounded-2xl shadow-sm border p-6 transition-all cursor-pointer group hover:shadow-xl hover:-translate-y-1">
+        {filteredPatients.map(patient => {
+          const docTypeLabel: Record<string, string> = { CIN: 'CIN', PASSPORT: 'Passeport', CARTE_SEJOUR: 'Carte de séjour' };
+          const lifecycleLabel: Record<string, string> = { ACTIVE: 'Actif', MERGED: 'Fusionné', INACTIVE: 'Inactif' };
+          const identityLabel: Record<string, string> = { UNKNOWN: 'Inconnu', PROVISIONAL: 'Provisoire', VERIFIED: 'Vérifié' };
+          const identityColor: Record<string, string> = { UNKNOWN: 'bg-slate-100 text-slate-600 border-slate-200', PROVISIONAL: 'bg-amber-50 text-amber-700 border-amber-200', VERIFIED: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+          const lifecycleColor: Record<string, string> = { ACTIVE: 'bg-blue-50 text-blue-700 border-blue-200', MERGED: 'bg-purple-50 text-purple-700 border-purple-200', INACTIVE: 'bg-red-50 text-red-600 border-red-200' };
+
+          return (
+          <div key={patient.id} onClick={() => navigate(`/patient/${patient.id}`)} className="bg-white rounded-2xl shadow-sm border p-6 transition-all cursor-pointer group hover:shadow-xl hover:-translate-y-1">
             <div className="flex items-start space-x-4">
               <div className={`h-14 w-14 rounded-2xl flex items-center justify-center border-2 ${patient.gender === Gender.Female ? 'bg-pink-50 text-pink-500 border-pink-100' : 'bg-blue-50 text-blue-500 border-blue-100'}`}><User size={28} /></div>
-              <div className="flex-1 min-w-0"><h3 className="text-lg font-bold text-slate-900 truncate uppercase">{patient.lastName} {patient.firstName}</h3><div className="flex flex-col space-y-1 mt-1.5"><span className="text-[10px] font-black bg-slate-100 border px-2 py-0.5 rounded text-slate-500 uppercase w-fit">{patient.ipp}</span>{patient.cin && <div className="flex items-center space-x-1.5 text-slate-400"><IdCard size={12} /><span className="text-[10px] font-bold uppercase">{patient.cin}</span></div>}</div></div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg font-bold text-slate-900 truncate uppercase">{patient.lastName} {patient.firstName}</h3>
+                <div className="flex flex-col space-y-1.5 mt-2">
+                  {patient.ipp && <span className="text-[10px] font-black bg-slate-100 border px-2 py-0.5 rounded text-slate-500 uppercase w-fit flex items-center"><Hash size={10} className="mr-1" />IPP: {patient.ipp}</span>}
+                  {patient.primaryDocValue && <div className="flex items-center space-x-1.5 text-slate-500"><IdCard size={12} /><span className="text-[10px] font-bold uppercase">{docTypeLabel[patient.primaryDocType || ''] || patient.primaryDocType}: {patient.primaryDocValue}</span></div>}
+                </div>
+              </div>
             </div>
-            <div className="mt-6 pt-4 border-t border-slate-50 flex items-center justify-between"><span className={`text-[10px] font-black uppercase tracking-widest ${patient.isProvisional ? 'text-amber-600' : 'text-emerald-600'} flex items-center`}>{patient.isProvisional ? <Lock size={12} className="mr-1.5" /> : <CheckCircle2 size={12} className="mr-1.5" />} {patient.isProvisional ? 'Accès Bloqué' : 'Dossier Prêt'}</span><ChevronRight className="text-slate-300 group-hover:text-emerald-500 transition-all group-hover:translate-x-1" size={18} /></div>
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+              <div className="flex items-center flex-wrap gap-2">
+                <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${patient.gender === Gender.Female ? 'bg-pink-50 text-pink-700 border-pink-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+                  {patient.gender === Gender.Female ? 'FEMME' : 'HOMME'}
+                </span>
+                <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${lifecycleColor[patient.lifecycleStatus || 'ACTIVE']}`}>{lifecycleLabel[patient.lifecycleStatus || 'ACTIVE']}</span>
+                <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${identityColor[patient.identityStatus || 'UNKNOWN']}`}>{patient.identityStatus === 'VERIFIED' && <CheckCircle2 size={9} className="inline mr-0.5 -mt-px" />}{identityLabel[patient.identityStatus || 'UNKNOWN']}</span>
+              </div>
+              <ChevronRight className="text-slate-300 group-hover:text-emerald-500 transition-all group-hover:translate-x-1" size={18} />
+            </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {isModalOpen && (

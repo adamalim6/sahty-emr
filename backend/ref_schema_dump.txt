@@ -1,0 +1,677 @@
+Dumping full schema for reference tenant ced91ced-fe46-45d1-8ead-b5d51bad5895...
+[TenantPg] Pool created for tenant_ced91ced-fe46-45d1-8ead-b5d51bad5895
+
+=== SCHEMAS ===
+ - auth
+ - auth_sync
+ - identity_sync
+ - public
+ - reference
+
+=== TABLES ===
+
+[auth]
+  - audit_log
+  - credentials
+  - user_tenants
+  - users
+
+[auth_sync]
+  - inbox_events
+  - outbox_events
+  - sync_state
+
+[identity_sync]
+  - inbox_events
+  - outbox_events
+
+[public]
+  - _migration_issues
+  - actes
+  - admission_coverage_change_history
+  - admission_coverage_members
+  - admission_coverages
+  - admissions
+  - appointments
+  - audit_log
+  - beds
+  - coverage_change_history
+  - coverage_members
+  - coverages
+  - current_stock
+  - delivery_note_items
+  - delivery_note_layers
+  - delivery_notes
+  - identity_ids
+  - inventory_movements
+  - locations
+  - medication_dispense_events
+  - patient_addresses
+  - patient_contacts
+  - patient_coverages
+  - patient_identity_change
+  - patient_relationship_links
+  - patient_stays
+  - patient_tenant_merge_events
+  - patients_tenant
+  - po_items
+  - prescriptions
+  - product_configs
+  - product_price_versions
+  - product_suppliers
+  - product_wac
+  - purchase_orders
+  - return_decision_lines
+  - return_decisions
+  - return_reception_lines
+  - return_receptions
+  - room_types
+  - rooms
+  - service_units
+  - services
+  - stock_demand_lines
+  - stock_demands
+  - stock_reservation_lines
+  - stock_reservations
+  - stock_return_lines
+  - stock_returns
+  - stock_transfer_lines
+  - stock_transfers
+  - suppliers
+  - user_roles
+  - user_services
+
+[reference]
+  - countries
+  - global_actes
+  - global_atc
+  - global_dci
+  - global_emdn
+  - global_product_price_history
+  - global_products
+  - global_roles
+  - global_suppliers
+  - identity_document_types
+  - organismes
+
+=== PUBLIC TABLE DEFINITIONS ===
+
+TABLE: _migration_issues (7 columns)
+  id uuid NOT NULL DEFAULT gen_random_uuid()
+  source_table text NOT NULL 
+  source_id text  
+  issue_type text NOT NULL 
+  issue_description text  
+  row_data jsonb  
+  created_at timestamp with time zone  DEFAULT now()
+
+TABLE: actes (7 columns)
+  id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  code text NOT NULL 
+  designation text NOT NULL 
+  category text  
+  price numeric  
+  created_at timestamp with time zone  DEFAULT now()
+
+TABLE: admission_coverage_change_history (13 columns)
+  change_id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  admission_id uuid NOT NULL 
+  admission_coverage_id uuid  
+  admission_coverage_member_id uuid  
+  change_type_code text NOT NULL 
+  field_name text  
+  old_value text  
+  new_value text  
+  change_source text NOT NULL 
+  changed_by_user_id uuid  
+  change_reason text  
+  changed_at timestamp with time zone NOT NULL DEFAULT now()
+
+TABLE: admission_coverage_members (11 columns)
+  admission_coverage_member_id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  admission_coverage_id uuid NOT NULL 
+  tenant_patient_id uuid  
+  member_first_name text  
+  member_last_name text  
+  relationship_to_subscriber_code text  
+  member_identity_type text  
+  member_identity_value text  
+  member_issuing_country text  
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+
+TABLE: admission_coverages (16 columns)
+  admission_coverage_id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  admission_id uuid NOT NULL 
+  coverage_id uuid NOT NULL 
+  filing_order integer NOT NULL 
+  organisme_id uuid NOT NULL 
+  policy_number text  
+  group_number text  
+  plan_name text  
+  coverage_type_code text  
+  subscriber_first_name text  
+  subscriber_last_name text  
+  subscriber_identity_type text  
+  subscriber_identity_value text  
+  subscriber_issuing_country text  
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+
+TABLE: admissions (14 columns)
+  id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  tenant_patient_id uuid  
+  admission_number text  
+  reason text  
+  attending_physician_user_id uuid  
+  admitting_service_id uuid  
+  responsible_service_id uuid  
+  current_service_id uuid  
+  admission_date timestamp with time zone NOT NULL 
+  discharge_date timestamp with time zone  
+  status text  
+  currency text  DEFAULT 'MAD'::text
+  created_at timestamp with time zone  DEFAULT now()
+
+TABLE: appointments (10 columns)
+  id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  patient_id uuid  
+  service_id uuid  
+  date_time timestamp with time zone NOT NULL 
+  reason text  
+  doctor_name text  
+  status text  
+  created_at timestamp with time zone  DEFAULT now()
+  tenant_patient_id uuid  
+
+TABLE: audit_log (10 columns)
+  audit_id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid  
+  table_name text NOT NULL 
+  record_id uuid NOT NULL 
+  action text NOT NULL 
+  old_data jsonb  
+  new_data jsonb  
+  changed_at timestamp with time zone NOT NULL DEFAULT now()
+  changed_by uuid  
+  operation_txid bigint  
+
+TABLE: beds (6 columns)
+  id uuid NOT NULL DEFAULT gen_random_uuid()
+  room_id uuid NOT NULL 
+  label text NOT NULL 
+  status USER-DEFINED NOT NULL DEFAULT 'AVAILABLE'::bed_status
+  is_active boolean NOT NULL DEFAULT true
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+
+TABLE: coverage_change_history (12 columns)
+  change_id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  coverage_id uuid NOT NULL 
+  coverage_member_id uuid  
+  change_type_code text NOT NULL 
+  field_name text  
+  old_value text  
+  new_value text  
+  change_source text NOT NULL 
+  changed_by_user_id uuid  
+  change_reason text  
+  changed_at timestamp with time zone NOT NULL DEFAULT now()
+
+TABLE: coverage_members (11 columns)
+  coverage_member_id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  coverage_id uuid NOT NULL 
+  tenant_patient_id uuid  
+  relationship_to_subscriber_code text  
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+  member_first_name text  
+  member_last_name text  
+  member_identity_type text  
+  member_identity_value text  
+  member_issuing_country text  
+
+TABLE: coverages (12 columns)
+  coverage_id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  organisme_id uuid NOT NULL 
+  policy_number text NOT NULL 
+  group_number text  
+  plan_name text  
+  coverage_type_code text  
+  effective_from date  
+  effective_to date  
+  status text NOT NULL DEFAULT 'ACTIVE'::text
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+  updated_at timestamp with time zone NOT NULL DEFAULT now()
+
+TABLE: current_stock (8 columns)
+  tenant_id uuid NOT NULL 
+  product_id uuid NOT NULL 
+  lot text NOT NULL 
+  expiry date NOT NULL 
+  location_id uuid NOT NULL 
+  qty_units integer NOT NULL 
+  reserved_units integer NOT NULL DEFAULT 0
+  pending_return_units integer NOT NULL DEFAULT 0
+
+TABLE: delivery_note_items (6 columns)
+  id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  delivery_note_id uuid NOT NULL 
+  product_id uuid NOT NULL 
+  qty_pending integer NOT NULL 
+  created_at timestamp with time zone  DEFAULT now()
+
+TABLE: delivery_note_layers (8 columns)
+  delivery_note_id uuid NOT NULL 
+  tenant_id uuid NOT NULL 
+  product_id uuid NOT NULL 
+  lot text NOT NULL 
+  expiry date NOT NULL 
+  qty_received integer NOT NULL 
+  qty_remaining integer NOT NULL 
+  purchase_unit_cost numeric  
+
+TABLE: delivery_notes (9 columns)
+  delivery_note_id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  supplier_id text NOT NULL 
+  po_id uuid  
+  received_at timestamp with time zone NOT NULL 
+  status text  DEFAULT 'PENDING'::text
+  created_by text  
+  created_at timestamp with time zone  DEFAULT now()
+  reference text  
+
+TABLE: identity_ids (10 columns)
+  identity_id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  tenant_patient_id uuid NOT NULL 
+  identity_type_code text NOT NULL 
+  identity_value text NOT NULL 
+  issuing_country_code text  
+  is_primary boolean NOT NULL DEFAULT false
+  status text NOT NULL DEFAULT 'ACTIVE'::text
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+  updated_at timestamp with time zone NOT NULL DEFAULT now()
+
+TABLE: inventory_movements (12 columns)
+  movement_id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  product_id uuid NOT NULL 
+  lot text NOT NULL 
+  expiry date NOT NULL 
+  qty_units integer NOT NULL 
+  from_location_id uuid  
+  to_location_id uuid  
+  document_type text NOT NULL 
+  document_id uuid  
+  created_by uuid  
+  created_at timestamp with time zone  DEFAULT now()
+
+TABLE: locations (10 columns)
+  location_id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  name text NOT NULL 
+  type text  
+  scope text  
+  service_id uuid  
+  status text  DEFAULT 'ACTIVE'::text
+  created_at timestamp with time zone  DEFAULT now()
+  location_class text  DEFAULT 'COMMERCIAL'::text
+  valuation_policy text NOT NULL DEFAULT 'VALUABLE'::text
+
+TABLE: medication_dispense_events (10 columns)
+  id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  prescription_id uuid  
+  admission_id uuid  
+  product_id uuid NOT NULL 
+  lot text  
+  expiry date  
+  qty_dispensed integer NOT NULL 
+  dispensed_by text  
+  dispensed_at timestamp with time zone  DEFAULT now()
+
+TABLE: patient_addresses (11 columns)
+  address_id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_patient_id uuid NOT NULL 
+  address_line text  
+  city text  
+  country_id uuid  
+  created_at timestamp with time zone  DEFAULT now()
+  address_line2 text  
+  postal_code text  
+  region text  
+  country_code text  
+  is_primary boolean NOT NULL DEFAULT false
+
+TABLE: patient_contacts (5 columns)
+  contact_id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_patient_id uuid NOT NULL 
+  phone text  
+  email text  
+  created_at timestamp with time zone  DEFAULT now()
+
+TABLE: patient_coverages (9 columns)
+  patient_coverage_id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  tenant_patient_id uuid NOT NULL 
+  coverage_id uuid NOT NULL 
+  filing_order integer NOT NULL DEFAULT 1
+  effective_from date  
+  effective_to date  
+  is_active boolean NOT NULL DEFAULT true
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+
+TABLE: patient_identity_change (10 columns)
+  change_id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  tenant_patient_id uuid NOT NULL 
+  changed_at timestamp with time zone NOT NULL DEFAULT now()
+  changed_by_user_id uuid  
+  change_source text NOT NULL 
+  field_path text NOT NULL 
+  old_value text  
+  new_value text  
+  reason text  
+
+TABLE: patient_relationship_links (19 columns)
+  relationship_id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  subject_tenant_patient_id uuid NOT NULL 
+  related_tenant_patient_id uuid  
+  related_first_name text  
+  related_last_name text  
+  related_identity_type_code text  
+  related_identity_value text  
+  related_issuing_country_code text  
+  relationship_type_code text NOT NULL 
+  is_legal_guardian boolean NOT NULL DEFAULT false
+  is_decision_maker boolean NOT NULL DEFAULT false
+  is_emergency_contact boolean NOT NULL DEFAULT false
+  priority integer  
+  is_primary boolean NOT NULL DEFAULT false
+  valid_from date  
+  valid_to date  
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+  related_phone text  
+
+TABLE: patient_stays (7 columns)
+  id uuid NOT NULL DEFAULT gen_random_uuid()
+  admission_id uuid NOT NULL 
+  tenant_patient_id uuid NOT NULL 
+  bed_id uuid NOT NULL 
+  started_at timestamp with time zone NOT NULL DEFAULT now()
+  ended_at timestamp with time zone  
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+
+TABLE: patient_tenant_merge_events (7 columns)
+  merge_event_id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  source_tenant_patient_id uuid NOT NULL 
+  target_tenant_patient_id uuid NOT NULL 
+  reason text  
+  merged_by_user_id uuid  
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+
+TABLE: patients_tenant (9 columns)
+  tenant_patient_id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  status text  DEFAULT 'ACTIVE'::text
+  created_at timestamp with time zone  DEFAULT now()
+  first_name text  
+  last_name text  
+  dob date  
+  sex text  
+  merged_into_tenant_patient_id uuid  
+
+TABLE: po_items (7 columns)
+  po_id uuid NOT NULL 
+  tenant_id uuid NOT NULL 
+  product_id uuid NOT NULL 
+  qty_ordered integer NOT NULL 
+  qty_delivered integer  DEFAULT 0
+  qty_to_be_delivered integer  DEFAULT 0
+  unit_price numeric  
+
+TABLE: prescriptions (9 columns)
+  id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  patient_id uuid  
+  admission_id uuid  
+  status text  DEFAULT 'ACTIVE'::text
+  data jsonb  
+  created_at timestamp with time zone  DEFAULT now()
+  created_by text  
+  tenant_patient_id uuid  
+
+TABLE: product_configs (8 columns)
+  tenant_id uuid NOT NULL 
+  product_id uuid NOT NULL 
+  is_enabled boolean  DEFAULT true
+  min_stock integer  
+  max_stock integer  
+  security_stock integer  
+  created_at timestamp with time zone  DEFAULT now()
+  updated_at timestamp with time zone  DEFAULT now()
+
+TABLE: product_price_versions (14 columns)
+  id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  product_supplier_id uuid NOT NULL 
+  purchase_price numeric NOT NULL 
+  margin numeric  DEFAULT 0
+  vat numeric  DEFAULT 0
+  sale_price_ht numeric  
+  sale_price_ttc numeric  
+  unit_sale_price numeric  
+  valid_from timestamp with time zone  DEFAULT now()
+  valid_to timestamp with time zone  
+  created_by text  
+  change_reason text  
+  status text  DEFAULT 'ACTIVE'::text
+
+TABLE: product_suppliers (8 columns)
+  id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  product_id uuid NOT NULL 
+  supplier_id uuid NOT NULL 
+  supplier_type text  DEFAULT 'GLOBAL'::text
+  is_active boolean  DEFAULT true
+  created_at timestamp with time zone  DEFAULT now()
+  updated_at timestamp with time zone  DEFAULT now()
+
+TABLE: product_wac (4 columns)
+  tenant_id uuid NOT NULL 
+  product_id uuid NOT NULL 
+  wac numeric NOT NULL 
+  last_updated timestamp with time zone  DEFAULT now()
+
+TABLE: purchase_orders (8 columns)
+  po_id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  supplier_id uuid NOT NULL 
+  status text NOT NULL 
+  created_by uuid  
+  created_at timestamp with time zone  DEFAULT now()
+  updated_at timestamp with time zone  DEFAULT now()
+  reference text  
+
+TABLE: return_decision_lines (6 columns)
+  id uuid NOT NULL DEFAULT gen_random_uuid()
+  decision_id uuid NOT NULL 
+  return_line_id uuid NOT NULL 
+  qty_units integer NOT NULL 
+  outcome text NOT NULL 
+  destination_location_id uuid  
+
+TABLE: return_decisions (4 columns)
+  id uuid NOT NULL DEFAULT gen_random_uuid()
+  reception_id uuid NOT NULL 
+  decided_by uuid NOT NULL 
+  decided_at timestamp with time zone NOT NULL DEFAULT now()
+
+TABLE: return_reception_lines (4 columns)
+  id uuid NOT NULL DEFAULT gen_random_uuid()
+  reception_id uuid NOT NULL 
+  return_line_id uuid NOT NULL 
+  qty_received_units integer NOT NULL 
+
+TABLE: return_receptions (6 columns)
+  id uuid NOT NULL DEFAULT gen_random_uuid()
+  return_id uuid NOT NULL 
+  received_by uuid NOT NULL 
+  received_at timestamp with time zone NOT NULL DEFAULT now()
+  reception_reference text  
+  status text NOT NULL DEFAULT 'OPEN'::text
+
+TABLE: room_types (7 columns)
+  id uuid NOT NULL DEFAULT gen_random_uuid()
+  name text NOT NULL 
+  description text  
+  unit_category text NOT NULL DEFAULT 'CHAMBRE'::text
+  number_of_beds integer  
+  is_active boolean NOT NULL DEFAULT true
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+
+TABLE: rooms (7 columns)
+  id uuid NOT NULL DEFAULT gen_random_uuid()
+  service_id uuid NOT NULL 
+  room_type_id uuid NOT NULL 
+  name text NOT NULL 
+  description text  
+  is_active boolean NOT NULL DEFAULT true
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+
+TABLE: service_units (5 columns)
+  id uuid NOT NULL DEFAULT gen_random_uuid()
+  service_id uuid NOT NULL 
+  name text NOT NULL 
+  type text  
+  capacity integer  DEFAULT 0
+
+TABLE: services (5 columns)
+  id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  name text NOT NULL 
+  code text  
+  description text  
+
+TABLE: stock_demand_lines (9 columns)
+  id uuid NOT NULL DEFAULT gen_random_uuid()
+  demand_id uuid NOT NULL 
+  tenant_id uuid NOT NULL 
+  product_id uuid NOT NULL 
+  qty_requested integer NOT NULL 
+  qty_allocated integer  DEFAULT 0
+  qty_transferred integer  DEFAULT 0
+  created_at timestamp with time zone  DEFAULT now()
+  target_stock_location_id uuid  
+
+TABLE: stock_demands (9 columns)
+  id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  service_id uuid NOT NULL 
+  status text NOT NULL DEFAULT 'DRAFT'::text
+  priority text  DEFAULT 'ROUTINE'::text
+  requested_by uuid  
+  created_at timestamp with time zone  DEFAULT now()
+  updated_at timestamp with time zone  DEFAULT now()
+  demand_ref text  
+
+TABLE: stock_reservation_lines (11 columns)
+  id uuid NOT NULL DEFAULT gen_random_uuid()
+  reservation_id uuid NOT NULL 
+  tenant_id uuid NOT NULL 
+  stock_demand_line_id uuid  
+  product_id uuid NOT NULL 
+  lot text NOT NULL 
+  expiry date NOT NULL 
+  source_location_id uuid NOT NULL 
+  destination_location_id uuid  
+  qty_units integer NOT NULL 
+  created_at timestamp with time zone  DEFAULT now()
+
+TABLE: stock_reservations (10 columns)
+  reservation_id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  session_id uuid NOT NULL 
+  user_id uuid NOT NULL 
+  stock_demand_id uuid  
+  status text  DEFAULT 'ACTIVE'::text
+  reserved_at timestamp with time zone  DEFAULT now()
+  expires_at timestamp with time zone NOT NULL 
+  released_at timestamp with time zone  
+  committed_at timestamp with time zone  
+
+TABLE: stock_return_lines (9 columns)
+  id uuid NOT NULL DEFAULT gen_random_uuid()
+  return_id uuid NOT NULL 
+  product_id uuid NOT NULL 
+  lot text NOT NULL 
+  expiry date NOT NULL 
+  source_location_id uuid NOT NULL 
+  qty_declared_units integer NOT NULL 
+  original_dispense_event_id uuid  
+  stock_reservation_line_id uuid  
+
+TABLE: stock_returns (9 columns)
+  id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  source_type text NOT NULL 
+  source_service_id uuid  
+  created_by uuid NOT NULL 
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+  status text NOT NULL DEFAULT 'DRAFT'::text
+  stock_reservation_id uuid  
+  return_reference text  
+
+TABLE: stock_transfer_lines (12 columns)
+  id uuid NOT NULL DEFAULT gen_random_uuid()
+  transfer_id uuid NOT NULL 
+  tenant_id uuid NOT NULL 
+  product_id uuid NOT NULL 
+  lot text NOT NULL 
+  expiry date NOT NULL 
+  qty_transferred integer NOT NULL 
+  demand_line_id uuid  
+  created_at timestamp with time zone  DEFAULT now()
+  source_location_id uuid  
+  destination_location_id uuid  
+  reservation_line_id uuid  
+
+TABLE: stock_transfers (9 columns)
+  id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  demand_id uuid  
+  status text NOT NULL DEFAULT 'PENDING'::text
+  validated_at timestamp with time zone  
+  validated_by text  
+  created_at timestamp with time zone  DEFAULT now()
+  client_request_id text  
+  stock_reservation_id uuid  
+
+TABLE: suppliers (8 columns)
+  supplier_id uuid NOT NULL DEFAULT gen_random_uuid()
+  tenant_id uuid NOT NULL 
+  name text NOT NULL 
+  email text  
+  phone text  
+  address text  
+  is_active boolean  DEFAULT true
+  created_at timestamp with time zone  DEFAULT now()
+
+TABLE: user_roles (3 columns)
+  user_id uuid NOT NULL 
+  role_id uuid NOT NULL 
+  assigned_at timestamp with time zone NOT NULL DEFAULT now()
+
+TABLE: user_services (2 columns)
+  user_id uuid NOT NULL 
+  service_id uuid NOT NULL 

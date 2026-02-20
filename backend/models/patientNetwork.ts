@@ -1,60 +1,86 @@
 
+
 export interface Person {
+    // Deprecated - kept for legacy payloads if needed
     personId: string;
-    tenantId: string;
     firstName: string;
     lastName: string;
-    phone?: string;
-    email?: string;
-    createdAt?: string;
 }
 
 export interface PatientRelationship {
     relationshipId: string;
     tenantId: string;
     subjectPatientId: string;
-    relatedPatientId?: string; // One of these two is required
-    relatedPersonId?: string;
-    relationshipType: string; // 'MOTHER', 'FATHER', 'SPOUSE', 'CHILD', etc.
-    validFrom: string;
+    
+    relatedPatientId?: string; 
+    // External Party
+    relatedFirstName?: string;
+    relatedLastName?: string;
+
+    relationshipType: string; 
+    validFrom?: string;
     validTo?: string;
     createdAt?: string;
+    
+    // Deprecated
+    relatedPersonId?: string; 
 }
 
 export interface PatientEmergencyContact {
     emergencyContactId: string;
     tenantId: string;
     tenantPatientId: string;
+    
     relatedPatientId?: string;
-    relatedPersonId?: string;
+    // External
+    name?: string;
+    phone?: string;
+
     relationshipLabel?: string;
     priority?: number;
     createdAt?: string;
+
+    // Deprecated
+    relatedPersonId?: string;
 }
 
 export interface PatientLegalGuardian {
     legalGuardianId: string;
     tenantId: string;
     tenantPatientId: string;
+    
     relatedPatientId?: string;
-    relatedPersonId?: string;
-    validFrom: string;
+    // External
+    firstName?: string;
+    lastName?: string;
+
+    validFrom?: string; // Optional now?
     validTo?: string;
     legalBasis?: string;
     createdAt?: string;
+    
+    // Deprecated
+    relatedPersonId?: string;
 }
 
 export interface PatientDecisionMaker {
     decisionMakerId: string;
     tenantId: string;
     tenantPatientId: string;
+    
     relatedPatientId?: string;
-    relatedPersonId?: string;
-    role: string; // 'HEALTHCARE_PROXY', 'GUARDIAN', 'SURROGATE'
+    // External
+    firstName?: string;
+    lastName?: string;
+
+    role: string; 
     priority?: number;
-    validFrom: string;
+    validFrom?: string;
     validTo?: string;
     createdAt?: string;
+
+    // Deprecated
+    relatedPersonId?: string;
 }
 
 export interface CreatePersonPayload {

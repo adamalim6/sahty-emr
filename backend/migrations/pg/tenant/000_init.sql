@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS public.patients_tenant (
     tenant_id UUID NOT NULL,
     global_patient_id UUID, -- Legacy column, dropped in 003
     medical_record_number TEXT,
-    status TEXT, -- ACTIVE, MERGED, INACTIVE
+    lifecycle_status TEXT NOT NULL DEFAULT 'ACTIVE', -- ACTIVE, MERGED, INACTIVE
+    identity_status TEXT NOT NULL DEFAULT 'PROVISIONAL', -- UNKNOWN, PROVISIONAL, VERIFIED
     nationality_id UUID,
     
     -- Original columns present in 3f6d before 002

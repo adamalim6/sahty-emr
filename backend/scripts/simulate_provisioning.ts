@@ -5,7 +5,7 @@ import { getTenantDbName } from '../db/tenantPg';
 
 const TEST_TENANT_ID = '00000000-0000-4000-a000-000000000001';
 const TEST_DB_NAME = getTenantDbName(TEST_TENANT_ID);
-const REF_TENANT_ID = '3861b58c-69a7-4113-b503-378a08c700b7';
+const REF_TENANT_ID = 'ced91ced-fe46-45d1-8ead-b5d51bad5895';
 
 async function simulateProvisioning() {
     console.log('--- Simulating Provisioning for New Tenant ---');

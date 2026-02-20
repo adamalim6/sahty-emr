@@ -1,14 +1,16 @@
 
 export enum Gender {
-  Male = 'Homme',
-  Female = 'Femme',
+  Male = 'M',
+  Female = 'F',
 }
 
 export interface Patient {
   id: string;
   tenantPatientId?: string; // New
-  status?: 'ACTIVE' | 'PROVISIONAL' | 'VERIFIED' | 'MERGED' | 'INACTIVE'; // New
-  isProvisional?: boolean; // Deprecated, kept for compat (calculated from status)
+  lifecycleStatus?: 'ACTIVE' | 'MERGED' | 'INACTIVE';
+  identityStatus?: 'UNKNOWN' | 'PROVISIONAL' | 'VERIFIED';
+  primaryDocType?: string;  // CIN, PASSPORT, CARTE_SEJOUR
+  primaryDocValue?: string; // The document number
   ipp: string; // medicalRecordNumber
   firstName: string;
   lastName: string;
@@ -77,7 +79,10 @@ export interface Admission {
   doctorName: string;
   roomNumber?: string;
   bedLabel?: string;
+  bedId?: string;
   type?: string;
+  arrivalMode?: string;
+  provenance?: string;
   status: 'En cours' | 'Sorti' | 'Annulé';
   currency?: string;
   tenantId?: string;

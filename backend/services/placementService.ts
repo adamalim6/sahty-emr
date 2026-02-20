@@ -105,7 +105,7 @@ export class PlacementService {
             SELECT b.*, r.name AS room_name
             FROM beds b
             JOIN rooms r ON r.id = b.room_id
-            WHERE b.room_id = $1 AND b.status != 'INACTIVE'
+            WHERE b.room_id = $1 AND b.is_active = true
             ORDER BY b.label
         `, [roomId]);
         return rows.map(this.mapBed);
@@ -292,7 +292,7 @@ export class PlacementService {
             JOIN rooms r ON r.id = b.room_id
             LEFT JOIN patient_stays ps ON ps.bed_id = b.id AND ps.ended_at IS NULL
             LEFT JOIN patients_tenant pt ON pt.tenant_patient_id = ps.tenant_patient_id
-            WHERE r.service_id = $1 AND r.is_active = true AND b.status != 'INACTIVE'
+            WHERE r.service_id = $1 AND r.is_active = true AND b.is_active = true
             ORDER BY r.name, b.label
         `, [serviceId]);
         return rows;

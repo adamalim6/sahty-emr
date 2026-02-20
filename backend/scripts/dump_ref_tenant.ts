@@ -1,7 +1,7 @@
 
 import { getTenantPool } from '../db/tenantPg';
 
-const REF_TENANT = '3861b58c-69a7-4113-b503-378a08c700b7';
+const REF_TENANT = 'ced91ced-fe46-45d1-8ead-b5d51bad5895';
 
 async function dumpSchema() {
     console.log(`Dumping full schema for reference tenant ${REF_TENANT}...`);

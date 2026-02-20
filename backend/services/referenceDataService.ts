@@ -31,7 +31,8 @@ export class ReferenceDataService {
         page: number = 1, 
         limit: number = 10, 
         search?: string,
-        idsFilter?: string[]
+        idsFilter?: string[],
+        dciId?: string
     ) {
         const offset = (page - 1) * limit;
         const params: any[] = [];
@@ -47,6 +48,15 @@ export class ReferenceDataService {
             const placeholders = idsFilter.map((_, i) => `$${params.length + i + 1}`).join(',');
             whereClause += ` AND id IN (${placeholders})`;
             params.push(...idsFilter);
+        }
+
+        if (dciId) {
+            // Use JSONB containment for robust matching
+            // We construct a JSON array with one object containing the dciId to look for
+            const paramValue = JSON.stringify([{ dciId: dciId }]);
+            params.push(paramValue);
+            // We explicitly cast to jsonb to ensure the operator works regardless of column type (text/json/jsonb)
+             whereClause += ` AND dci_composition::jsonb @> $${params.length}::jsonb`;
         }
 
         const countQuery = `SELECT COUNT(*) FROM reference.global_products ${whereClause}`;
@@ -79,6 +89,29 @@ export class ReferenceDataService {
             page,
             totalPages: Math.ceil(total / limit)
         };
+    }
+
+    // --- DCIs ---
+
+    async getDCIs(tenantId: string, search?: string) {
+         let query = 'SELECT * FROM reference.global_dci';
+         const params: any[] = [];
+         
+         if (search) {
+             query += ' WHERE name ILIKE $1 OR atc_code ILIKE $1';
+             params.push(`%${search}%`);
+         }
+         
+         query += ' ORDER BY name ASC LIMIT 50'; // Limit results for performance
+         
+         const rows = await tenantQuery(tenantId, query, params);
+         return rows.map((r: any) => ({
+             id: r.id,
+             name: r.name,
+             atcCode: r.atc_code,
+             therapeuticClass: r.therapeutic_class,
+             synonyms: r.synonyms ? (typeof r.synonyms === 'string' ? JSON.parse(r.synonyms) : r.synonyms) : []
+         }));
     }
 
     private mapProduct(r: any, dciMap?: Map<string, any>): any {

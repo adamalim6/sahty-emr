@@ -88,11 +88,24 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }),
+    updatePatient: (id: string, data: any) => fetchJson<{ tenantPatientId: string }>(`/emr/patients/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
     addEmergencyContact: (patientId: string, data: any) => fetchJson<any>(`/emr/patients/${patientId}/emergency-contact`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }),
+    // Hospital Config
+    getHospitalServices: () => fetchJson<any[]>('/emr/hospital/services'),
+    getHospitalDoctors: () => fetchJson<any[]>('/emr/hospital/doctors'),
+    getServiceBeds: (serviceId: string) => fetchJson<any[]>(`/emr/services/${serviceId}/occupancy`),
+
+    // ===========================================
+    // ADMISSIONS
+    // ===========================================
     getAdmissions: () => fetchJson<Admission[]>('/emr/admissions'),
     createAdmission: (data: Admission) => fetchJson<Admission>('/emr/admissions', {
         method: 'POST',
@@ -110,6 +123,21 @@ export const api = {
     getTenantOrganismes: () => fetchJson<any[]>('/emr/reference/organismes'),
     getTenantCountries: () => fetchJson<any[]>('/emr/reference/countries'),
     getTenantIdentityDocumentTypes: () => fetchJson<any[]>('/emr/reference/identity-document-types'),
+    
+    // Reference Data (Prescriptions)
+    getReferenceDCIs: (query: string) => fetchJson<{ data: any[] }>(`/global/dci?q=${encodeURIComponent(query)}&limit=50`),
+    getReferenceProducts: (query: string, dciId?: string) => {
+        let url = `/global/products?page=1&limit=50&q=${encodeURIComponent(query)}`;
+        if (dciId) {
+            url += `&dciId=${dciId}`;
+        }
+        return fetchJson<{ data: any[] }>(url);
+    },
+
+    // Coverage Search
+    searchCoverages: (organismeId: string, policyNumber: string) => 
+        fetchJson<any[]>(`/emr/coverages/search?organismeId=${organismeId}&policyNumber=${encodeURIComponent(policyNumber)}`),
+
     // Pharmacy Attributes
     
     // Service Stock (EMR-based - for nurses/clinical staff)

@@ -227,7 +227,7 @@ class AuthUserRepository {
                 user.prenom || '',
                 user.nom || '',
                 displayName,
-                user.INPE || null
+                (user.INPE || '').trim() || null
             ]);
 
             // 2. auth.credentials
@@ -297,7 +297,7 @@ class AuthUserRepository {
             if (updates.nom) { authFields.push(`last_name=$${idx++}`); authValues.push(updates.nom); }
             if (updates.prenom) { authFields.push(`first_name=$${idx++}`); authValues.push(updates.prenom); }
             if (updates.username) { authFields.push(`username=$${idx++}`); authValues.push(updates.username); }
-            if (updates.INPE !== undefined) { authFields.push(`inpe=$${idx++}`); authValues.push(updates.INPE); }
+            if (updates.INPE !== undefined) { authFields.push(`inpe=$${idx++}`); authValues.push((updates.INPE || '').trim() || null); }
             if (updates.active !== undefined) { authFields.push(`is_active=$${idx++}`); authValues.push(updates.active); }
 
             if (updates.nom || updates.prenom) {

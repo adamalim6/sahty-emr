@@ -93,6 +93,30 @@ export class TenantProvisioningService {
             console.log(`[TenantProvisioning] Phase 1 (Baseline Schema) applied — all 5 schemas created.`);
 
             // ================================================================
+            // PHASE 1.1: Apply Identity Refactor (Feb 2026)
+            // The baseline contains the OLD identity schema (persons, etc.)
+            // We must apply the destructive refactor to align with the new architecture.
+            // ================================================================
+            const identityMigrations = [
+                '040_refactor_identity_destructive.sql',
+                '041_create_new_identity_tables.sql',
+                '042_setup_sync_schema.sql',
+                '043_fix_audit_trigger.sql'
+            ];
+
+            for (const migFile of identityMigrations) {
+                const migPath = path.join(__dirname, `../migrations/pg/tenant/${migFile}`);
+                if (fs.existsSync(migPath)) {
+                    console.log(`[TenantProvisioning] Applying ${migFile}...`);
+                    const sql = fs.readFileSync(migPath, 'utf-8');
+                    await pool.query(sql);
+                } else {
+                    console.warn(`[TenantProvisioning] Warning: ${migFile} not found.`);
+                }
+            }
+            console.log(`[TenantProvisioning] Phase 1.1 (Identity Refactor) applied.`);
+
+            // ================================================================
             // PHASE 2: Create System Locations
             // ================================================================
             console.log(`[TenantProvisioning] Creating system locations...`);

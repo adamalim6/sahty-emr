@@ -1,3 +1,4 @@
+import { api } from '../../services/api';
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   Pill,
@@ -144,9 +145,12 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
 
 
   // Suggestions logic for medications...
-  const [filteredCommercialNames, setFilteredCommercialNames] = useState<string[]>([]);
+  // Changed to hold objects
+  const [dciSuggestions, setDciSuggestions] = useState<any[]>([]); 
+  const [productSuggestions, setProductSuggestions] = useState<any[]>([]);
+  const [selectedDci, setSelectedDci] = useState<any | null>(null);
+
   const [showCommercialSuggestions, setShowCommercialSuggestions] = useState(false);
-  const [filteredMoleculeNames, setFilteredMoleculeNames] = useState<string[]>([]);
   const [showMoleculeSuggestions, setShowMoleculeSuggestions] = useState(false);
 
   // Solvent-specific autocomplete states
@@ -272,10 +276,13 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
         unit: "mL",
       },
     }));
-    setFilteredMoleculeNames([]);
+    setDciSuggestions([]);
     setShowMoleculeSuggestions(false);
-    setFilteredCommercialNames([]);
+    setProductSuggestions([]);
     setShowCommercialSuggestions(false);
+    setSelectedDci(null);
+    
+    // solvent state clearing...
     setSolventFilteredMoleculeNames([]);
     setShowSolventMoleculeSuggestions(false);
     setSolventFilteredCommercialNames([]);
@@ -284,98 +291,71 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
   };
 
   // --- Main Drug Handlers ---
-  const handleMoleculeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMoleculeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    setFormData(prev => {
-      const matchingMolecules = Object.keys(activeMoleculeDB).filter(k =>
-        k.toLowerCase().includes(val.toLowerCase())
-      );
-      setFilteredMoleculeNames(matchingMolecules);
-      setShowMoleculeSuggestions(val.length > 0 && matchingMolecules.length > 0);
+    
+    // Clear selected DCI if user types something different
+    if (selectedDci && val !== selectedDci.name) {
+        setSelectedDci(null);
+    }
+    
+    setFormData(prev => ({ ...prev, molecule: val }));
+    
+    if (val.length < 2) {
+        setDciSuggestions([]);
+        setShowMoleculeSuggestions(false);
+        return;
+    }
 
-      let newCommercialName = prev.commercialName;
-      if (newCommercialName && val.length > 0) {
-        const brandsForTypedMolecule = activeMoleculeDB[val] || [];
-        if (!brandsForTypedMolecule.includes(newCommercialName)) {
-          newCommercialName = "";
-        }
-      } else if (val.length === 0) {
-        newCommercialName = "";
-      }
-
-      return { ...prev, molecule: val, commercialName: newCommercialName };
-    });
+    try {
+        const response = await api.getReferenceDCIs(val);
+        const results = response.data || [];
+        setDciSuggestions(results);
+        setShowMoleculeSuggestions(results.length > 0);
+    } catch (err) {
+        console.error("Error fetching DCIs", err);
+    }
+    
     if (isSubmitted) setIsSubmitted(false);
   };
 
-  const handleMoleculeSuggestionClick = (selectedMolecule: string) => {
-    setFormData(prev => {
-      let newCommercialName = prev.commercialName;
-      const brandsForNewMolecule = activeMoleculeDB[selectedMolecule] || [];
-      if (newCommercialName && !brandsForNewMolecule.includes(newCommercialName)) {
-        newCommercialName = "";
-      }
-      return { ...prev, molecule: selectedMolecule, commercialName: newCommercialName };
-    });
+  const handleMoleculeSuggestionClick = (dci: any) => {
+    setFormData(prev => ({ ...prev, molecule: dci.name }));
+    setSelectedDci(dci);
     setShowMoleculeSuggestions(false);
-    setFilteredMoleculeNames([]);
+    setDciSuggestions([]);
     if (isSubmitted) setIsSubmitted(false);
   };
 
   const handleCommercialNameFocus = useCallback(() => {
-    let suggestions: string[] = [];
-    if (formData.molecule && activeMoleculeDB[formData.molecule]) {
-      suggestions = activeMoleculeDB[formData.molecule];
-    } else {
-      suggestions = allAvailableCommercialNames;
-    }
-    setFilteredCommercialNames(suggestions.filter(b =>
-      b.toLowerCase().includes(formData.commercialName.toLowerCase())
-    ));
-    setShowCommercialSuggestions(true);
-  }, [formData.molecule, formData.commercialName, activeMoleculeDB, allAvailableCommercialNames]);
+     // Trigger search with current value
+     handleCommercialNameChange({ target: { value: formData.commercialName } } as any);
+  }, [formData.commercialName, selectedDci]);
 
 
-  const handleCommercialNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCommercialNameChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    setFormData(prev => {
-      let newMolecule = prev.molecule;
-      let suggestions: string[] = [];
-
-      if (prev.molecule && activeMoleculeDB[prev.molecule]) {
-        suggestions = activeMoleculeDB[prev.molecule].filter(b => b.toLowerCase().includes(val.toLowerCase()));
-      } else {
-        suggestions = allAvailableCommercialNames.filter(b => b.toLowerCase().includes(val.toLowerCase()));
-      }
-      setFilteredCommercialNames(suggestions);
-      setShowCommercialSuggestions(val.length > 0 || suggestions.length > 0);
-
-      if (suggestions.length === 1 && suggestions[0].toLowerCase() === val.toLowerCase()) {
-        const deducedMolecule = getMoleculeOfCommercialName(suggestions[0]);
-        if (deducedMolecule && newMolecule.toLowerCase() !== deducedMolecule.toLowerCase()) {
-          newMolecule = deducedMolecule;
-        }
-      } else if (val.length === 0) {
-        if (prev.molecule && getMoleculeOfCommercialName(prev.commercialName || '', activeMoleculeDB) === prev.molecule) {
-          newMolecule = "";
-        }
-      }
-
-      return { ...prev, commercialName: val, molecule: newMolecule };
-    });
-    if (isSubmitted) setIsSubmitted(false);
+    setFormData(prev => ({ ...prev, commercialName: val }));
+    
+    try {
+        const response = await api.getReferenceProducts(val, selectedDci?.id);
+        const results = response.data || [];
+        setProductSuggestions(results);
+        setShowCommercialSuggestions(results.length > 0);
+    } catch (err) {
+        console.error("Error fetching products", err);
+    }
   };
 
-  const handleCommercialSuggestionClick = (selectedBrand: string) => {
-    setFormData(prev => {
-      const deducedMolecule = getMoleculeOfCommercialName(selectedBrand);
-      const newMolecule = (deducedMolecule && prev.molecule.toLowerCase() !== deducedMolecule.toLowerCase()) ? deducedMolecule : prev.molecule;
-      return { ...prev, commercialName: selectedBrand, molecule: newMolecule };
-    });
+  const handleCommercialSuggestionClick = (product: any) => {
+    setFormData(prev => ({ 
+        ...prev, 
+        commercialName: product.name,
+    }));
+    
     setShowCommercialSuggestions(false);
-    setFilteredCommercialNames([]);
-    setShowMoleculeSuggestions(false);
-    setFilteredMoleculeNames([]);
+    setProductSuggestions([]);
+    
     if (isSubmitted) setIsSubmitted(false);
   };
 
@@ -1070,10 +1050,12 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
       },
       conditionComment: "",
     });
-    setFilteredCommercialNames([]);
-    setShowCommercialSuggestions(false);
-    setFilteredMoleculeNames([]);
+    setDciSuggestions([]);
     setShowMoleculeSuggestions(false);
+    setProductSuggestions([]);
+    setShowCommercialSuggestions(false);
+    setSelectedDci(null);
+    
     setSolventFilteredMoleculeNames([]);
     setShowSolventMoleculeSuggestions(false);
     setSolventFilteredCommercialNames([]);
@@ -1385,33 +1367,34 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
                   <input
                     type="text"
                     placeholder="Rechercher une molécule (ex: Paracétamol)..."
-                    className="w-full pl-10 pr-4 py-3 h-12 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all font-medium text-slate-800 placeholder:text-slate-400"
+                    className="w-full pl-10 pr-4 py-3 h-12 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all font-medium text-slate-800 placeholder:text-slate-400 capitalize"
                     value={formData.molecule}
                     onChange={handleMoleculeChange}
-                    onFocus={() => setShowMoleculeSuggestions(formData.molecule.length > 0 && filteredMoleculeNames.length > 0)}
-                    onBlur={() => setTimeout(() => setShowMoleculeSuggestions(false), 100)}
+                    onFocus={() => setShowMoleculeSuggestions(formData.molecule.length >= 2 && dciSuggestions.length > 0)}
+                    onBlur={() => setTimeout(() => setShowMoleculeSuggestions(false), 200)}
                   />
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-emerald-600 transition-colors" />
-                  {showMoleculeSuggestions && filteredMoleculeNames.length > 0 && (
+                  {showMoleculeSuggestions && dciSuggestions.length > 0 && (
                     <div className="absolute z-10 w-full bg-white border border-slate-200 rounded-xl shadow-lg mt-1 max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2">
-                      {filteredMoleculeNames.map((mol) => (
+                      {dciSuggestions.map((dci, idx) => (
                         <button
                           type="button"
-                          key={mol}
-                          onClick={() => handleMoleculeSuggestionClick(mol)}
-                          className="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors"
+                          key={dci.id || idx}
+                          onClick={() => handleMoleculeSuggestionClick(dci)}
+                          className="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors border-b last:border-0"
                         >
-                          {mol}
+                          <div className="font-semibold">{dci.name}</div>
+                          {dci.atcCode && <div className="text-xs text-slate-500">ATC: {dci.atcCode}</div>}
                         </button>
                       ))}
                     </div>
                   )}
                 </div>
                 {/* Suggestions Hint */}
-                {formData.molecule.length > 0 && filteredMoleculeNames.length === 0 && (
+                {formData.molecule.length > 0 && dciSuggestions.length === 0 && !selectedDci && (
                   <div className="mt-2 flex items-center gap-2 text-xs text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg w-fit">
                     <AlertCircle className="w-3.5 h-3.5" />
-                    <span>Molécule non trouvée dans la base locale (saisie libre)</span>
+                    <span>Molécule non trouvée (saisie libre)</span>
                   </div>
                 )}
               </div>
@@ -1427,19 +1410,20 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
                     value={formData.commercialName}
                     onChange={handleCommercialNameChange}
                     onFocus={handleCommercialNameFocus}
-                    onBlur={() => setTimeout(() => setShowCommercialSuggestions(false), 100)}
+                    onBlur={() => setTimeout(() => setShowCommercialSuggestions(false), 200)}
                   />
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-emerald-600 transition-colors" />
-                  {showCommercialSuggestions && filteredCommercialNames.length > 0 && (
+                  {showCommercialSuggestions && productSuggestions.length > 0 && (
                     <div className="absolute z-10 w-full bg-white border border-slate-200 rounded-xl shadow-lg mt-1 max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2">
-                      {filteredCommercialNames.map((brand) => (
+                      {productSuggestions.map((product, idx) => (
                         <button
                           type="button"
-                          key={brand}
-                          onClick={() => handleCommercialSuggestionClick(brand)}
-                          className="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors"
+                          key={product.id || idx}
+                          onClick={() => handleCommercialSuggestionClick(product)}
+                          className="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors border-b last:border-0"
                         >
-                          {brand}
+                          <div className="font-semibold">{product.name}</div>
+                          {product.form && <div className="text-xs text-slate-500">{product.form} - {product.dosage}</div>}
                         </button>
                       ))}
                     </div>

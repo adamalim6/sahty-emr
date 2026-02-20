@@ -2,8 +2,19 @@
 import { Request, Response } from 'express';
 import { globalDCIService } from '../services/GlobalDCIService';
 
+import { referenceDataService } from '../services/referenceDataService';
+
 export const getAllDCIs = async (req: Request, res: Response) => {
     try {
+        const tenantId = (req as any).user?.tenantId;
+        const isTenantUser = tenantId && tenantId !== 'GLOBAL';
+
+        if (isTenantUser) {
+            const q = (req.query.q as string) || (req.query.search as string) || '';
+            const dcis = await referenceDataService.getDCIs(tenantId, q);
+            return res.json({ data: dcis }); // Unified format
+        }
+
         if (req.query.page || req.query.limit) {
             const page = parseInt(req.query.page as string) || 1;
             const limit = parseInt(req.query.limit as string) || 20;

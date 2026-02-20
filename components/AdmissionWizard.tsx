@@ -40,7 +40,8 @@ import {
   Hospital,
   ArrowUpRight
 } from 'lucide-react';
-import { MOCK_PATIENTS, generateIPP, calculateAge, generateNDA } from '../constants';
+import { generateIPP, calculateAge } from '../constants';
+import { ADMISSION_TYPES, ARRIVAL_MODES, PROVENANCES, ADMISSION_REASONS, CURRENCIES } from '../constants_admission';
 import { Patient, Gender, Admission } from '../types';
 import { api } from '../services/api';
 import { PatientIdentityForm } from './PatientIdentityForm';
@@ -215,6 +216,7 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
   const [roomDefs, setRoomDefs] = useState<any[]>([]); // Room Definitions
   const [dynamicRooms, setDynamicRooms] = useState<any[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(false);
+  const [apiPatients, setApiPatients] = useState<Patient[]>([]);
 
   // Fetch Initial Data
   useEffect(() => {
@@ -224,26 +226,23 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
     const loadData = async () => {
       try {
         // 1. Fetch Users (Doctors)
-        const users = await api.getTenantUsers();
-        // Assuming strict ID 'role_medecin' as per roles.json
-        const docs = users
-          .filter((u: any) => u.role_id === 'role_medecin')
-          .map((u: any) => `Dr. ${u.prenom?.charAt(0)}. ${u.nom}`.toUpperCase());
+        const doctors = await api.getHospitalDoctors();
+        // Map to { label, value } or just strings? SearchableSelect expects strings currently.
+        // We will store mapping separately if needed, or just use names for now and find ID on submit.
+        const docNames = doctors.map((d: any) => `Dr. ${d.first_name} ${d.last_name}`.toUpperCase());
+        setDoctorsList(docNames);
         
-        setDoctorsList(docs);
+        // Store full doctor objects to lookup ID later
+        (window as any)._doctorMap = doctors.reduce((acc: any, d: any) => ({ ...acc, [`Dr. ${d.first_name} ${d.last_name}`.toUpperCase()]: d.id }), {});
 
         // 2. Fetch Services
-        const services = await api.getServices();
+        const services = await api.getHospitalServices();
         const sList = services.map((s: any) => s.name);
         const sMap: Record<string, string> = {};
         services.forEach((s: any) => sMap[s.name] = s.id);
         
         setServicesList(sList);
         setServiceMap(sMap);
-
-        // 3. Fetch Room Definitions (for bed counts)
-        const rooms = await api.getTenantRooms(); 
-        setRoomDefs(rooms);
 
       } catch (err) {
         console.error("Error loading dynamic data:", err);
@@ -278,46 +277,41 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
       setLoadingRooms(true);
       try {
         const serviceId = serviceMap[admissionData.service];
-        const units = await api.getServiceUnits(serviceId); // Get operational units
+        const beds = await api.getServiceBeds(serviceId);
         
-        // Map Units to UI Room Structure
-        const mapped = units.map((u: any) => {
-           const def = roomDefs.find((r: any) => r.id === u.unit_type_id);
-           if (!def || def.unit_category !== 'CHAMBRE') return null; 
+        // Group beds by room
+        const roomsMap = new Map<string, any>();
 
-           // Generate Beds based on definition
-           const bedCount = def.number_of_beds || 1;
-           const beds = Array.from({ length: bedCount }, (_, i) => ({
-             id: `${u.id}-bed-${i+1}`,
-             label: bedCount > 1 ? `LIT ${String.fromCharCode(65 + i)}` : 'LIT', 
-             status: 'available' 
-           }));
+        beds.forEach((b: any) => {
+             if (!roomsMap.has(b.room_id)) {
+                 roomsMap.set(b.room_id, {
+                     id: b.room_id,
+                     number: b.room_name,
+                     type: 'Standard', // We could fetch room type if needed
+                     beds: []
+                 });
+             }
+             roomsMap.get(b.room_id).beds.push({
+                 id: b.bed_id,
+                 label: b.bed_label,
+                 // Simple mapping for UI - expand if needed
+                 status: b.status === 'OCCUPIED' ? 'occupied' : (b.status === 'MAINTENANCE' ? 'maintenance' : 'available')
+             });
+        });
 
-           return {
-             id: u.id,
-             number: u.name, 
-             type: def.unit_category === 'CHAMBRE' ? (def.number_of_beds === 1 ? 'Individuelle' : 'Double') : 'Autre',
-             beds
-           };
-        }).filter(Boolean);
-
-        setDynamicRooms(mapped);
-      } catch (err) {
-        console.error("Error fetching service rooms:", err);
+        setDynamicRooms(Array.from(roomsMap.values()));
+      } catch (error) {
+        console.error("Error fetching service rooms:", error);
       } finally {
         setLoadingRooms(false);
       }
     };
 
     fetchServiceRooms();
-  }, [admissionData.service, serviceMap, roomDefs]);
+  }, [admissionData.service, serviceMap]);
 
   // Constants
-  const ADMISSION_TYPES = ["Hospitalisation complète", "Ambulatoire", "Hôpital de jour", "Urgence", "Séance de soins"];
-  const CURRENCIES = ["MAD (Dirham)", "EUR (Euro)", "USD (Dollar)"];
-  const ADMISSION_REASONS = ["Chirurgie programmée", "Bilan diagnostique", "Pathologie aiguë", "Suivi post-op", "Obstétrique"];
-  const ARRIVAL_MODES = ["Marche", "Fauteuil roulant", "Brancard", "Ambulance", "SMUR"];
-  const PROVENANCES = ["Domicile", "Urgences", "Consultation externe", "Transfert inter-hôpital", "Clinique privée"];
+
 
   const handleServiceChange = (newService: string) => {
     setAdmissionData({ ...admissionData, service: newService });
@@ -329,7 +323,7 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
 
     // Build the admission object
     const newId = `adm-${Date.now()}`;
-    const newNDA = generateNDA();
+    // const newNDA = generateNDA(); // Removed: not imported and causing crash
 
     // Find the room and bed labels
     let roomNum = "";
@@ -350,24 +344,37 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
         return;
       }
 
+      const doctorId = (window as any)._doctorMap ? (window as any)._doctorMap[admissionData.doctorName] : null;
+      const serviceId = serviceMap[admissionData.service];
+      
+      const generatedNDA = `ADM-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
       const newAdmission: Admission = {
-        id: newId,
-        nda: newNDA,
+        // id: newId, // Let backend generate UUID
+        nda: generatedNDA,
+        admissionNumber: generatedNDA, // Map explicitly for backend
         patientId: finalPatientId, 
         reason: admissionData.reason,
-        service: admissionData.service,
+        service: serviceId, // Send ID
+        attendingPhysicianUserId: doctorId, // Send ID
         admissionDate: new Date().toISOString(),
-        doctorName: admissionData.doctorName,
+        doctorName: admissionData.doctorName, // Keep name for UI/Legacy
         roomNumber: roomNum,
         bedLabel: bedLab,
         status: 'En cours',
         type: admissionData.type,
-        currency: admissionData.currency
-      };
+        currency: admissionData.currency,
+        arrivalMode: admissionData.arrivalMode,
+        provenance: admissionData.provenance,
+        admittingServiceId: serviceId,
+        responsibleServiceId: serviceId,
+        currentServiceId: serviceId,
+        bedId: selectedBedId || undefined, // Pass bedId for patient_stays
+      } as any;
 
-      await api.createAdmission(newAdmission);
+      const createdAdmission = await api.createAdmission(newAdmission);
       onClose();
-      navigate(`/admission/${newId}`);
+      navigate(`/admission/${createdAdmission.id}`);
     } catch (error) {
       console.error('Error creating admission:', error);
       alert('Erreur lors de la création de l\'admission');
