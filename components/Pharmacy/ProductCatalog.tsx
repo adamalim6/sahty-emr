@@ -85,8 +85,8 @@ const PriceHistoryModal = ({ supplier, onClose }: { supplier: ProductSupplier, o
                                            {v.createdBy || 'Sys'}
                                         </span>
                                     </td>
-                                    <td className="px-4 py-3 text-slate-500 italic max-w-[200px] truncate" title={v.reason || v.changeReason}>
-                                        {v.reason || v.changeReason || '-'}
+                                    <td className="px-4 py-3 text-slate-500 italic max-w-[200px] truncate" title={v.reason || (v as any).changeReason}>
+                                        {v.reason || (v as any).changeReason || '-'}
                                     </td>
                                 </tr>
                             ))}
@@ -122,6 +122,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ suppliers: globa
   const [showDisabled, setShowDisabled] = useState(true);
 
   const [formData, setFormData] = useState<Partial<ProductDefinition>>({});
+  const [units, setUnits] = useState<any[]>([]);
   
   // New State for History & Prompt
   const [historySupplier, setHistorySupplier] = useState<ProductSupplier | null>(null);
@@ -138,7 +139,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ suppliers: globa
           q: activeQuery,
           status: showDisabled ? 'ALL' : 'ACTIVE',
           _t: Date.now() // Cache Buster 
-      });
+      } as any);
       if (result.data) {
           setProducts(result.data);
           setTotalPages(result.totalPages);
@@ -160,6 +161,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ suppliers: globa
 
   useEffect(() => {
     fetchProducts();
+    api.getGlobalUnits().then(res => setUnits(res || [])).catch(console.error);
   }, [fetchProducts]);
 
   const handleSearchTrigger = () => {
@@ -638,12 +640,25 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ suppliers: globa
                      <div className="bg-slate-50 rounded border border-slate-100 p-3">
                          <label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Composition DCI</label>
                          <div className="flex flex-wrap gap-2">
-                            {formData.dciComposition.map((comp, i) => (
+                            {formData.dciComposition.map((comp, i) => {
+                                const amountUnit = units.find(u => u.id === comp.amount_unit_id);
+                                const diluentUnit = units.find(u => u.id === comp.diluent_volume_unit_id);
+
+                                let displayStr = '';
+                                if (comp.amount_value > 0) {
+                                    displayStr += `${comp.amount_value} ${amountUnit?.display || amountUnit?.code || ''}`;
+                                    if (comp.diluent_volume_value && diluentUnit) {
+                                        displayStr += ` / ${comp.diluent_volume_value} ${diluentUnit.display || diluentUnit.code}`;
+                                    }
+                                }
+                                
+                                return (
                                 <div key={i} className="flex items-center text-xs bg-white border border-slate-200 rounded px-2 py-1 shadow-sm">
                                     <span className="font-semibold text-slate-700 mr-1">{comp.name}</span>
-                                    <span className="text-slate-500 bg-slate-50 px-1 rounded">{comp.dosage} {comp.unit}</span>
+                                    <span className="text-slate-500 bg-slate-50 px-1 rounded">{displayStr}</span>
                                 </div>
-                            ))}
+                                );
+                            })}
                          </div>
                      </div>
                 )}

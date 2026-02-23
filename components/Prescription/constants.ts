@@ -25,9 +25,34 @@ export const MOLECULE_DB_HOSPITAL: MoleculeDatabase = {
     "Chlorure de sodium": ["NaCl 0.9%"]
 };
 
-export const UNITS = ["mg", "g", "µg", "mL", "comprimés", "gélules", "bouffées", "IV mL/h", "UI"];
+export const UNITS = [
+    // Existing units
+    "mg", "g", "µg", "mL", "comprimés", "gélules", "bouffées", "IV mL/h", "UI",
+    
+    // Mass / Amount
+    "ng", "mmol", "mEq", "mOsm", "IU",
+    
+    // Volume
+    "L", "µL", "gouttes (drops / gtt)",
+    
+    // Rate / Infusion
+    "mg/h", "µg/kg/min", "mg/kg/h", "mL/min", "mL/kg/h", "UI/h", "UI/kg/h",
+    
+    // Per-weight dosing
+    "mg/kg", "µg/kg", "UI/kg", "mmol/kg",
+    
+    // Per-surface dosing
+    "mg/m²", "µg/m²",
+    
+    // Units / Devices / Discrete forms
+    "sachet(s)", "ampoule(s)", "flacon(s)", "poche(s)", "spray(s)", "dose(s)", "application(s)", "patch(s)", "suppositoire(s)", "ovule(s)", "unité(s)",
+    
+    // Time-based (for perfusions / continuous)
+    "mg/min", "mg/kg/min", "UI/min"
+];
 
 export const ROUTES = [
+    // Existing routes
     "Orale",
     "Intraveineuse (IV)",
     "Intraveineuse directe (IVD)",
@@ -35,5 +60,39 @@ export const ROUTES = [
     "Sous-cutanée (SC)",
     "Intramusculaire (IM)",
     "Rectale",
-    "Nébulisation (Neb)"
+    "Nébulisation (Neb)",
+    
+    // Enteral / Digestive
+    "Orale par sonde (SNG / PEG)",
+    "Sublinguale",
+    "Buccale",
+    
+    // Parenteral
+    "Intra-artérielle (IA)",
+    "Intra-osseuse (IO)",
+    "Intradermique (ID)",
+    "Intrathécale (IT)",
+    "Péridurale (EP)",
+    "Intraventriculaire",
+    
+    // Respiratory
+    "Inhalation",
+    "Oxygénothérapie",
+    "Ventilation (aérosol circuit ventilé)",
+    
+    // Topical / Local
+    "Cutanée (topique)",
+    "Transdermique (patch)",
+    "Ophtalmique (œil)",
+    "Otique (oreille)",
+    "Nasale",
+    "Vaginale",
+    "Urétrale",
+    
+    // Other / Specialized
+    "Intra-articulaire",
+    "Intrapleurale",
+    "Intrapéritonéale",
+    "Intratumorale",
+    "Locale"
 ];

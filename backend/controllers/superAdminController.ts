@@ -6,6 +6,9 @@ import bcrypt from 'bcryptjs';
 import { globalAdminService } from '../services/globalAdminService';
 import { globalSupplierService } from '../services/globalSupplierService';
 import { tenantProvisioningService } from '../services/tenantProvisioningService';
+import { tenantUpdateService } from '../services/tenantUpdateService';
+import { getTenantPool } from '../db/tenantPg';
+import { syncTenantReference } from '../scripts/referenceSync';
 
 // Legacy: Clients store? 'clients.json' might still be used if we didn't migrate clients to SQL.
 // Did we migrate Clients? NO. Only Global Data (Products, DCI, Suppliers, Roles, Acts).
@@ -213,6 +216,70 @@ export const deleteTenant = async (req: Request, res: Response) => {
     }
 };
 export const deleteClient = deleteTenant;
+
+// --- Reference Schema Updates ---
+export const updateTenantReferenceSchema = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const result: any = await tenantUpdateService.updateTenantReferenceSchema(id);
+        
+        // After schema is updated, ensure the DATA is synced from global to tenant
+        try {
+            const pool = getTenantPool(id);
+            const client = await pool.connect();
+            try {
+                await syncTenantReference(client, id);
+                result.dataSyncStatus = 'success';
+            } finally {
+                client.release();
+            }
+        } catch (syncErr: any) {
+            console.error(`[updateTenantReferenceSchema] Sync data failed for ${id}:`, syncErr);
+            result.dataSyncStatus = 'error';
+            result.dataSyncError = syncErr.message;
+        }
+
+        res.json(result);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+};
+
+export const updateAllReferenceSchemas = async (req: Request, res: Response) => {
+    try {
+        const tenants = await globalAdminService.getAllTenants();
+        const results = [];
+        
+        for (const tenant of tenants) {
+            try {
+                const result: any = await tenantUpdateService.updateTenantReferenceSchema(tenant.id);
+                
+                // After schema is updated, ensure the DATA is synced
+                try {
+                    const pool = getTenantPool(tenant.id);
+                    const client = await pool.connect();
+                    try {
+                        await syncTenantReference(client, tenant.id);
+                        result.dataSyncStatus = 'success';
+                    } finally {
+                        client.release();
+                    }
+                } catch (syncErr: any) {
+                    console.error(`[updateAllReferenceSchemas] Sync data failed for ${tenant.id}:`, syncErr);
+                    result.dataSyncStatus = 'error';
+                    result.dataSyncError = syncErr.message;
+                }
+
+                results.push({ tenantId: tenant.id, designation: tenant.designation, ...result });
+            } catch (tenantErr: any) {
+                results.push({ tenantId: tenant.id, designation: tenant.designation, status: 'error', error: tenantErr.message });
+            }
+        }
+        res.json({ status: 'success', summary: results });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+};
 
 // --- Organismes (SQL) ---
 export const getOrganismes = async (req: Request, res: Response) => {

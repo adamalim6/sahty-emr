@@ -1,10 +1,101 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../../services/api';
-import { Plus, Search, Package, Edit2, Trash2, Box, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, Package, Edit2, Trash2, Box, X, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import { ProductDefinition, ProductType, UnitType, DCI } from '../../types/pharmacy';
 import { DCIModal } from './DCIModal';
 import { DCISelector } from './DCISelector';
+
+const SearchableSelect = ({
+  options,
+  value,
+  onChange,
+  placeholder,
+  className = ""
+}: {
+  options: { value: string, label: string }[],
+  value: string,
+  onChange: (val: string) => void,
+  placeholder?: string,
+  className?: string
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const filteredOptions = options.filter(opt =>
+    opt.label.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (inputRef.current && !inputRef.current.parentElement?.parentElement?.contains(e.target as Node)) {
+        setIsOpen(false);
+        setSearchTerm('');
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative w-full">
+      <div
+        className={`flex items-center justify-between cursor-text bg-white border border-slate-300 rounded-lg focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 transition-all ${className}`}
+        onClick={() => {
+          if (!isOpen) {
+            setIsOpen(true);
+            setSearchTerm('');
+            inputRef.current?.focus();
+          }
+        }}
+      >
+        <input
+          ref={inputRef}
+          type="text"
+          className="w-full bg-transparent outline-none truncate placeholder:text-slate-400 px-3 py-2 text-sm"
+          placeholder={isOpen ? (options.find(o => o.value === value)?.label || placeholder) : ''}
+          value={isOpen ? searchTerm : (options.find(o => o.value === value)?.label || value)}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            if (!isOpen) setIsOpen(true);
+          }}
+          onFocus={() => {
+            setIsOpen(true);
+            setSearchTerm('');
+          }}
+        />
+        <div className="pr-3 flex items-center justify-center">
+            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </div>
+      </div>
+
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2">
+          {filteredOptions.length > 0 ? (
+            filteredOptions.map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                className={`w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 transition-colors ${value === opt.value ? 'bg-blue-50/50 text-blue-700 font-medium' : 'text-slate-700'}`}
+                onMouseDown={(e) => {
+                  e.preventDefault(); 
+                  onChange(opt.value);
+                  setIsOpen(false);
+                  setSearchTerm('');
+                }}
+              >
+                {opt.label}
+              </button>
+            ))
+          ) : (
+            <div className="px-4 py-3 text-sm text-slate-500 text-center">Aucun résultat</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const GlobalProductManager: React.FC = () => {
     const [products, setProducts] = useState<ProductDefinition[]>([]);
@@ -24,6 +115,10 @@ export const GlobalProductManager: React.FC = () => {
     // DCI Modal State
     const [isDciModalOpen, setIsDciModalOpen] = useState(false);
     
+    // Units & Routes State
+    const [units, setUnits] = useState<any[]>([]);
+    const [routes, setRoutes] = useState<any[]>([]);
+    
     const [formData, setFormData] = useState<Partial<ProductDefinition>>({
         sahtyCode: '',
         code: '',
@@ -40,8 +135,6 @@ export const GlobalProductManager: React.FC = () => {
     useEffect(() => {
         loadData();
     }, [currentPage, activeSearchQuery]); // Reload when page or active query changes
-
-    // Auto-search removed. Manual trigger only.
     
     const handleSearch = () => {
         setActiveSearchQuery(searchQuery);
@@ -64,33 +157,21 @@ export const GlobalProductManager: React.FC = () => {
                 q: activeSearchQuery
             });
             
-            // Handle new paginated response structure
             if (productsRes.data && Array.isArray(productsRes.data)) {
                 setProducts(productsRes.data);
                 setTotalPages(productsRes.totalPages || 0);
                 setTotalItems(productsRes.total || 0);
             } else {
-                // Fallback (should not happen with new backend)
                 setProducts(productsRes);
             }
 
-            // Fetch DCIs (Only needed for modal? Or do we need them for display?)
-            // Actually, we load ALL DCIs here? No, user said DCI page is also slow.
-            // But here we need DCIs only for the modal dropdown?
-            // If we only need them for the modal, we can lazy load them. 
-            // BUT: current implementation loads ALL DCIs on mount. 
-            // We should ideally fix this too, but for THIS page, let's keep loading DCIs or lazy load.
-            // For now, let's just paginate PRODUCTS. DCIs are loaded for the form.
-            // If DCI list is huge, we should lazy load in the form. But let's stick to Product Pagination first.
-            // Wait, we need to paginate DCIs fetching too if we want to speed up product page load?
-            // The user said "DTOs to Produit page and Référentiel DCI page".
-            // Loading 5000+ DCIs just for the dropdown is heavy. 
-            // I'll leave DCI fetching here for now but use the paginated call (fetching page 1) just to get SOME?
-            // No, that breaks the dropdown. Dropdown needs SEARCH.
-            // I'll keep fetching full DCIs here for now OR remove it and load on demand in modal.
-            // To be safe, I will fetch full DCIs if possible, or paginate. 
-            // Let's NOT load DCIs on main loadData to speed up initial render. Load only when modal opens.
-            // So remove `api.getGlobalDCIs()` from here.
+            // Fetch Units & Routes
+            const [unitsRes, routesRes] = await Promise.all([
+                api.getGlobalUnits(),
+                api.getGlobalRoutes()
+            ]);
+            setUnits(unitsRes || []);
+            setRoutes(routesRes || []);
             
         } catch (e) {
             console.error('Failed to load global data', e);
@@ -140,7 +221,12 @@ export const GlobalProductManager: React.FC = () => {
         
         // Auto-select the new DCI with default dosage
         const currentComposition = formData.dciComposition || [];
-        setFormData({ ...formData, dciComposition: [...currentComposition, { dciId: newDci.id, dosage: 0, unit: 'mg' }] });
+        const mgUnit = units.find(u => u.code.toLowerCase() === 'mg') || units[0];
+        setFormData({ ...formData, dciComposition: [...currentComposition, { 
+            dciId: newDci.id, 
+            amount_value: 0, 
+            amount_unit_id: mgUnit ? mgUnit.id : '' 
+        }] });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -155,8 +241,12 @@ export const GlobalProductManager: React.FC = () => {
             }
             // Check dosages
             for (const item of formData.dciComposition) {
-                if (!item.dosage || item.dosage <= 0) {
-                    setError("Le dosage doit être supérieur à 0 pour chaque DCI.");
+                if (!item.amount_value || item.amount_value <= 0) {
+                    setError("La valeur de la quantité doit être supérieure à 0 pour chaque DCI.");
+                    return;
+                }
+                if (!item.amount_unit_id) {
+                    setError("L'unité de quantité est obligatoire pour chaque DCI.");
                     return;
                 }
             }
@@ -297,9 +387,21 @@ export const GlobalProductManager: React.FC = () => {
                                         <div className="flex flex-col gap-1">
                                             {product.dciComposition.map(item => {
                                                 const dciName = item.name || dcis.find(d => d.id === item.dciId)?.name || 'DCI Inconnue';
+                                                
+                                                const amountUnit = units.find(u => u.id === item.amount_unit_id);
+                                                const diluentUnit = units.find(u => u.id === item.diluent_volume_unit_id);
+
+                                                let displayStr = '';
+                                                if (item.amount_value > 0) {
+                                                    displayStr += `${item.amount_value} ${amountUnit?.display || amountUnit?.code || ''}`;
+                                                    if (item.diluent_volume_value && diluentUnit) {
+                                                        displayStr += ` / ${item.diluent_volume_value} ${diluentUnit.display || diluentUnit.code}`;
+                                                    }
+                                                }
+
                                                 return (
                                                     <span key={item.dciId} className="text-xs text-slate-600 block">
-                                                        <span className="font-medium">{dciName}</span> {item.dosage > 0 && `${item.dosage}${item.unit}`}
+                                                        <span className="font-medium">{dciName}</span> {displayStr}
                                                     </span>
                                                 );
                                             })}
@@ -479,6 +581,29 @@ export const GlobalProductManager: React.FC = () => {
                             )}
 
                             {formData.type === ProductType.DRUG && (
+                                <div className="grid grid-cols-2 gap-4">
+                                     <div>
+                                        <label className="block text-sm font-medium mb-1 text-slate-700">Unité par Défaut (Prescription)</label>
+                                        <SearchableSelect
+                                            options={units.map(u => ({ value: u.id, label: u.display || u.code }))}
+                                            value={formData.defaultPrescUnit || ''}
+                                            onChange={(val) => setFormData({...formData, defaultPrescUnit: val})}
+                                            placeholder="Ex: comprimés, mL..."
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1 text-slate-700">Voie par Défaut (Prescription)</label>
+                                        <SearchableSelect
+                                            options={routes.filter(r => r.isActive).map(r => ({ value: r.id, label: r.label }))}
+                                            value={formData.defaultPrescRoute || ''}
+                                            onChange={(val) => setFormData({...formData, defaultPrescRoute: val})}
+                                            placeholder="Sélectionner une voie..."
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {formData.type === ProductType.DRUG && (
                                 <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 space-y-4">
                                     <div className="flex justify-between items-center border-b border-slate-200 pb-2">
                                         <h3 className="text-sm font-semibold text-slate-900">Infos Spécifiques Maroc</h3>
@@ -542,6 +667,7 @@ export const GlobalProductManager: React.FC = () => {
                                     value={formData.dciComposition || []}
                                     onChange={(newComposition) => setFormData({ ...formData, dciComposition: newComposition })}
                                     onAddNew={() => setIsDciModalOpen(true)}
+                                    units={units}
                                 />
                             )}
                             

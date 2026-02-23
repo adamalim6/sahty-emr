@@ -1,7 +1,16 @@
-
 import { Patient, Admission, Appointment, Room } from '../types';
 import { InventoryItem, ProductDefinition, StockLocation, PartnerInstitution, StockOutTransaction, SerializedPack } from '../types/pharmacy';
 import { FormData } from '../components/Prescription/types';
+
+export interface CareCategory {
+    id: string;
+    code: string;
+    label: string;
+    isActive: boolean;
+    sortOrder: number;
+    createdAt?: string;
+    updatedAt?: string;
+}
 
 const API_BASE_URL = 'http://localhost:3001/api';
 
@@ -216,6 +225,20 @@ export const api = {
         fetchJson<any>(`/prescriptions/${id}`, {
             method: 'DELETE'
         }),
+    pausePrescription: (id: string) =>
+        fetchJson<any>(`/prescriptions/${id}/pause`, {
+            method: 'POST'
+        }),
+    resumePrescription: (id: string) =>
+        fetchJson<any>(`/prescriptions/${id}/resume`, {
+            method: 'POST'
+        }),
+    stopPrescription: (id: string, reason?: string) =>
+        fetchJson<any>(`/prescriptions/${id}/stop`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason })
+        }),
 
     // Get all patients who have prescriptions
     getPatientsWithPrescriptions: () =>
@@ -239,6 +262,14 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }),
+    
+    updateTenantReferenceSchema: (id: string) => fetchJson<any>(`/super-admin/tenants/${id}/update-reference-schema`, {
+        method: 'POST'
+    }),
+    
+    updateAllReferenceSchemas: () => fetchJson<any>(`/super-admin/tenants/update-all-reference-schemas`, {
+        method: 'POST'
+    }),
     // Backwards-compat aliases
     getClients: () => fetchJson<any[]>('/super-admin/tenants'),
     getClientDetails: (id: string) => fetchJson<any>(`/super-admin/tenants/${id}`),
@@ -257,6 +288,20 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }),
+
+    // Care Categories
+    getCareCategories: () => fetchJson<CareCategory[]>('/super-admin/care-categories'),
+    createCareCategory: (data: Partial<CareCategory>) => fetchJson<CareCategory>('/super-admin/care-categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    updateCareCategory: (id: string, data: Partial<CareCategory>) => fetchJson<CareCategory>(`/super-admin/care-categories/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+
     getOrganismes: () => fetchJson<any[]>('/super-admin/organismes'),
     createOrganisme: (data: any) => fetchJson<any>('/super-admin/organismes', {
         method: 'POST',
@@ -469,6 +514,19 @@ export const api = {
         method: 'DELETE'
     }),
 
+    // Global Routes (Voies d'administration)
+    getGlobalRoutes: () => fetchJson<any[]>('/super-admin/observation/routes'),
+    createGlobalRoute: (data: any) => fetchJson<any>('/super-admin/observation/routes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    updateGlobalRoute: (id: string, data: any) => fetchJson<any>(`/super-admin/observation/routes/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+
     // Global Products
     getGlobalProducts: (params?: { page?: number; limit?: number; q?: string }) => {
         const query = params ? `?${new URLSearchParams(params as any).toString()}` : '';
@@ -624,7 +682,77 @@ export const api = {
         body: JSON.stringify({ decisions })
     }),
 
-    getReceptionsDecisions: (receptionId: string) => fetchJson<any[]>(`/pharmacy/receptions/${receptionId}/decisions`)
+    getReceptionsDecisions: (receptionId: string) => fetchJson<any[]>(`/pharmacy/receptions/${receptionId}/decisions`),
+
+    // ==========================================
+    // OBSERVATION CATALOG (EMR READ-ONLY)
+    // ==========================================
+    getObservationParameters: () => fetchJson<any[]>('/settings/observation/parameters'),
+    getObservationGroups: () => fetchJson<any[]>('/settings/observation/groups'),
+    getObservationFlowsheets: () => fetchJson<any[]>('/settings/observation/flowsheets'),
+    getUnits: () => fetchJson<any[]>('/settings/observation/units'),
+    getRoutes: () => fetchJson<any[]>('/settings/observation/routes'),
+
+    // ==========================================
+    // OBSERVATION CATALOG (GLOBAL / SUPERADMIN)
+    // ==========================================
+    getGlobalObservationParameters: () => fetchJson<any[]>('/super-admin/observation/parameters'),
+    createGlobalObservationParameter: (data: any) => fetchJson<any>('/super-admin/observation/parameters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    updateGlobalObservationParameter: (id: string, data: any) => fetchJson<any>(`/super-admin/observation/parameters/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    
+    getGlobalObservationGroups: () => fetchJson<any[]>('/super-admin/observation/groups'),
+    createGlobalObservationGroup: (data: any) => fetchJson<any>('/super-admin/observation/groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    
+    getGlobalObservationFlowsheets: () => fetchJson<any[]>('/super-admin/observation/flowsheets'),
+    createGlobalObservationFlowsheet: (data: { flowsheet: any, groupIds: string[] }) => fetchJson<any>('/super-admin/observation/flowsheets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    updateGlobalObservationFlowsheet: (id: string, data: { flowsheet: any, groupIds: string[] }) => fetchJson<any>(`/super-admin/observation/flowsheets/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+
+    getGlobalUnits: () => fetchJson<any[]>('/super-admin/observation/units'),
+    createGlobalUnit: (data: any) => fetchJson<any>('/super-admin/observation/units', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    updateGlobalUnit: (id: string, data: any) => fetchJson<any>(`/super-admin/observation/units/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+
+    // ==========================================
+    // EMR SURVEILLANCE / MAR
+    // ==========================================
+    getSurveillanceTimeline: (patientId: string, params: { admissionId?: string, flowsheetId?: string, fromDate: string, toDate: string }) => {
+        let qs = `?fromDate=${encodeURIComponent(params.fromDate)}&toDate=${encodeURIComponent(params.toDate)}`;
+        if (params.admissionId) qs += `&admissionId=${encodeURIComponent(params.admissionId)}`;
+        if (params.flowsheetId) qs += `&flowsheetId=${encodeURIComponent(params.flowsheetId)}`;
+        return fetchJson<any>(`/patients/${patientId}/surveillance${qs}`);
+    },
+
+    updateSurveillanceCell: (patientId: string, data: { admissionId?: string, bucketStart: string, parameterCode: string, value: any, expectedRevision: number }) => fetchJson<any>(`/patients/${patientId}/surveillance/cell`, {
+        method: 'POST',
+        body: JSON.stringify(data)
+    })
 };
 
 // Type for patient with prescription data

@@ -101,6 +101,12 @@ interface RowConfig {
   prescriptionId?: string; // For timeline rows
   prescriptionData?: any; // For timeline rows
   scheduledSlots?: string[]; // Pre-calculated strict slots (HHh)
+  normalMin?: number;
+  normalMax?: number;
+  warningMin?: number;
+  warningMax?: number;
+  hardMin?: number;
+  hardMax?: number;
 }
 
 interface FicheSurveillanceProps {
@@ -233,10 +239,10 @@ const STATIC_SECTIONS: SectionConfig[] = [
   {
     id: 'vital', title: 'Paramètres Vitaux', icon: Activity, color: 'text-rose-600',
     rows: [
-      { id: 'pa_sys', label: 'PA Systolique', unit: 'mmHg', type: 'number' },
-      { id: 'pa_dia', label: 'PA Diastolique', unit: 'mmHg', type: 'number' },
-      { id: 'fc', label: 'Fréquence Cardiaque', unit: 'bpm', type: 'number', bgColor: 'bg-emerald-50' },
-      { id: 'temp', label: 'Température', unit: '°C', type: 'number', bgColor: 'bg-blue-50' },
+      { id: 'pa_sys', label: 'PA Systolique', unit: 'mmHg', type: 'number', normalMin: 90, normalMax: 140, warningMin: 80, warningMax: 160, hardMin: 50, hardMax: 250 },
+      { id: 'pa_dia', label: 'PA Diastolique', unit: 'mmHg', type: 'number', normalMin: 60, normalMax: 90, warningMin: 50, warningMax: 100, hardMin: 30, hardMax: 150 },
+      { id: 'fc', label: 'Fréquence Cardiaque', unit: 'bpm', type: 'number', bgColor: 'bg-emerald-50', normalMin: 60, normalMax: 100, warningMin: 50, warningMax: 120, hardMin: 30, hardMax: 200 },
+      { id: 'temp', label: 'Température', unit: '°C', type: 'number', bgColor: 'bg-blue-50', normalMin: 36.5, normalMax: 37.5, warningMin: 36.0, warningMax: 38.5, hardMin: 34.0, hardMax: 42.0 },
     ]
   },
   {
@@ -372,32 +378,74 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
     return defaults;
   });
 
-  // Fetch Data
+  // Derived
+  const dateKey = selectedDate.toISOString().split('T')[0];
+  const currentDayData = allData[dateKey] || {};
+  const isToday = new Date().toDateString() === selectedDate.toDateString();
+  const currentHourIndex = new Date().getHours() >= 8
+    ? new Date().getHours() - 8
+    : new Date().getHours() + 16;
+  const currentHourLabel = isToday ? (HOURS[currentHourIndex] || '') : '';
+
+  // Fetch Prescriptions (Global)
   useEffect(() => {
     if (patientId) {
-      const fetchData = async () => {
+      const fetchGlobalData = async () => {
         try {
-          // Fetch Prescriptions
           const fetchedPrescriptions: any[] = await api.getPrescriptions(patientId);
-          // Filter active ones if needed (backend usually returns all)
           setAllPrescriptions(fetchedPrescriptions);
 
-          // Fetch Executions for all prescriptions (Ideally batch, but separate calls for now or loops)
-          // Since api.getExecutions is per prescription, we promise.all
           const executionPromises = fetchedPrescriptions.map(p => api.getExecutions(p.id).catch(() => []));
           const allExecutions = (await Promise.all(executionPromises)).flat();
           setExecutions(allExecutions);
         } catch (error) {
-          console.error("Failed to fetch surveillance data", error);
+          console.error("Failed to fetch global surveillance data", error);
         }
       };
-      fetchData();
-
-      // Polling interval if needed, simpler to just fetch once on mount/change
-      const interval = setInterval(fetchData, 30000); // 30s refresh
-      return () => clearInterval(interval);
+      fetchGlobalData();
     }
   }, [patientId]);
+
+  // Fetch Surveillance Grid (Day-specific)
+  useEffect(() => {
+    if (patientId) {
+      const fetchDayData = async () => {
+        try {
+          const survStart = new Date(selectedDate);
+          survStart.setHours(START_HOUR, 0, 0, 0);
+          const survEnd = new Date(survStart);
+          survEnd.setDate(survEnd.getDate() + 1);
+
+          const res = await api.getSurveillanceTimeline(patientId, {
+            fromDate: survStart.toISOString(),
+            toDate: survEnd.toISOString()
+          });
+
+          const newDayData: DailyGridData = {};
+          
+          if (res.buckets) {
+            res.buckets.forEach((b: any) => {
+                const hDate = new Date(b.bucketStart);
+                const hStr = hDate.getHours().toString().padStart(2, '0') + 'h';
+                
+                Object.entries(b.values || {}).forEach(([rowId, cellObj]: [string, any]) => {
+                    if (!newDayData[rowId]) newDayData[rowId] = {};
+                    newDayData[rowId][hStr] = cellObj.v; 
+                });
+            });
+          }
+
+          setAllData(prev => ({ ...prev, [dateKey]: newDayData }));
+        } catch (error) {
+          console.error("Failed to fetch daily buckets", error);
+        }
+      };
+      
+      fetchDayData();
+      const interval = setInterval(fetchDayData, 30000); // 30s refresh
+      return () => clearInterval(interval);
+    }
+  }, [patientId, selectedDate, dateKey]);
 
   // Chart Modal State
   const [showChart, setShowChart] = useState(false);
@@ -410,15 +458,6 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
   // Modal Add Row State
   const [isAddRowModalOpen, setIsAddRowModalOpen] = useState(false);
   const [newRowName, setNewRowName] = useState('');
-
-  // Derived
-  const dateKey = selectedDate.toISOString().split('T')[0];
-  const currentDayData = allData[dateKey] || {};
-  const isToday = new Date().toDateString() === selectedDate.toDateString();
-  const currentHourIndex = new Date().getHours() >= 8
-    ? new Date().getHours() - 8
-    : new Date().getHours() + 16;
-  const currentHourLabel = isToday ? (HOURS[currentHourIndex] || '') : '';
 
   // --- Logic : Building Dynamic Grid ---
   const sections = useMemo(() => {
@@ -486,7 +525,7 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
                 const timeStr = startDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
                 // Punctual / One-time -> simplified "À faire le..."
-                if (data.type === 'one-time') {
+                if (data.schedule_type === 'one-time') {
                   return `À faire le ${dateStr} à ${timeStr}`;
                 }
 
@@ -574,8 +613,8 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
               data.adminMode,
               data.adminDuration,
               {
-                skippedDoses: data.skippedDoses,
-                manualDoseAdjustments: data.manualDoseAdjustments
+                skippedEvents: data.skippedEvents,
+                manuallyAdjustedEvents: data.manuallyAdjustedEvents
               }
             );
 
@@ -826,7 +865,8 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
     return inputs - outputs;
   };
 
-  const handleInputChange = (rowId: string, hour: string, value: any) => {
+  const handleInputChange = async (rowId: string, hour: string, value: any) => {
+    // Optimistic Update
     setAllData(prev => ({
       ...prev,
       [dateKey]: {
@@ -837,6 +877,25 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
         }
       }
     }));
+
+    if (!patientId) return;
+
+    // Network Sync
+    try {
+        const h = parseInt(hour.replace('h', ''));
+        const bucketStart = new Date(selectedDate);
+        bucketStart.setHours(h, 0, 0, 0);
+        if (h < START_HOUR) bucketStart.setDate(bucketStart.getDate() + 1);
+
+        await api.updateSurveillanceCell(patientId, {
+            bucketStart: bucketStart.toISOString(),
+            parameterCode: rowId,
+            value: value,
+            expectedRevision: 0 // Simplification for now, server merges it
+        });
+    } catch (e) {
+        console.error("Failed to sync cell to backend", e);
+    }
   };
 
   const copyPreviousColumn = (targetHour: string) => {
@@ -1012,6 +1071,18 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
     const isNumberType = row.type === 'number';
     const isVomis = row.id === 'vomis';
 
+    let colorClass = "text-gray-900";
+    if (isNumberType && val !== undefined && val !== '') {
+        const numVal = Number(val);
+        // Warning check first (it's wider than normal)
+        if (row.warningMin !== undefined && numVal < row.warningMin) colorClass = "text-red-600 font-bold bg-red-50";
+        else if (row.warningMax !== undefined && numVal > row.warningMax) colorClass = "text-red-600 font-bold bg-red-50";
+        // Then outside normal but inside warning
+        else if (row.normalMin !== undefined && numVal < row.normalMin) colorClass = "text-amber-600 font-bold bg-amber-50";
+        else if (row.normalMax !== undefined && numVal > row.normalMax) colorClass = "text-amber-600 font-bold bg-amber-50";
+        // Inside normal - implicit default is regular or maybe explicitly green? Wait, standard is black/gray-900 unless abnormal
+    }
+
     return (
       <input
         type={isNumberType ? 'number' : 'text'}
@@ -1033,7 +1104,7 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
             e.preventDefault();
           }
         }}
-        className="w-full h-full bg-transparent border-none text-center focus:ring-2 focus:ring-emerald-500 p-0 text-sm font-medium text-gray-900 placeholder-gray-300"
+        className={`w-full h-full bg-transparent border-none text-center focus:ring-2 focus:ring-emerald-500 p-0 text-sm font-medium placeholder-gray-300 ${colorClass}`}
         placeholder={hour === currentHourLabel ? '...' : ''}
       />
     );

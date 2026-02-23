@@ -25,6 +25,8 @@ export interface GlobalProductDefinition {
     };
     createdAt: Date;
     updatedAt: Date;
+    defaultPrescUnit?: string;
+    defaultPrescRoute?: string;
 }
 
 export class GlobalProductService {
@@ -56,7 +58,9 @@ export class GlobalProductService {
                 pfht: r.pfht ? parseFloat(r.pfht) : undefined
             },
             createdAt: new Date(r.created_at),
-            updatedAt: r.updated_at ? new Date(r.updated_at) : new Date(r.created_at)
+            updatedAt: r.updated_at ? new Date(r.updated_at) : new Date(r.created_at),
+            defaultPrescUnit: r.default_presc_unit,
+            defaultPrescRoute: r.default_presc_route
         };
     }
 
@@ -69,6 +73,15 @@ export class GlobalProductService {
         if (product.type === 'Médicament') {
             if (!product.dciComposition || product.dciComposition.length === 0) {
                 // Relaxed validation for legacy data
+            } else {
+                for (const comp of product.dciComposition) {
+                    if (comp.amount_value === undefined || comp.amount_value < 0) {
+                        throw new Error("La valeur de la quantité est invalide pour chaque DCI.");
+                    }
+                    if (!comp.amount_unit_id) {
+                        throw new Error("L'unité de quantité est obligatoire pour chaque DCI.");
+                    }
+                }
             }
         }
     }
@@ -99,13 +112,14 @@ export class GlobalProductService {
             INSERT INTO global_products (
                 id, code, name, type, form, presentation, dci_composition, class_therapeutique, 
                 units_per_pack, sahty_code, manufacturer, 
-                ppv, ph, pfht, created_at, updated_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $15)
+                ppv, ph, pfht, default_presc_unit, default_presc_route, created_at, updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $17)
         `, [
             newProduct.id, newProduct.code || '', newProduct.name, newProduct.type, newProduct.form, newProduct.presentation,
             JSON.stringify(newProduct.dciComposition || []), newProduct.therapeuticClass,
             newProduct.unitsPerBox, newProduct.sahtyCode, newProduct.manufacturer,
             newProduct.marketInfo?.ppv, newProduct.marketInfo?.ph, newProduct.marketInfo?.pfht,
+            newProduct.defaultPrescUnit, newProduct.defaultPrescRoute,
             now.toISOString()
         ]);
 
@@ -152,13 +166,14 @@ export class GlobalProductService {
                 UPDATE global_products SET 
                     code=$1, name=$2, type=$3, form=$4, presentation=$5, dci_composition=$6, class_therapeutique=$7, 
                     units_per_pack=$8, sahty_code=$9, manufacturer=$10, 
-                    ppv=$11, ph=$12, pfht=$13, updated_at=$14
-                WHERE id=$15
+                    ppv=$11, ph=$12, pfht=$13, default_presc_unit=$14, default_presc_route=$15, updated_at=$16
+                WHERE id=$17
             `, [
                 mergedProduct.code || '', mergedProduct.name, mergedProduct.type, mergedProduct.form, mergedProduct.presentation,
                 JSON.stringify(mergedProduct.dciComposition || []), mergedProduct.therapeuticClass,
                 mergedProduct.unitsPerBox, mergedProduct.sahtyCode, mergedProduct.manufacturer,
                 mergedProduct.marketInfo?.ppv, mergedProduct.marketInfo?.ph, mergedProduct.marketInfo?.pfht,
+                mergedProduct.defaultPrescUnit, mergedProduct.defaultPrescRoute,
                 now.toISOString(),
                 id
             ]);

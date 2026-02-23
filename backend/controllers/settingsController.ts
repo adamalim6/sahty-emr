@@ -324,3 +324,14 @@ export const reactivateServiceUnit = async (req: AuthRequest, res: Response) => 
         res.status(400).json({ message: error.message });
     }
 };
+
+// --- Observation/Reference ---
+export const getRoutes = async (req: AuthRequest, res: Response) => {
+    try {
+        const { tenantId } = getContext(req);
+        const routes = await settingsService.getRoutes(tenantId);
+        res.json(routes);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};

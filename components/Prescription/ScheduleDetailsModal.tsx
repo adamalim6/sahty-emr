@@ -8,16 +8,16 @@ interface ScheduleDetailsModalProps {
     isOpen: boolean;
     onClose: () => void;
     formData: FormData;
-    manualDoseAdjustments?: Record<string, string>; // ID -> ISO Date
-    skippedDoses?: string[]; // IDs
+    manuallyAdjustedEvents?: Record<string, string>; // ID -> ISO Date
+    skippedEvents?: string[]; // IDs
 }
 
 export const ScheduleDetailsModal: React.FC<ScheduleDetailsModalProps> = ({
     isOpen,
     onClose,
     formData,
-    manualDoseAdjustments,
-    skippedDoses
+    manuallyAdjustedEvents,
+    skippedEvents
 }) => {
     if (!isOpen) return null;
 
@@ -29,8 +29,8 @@ export const ScheduleDetailsModal: React.FC<ScheduleDetailsModalProps> = ({
         formData.adminMode,
         formData.adminDuration,
         {
-            skippedDoses: skippedDoses || formData.skippedDoses,
-            manualDoseAdjustments: manualDoseAdjustments || formData.manualDoseAdjustments
+            skippedEvents: skippedEvents || formData.skippedEvents,
+            manuallyAdjustedEvents: manuallyAdjustedEvents || formData.manuallyAdjustedEvents
         }
     );
 

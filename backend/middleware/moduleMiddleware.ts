@@ -14,6 +14,12 @@ export const requireModule = (requiredModule: string) => {
     return (req: any, res: Response, next: NextFunction) => {
         // Prefer structured req.auth (new path)
         if (req.auth) {
+            // SuperAdmins bypass module checks
+            const userType = req.user?.user_type;
+            if (userType === 'SUPER_ADMIN' || userType === 'PUBLISHER_SUPERADMIN') {
+                return next();
+            }
+
             if (req.auth.hasModule(requiredModule)) {
                 return next();
             }
@@ -31,6 +37,12 @@ export const requireModule = (requiredModule: string) => {
         }
 
         const userModules: string[] = user.modules || [];
+        const userType = user.user_type;
+        
+        if (userType === 'SUPER_ADMIN' || userType === 'PUBLISHER_SUPERADMIN') {
+            return next();
+        }
+
         if (!userModules.includes(requiredModule)) {
             console.warn(`[Access Denied] User ${user.username} tried to access ${requiredModule} but only has [${userModules.join(', ')}]`);
             return res.status(403).json({ 

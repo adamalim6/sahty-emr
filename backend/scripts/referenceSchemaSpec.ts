@@ -8,9 +8,17 @@ export const REFERENCE_TABLES_ORDER = [
     'global_atc',
     'global_emdn',
     'global_suppliers',
+    'care_categories',
+    'units',                          // Must come before observation_parameters and global_products (FK)
+    'routes',                         // Must come before global_products (FK)
     'global_dci',
     'global_products',                // Must come before global_product_price_history (FK)
     'global_product_price_history',
+    'observation_parameters',
+    'observation_groups',
+    'observation_flowsheets',
+    'flowsheet_groups',
+    'group_parameters'
 ];
 
 export interface ReferenceTableSpec {
@@ -133,6 +141,21 @@ export const REFERENCE_SCHEMA_DDL: ReferenceTableSpec[] = [
         `
     },
     {
+        tableName: 'care_categories',
+        ddl: `
+            CREATE TABLE IF NOT EXISTS reference.care_categories (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                code TEXT UNIQUE NOT NULL,
+                label TEXT NOT NULL,
+                is_active BOOLEAN DEFAULT true,
+                sort_order INTEGER DEFAULT 0,
+                created_at TIMESTAMPTZ DEFAULT now(),
+                updated_at TIMESTAMPTZ DEFAULT now()
+            );
+            CREATE INDEX IF NOT EXISTS idx_care_categories_active_order ON reference.care_categories (is_active, sort_order);
+        `
+    },
+    {
         tableName: 'global_dci',
         ddl: `
             CREATE TABLE IF NOT EXISTS reference.global_dci (
@@ -141,10 +164,42 @@ export const REFERENCE_SCHEMA_DDL: ReferenceTableSpec[] = [
                 atc_code TEXT,
                 therapeutic_class TEXT,
                 synonyms JSONB,
+                care_category_id UUID REFERENCES reference.care_categories(id),
                 created_at TIMESTAMPTZ
             );
             CREATE INDEX IF NOT EXISTS idx_ref_dci_name ON reference.global_dci(name);
             CREATE INDEX IF NOT EXISTS idx_ref_dci_atc ON reference.global_dci(atc_code) WHERE atc_code IS NOT NULL;
+        `
+    },
+    {
+        tableName: 'units',
+        ddl: `
+            CREATE TABLE IF NOT EXISTS reference.units (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                code TEXT UNIQUE NOT NULL,
+                display TEXT NOT NULL,
+                is_ucum BOOLEAN DEFAULT false,
+                is_active BOOLEAN DEFAULT true,
+                sort_order INT DEFAULT 0,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            );
+        `
+    },
+    {
+        tableName: 'routes',
+        ddl: `
+            CREATE TABLE IF NOT EXISTS reference.routes (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                code TEXT UNIQUE NOT NULL,
+                label TEXT NOT NULL,
+                is_active BOOLEAN DEFAULT true,
+                sort_order INTEGER DEFAULT 0,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_routes_active_order ON reference.routes (is_active, sort_order);
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_routes_sort_order_unique ON reference.routes (sort_order);
         `
     },
     {
@@ -165,6 +220,9 @@ export const REFERENCE_SCHEMA_DDL: ReferenceTableSpec[] = [
                 sahty_code TEXT,
                 code TEXT,
                 units_per_pack INTEGER DEFAULT 1,
+                default_presc_unit UUID,
+                default_presc_route UUID,
+                care_category_id UUID REFERENCES reference.care_categories(id),
                 is_active BOOLEAN DEFAULT TRUE,
                 created_at TIMESTAMPTZ,
                 updated_at TIMESTAMPTZ
@@ -189,6 +247,80 @@ export const REFERENCE_SCHEMA_DDL: ReferenceTableSpec[] = [
             );
             CREATE INDEX IF NOT EXISTS idx_ref_price_hist_product ON reference.global_product_price_history(product_id);
             CREATE INDEX IF NOT EXISTS idx_ref_price_hist_dates ON reference.global_product_price_history(valid_from, valid_to);
+        `
+    },
+    {
+        tableName: 'observation_parameters',
+        ddl: `
+            CREATE TABLE IF NOT EXISTS reference.observation_parameters (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                code TEXT UNIQUE NOT NULL,
+                label TEXT NOT NULL,
+                unit TEXT,
+                unit_id UUID,
+                value_type TEXT NOT NULL,
+                normal_min NUMERIC,
+                normal_max NUMERIC,
+                warning_min NUMERIC,
+                warning_max NUMERIC,
+                hard_min NUMERIC,
+                hard_max NUMERIC,
+                is_hydric_input BOOLEAN DEFAULT false,
+                is_hydric_output BOOLEAN DEFAULT false,
+                sort_order INT DEFAULT 0,
+                is_active BOOLEAN DEFAULT true,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            );
+        `
+    },
+    {
+        tableName: 'observation_groups',
+        ddl: `
+            CREATE TABLE IF NOT EXISTS reference.observation_groups (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                code TEXT UNIQUE NOT NULL,
+                label TEXT NOT NULL,
+                sort_order INT DEFAULT 0,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            );
+        `
+    },
+    {
+        tableName: 'observation_flowsheets',
+        ddl: `
+            CREATE TABLE IF NOT EXISTS reference.observation_flowsheets (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                code TEXT UNIQUE NOT NULL,
+                label TEXT NOT NULL,
+                sort_order INT DEFAULT 0,
+                is_active BOOLEAN DEFAULT true,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            );
+        `
+    },
+    {
+        tableName: 'flowsheet_groups',
+        ddl: `
+            CREATE TABLE IF NOT EXISTS reference.flowsheet_groups (
+                flowsheet_id UUID NOT NULL REFERENCES reference.observation_flowsheets(id) ON DELETE CASCADE,
+                group_id UUID NOT NULL REFERENCES reference.observation_groups(id) ON DELETE CASCADE,
+                sort_order INT DEFAULT 0,
+                PRIMARY KEY (flowsheet_id, group_id)
+            );
+        `
+    },
+    {
+        tableName: 'group_parameters',
+        ddl: `
+            CREATE TABLE IF NOT EXISTS reference.group_parameters (
+                group_id UUID NOT NULL REFERENCES reference.observation_groups(id) ON DELETE CASCADE,
+                parameter_id UUID NOT NULL REFERENCES reference.observation_parameters(id) ON DELETE CASCADE,
+                sort_order INT DEFAULT 0,
+                PRIMARY KEY (group_id, parameter_id)
+            );
         `
     }
 ];

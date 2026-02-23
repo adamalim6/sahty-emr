@@ -4,16 +4,17 @@ import { DCI, ProductDCIComponent } from '../../types/pharmacy';
 import { api } from '../../services/api';
 
 interface DCISelectorProps {
-    // availableDCIs: DCI[]; // REMOVED: Managed internally via async search
     value: ProductDCIComponent[];
     onChange: (value: ProductDCIComponent[]) => void;
     onAddNew: () => void;
+    units: { id: string, display: string, code: string }[];
 }
 
 export const DCISelector: React.FC<DCISelectorProps> = ({ 
     value, 
     onChange,
-    onAddNew 
+    onAddNew,
+    units
 }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [isOpen, setIsOpen] = useState(false);
@@ -61,12 +62,14 @@ export const DCISelector: React.FC<DCISelectorProps> = ({
 
 
     const handleSelect = (dci: DCI) => {
+        // Default to mg unit if it exists, otherwise the first unit
+        const mgUnit = units.find(u => u.code.toLowerCase() === 'mg') || units[0];
         onChange([...value, { 
             dciId: dci.id, 
             name: dci.name, 
-            atcCode: dci.atc_code, // Store ATC Code
-            dosage: 0, 
-            unit: 'mg' as const 
+            atcCode: dci.atcCode || (dci as any).atc_code, // Store ATC Code
+            amount_value: 0, 
+            amount_unit_id: mgUnit ? mgUnit.id : '' 
         }]);
         setSearchQuery('');
         setIsOpen(false);
@@ -134,123 +137,60 @@ export const DCISelector: React.FC<DCISelectorProps> = ({
                                      */}
                                 </span>
                                 
-                                {/* Dosage Input - Hide if complex presentation is active */}
-                                {/* Dosage Input - Always Visible (Numerator for Complex) */}
-                                <input 
-                                    type="number" 
-                                    className={`w-20 px-2 py-1 border rounded text-sm outline-none focus:ring-2 focus:ring-purple-500 ${(!item.dosage && !item.presentation?.numerator) ? 'border-red-300' : 'border-slate-300'}`}
-                                    placeholder="Dose"
-                                    value={item.presentation ? (item.presentation.numerator || '') : (item.dosage || '')}
-                                    onChange={e => {
-                                        const newVal = parseFloat(e.target.value);
-                                        // Handle NaN
-                                        if (isNaN(newVal)) return; // Or handle empty
-
-                                        let updatedItem = { ...item };
-                                        
-                                        if (updatedItem.presentation) {
-                                            // Complex mode: Update numerator
-                                            updatedItem.presentation = { ...updatedItem.presentation, numerator: newVal };
-                                            // Recalculate canonical dosage
-                                            const denom = updatedItem.presentation.denominator || 1;
-                                            updatedItem.dosage = newVal / denom;
-                                        } else {
-                                            // Simple mode
-                                            updatedItem.dosage = newVal;
-                                        }
-                                        
-                                        onChange(value.map(i => i.dciId === item.dciId ? updatedItem : i));
-                                    }}
-                                    min={0}
-                                />
+                                {/* Amount Input */}
+                                <div className="flex items-center gap-1">
+                                    <input 
+                                        type="number" 
+                                        className={`w-20 px-2 py-1 border rounded text-sm outline-none focus:ring-2 focus:ring-purple-500 ${!item.amount_value ? 'border-red-300' : 'border-slate-300'}`}
+                                        placeholder="Qté"
+                                        value={item.amount_value || ''}
+                                        onChange={e => {
+                                            const newVal = parseFloat(e.target.value);
+                                            if (isNaN(newVal)) return;
+                                            handleUpdate(item.dciId, 'amount_value', newVal);
+                                        }}
+                                        min={0}
+                                        step="any"
+                                    />
+                                    <select 
+                                        className="w-24 px-2 py-1 border border-slate-300 rounded text-sm outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                                        value={item.amount_unit_id || ''}
+                                        onChange={e => handleUpdate(item.dciId, 'amount_unit_id', e.target.value)}
+                                    >
+                                        <option value="" disabled>Unité</option>
+                                        {units.map(u => (
+                                            <option key={u.id} value={u.id}>{u.display || u.code}</option>
+                                        ))}
+                                    </select>
+                                </div>
                                 
-                                {/* Unit Selector */}
-                                <select 
-                                    className="w-24 px-2 py-1 border border-slate-300 rounded text-sm outline-none focus:ring-2 focus:ring-purple-500 bg-white"
-                                    value={(() => {
-                                        if (item.presentation) {
-                                            if (item.presentation.numeratorUnit === 'mg') return 'COMPLEX_MG_ML';
-                                            if (item.presentation.numeratorUnit === 'mcg') return 'COMPLEX_MCG_ML';
-                                            if (item.presentation.numeratorUnit === 'g') return 'COMPLEX_G_ML';
-                                            return 'COMPLEX_MG_ML'; 
-                                        }
-                                        return item.unit;
-                                    })()}
-                                    onChange={e => {
-                                        const val = e.target.value;
-                                        let updatedItem = { ...item };
+                                <span className="text-xs text-slate-400">/</span>
 
-                                        if (val.startsWith('COMPLEX')) {
-                                            // Initialize complex mode
-                                            const num = item.dosage || 0;
-                                            let numUnit = 'mg';
-                                            let canonUnit = 'mg/mL';
-                                            
-                                            if (val === 'COMPLEX_MCG_ML') {
-                                                numUnit = 'mcg';
-                                                canonUnit = 'mcg/mL';
-                                            } else if (val === 'COMPLEX_G_ML') {
-                                                numUnit = 'g';
-                                                canonUnit = 'g/mL';
-                                            }
-
-                                            updatedItem.presentation = {
-                                                numerator: num,
-                                                denominator: 1, // Default
-                                                numeratorUnit: numUnit,
-                                                denominatorUnit: 'ml'
-                                            };
-                                            updatedItem.unit = canonUnit as any;
-                                            updatedItem.dosage = num;
-                                        } else {
-                                            // Switch back to simple
-                                            updatedItem.unit = val as any;
-                                            delete updatedItem.presentation;
-                                        }
-
-                                        // Atomic update
-                                        onChange(value.map(i => i.dciId === item.dciId ? updatedItem : i));
-                                    }}
-                                >
-                                    <optgroup label="Standard">
-                                        <option value="mg">mg</option>
-                                        <option value="g">g</option>
-                                        <option value="mcg">mcg</option>
-                                        <option value="ml">ml</option>
-                                        <option value="IU">IU</option>
-                                        <option value="%">%</option>
-                                    </optgroup>
-                                    <optgroup label="Complexe (Sirop/Injectable)">
-                                        <option value="COMPLEX_MG_ML">mg / _ ml</option>
-                                        <option value="COMPLEX_MCG_ML">mcg / _ ml</option>
-                                        <option value="COMPLEX_G_ML">g / _ ml</option>
-                                    </optgroup>
-                                </select>
-
-                                {/* Complex Dosage Inputs */}
-                                {item.presentation && (
-                                    <div className="flex items-center gap-1 bg-purple-50 px-2 py-1 rounded border border-purple-200">
-                                         <span className="text-xs text-slate-500">/</span>
-                                         <input 
-                                            type="number" 
-                                            className="w-12 px-1 py-0.5 border border-purple-300 rounded text-xs outline-none focus:ring-1 focus:ring-purple-500"
-                                            value={item.presentation.denominator}
-                                            onChange={e => {
-                                                const denom = parseFloat(e.target.value);
-                                                const pres = item.presentation!; // safe
-                                                
-                                                // Update presentation
-                                                handleUpdate(item.dciId, 'presentation', { ...pres, denominator: denom });
-
-                                                // Update Canonical Dosage = Num / Denom
-                                                // e.g. 15mg / 5ml = 3 mg/ml
-                                                const canonical = pres.numerator / (denom || 1);
-                                                handleUpdate(item.dciId, 'dosage', canonical);
-                                            }}
-                                         />
-                                         <span className="text-xs font-mono text-purple-700">ml</span>
-                                    </div>
-                                )}
+                                {/* Diluent Input */}
+                                <div className="flex items-center gap-1 bg-purple-50 px-2 py-1 rounded border border-purple-200">
+                                    <input 
+                                        type="number" 
+                                        className="w-16 px-1 py-0.5 border border-purple-300 rounded text-sm outline-none focus:ring-1 focus:ring-purple-500 bg-white"
+                                        placeholder="Vol (opt)"
+                                        value={item.diluent_volume_value || ''}
+                                        onChange={e => {
+                                            const newVal = parseFloat(e.target.value);
+                                            handleUpdate(item.dciId, 'diluent_volume_value', isNaN(newVal) ? undefined : newVal);
+                                        }}
+                                        min={0}
+                                        step="any"
+                                    />
+                                    <select 
+                                        className="w-20 px-1 py-1 border border-purple-300 rounded text-xs outline-none focus:ring-1 focus:ring-purple-500 bg-white"
+                                        value={item.diluent_volume_unit_id || ''}
+                                        onChange={e => handleUpdate(item.dciId, 'diluent_volume_unit_id', e.target.value)}
+                                    >
+                                        <option value="">(Aucun)</option>
+                                        {units.map(u => (
+                                            <option key={u.id} value={u.id}>{u.display || u.code}</option>
+                                        ))}
+                                    </select>
+                                </div>
 
                                 <button 
                                     type="button"

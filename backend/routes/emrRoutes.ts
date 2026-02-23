@@ -127,4 +127,10 @@ router.get('/admissions/:admissionId/stays', requireTenant, getAdmissionStays);
 router.post('/admissions/:admissionId/stays', requireTenant, assignBed);
 router.post('/admissions/:admissionId/transfer', requireTenant, transferBed);
 
+import { getSurveillanceTimeline, updateSurveillanceCell } from '../controllers/surveillanceController';
+
+// --- SURVEILLANCE / MAR ---
+router.get('/patients/:patientId/surveillance', requireTenant, getSurveillanceTimeline);
+router.post('/patients/:patientId/surveillance/cell', requireTenant, updateSurveillanceCell);
+
 export default router;

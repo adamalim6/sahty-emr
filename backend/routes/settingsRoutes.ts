@@ -13,7 +13,8 @@ import {
     
     // Pricing
     getPricing, createPricing,
-    updateTenantUser
+    updateTenantUser,
+    getRoutes
 } from '../controllers/settingsController';
 import { authenticateToken, requireRole } from '../middleware/authMiddleware';
 import { UserType } from '../models/auth';
@@ -76,5 +77,20 @@ router.get('/occupancy/:serviceId', getBedOccupancy);
 // --- PRICING ---
 router.get('/pricing', getPricing); // Pricing view might be needed?
 router.post('/pricing', requireModule('SETTINGS'), createPricing);
+
+import {
+    getFlowsheets, getGroups, getParameters, getUnits
+} from '../controllers/emrObservationCatalogController';
+
+// --- OBSERVATION CATALOG (Surveillance Flowsheets) ---
+router.get('/observation/flowsheets', getFlowsheets);
+router.get('/observation/groups', getGroups);
+router.get('/observation/parameters', getParameters);
+
+// --- UNITS CATALOG ---
+router.get('/observation/units', getUnits);
+
+// --- ROUTES CATALOG ---
+router.get('/observation/routes', getRoutes);
 
 export default router;

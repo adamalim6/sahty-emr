@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
-import { Plus, Search, Building2, Users } from 'lucide-react';
+import { Plus, Search, Building2, Users, RefreshCw } from 'lucide-react';
 
 export const ClientsPage: React.FC = () => {
     const navigate = useNavigate();
@@ -10,6 +10,10 @@ export const ClientsPage: React.FC = () => {
     const [groups, setGroups] = useState<any[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    // Schema Update State
+    const [isUpdatingAll, setIsUpdatingAll] = useState(false);
+    const [updatingTenants, setUpdatingTenants] = useState<Record<string, boolean>>({});
     
     // Form State
     const [formData, setFormData] = useState({
@@ -73,6 +77,40 @@ export const ClientsPage: React.FC = () => {
         }
     };
 
+    const handleUpdateAll = async () => {
+        if (!window.confirm("Êtes-vous sûr de vouloir lancer la mise à jour des schémas de référence pour TOUS les locataires ? Cette opération peut prendre un certain temps.")) return;
+        setIsUpdatingAll(true);
+        try {
+            const res = await api.updateAllReferenceSchemas();
+            const detailsText = res.summary.map((s: any) => 
+                `- ${s.designation}: ${s.status === 'success' ? `V${s.fromVersion} → V${s.toVersion}` : s.status === 'skipped' ? `Déjà à jour (V${s.fromVersion})` : `Erreur: ${s.error || 'Échec'}`}`
+            ).join('\n');
+            alert(`Mise à jour globale terminée.\n\nDétails:\n${detailsText}`);
+        } catch (e: any) {
+            alert(`Erreur lors de la mise à jour globale: ${e.message}`);
+        } finally {
+            setIsUpdatingAll(false);
+        }
+    };
+
+    const handleUpdateSingle = async (e: React.MouseEvent, id: string, name: string) => {
+        e.stopPropagation();
+        if (!window.confirm(`Mettre à jour le schéma de référence de : ${name} ?`)) return;
+        setUpdatingTenants(prev => ({ ...prev, [id]: true }));
+        try {
+            const res = await api.updateTenantReferenceSchema(id);
+            if (res.status === 'skipped') {
+                alert(`${name} : Déjà à jour (Version ${res.fromVersion})`);
+            } else {
+                alert(`${name} : Mis à jour avec succès de V${res.fromVersion} vers V${res.toVersion}.`);
+            }
+        } catch (err: any) {
+            alert(`Erreur pour ${name}: ${err.message}`);
+        } finally {
+            setUpdatingTenants(prev => ({ ...prev, [id]: false }));
+        }
+    };
+
     return (
         <div className="p-8 max-w-7xl mx-auto">
             <div className="flex justify-between items-center mb-8">
@@ -80,13 +118,27 @@ export const ClientsPage: React.FC = () => {
                     <h1 className="text-2xl font-bold text-slate-800">Gestion des Clients</h1>
                     <p className="text-slate-500">Ajouter et gérer les établissements de santé</p>
                 </div>
-                <button 
-                    onClick={() => setIsModalOpen(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
-                >
-                    <Plus size={20} />
-                    <span>Nouveau Client</span>
-                </button>
+                <div className="flex space-x-3">
+                    <button 
+                        onClick={handleUpdateAll}
+                        disabled={isUpdatingAll}
+                        className={`px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors ${
+                            isUpdatingAll ? 'bg-slate-300 cursor-not-allowed' : 'bg-slate-800 hover:bg-slate-900 text-white'
+                        }`}
+                        title="Met à jour les schémas de référence de tous les locataires existants."
+                    >
+                        <RefreshCw size={20} className={isUpdatingAll ? "animate-spin" : ""} />
+                        <span>{isUpdatingAll ? 'Mise à jour en cours...' : 'Update ALL Tenants'}</span>
+                    </button>
+
+                    <button 
+                        onClick={() => setIsModalOpen(true)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+                    >
+                        <Plus size={20} />
+                        <span>Nouveau Client</span>
+                    </button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -112,7 +164,22 @@ export const ClientsPage: React.FC = () => {
                                 </span>
                             </div>
                         </div>
-                        <h3 className="text-lg font-bold text-slate-800 mb-1 group-hover:text-blue-600 transition-colors">{client.designation}</h3>
+                        <div className="flex justify-between items-start mt-2">
+                            <h3 className="text-lg font-bold text-slate-800 mb-1 group-hover:text-blue-600 transition-colors">{client.designation}</h3>
+                            
+                            <button
+                                onClick={(e) => handleUpdateSingle(e, client.id, client.designation)}
+                                disabled={updatingTenants[client.id]}
+                                className={`p-2 rounded-lg transition-colors border ${
+                                    updatingTenants[client.id] 
+                                        ? 'bg-slate-100 text-slate-400 border-slate-200' 
+                                        : 'bg-white text-slate-500 border-slate-200 hover:text-slate-800 hover:border-slate-800'
+                                }`}
+                                title="Update this tenant"
+                            >
+                                <RefreshCw size={18} className={updatingTenants[client.id] ? "animate-spin" : ""} />
+                            </button>
+                        </div>
                         <p className="text-sm text-slate-500 mb-4">{client.siege_social}</p>
                         
                         <div className="border-t border-slate-100 pt-4 mt-4">

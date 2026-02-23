@@ -7,12 +7,12 @@ async function migrateAllTenants() {
     console.log('Starting Reference Schema Migration for ALL tenants...');
 
     // 1. Get all tenants from Global DB (source of truth for existence)
-    const clients = await globalQuery('SELECT id FROM clients');
+    const tenants = await globalQuery('SELECT id FROM tenants');
     
-    console.log(`Found ${clients.length} tenants to process.`);
+    console.log(`Found ${tenants.length} tenants to process.`);
 
-    for (const client of clients) {
-        const tenantId = client.id;
+    for (const tenant of tenants) {
+        const tenantId = tenant.id;
         try {
             console.log(`Processing Tenant ${tenantId}...`);
             const pool = getTenantPool(tenantId);

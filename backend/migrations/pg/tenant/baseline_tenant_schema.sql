@@ -192,6 +192,17 @@ CREATE OR REPLACE TRIGGER trg_sync_master_patient_merge_events_delete
 -- 5. REFERENCE SCHEMA (empty shell — tables populated by referenceSync)
 -- ============================================================================
 
+CREATE TABLE IF NOT EXISTS reference.care_categories (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code TEXT UNIQUE NOT NULL,
+    label TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT true,
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_care_categories_active_order ON reference.care_categories (is_active, sort_order);
+
 CREATE TABLE IF NOT EXISTS reference.countries (
     country_id UUID PRIMARY KEY,
     iso_code   TEXT,
@@ -229,6 +240,7 @@ CREATE TABLE IF NOT EXISTS reference.global_dci (
     atc_code          TEXT,
     therapeutic_class TEXT,
     synonyms          JSONB,
+    care_category_id  UUID REFERENCES reference.care_categories(id),
     created_at        TIMESTAMPTZ
 );
 CREATE INDEX IF NOT EXISTS idx_ref_dci_name ON reference.global_dci (name);
@@ -242,6 +254,29 @@ CREATE TABLE IF NOT EXISTS reference.global_emdn (
     parent   TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_ref_emdn_parent ON reference.global_emdn (parent);
+
+CREATE TABLE IF NOT EXISTS reference.units (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code TEXT UNIQUE NOT NULL,
+    display TEXT NOT NULL,
+    is_ucum BOOLEAN DEFAULT false,
+    is_active BOOLEAN DEFAULT true,
+    sort_order INT DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_units_active_order ON reference.units (is_active, sort_order);
+
+CREATE TABLE IF NOT EXISTS reference.routes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code TEXT UNIQUE NOT NULL,
+    label TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT true,
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_routes_active_order ON reference.routes (is_active, sort_order);
 
 CREATE TABLE IF NOT EXISTS reference.global_products (
     id                  UUID PRIMARY KEY,
@@ -258,6 +293,9 @@ CREATE TABLE IF NOT EXISTS reference.global_products (
     sahty_code          TEXT,
     code                TEXT,
     units_per_pack      INTEGER DEFAULT 1,
+    default_presc_unit  UUID REFERENCES reference.units(id),
+    default_presc_route UUID REFERENCES reference.routes(id),
+    care_category_id    UUID REFERENCES reference.care_categories(id),
     is_active           BOOLEAN DEFAULT TRUE,
     created_at          TIMESTAMPTZ,
     updated_at          TIMESTAMPTZ
@@ -812,16 +850,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS uniq_active_chart_per_master
     ON patients_tenant (tenant_id, master_patient_id)
     WHERE lifecycle_status = 'ACTIVE' AND master_patient_id IS NOT NULL;
 
-CREATE TABLE IF NOT EXISTS persons (
-    person_id  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id  UUID NOT NULL,
-    first_name TEXT NOT NULL,
-    last_name  TEXT NOT NULL,
-    phone      TEXT,
-    email      TEXT,
-    created_at TIMESTAMPTZ DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS idx_persons_tenant ON persons (tenant_id);
 
 CREATE TABLE IF NOT EXISTS patient_contacts (
     contact_id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -844,33 +872,6 @@ CREATE TABLE IF NOT EXISTS patient_addresses (
     country_code      TEXT,
     is_primary        BOOLEAN NOT NULL DEFAULT FALSE
 );
-
-CREATE TABLE IF NOT EXISTS patient_insurances (
-    patient_insurance_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_patient_id    UUID NOT NULL,
-    insurance_org_id     UUID NOT NULL,
-    policy_number        TEXT,
-    plan_name            TEXT,
-    subscriber_name      TEXT,
-    coverage_valid_from  DATE,
-    coverage_valid_to    DATE,
-    row_valid_from       TIMESTAMPTZ NOT NULL DEFAULT now(),
-    row_valid_to         TIMESTAMPTZ,
-    created_at           TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS patient_documents (
-    id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    patient_id           UUID NOT NULL,
-    document_type_code   TEXT NOT NULL,
-    document_number      TEXT NOT NULL,
-    issuing_country_code TEXT,
-    is_primary           BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at           TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at           TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX IF NOT EXISTS idx_patient_documents_patient_id ON patient_documents (patient_id);
-CREATE INDEX IF NOT EXISTS idx_patient_documents_lookup ON patient_documents (document_type_code, document_number);
 
 -- 15.b Identity IDs (Migration 041) — Replaces patient_documents for new identity model
 CREATE TABLE IF NOT EXISTS identity_ids (
@@ -976,55 +977,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_coverage_member ON coverage_members
 -- Ensure max one 'SELF' subscriber per coverage
 CREATE UNIQUE INDEX IF NOT EXISTS idx_coverage_subscriber_unique ON coverage_members(coverage_id) WHERE relationship_to_subscriber_code = 'SELF';
 
-
-
-CREATE TABLE IF NOT EXISTS patient_relationships (
-    relationship_id    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id          UUID NOT NULL,
-    subject_patient_id UUID NOT NULL REFERENCES patients_tenant(tenant_patient_id),
-    related_patient_id UUID REFERENCES patients_tenant(tenant_patient_id),
-    related_person_id  UUID REFERENCES persons(person_id),
-    relationship_type  TEXT NOT NULL,
-    valid_from         DATE NOT NULL,
-    valid_to           DATE,
-    created_at         TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS patient_decision_makers (
-    decision_maker_id  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id          UUID NOT NULL,
-    tenant_patient_id  UUID NOT NULL REFERENCES patients_tenant(tenant_patient_id),
-    related_patient_id UUID REFERENCES patients_tenant(tenant_patient_id),
-    related_person_id  UUID REFERENCES persons(person_id),
-    role               TEXT NOT NULL,
-    priority           INTEGER,
-    valid_from         DATE NOT NULL,
-    valid_to           DATE,
-    created_at         TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS patient_emergency_contacts (
-    emergency_contact_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id            UUID NOT NULL,
-    tenant_patient_id    UUID NOT NULL REFERENCES patients_tenant(tenant_patient_id),
-    related_patient_id   UUID REFERENCES patients_tenant(tenant_patient_id),
-    related_person_id    UUID REFERENCES persons(person_id),
-    relationship_label   TEXT,
-    priority             INTEGER,
-    created_at           TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS patient_legal_guardians (
-    legal_guardian_id  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id          UUID NOT NULL,
-    tenant_patient_id  UUID NOT NULL REFERENCES patients_tenant(tenant_patient_id),
-    related_patient_id UUID REFERENCES patients_tenant(tenant_patient_id),
-    related_person_id  UUID REFERENCES persons(person_id),
-    valid_from         DATE NOT NULL,
-    valid_to           DATE,
-    legal_basis        TEXT,
-    created_at         TIMESTAMPTZ DEFAULT now()
-);
 
 CREATE TABLE IF NOT EXISTS patient_tenant_merge_events (
     merge_event_id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1201,11 +1153,6 @@ $$ LANGUAGE plpgsql;
 
 -- Audit triggers on EMR tables
 CREATE OR REPLACE TRIGGER audit_patients_tenant AFTER INSERT OR UPDATE OR DELETE ON patients_tenant FOR EACH ROW EXECUTE FUNCTION fn_generic_audit();
-CREATE OR REPLACE TRIGGER audit_patient_relationships AFTER INSERT OR UPDATE OR DELETE ON patient_relationships FOR EACH ROW EXECUTE FUNCTION fn_generic_audit();
-CREATE OR REPLACE TRIGGER audit_patient_decision_makers AFTER INSERT OR UPDATE OR DELETE ON patient_decision_makers FOR EACH ROW EXECUTE FUNCTION fn_generic_audit();
-CREATE OR REPLACE TRIGGER audit_patient_emergency_contacts AFTER INSERT OR UPDATE OR DELETE ON patient_emergency_contacts FOR EACH ROW EXECUTE FUNCTION fn_generic_audit();
-CREATE OR REPLACE TRIGGER audit_patient_legal_guardians AFTER INSERT OR UPDATE OR DELETE ON patient_legal_guardians FOR EACH ROW EXECUTE FUNCTION fn_generic_audit();
-CREATE OR REPLACE TRIGGER audit_patient_insurances AFTER INSERT OR UPDATE OR DELETE ON patient_insurances FOR EACH ROW EXECUTE FUNCTION fn_generic_audit();
 
 -- ============================================================================
 -- 17. PUBLIC SCHEMA — MIGRATION TRACKING
@@ -1373,3 +1320,89 @@ CREATE INDEX IF NOT EXISTS idx_adm_hist_admission ON admission_coverage_change_h
 CREATE INDEX IF NOT EXISTS idx_adm_hist_coverage ON admission_coverage_change_history (tenant_id, admission_coverage_id);
 CREATE INDEX IF NOT EXISTS idx_adm_hist_date ON admission_coverage_change_history (tenant_id, changed_at DESC);
 
+-- ============================================================================
+-- 21. PRESCRIPTION EVENTS AND ADMINISTRATION EVENTS
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS prescription_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL,
+    prescription_id UUID NOT NULL REFERENCES prescriptions(id) ON DELETE CASCADE,
+    admission_id UUID,
+    scheduled_at TIMESTAMPTZ NOT NULL,
+    duration INTEGER,
+    status TEXT NOT NULL DEFAULT 'scheduled',
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_rx_events_tenant ON prescription_events(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_rx_events_prescription ON prescription_events(prescription_id);
+CREATE INDEX IF NOT EXISTS idx_rx_events_status ON prescription_events(tenant_id, status);
+CREATE INDEX IF NOT EXISTS idx_presc_events_by_admission_time ON prescription_events(tenant_id, admission_id, scheduled_at);
+
+CREATE TABLE IF NOT EXISTS administration_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL,
+    prescription_event_id UUID NOT NULL REFERENCES prescription_events(id) ON DELETE CASCADE,
+    action_type TEXT NOT NULL,
+    occurred_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    actual_start_at TIMESTAMPTZ,
+    actual_end_at TIMESTAMPTZ,
+    performed_by TEXT,
+    performed_by_user_id UUID,
+    note TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_events_by_presc_event_time
+    ON administration_events(tenant_id, prescription_event_id, occurred_at);
+
+-- ============================================================================
+-- 22. SURVEILLANCE HOUR BUCKETS
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS surveillance_hour_buckets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL,
+    admission_id UUID, -- Can be null, as MAR flowsheet is patient-centric
+    tenant_patient_id UUID NOT NULL,
+    bucket_start TIMESTAMPTZ NOT NULL,
+    values JSONB NOT NULL DEFAULT '{}'::jsonb,
+    revision INT NOT NULL DEFAULT 0,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_by_user_id UUID,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    created_by_user_id UUID,
+    UNIQUE (tenant_id, tenant_patient_id, bucket_start)
+);
+
+
+CREATE INDEX IF NOT EXISTS idx_surveillance_buckets_patient ON surveillance_hour_buckets(tenant_id, tenant_patient_id, bucket_start);
+CREATE INDEX IF NOT EXISTS idx_surveillance_buckets_admission ON surveillance_hour_buckets(tenant_id, admission_id, bucket_start);
+
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER trg_surv_hour_buckets_upd
+    BEFORE UPDATE ON surveillance_hour_buckets
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================================
+-- 23. REFERENCE SCHEMA VERSION TRACKER
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS public.reference_schema_version (
+    id              INTEGER PRIMARY KEY CHECK (id = 1),
+    current_version INTEGER NOT NULL,
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+INSERT INTO public.reference_schema_version (id, current_version)
+VALUES (1, 0)
+ON CONFLICT (id) DO NOTHING;

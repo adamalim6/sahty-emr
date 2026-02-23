@@ -36,11 +36,15 @@ import { GlobalProductManager } from './components/SuperAdmin/GlobalProductManag
 import { GlobalDCIManager } from './components/SuperAdmin/GlobalDCIManager';
 import { EMDNSandboxPage } from './components/SuperAdmin/EMDNSandboxPage';
 import { RoleDetailPage } from './components/SuperAdmin/RoleDetailPage';
+import { FlowsheetManager } from './components/SuperAdmin/FlowsheetManager';
+import { UnitsManager } from './components/SuperAdmin/UnitsManager';
+import { RoutesManager } from './components/SuperAdmin/RoutesManager';
 import { ServiceStockPage } from './components/ServiceStock/ServiceStockPage';
 import ServiceStockManager from './components/StockTransfer/ServiceStockManager';
 import { EmrLocationManager } from './components/EmrLocationManager';
 import TransferManager from './components/StockTransfer/TransferManager';
 import ReturnsManager from './components/Returns/ReturnsManager';
+import { CareCategoriesManager } from './components/SuperAdmin/CareCategoriesManager';
 
 const ProtectedRoute = ({ role, permission, children }: { role?: string | UserType, permission?: string, children: React.ReactNode }) => {
   const { user, isAuthenticated, loading } = useAuth();
@@ -140,6 +144,10 @@ const App: React.FC = () => {
              <Route path="dci" element={<GlobalDCIManager />} />
              <Route path="atc-sandbox" element={<ATCSandboxPage />} />
              <Route path="emdn" element={<EMDNSandboxPage />} />
+             <Route path="flowsheets" element={<FlowsheetManager />} />
+             <Route path="units" element={<UnitsManager />} />
+             <Route path="routes" element={<RoutesManager />} />
+             <Route path="care-categories" element={<CareCategoriesManager />} />
              <Route index element={<Navigate to="clients" replace />} />
           </Route>
 

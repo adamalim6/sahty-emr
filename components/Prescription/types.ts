@@ -32,21 +32,24 @@ export interface ScheduleData {
 
 export interface FormData {
   molecule: string;
+  moleculeId?: string;
   commercialName: string;
+  productId?: string;
   qty: string;
   unit: string;
   route: string;
+  routeLabel?: string; // Route display name
   adminMode: AdminMode;
   adminDuration: string;
-  type: PrescriptionType;
+  schedule_type: PrescriptionType;
   dilutionRequired: boolean;
   solvent?: SolventData; // Nouveau champ pour les détails du solvant
   databaseMode: 'hospital' | 'universal'; // Nouveau champ pour le mode de base de données
   schedule: ScheduleData;
   conditionComment?: string; // Nouveau champ pour les conditions/commentaires
   substitutable: boolean; // Nouveau champ pour la substituabilité
-  skippedDoses?: string[]; // Nouveau champ pour les prises sautées (IDs/Dates)
-  manualDoseAdjustments?: Record<string, string>; // ID -> ISO Date string for time shifts
+  skippedEvents?: string[]; // Nouveau champ pour les prises sautées (IDs/Dates)
+  manuallyAdjustedEvents?: Record<string, string>; // ID -> ISO Date string for time shifts
   prescriptionType?: 'medication' | 'biology' | 'imagery' | 'care' | 'transfusion'; // Type de prescription
 }
 
@@ -71,8 +74,17 @@ export interface Prescription {
   id: string;
   patientId: string;
   data: FormData;
+  status?: string;
+  derived_status?: 'ACTIVE' | 'PAUSED' | 'STOPPED' | 'ELAPSED';
+  paused_at?: string | null;
+  paused_by?: string | null;
+  stopped_at?: string | null;
+  stopped_by?: string | null;
+  stopped_reason?: string | null;
   createdAt: Date;
   createdBy: string;
+  createdByFirstName?: string;
+  createdByLastName?: string;
 }
 
 export type ExecutionStatus = 'planned' | 'administered' | 'not-administered' | 'late';

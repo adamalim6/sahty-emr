@@ -1,5 +1,5 @@
 import { api } from '../../services/api';
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   Pill,
   Calendar,
@@ -28,7 +28,7 @@ import {
   TestTube,
   Edit2, Trash2, ArrowRight, CalendarOff
 } from 'lucide-react';
-import { MOLECULE_DB_UNIVERSAL, MOLECULE_DB_HOSPITAL, UNITS, ROUTES } from './constants';
+import { MOLECULE_DB_UNIVERSAL, MOLECULE_DB_HOSPITAL, ROUTES } from './constants';
 import { FormData, ScheduleData, SolventData, MoleculeDatabase, PrescriptionType } from './types';
 import { durationToDecimal, formatDuration, getPosologyText, FULL_DAYS_MAP, generateDoseSchedule } from './utils';
 import { DoseEditor } from './DoseEditor';
@@ -98,6 +98,97 @@ const getMinDateTimeForInput = () => {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
+const SearchableSelect = ({
+  options,
+  value,
+  onChange,
+  placeholder,
+  className = ""
+}: {
+  options: { value: string, label: string }[],
+  value: string,
+  onChange: (val: string) => void,
+  placeholder?: string,
+  className?: string
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const filteredOptions = options.filter(opt =>
+    opt.label.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (inputRef.current && !inputRef.current.parentElement?.parentElement?.contains(e.target as Node)) {
+        setIsOpen(false);
+        setSearchTerm('');
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative w-full">
+      <div
+        className={`flex items-center justify-between cursor-text bg-white border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-emerald-500 focus-within:border-emerald-500 transition-all ${className}`}
+        onClick={() => {
+          if (!isOpen) {
+            setIsOpen(true);
+            setSearchTerm('');
+            inputRef.current?.focus();
+          }
+        }}
+      >
+        <input
+          ref={inputRef}
+          type="text"
+          className="w-full bg-transparent outline-none truncate placeholder:text-slate-400 pl-3 pr-2 h-12 text-sm font-medium"
+          placeholder={isOpen ? (options.find(o => o.value === value)?.label || placeholder) : ''}
+          value={isOpen ? searchTerm : (options.find(o => o.value === value)?.label || value)}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            if (!isOpen) setIsOpen(true);
+          }}
+          onFocus={() => {
+            setIsOpen(true);
+            setSearchTerm('');
+          }}
+        />
+        <div className="pr-3 flex items-center justify-center">
+            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </div>
+      </div>
+
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2">
+          {filteredOptions.length > 0 ? (
+            filteredOptions.map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                className={`w-full text-left px-4 py-2.5 text-sm hover:bg-emerald-50 transition-colors ${value === opt.value ? 'bg-emerald-50/50 text-emerald-700 font-medium' : 'text-slate-700'}`}
+                onMouseDown={(e) => {
+                  e.preventDefault(); 
+                  onChange(opt.value);
+                  setIsOpen(false);
+                  setSearchTerm('');
+                }}
+              >
+                {opt.label}
+              </button>
+            ))
+          ) : (
+            <div className="px-4 py-3 text-sm text-slate-500 text-center">Aucun résultat</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 
 interface PrescriptionFormProps {
   onSave?: (data: FormData | FormData[]) => void;
@@ -114,7 +205,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
     route: "Orale",
     adminMode: "instant",
     adminDuration: "",
-    type: "frequency",
+    schedule_type: "frequency",
     dilutionRequired: false,
     substitutable: true,
     solvent: {
@@ -160,10 +251,10 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
   const [showSolventCommercialSuggestions, setShowSolventCommercialSuggestions] = useState(false);
 
   // State for manually skipped doses
-  const [skippedDoseIds, setSkippedDoseIds] = useState<Set<string>>(new Set());
+  const [skippedEventIds, setSkippedDoseIds] = useState<Set<string>>(new Set());
 
   // State for manual dose time adjustments (doseId -> newIsoString)
-  const [manualDoseAdjustments, setManualDoseAdjustments] = useState<Map<string, string>>(new Map());
+  const [manuallyAdjustedEvents, setManuallyAdjustedEvents] = useState<Map<string, string>>(new Map());
   const [editingDoseId, setEditingDoseId] = useState<string | null>(null);
 
   // State for toast notification
@@ -179,9 +270,39 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
   const [tempSelectedDate, setTempSelectedDate] = useState<Date | null>(null); // The selected day
   const [tempTime, setTempTime] = useState(""); // Default empty to force user selection
 
-  // --- MEMOIZED DATA ---
-  const activeMoleculeDB: MoleculeDatabase = useMemo(() => {
-    return formData.databaseMode === 'hospital' ? MOLECULE_DB_HOSPITAL : MOLECULE_DB_UNIVERSAL;
+  // State for drug molecule matching
+  const [activeMoleculeDB, setActiveMoleculeDB] = useState<MoleculeDatabase>(
+    window.location.hostname.includes('localhost') ? MOLECULE_DB_UNIVERSAL : MOLECULE_DB_HOSPITAL
+  );
+
+  // Dynamic Units State
+  const [dynamicUnits, setDynamicUnits] = useState<{value: string, label: string}[]>([]);
+  
+  // Dynamic Routes State
+  const [dynamicRoutes, setDynamicRoutes] = useState<{value: string, label: string}[]>([]);
+  
+  useEffect(() => {
+    // Fetch units dynamically from catalog
+    api.getUnits()
+        .then(data => {
+            const activeUnits = data.filter((u: any) => u.isActive);
+            activeUnits.sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0));
+            setDynamicUnits(activeUnits.map((u: any) => ({ value: u.code, label: u.display || u.code })));
+        })
+        .catch(err => console.error('Failed to load units catalog', err));
+
+    // Fetch routes dynamically from catalog
+    api.getRoutes()
+        .then(data => {
+            const activeRoutes = data.filter((r: any) => r.isActive);
+            activeRoutes.sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0));
+            setDynamicRoutes(activeRoutes.map((r: any) => ({ value: r.id || r.label, label: r.label })));
+        })
+        .catch(err => console.error('Failed to load routes catalog', err));
+  }, []);
+
+  useEffect(() => {
+    setActiveMoleculeDB(formData.databaseMode === 'hospital' ? MOLECULE_DB_HOSPITAL : MOLECULE_DB_UNIVERSAL);
   }, [formData.databaseMode]);
 
   const allAvailableCommercialNames = useMemo(() => {
@@ -215,7 +336,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
 
       if (newType === 'punctual-frequency') {
         newSchedule.startDateTime = "";
-      } else if (newType === 'frequency' && (!prev.schedule.startDateTime || prev.type === 'punctual-frequency')) {
+      } else if (newType === 'frequency' && (!prev.schedule.startDateTime || prev.schedule_type === 'punctual-frequency')) {
         if (!prev.schedule.startDateTime) {
           newSchedule.startDateTime = getCurrentDateTime();
         }
@@ -225,7 +346,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
         }
       }
 
-      return { ...prev, type: newType, schedule: newSchedule };
+      return { ...prev, schedule_type: newType, schedule: newSchedule };
     });
     if (isSubmitted) setIsSubmitted(false);
   };
@@ -236,7 +357,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
 
       // RESET RULE: When switching to 'specific-time' mode while in 'punctual-frequency', 
       // reset start time to ensure user picks a valid specific time.
-      if (field === 'mode' && value === 'specific-time' && prev.type === 'punctual-frequency') {
+      if (field === 'mode' && value === 'specific-time' && prev.schedule_type === 'punctual-frequency') {
         newSchedule.startDateTime = "";
       }
 
@@ -299,7 +420,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
         setSelectedDci(null);
     }
     
-    setFormData(prev => ({ ...prev, molecule: val }));
+    setFormData(prev => ({ ...prev, molecule: val, moleculeId: undefined }));
     
     if (val.length < 2) {
         setDciSuggestions([]);
@@ -320,7 +441,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
   };
 
   const handleMoleculeSuggestionClick = (dci: any) => {
-    setFormData(prev => ({ ...prev, molecule: dci.name }));
+    setFormData(prev => ({ ...prev, molecule: dci.name, moleculeId: dci.id }));
     setSelectedDci(dci);
     setShowMoleculeSuggestions(false);
     setDciSuggestions([]);
@@ -335,7 +456,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
 
   const handleCommercialNameChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    setFormData(prev => ({ ...prev, commercialName: val }));
+    setFormData(prev => ({ ...prev, commercialName: val, productId: undefined }));
     
     try {
         const response = await api.getReferenceProducts(val, selectedDci?.id);
@@ -348,10 +469,34 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
   };
 
   const handleCommercialSuggestionClick = (product: any) => {
-    setFormData(prev => ({ 
-        ...prev, 
-        commercialName: product.name,
-    }));
+    let newMoleculeName = formData.molecule;
+    let newMoleculeId = formData.moleculeId;
+
+    if (product.dciComposition && product.dciComposition.length > 0) {
+        newMoleculeName = product.dciComposition.map((c: any) => c.name || 'Inconnu').join(' + ');
+        newMoleculeId = product.dciComposition.map((c: any) => c.dciId).join(',');
+    }
+
+    setFormData(prev => {
+        let routeLabelObj = {};
+        if (product.defaultPrescRoute) {
+            const selectedOption = dynamicRoutes.find(r => r.value === product.defaultPrescRoute);
+            routeLabelObj = { 
+                route: product.defaultPrescRoute, 
+                routeLabel: selectedOption?.label || product.defaultPrescRoute 
+            };
+        }
+
+        return { 
+            ...prev, 
+            commercialName: product.name,
+            productId: product.id,
+            molecule: newMoleculeName,
+            moleculeId: newMoleculeId,
+            ...(product.defaultPrescUnit ? { unit: product.defaultPrescUnit } : {}),
+            ...routeLabelObj
+        };
+    });
     
     setShowCommercialSuggestions(false);
     setProductSuggestions([]);
@@ -571,7 +716,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
     if (!tempSelectedDate) return false;
 
     // Strict validation for "Ponct + Freq" & "Specific Time"
-    if (formData.type === 'punctual-frequency' && formData.schedule.mode === 'specific-time' && formData.schedule.specificTimes.length > 0) {
+    if (formData.schedule_type === 'punctual-frequency' && formData.schedule.mode === 'specific-time' && formData.schedule.specificTimes.length > 0) {
       if (!formData.schedule.specificTimes.includes(time)) {
         return true;
       }
@@ -660,7 +805,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
       let newStartDateTime = prev.schedule.startDateTime;
 
       // RESET RULE: If in 'punctual-frequency' mode, ensure start time remains valid
-      if (prev.type === 'punctual-frequency' && prev.schedule.mode === 'specific-time') {
+      if (prev.schedule_type === 'punctual-frequency' && prev.schedule.mode === 'specific-time') {
         if (newStartDateTime) {
           const currentStartTime = newStartDateTime.split('T')[1];
           // If the selected start time is removed, or is not in the new list (and list is not empty)
@@ -702,7 +847,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
   // --- VALIDATION & BUSINESS LOGIC ---
 
   const getValidationState = () => {
-    const { molecule, qty, unit, route, type, schedule, adminMode, adminDuration, dilutionRequired, solvent } = formData;
+    const { molecule, qty, unit, route, schedule_type: type, schedule, adminMode, adminDuration, dilutionRequired, solvent } = formData;
 
     const errorMessages: string[] = [];
 
@@ -733,21 +878,23 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
 
     // Business Rules
     if (adminMode !== 'permanent') {
-      if (schedule.dailySchedule === 'every-other-day' && schedule.mode === 'cycle') {
-        errorMessages.push('Le mode cyclique n\'est pas compatible avec la fréquence \'1 jour / 2\'');
-      }
-      if (schedule.dailySchedule === 'specific-days' && schedule.mode === 'cycle') {
-        errorMessages.push('Le mode cyclique n\'est pas compatible avec la fréquence \'Jours spécifiques\'');
-      }
+      if (type !== 'one-time') {
+        if (schedule.dailySchedule === 'every-other-day' && schedule.mode === 'cycle') {
+          errorMessages.push('Le mode cyclique n\'est pas compatible avec la fréquence \'1 jour / 2\'');
+        }
+        if (schedule.dailySchedule === 'specific-days' && schedule.mode === 'cycle') {
+          errorMessages.push('Le mode cyclique n\'est pas compatible avec la fréquence \'Jours spécifiques\'');
+        }
 
-      const interval = parseFloat(schedule.interval || '0') || 0;
-      const isContinuous = adminMode === 'continuous';
-      const isCycle = schedule.mode === 'cycle';
-      if (isContinuous && isCycle && durationAdminDecimal > 0 && interval > 0 && durationAdminDecimal >= interval) {
-        errorMessages.push(CYCLIC_ADMIN_INTERVAL_ERROR);
-      }
-      if (isCycle && (schedule.interval === "" || parseFloat(schedule.interval) <= 0)) {
-        errorMessages.push('Cycle de prise manquant');
+        const interval = parseFloat(schedule.interval || '0') || 0;
+        const isContinuous = adminMode === 'continuous';
+        const isCycle = schedule.mode === 'cycle';
+        if (isContinuous && isCycle && durationAdminDecimal > 0 && interval > 0 && durationAdminDecimal >= interval) {
+          errorMessages.push(CYCLIC_ADMIN_INTERVAL_ERROR);
+        }
+        if (isCycle && (schedule.interval === "" || parseFloat(schedule.interval) <= 0)) {
+          errorMessages.push('Cycle de prise manquant');
+        }
       }
 
       const selectedCount = schedule.selectedDays.length;
@@ -862,11 +1009,11 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
   const showInterDoseWarning = useMemo(() => {
     return (
       formData.schedule.mode === 'simple' &&
-      (formData.type === 'frequency' || formData.type === 'punctual-frequency') &&
+      (formData.schedule_type === 'frequency' || formData.schedule_type === 'punctual-frequency') &&
       parseInt(formData.schedule.simpleCount || '0') > 1 &&
       (!formData.schedule.intervalDuration || durationToDecimal(formData.schedule.intervalDuration) <= 0)
     );
-  }, [formData.schedule, formData.type]);
+  }, [formData.schedule, formData.schedule_type]);
 
   // --- POSOLOGY GENERATION ---
 
@@ -875,7 +1022,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
 
   // --- DOSE SCHEDULE CARDS LOGIC ---
   const getDoseScheduleCards = useMemo(() => {
-    const { schedule, type, adminMode } = formData;
+    const { schedule, schedule_type: type, adminMode } = formData;
 
     // Use the central utility for consistent scheduling logic
     const baseResult = generateDoseSchedule(schedule, 'medication', type, adminMode, formData.adminDuration);
@@ -886,11 +1033,11 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
 
     if (baseResult.cards.length > 0 && adminMode !== 'permanent') {
       const adjustedCards = baseResult.cards.map(card => {
-        const hasAdjustment = manualDoseAdjustments.has(card.id);
+        const hasAdjustment = manuallyAdjustedEvents.has(card.id);
         const originalDate = card.date; // The date from generateDoseSchedule is the base (original)
 
         if (hasAdjustment) {
-          const newTime = manualDoseAdjustments.get(card.id)!;
+          const newTime = manuallyAdjustedEvents.get(card.id)!;
           const dateObj = new Date(newTime);
           return {
             ...card,
@@ -919,7 +1066,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
     }
 
     return baseResult;
-  }, [formData, manualDoseAdjustments]);
+  }, [formData, manuallyAdjustedEvents]);
 
   const doseScheduleCards = getDoseScheduleCards;
 
@@ -954,7 +1101,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
       summaryText += ` en continu`;
     }
 
-    if (formData.adminMode !== 'permanent' && formData.type === 'one-time') {
+    if (formData.adminMode !== 'permanent' && formData.schedule_type === 'one-time') {
       const date = new Date(formData.schedule.startDateTime).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
       summaryText += ` • Prise unique le ${date}`;
     } else if (formData.adminMode !== 'permanent') {
@@ -986,7 +1133,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
       }
 
       let startText = "";
-      if (formData.type === 'punctual-frequency') {
+      if (formData.schedule_type === 'punctual-frequency') {
         startText = ` • 1 prise immédiatement, puis ${scheduleDetails.toLowerCase()}`;
       } else {
         startText = ` • ${scheduleDetails}`;
@@ -1008,8 +1155,8 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
     if (onSave) {
       onSave({
         ...formData,
-        skippedDoses: Array.from(skippedDoseIds),
-        manualDoseAdjustments: Object.fromEntries(manualDoseAdjustments)
+        skippedEvents: Array.from(skippedEventIds),
+        manuallyAdjustedEvents: Object.fromEntries(manuallyAdjustedEvents)
       });
     }
     setIsSubmitted(true);
@@ -1024,7 +1171,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
       route: "Orale",
       adminMode: "instant",
       adminDuration: "",
-      type: "frequency",
+      schedule_type: "frequency",
       dilutionRequired: false,
       substitutable: true,
       solvent: {
@@ -1063,7 +1210,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
     setSummary(null);
     setIsSubmitted(false);
     setSkippedDoseIds(new Set());
-    setManualDoseAdjustments(new Map());
+    setManuallyAdjustedEvents(new Map());
     setEditingDoseId(null);
   };
 
@@ -1079,11 +1226,11 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
     });
   }, []);
 
-  const skippedDosesSummary = useMemo(() => {
-    if (!doseScheduleCards || !doseScheduleCards.allDosesMap || skippedDoseIds.size === 0 || formData.type === 'one-time') return null;
+  const skippedEventsSummary = useMemo(() => {
+    if (!doseScheduleCards || !doseScheduleCards.allDosesMap || skippedEventIds.size === 0 || formData.schedule_type === 'one-time') return null;
 
     const skippedDetails: Array<{ date: Date; time: string; }> = [];
-    skippedDoseIds.forEach(id => {
+    skippedEventIds.forEach(id => {
       const doseDetail = doseScheduleCards.allDosesMap.get(id);
       if (doseDetail) {
         skippedDetails.push({ date: doseDetail.date, time: doseDetail.time });
@@ -1105,13 +1252,13 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
         </div>
       </div>
     );
-  }, [skippedDoseIds, doseScheduleCards.allDosesMap, formData.type]);
+  }, [skippedEventIds, doseScheduleCards.allDosesMap, formData.schedule_type]);
 
-  const modifiedDosesSummary = useMemo(() => {
-    if (manualDoseAdjustments.size === 0 || formData.type === 'one-time') return null;
+  const modifiedEventsSummary = useMemo(() => {
+    if (manuallyAdjustedEvents.size === 0 || formData.schedule_type === 'one-time') return null;
 
     const modifiedDetails: Array<{ originalDate?: Date; newDate: Date; id: string }> = [];
-    manualDoseAdjustments.forEach((isoDate, id) => {
+    manuallyAdjustedEvents.forEach((isoDate, id) => {
       const originalDose = doseScheduleCards.allDosesMap.get(id);
       if (originalDose) {
         modifiedDetails.push({
@@ -1148,15 +1295,15 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
         </div>
       </div>
     );
-  }, [manualDoseAdjustments, doseScheduleCards.allDosesMap, formData.type]);
+  }, [manuallyAdjustedEvents, doseScheduleCards.allDosesMap, formData.schedule_type]);
 
   // Effect: Invalidate manual adjustments if admin duration changes
   useEffect(() => {
-    if (manualDoseAdjustments.size === 0) return;
+    if (manuallyAdjustedEvents.size === 0) return;
 
     const checkValidity = () => {
       // 1. Generate fresh schedule with NEW duration
-      const baseResult = generateDoseSchedule(formData.schedule, 'medication', formData.type, formData.adminMode, formData.adminDuration);
+      const baseResult = generateDoseSchedule(formData.schedule, 'medication', formData.schedule_type, formData.adminMode, formData.adminDuration);
 
       if (baseResult.cards.length === 0) return true;
 
@@ -1166,8 +1313,8 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
 
       // 2. Apply current adjustments
       const adjustedCards = baseResult.cards.map(c => {
-        if (manualDoseAdjustments.has(c.id)) {
-          return { ...c, date: new Date(manualDoseAdjustments.get(c.id)!) };
+        if (manuallyAdjustedEvents.has(c.id)) {
+          return { ...c, date: new Date(manuallyAdjustedEvents.get(c.id)!) };
         }
         return c;
       });
@@ -1189,15 +1336,15 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
     };
 
     if (!checkValidity()) {
-      setManualDoseAdjustments(new Map());
+      setManuallyAdjustedEvents(new Map());
       setToastMessage("Les modifications apportées au détail des prises ont été annulées car la durée d’administration a été modifiée.");
       setTimeout(() => setToastMessage(null), 4000);
     }
 
-  }, [formData.adminDuration, formData.adminMode, formData.schedule, formData.type, manualDoseAdjustments]);
+  }, [formData.adminDuration, formData.adminMode, formData.schedule, formData.schedule_type, manuallyAdjustedEvents]);
 
 
-  const isSpecificTimeRestricted = formData.type === 'punctual-frequency' && formData.schedule.mode === 'specific-time' && formData.schedule.specificTimes.length > 0;
+  const isSpecificTimeRestricted = formData.schedule_type === 'punctual-frequency' && formData.schedule.mode === 'specific-time' && formData.schedule.specificTimes.length > 0;
 
 
   return (
@@ -1391,7 +1538,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
                   )}
                 </div>
                 {/* Suggestions Hint */}
-                {formData.molecule.length > 0 && dciSuggestions.length === 0 && !selectedDci && (
+                {formData.molecule.length > 0 && dciSuggestions.length === 0 && !selectedDci && !formData.moleculeId && !formData.productId && (
                   <div className="mt-2 flex items-center gap-2 text-xs text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg w-fit">
                     <AlertCircle className="w-3.5 h-3.5" />
                     <span>Molécule non trouvée (saisie libre)</span>
@@ -1456,30 +1603,30 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
                 {/* Unit */}
                 <div className="md:col-span-3">
                   <label className="block text-sm font-semibold text-slate-700 mb-1.5">Unité <span className="text-red-500">*</span></label>
-                  <div className="relative">
-                    <select
-                      className="w-full pl-3 pr-8 h-12 bg-white border border-slate-200 rounded-xl appearance-none focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-medium"
-                      value={formData.unit}
-                      onChange={(e) => updateField('unit', e.target.value)}
-                    >
-                      {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                  </div>
+                  <SearchableSelect
+                    options={dynamicUnits.length > 0 ? dynamicUnits : []}
+                    value={formData.unit}
+                    onChange={(val) => updateField('unit', val)}
+                    placeholder="mg, mL..."
+                  />
                 </div>
                 {/* Route */}
                 <div className="md:col-span-6">
                   <label className="block text-sm font-semibold text-slate-700 mb-1.5">Voie d'administration <span className="text-red-500">*</span></label>
-                  <div className="relative">
-                    <select
-                      className="w-full pl-3 pr-8 h-12 bg-white border border-slate-200 rounded-xl appearance-none focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-medium truncate"
-                      value={formData.route}
-                      onChange={(e) => updateField('route', e.target.value)}
-                    >
-                      {ROUTES.map(r => <option key={r} value={r}>{r}</option>)}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                  </div>
+                  <SearchableSelect
+                    options={dynamicRoutes.length > 0 ? dynamicRoutes : []}
+                    value={formData.route}
+                    onChange={(val) => {
+                      const selectedOption = dynamicRoutes.find(r => r.value === val);
+                      setFormData(prev => ({
+                        ...prev,
+                        route: val,
+                        routeLabel: selectedOption?.label || val
+                      }));
+                      if (isSubmitted) setIsSubmitted(false);
+                    }}
+                    placeholder="Sélectionner une voie..."
+                  />
                 </div>
               </div>
 
@@ -1650,7 +1797,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
                           value={formData.solvent.unit}
                           onChange={(e) => updateSolventField('unit', e.target.value)}
                         >
-                          {UNITS.filter(u => ['mL', 'g', 'mg'].includes(u)).map(u => <option key={u} value={u}>{u}</option>)}
+                          {dynamicUnits.filter(u => ['mL', 'g', 'mg'].includes(u.value)).map(u => <option key={u.value} value={u.value}>{u.label}</option>)}
                         </select>
                         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                       </div>
@@ -1760,7 +1907,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
                   <button
                     type="button"
                     onClick={() => handleTypeChange('frequency')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-all ${formData.type === 'frequency'
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-all ${formData.schedule_type === 'frequency'
                       ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-black/5'
                       : 'text-slate-500 hover:text-slate-700'
                       }`}
@@ -1770,7 +1917,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
                   <button
                     type="button"
                     onClick={() => handleTypeChange('punctual-frequency')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-all ${formData.type === 'punctual-frequency'
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-all ${formData.schedule_type === 'punctual-frequency'
                       ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-black/5'
                       : 'text-slate-500 hover:text-slate-700'
                       }`}
@@ -1783,7 +1930,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
                   <button
                     type="button"
                     onClick={() => handleTypeChange('one-time')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-all ${formData.type === 'one-time'
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-all ${formData.schedule_type === 'one-time'
                       ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-black/5'
                       : 'text-slate-500 hover:text-slate-700'
                       }`}
@@ -1794,11 +1941,11 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
 
                 {/* Conditional Schedule Content */}
                 <div className="min-h-[160px]">
-                  {formData.type === 'frequency' || formData.type === 'punctual-frequency' ? (
+                  {formData.schedule_type === 'frequency' || formData.schedule_type === 'punctual-frequency' ? (
                     <div className="space-y-6 animate-in fade-in slide-in-from-left-2 duration-300">
 
                       {/* IMMEDIATE DOSE BLOCK (Only for punctual-frequency) */}
-                      {formData.type === 'punctual-frequency' && (
+                      {formData.schedule_type === 'punctual-frequency' && (
                         <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex items-center gap-4 shadow-sm">
                           <div className="bg-white p-2 rounded-full border border-indigo-100 shadow-sm">
                             <Zap className="w-5 h-5 text-indigo-600 fill-indigo-100" />
@@ -2109,7 +2256,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
                   </button>
                 </div>
               </div>
-              {(formData.type === 'frequency' || formData.type === 'punctual-frequency' || formData.adminMode === 'permanent') && (
+              {(formData.schedule_type === 'frequency' || formData.schedule_type === 'punctual-frequency' || formData.adminMode === 'permanent') && (
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1.5">Durée de Traitement <span className="text-red-500">*</span></label>
                   <div className="flex shadow-sm rounded-xl overflow-hidden border border-slate-200 h-12">
@@ -2151,7 +2298,7 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
 
             {/* Dose Schedule Cards Section - RESTORED HERE */}
             {/* --- DETAIL DES PRISES (DYNAMIC) --- */}
-            {(['frequency', 'punctual-frequency', 'one-time'].includes(formData.type)) && (
+            {(['frequency', 'punctual-frequency', 'one-time'].includes(formData.schedule_type)) && (
               <div className="mt-8 pt-6 border-t border-slate-100">
                 <div className="flex items-center gap-2 mb-4 p-3 bg-slate-50 border border-slate-200 rounded-xl">
                   <Clock className="w-5 h-5 text-slate-500" />
@@ -2169,25 +2316,25 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
                   <div className="space-y-3 pr-1">
                     {doseScheduleCards.cards.map((dose: any, idx: number) => {
                       const finalDoses = doseScheduleCards.cards;
-                      const isSkipped = skippedDoseIds.has(dose.id);
+                      const isSkipped = skippedEventIds.has(dose.id);
 
                       const isFirst = idx === 0;
                       const isLast = idx === finalDoses.length - 1;
-                      const isPunctualMode = formData.type === 'punctual-frequency';
+                      const isPunctualMode = formData.schedule_type === 'punctual-frequency';
                       const isSecondInPunctual = isPunctualMode && idx === 1; // "First programmed"
                       const isEditable = !isFirst && !isLast && !isSecondInPunctual && !isSkipped;
 
                       const isEditing = editingDoseId === dose.id;
-                      const isModified = manualDoseAdjustments.has(dose.id);
+                      const isModified = manuallyAdjustedEvents.has(dose.id);
                       const isImmediate = isPunctualMode && idx === 0;
-                      const isOneTime = formData.type === 'one-time';
+                      const isOneTime = formData.schedule_type === 'one-time';
 
                       const showDateHeader = idx === 0 || finalDoses[idx - 1].date.getDate() !== dose.date.getDate();
 
                       const handleResetDose = () => {
-                        const newMap = new Map(manualDoseAdjustments);
+                        const newMap = new Map(manuallyAdjustedEvents);
                         newMap.delete(dose.id);
-                        setManualDoseAdjustments(newMap);
+                        setManuallyAdjustedEvents(newMap);
                       };
 
                       return (
@@ -2211,9 +2358,9 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
                               prevDoseEnd={idx > 0 ? new Date(finalDoses[idx - 1].date.getTime() + (formData.adminMode !== 'instant' ? durationToDecimal(formData.adminDuration) * 3600000 : 0)) : new Date(dose.date.getTime() - 24 * 60 * 60 * 1000)}
                               nextDoseStart={idx < finalDoses.length - 1 ? finalDoses[idx + 1].date : new Date(dose.date.getTime() + 24 * 60 * 60 * 1000)}
                               onSave={(newTimeStr) => {
-                                const newMap = new Map(manualDoseAdjustments);
+                                const newMap = new Map(manuallyAdjustedEvents);
                                 newMap.set(dose.id, newTimeStr as string);
-                                setManualDoseAdjustments(newMap);
+                                setManuallyAdjustedEvents(newMap);
                                 setEditingDoseId(null);
                               }}
                               onCancel={() => setEditingDoseId(null)}
@@ -2346,11 +2493,11 @@ export const PrescriptionForm: React.FC<PrescriptionFormProps> = ({ onSave }) =>
               formData={formData}
               extraContent={
                 <div className="space-y-4">
-                  {modifiedDosesSummary}
-                  {skippedDosesSummary}
+                  {modifiedEventsSummary}
+                  {skippedEventsSummary}
                 </div>
               }
-              manualDoseAdjustments={manualDoseAdjustments}
+              manuallyAdjustedEvents={manuallyAdjustedEvents}
             />
           </div>
 

@@ -86,7 +86,7 @@ export const TransfusionPrescriptionForm: React.FC<TransfusionPrescriptionFormPr
 
     // Validation State
     const [isSubmitted, setIsSubmitted] = useState(false);
-    const [skippedDoseIds, setSkippedDoseIds] = useState<Set<string>>(new Set());
+    const [skippedEventIds, setSkippedDoseIds] = useState<Set<string>>(new Set());
 
     // Schedule State (Identical structure to PrescriptionForm)
     const [scheduleData, setScheduleData] = useState<ScheduleData>({
@@ -469,8 +469,14 @@ export const TransfusionPrescriptionForm: React.FC<TransfusionPrescriptionFormPr
     const validationState = getValidationState();
 
     const getDoseScheduleCards = useMemo(() => {
-        return generateDoseSchedule(scheduleData, prescriptionType);
-    }, [scheduleData, prescriptionType]);
+        return generateDoseSchedule(
+            scheduleData, 
+            'transfusion',
+            prescriptionType,
+            'continuous',
+            transfusionDuration
+        );
+    }, [scheduleData, prescriptionType, transfusionDuration]);
 
     const doseScheduleCards = getDoseScheduleCards;
 
@@ -482,7 +488,7 @@ export const TransfusionPrescriptionForm: React.FC<TransfusionPrescriptionFormPr
 
         // Create one prescription object per selected product
         const manualAdjustmentsRecord: Record<string, string> = {};
-        manualDoseAdjustments.forEach((date, id) => {
+        manuallyAdjustedEvents.forEach((date, id) => {
             manualAdjustmentsRecord[id] = date.toISOString();
         });
 
@@ -497,12 +503,12 @@ export const TransfusionPrescriptionForm: React.FC<TransfusionPrescriptionFormPr
                 route: 'IV',
                 adminMode: 'continuous' as const,
                 adminDuration: transfusionDuration,
-                type: prescriptionType,
+                schedule_type: prescriptionType,
                 dilutionRequired: false,
                 databaseMode: 'hospital' as const,
                 substitutable: false,
-                skippedDoses: [],
-                manualDoseAdjustments: manualAdjustmentsRecord,
+                skippedEvents: [],
+                manuallyAdjustedEvents: manualAdjustmentsRecord,
                 conditionComment: comment,
                 schedule: scheduleData
             };
@@ -512,7 +518,7 @@ export const TransfusionPrescriptionForm: React.FC<TransfusionPrescriptionFormPr
     };
 
     // State for manual time adjustments (Key: Dose ID, Value: New Date)
-    const [manualDoseAdjustments, setManualDoseAdjustments] = useState<Map<string, Date>>(new Map());
+    const [manuallyAdjustedEvents, setManuallyAdjustedEvents] = useState<Map<string, Date>>(new Map());
     const [editingDoseId, setEditingDoseId] = useState<string | null>(null);
 
     // Merge calculated doses with manual adjustments
@@ -521,7 +527,7 @@ export const TransfusionPrescriptionForm: React.FC<TransfusionPrescriptionFormPr
 
         // Clone and sort based on original calculation first
         const combined = doseScheduleCards.cards.map((d: any) => {
-            const adjustedDate = manualDoseAdjustments.get(d.id);
+            const adjustedDate = manuallyAdjustedEvents.get(d.id);
             const originalDate = d.date;
 
             if (adjustedDate) {
@@ -544,7 +550,7 @@ export const TransfusionPrescriptionForm: React.FC<TransfusionPrescriptionFormPr
 
         // Re-sort in case shifts changed the order
         return combined.sort((a: any, b: any) => a.date.getTime() - b.date.getTime());
-    }, [doseScheduleCards, manualDoseAdjustments]);
+    }, [doseScheduleCards, manuallyAdjustedEvents]);
 
     // Safety Buffer
     const BUFFER_MINUTES = 5;
@@ -588,13 +594,13 @@ export const TransfusionPrescriptionForm: React.FC<TransfusionPrescriptionFormPr
 
     useEffect(() => {
         // Reset manual adjustments if the main schedule parameters change significantly
-        setManualDoseAdjustments(new Map());
+        setManuallyAdjustedEvents(new Map());
 
         setEditingDoseId(null);
     }, [scheduleData, prescriptionType, transfusionDuration]);
 
     const handleSaveEdit = (doseId: string, newDate: Date) => {
-        setManualDoseAdjustments(prev => {
+        setManuallyAdjustedEvents(prev => {
             const next = new Map(prev);
             next.set(doseId, newDate);
             return next;
@@ -603,7 +609,7 @@ export const TransfusionPrescriptionForm: React.FC<TransfusionPrescriptionFormPr
     };
 
     const handleResetDose = (doseId: string) => {
-        setManualDoseAdjustments(prev => {
+        setManuallyAdjustedEvents(prev => {
             const next = new Map(prev);
             next.delete(doseId);
             return next;
@@ -620,11 +626,11 @@ export const TransfusionPrescriptionForm: React.FC<TransfusionPrescriptionFormPr
     }, []);
 
     // Summary of modified doses for Preview & Comment
-    const modifiedDosesSummary = useMemo(() => {
-        if (!doseScheduleCards || !doseScheduleCards.allDosesMap || manualDoseAdjustments.size === 0) return null;
+    const modifiedEventsSummary = useMemo(() => {
+        if (!doseScheduleCards || !doseScheduleCards.allDosesMap || manuallyAdjustedEvents.size === 0) return null;
 
         const modifiedDetails: Array<{ originalDate: Date; newDate: Date; }> = [];
-        manualDoseAdjustments.forEach((newDate, id) => {
+        manuallyAdjustedEvents.forEach((newDate, id) => {
             const originalDose = doseScheduleCards.allDosesMap.get(id);
             if (originalDose) {
                 modifiedDetails.push({ originalDate: originalDose.date, newDate: newDate });
@@ -655,13 +661,13 @@ export const TransfusionPrescriptionForm: React.FC<TransfusionPrescriptionFormPr
                 </div>
             </div>
         );
-    }, [manualDoseAdjustments, doseScheduleCards.allDosesMap]);
+    }, [manuallyAdjustedEvents, doseScheduleCards.allDosesMap]);
 
-    const skippedDosesSummary = useMemo(() => {
-        if (!doseScheduleCards || !doseScheduleCards.allDosesMap || skippedDoseIds.size === 0 || prescriptionType === 'one-time') return null;
+    const skippedEventsSummary = useMemo(() => {
+        if (!doseScheduleCards || !doseScheduleCards.allDosesMap || skippedEventIds.size === 0 || prescriptionType === 'one-time') return null;
 
         const skippedDetails: Array<{ date: Date; time: string; }> = [];
-        skippedDoseIds.forEach(id => {
+        skippedEventIds.forEach(id => {
             const doseDetail = doseScheduleCards.allDosesMap.get(id);
             if (doseDetail) {
                 skippedDetails.push({ date: doseDetail.date, time: doseDetail.time });
@@ -683,7 +689,7 @@ export const TransfusionPrescriptionForm: React.FC<TransfusionPrescriptionFormPr
                 </div>
             </div>
         );
-    }, [skippedDoseIds, doseScheduleCards.allDosesMap, prescriptionType]);
+    }, [skippedEventIds, doseScheduleCards.allDosesMap, prescriptionType]);
 
     // Pseudo-formData list for Preview components
     const previewListFormDatas: FormData[] = useMemo(() => {
@@ -704,20 +710,20 @@ export const TransfusionPrescriptionForm: React.FC<TransfusionPrescriptionFormPr
                 route: 'IV',
                 adminMode: 'continuous',
                 adminDuration: transfusionDuration,
-                type: prescriptionType,
+                schedule_type: prescriptionType,
                 dilutionRequired: false,
                 databaseMode: 'hospital',
                 substitutable: false,
-                skippedDoses: [], // Empty for preview to avoid per-card display; handled by grouped summary at bottom
+                skippedEvents: [], // Empty for preview to avoid per-card display; handled by grouped summary at bottom
                 // We don't modify conditionComment here for the summary, because we want to render the summary once at the bottom of the list?
                 // Or per card? 
                 // The user request: "mentionne les transfusions modifiées dans l'appercu de l'ordonnace (comme avec les transfusion annulées)"
-                // skippedDosesSummary is rendered separately below the list? I need to check the JSX.
+                // skippedEventsSummary is rendered separately below the list? I need to check the JSX.
                 conditionComment: comment ? ('<span class="bg-yellow-100 px-1 rounded">' + comment + '</span>') : "",
                 schedule: scheduleData
             };
         });
-    }, [selectedProductsQty, transfusionDuration, prescriptionType, skippedDoseIds, comment, scheduleData]);
+    }, [selectedProductsQty, transfusionDuration, prescriptionType, skippedEventIds, comment, scheduleData]);
 
     return (
         <div className="flex flex-col gap-6 relative">
@@ -1161,7 +1167,7 @@ export const TransfusionPrescriptionForm: React.FC<TransfusionPrescriptionFormPr
                                                 )}
 
                                                 {finalDoses.map((dose: any, idx: number) => {
-                                                    const isSkipped = skippedDoseIds.has(dose.id);
+                                                    const isSkipped = skippedEventIds.has(dose.id);
 
                                                     // Editability Logic & Bounds Calculation for Transfusion
                                                     // Transfusion has DURATION.
@@ -1174,7 +1180,7 @@ export const TransfusionPrescriptionForm: React.FC<TransfusionPrescriptionFormPr
                                                     const isEditable = !isFirst && !isLast && !isSecondInPunctual && !isSkipped;
 
                                                     const isEditing = editingDoseId === dose.id;
-                                                    const isModified = manualDoseAdjustments.has(dose.id);
+                                                    const isModified = manuallyAdjustedEvents.has(dose.id);
                                                     const isImmediate = isPunctualMode && idx === 0;
 
                                                     const showDateHeader = idx === 0 || finalDoses[idx - 1].date.getDate() !== dose.date.getDate();
@@ -1344,8 +1350,8 @@ export const TransfusionPrescriptionForm: React.FC<TransfusionPrescriptionFormPr
                                 ))}
 
                                 {/* Grouped warning at the bottom, matching medication form style */}
-                                {modifiedDosesSummary}
-                                {skippedDosesSummary}
+                                {modifiedEventsSummary}
+                                {skippedEventsSummary}
                             </div>
                         )}
                     </div>

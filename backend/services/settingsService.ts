@@ -429,6 +429,20 @@ export class SettingsService {
         `, [pricing.id, tenantId, pricing.act_code, pricing.description, pricing.price]);
         return pricing;
     }
+
+    // --- REFERENCE DATA ---
+    async getRoutes(tenantId: string): Promise<any[]> {
+        const rows = await tenantQuery(tenantId, 'SELECT * FROM reference.routes ORDER BY sort_order', []);
+        return rows.map(r => ({
+            id: r.id,
+            code: r.code,
+            label: r.label,
+            isActive: r.is_active,
+            sortOrder: r.sort_order,
+            createdAt: r.created_at,
+            updatedAt: r.updated_at
+        }));
+    }
 }
 
 export const settingsService = new SettingsService();

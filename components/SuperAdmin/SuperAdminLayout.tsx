@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, Settings, Shield, LogOut, Building, Truck, Package, FolderTree } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Settings, Shield, LogOut, Building, Truck, Package, FolderTree, Activity, Layers, Tag } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export const SuperAdminLayout: React.FC = () => {
@@ -40,9 +40,28 @@ export const SuperAdminLayout: React.FC = () => {
                         <Shield size={20} />
                         <span>Global Roles</span>
                     </NavLink>
+                    <NavLink to="/super-admin/flowsheets" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+                        <Activity size={20} />
+                        <span>Fiches de Surveillance</span>
+                    </NavLink>
+                    <NavLink to="/super-admin/units" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+                        <Layers size={20} />
+                        <span>Unités</span>
+                    </NavLink>
+                    <NavLink to="/super-admin/routes" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+                        <div className="w-5 h-5 flex items-center justify-center">
+                            {/* Direction/Route icon */}
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m12 8-4 4 4 4"/><path d="M16 12H8"/></svg>
+                        </div>
+                        <span>Voies d'administration</span>
+                    </NavLink>
                     <NavLink to="/super-admin/suppliers" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
                         <Truck size={20} />
                         <span>Fournisseurs</span>
+                    </NavLink>
+                    <NavLink to="/super-admin/care-categories" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+                        <Tag size={20} />
+                        <span>Classes Thérapeutiques</span>
                     </NavLink>
                     <NavLink to="/super-admin/products" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
                         <Package size={20} />

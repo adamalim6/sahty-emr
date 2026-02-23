@@ -25,47 +25,95 @@ export interface ScheduleData {
     simpleCount: string;
     simplePeriod: 'day' | 'week' | 'month';
     intervalDuration: string;
+    skippedEvents?: string[];
+    manuallyAdjustedEvents?: Record<string, string>;
 }
 
+// --- Frontend-facing payload (backward compatible, what the UI sends) ---
 export interface PrescriptionData {
     molecule: string;
+    moleculeId?: string;
     commercialName: string;
+    productId?: string;
     qty: string;
     unit: string;
     route: string;
     adminMode: AdminMode;
     adminDuration: string;
-    type: PrescriptionType;
+    schedule_type: PrescriptionType;  // Schedule frequency kind (canonical name)
     dilutionRequired: boolean;
     solvent?: SolventData;
     databaseMode: 'hospital' | 'universal';
     schedule: ScheduleData;
     conditionComment?: string;
     substitutable: boolean;
-    prescriptionType?: 'medication' | 'biology' | 'imagery' | 'care';
+    prescriptionType?: 'medication' | 'biology' | 'imagery' | 'care' | 'procedure' | 'transfusion';
+
+    // Non-medication fields (sent by future UIs)
+    test?: { catalog_test_id?: string; code: string; display_name: string };
+    priority?: string;
+    exam?: { catalog_exam_id?: string; code: string; display_name: string };
+    laterality?: string;
+    clinical_indication?: string;
+    care_act?: { catalog_care_id?: string; code: string; display_name: string };
+    procedure_act?: { catalog_procedure_id?: string; code: string; display_name: string };
+    anesthesia_required?: boolean;
+    special_requirements?: string;
+    product?: { catalog_product_id?: string; code: string; display_name: string };
+    quantity?: { value: string; unit: string };
+    compatibility_required?: boolean;
+    special_instructions?: string;
 }
 
 export interface Prescription {
     id: string;
     patientId: string;
     data: PrescriptionData;
+    status?: string;
+    derived_status?: 'ACTIVE' | 'PAUSED' | 'STOPPED' | 'ELAPSED';
+    paused_at?: Date | null;
+    paused_by?: string | null;
+    stopped_at?: Date | null;
+    stopped_by?: string | null;
+    stopped_reason?: string | null;
     createdAt: Date;
     createdBy: string;
+    createdByFirstName?: string;
+    createdByLastName?: string;
     client_id?: string;
-    authorId?: string;
-    authorTenantId?: string;
-    authorRole?: string;
 }
 
-export type ExecutionStatus = 'planned' | 'administered' | 'not-administered' | 'late';
+// --- PLAN (what should happen) ---
 
-export interface PrescriptionExecution {
+export type PrescriptionEventStatus = 'scheduled' | 'cancelled' | 'superseded' | 'expired';
+
+export interface PrescriptionEvent {
     id: string;
-    prescriptionId: string;
-    plannedDate: string; // ISO Date String
-    actualDate?: string; // ISO Date String (when action was taken)
-    status: ExecutionStatus;
-    justification?: string; // Required if not-administered
-    performedBy?: string; // User who performed the action
-    updatedAt: Date;
+    tenant_id: string;
+    prescription_id: string;
+    admission_id?: string;
+    scheduled_at: Date;
+    duration?: number;
+    status: PrescriptionEventStatus | string;
+    created_at: Date;
+}
+
+// --- REALITY (what did happen) ---
+
+export type AdministrationActionType =
+    | 'attempted' | 'refused' | 'started' | 'stopped'
+    | 'restarted' | 'completed' | 'failed' | 'skipped';
+
+export interface AdministrationEvent {
+    id: string;
+    tenant_id: string;
+    prescription_event_id: string;
+    action_type: AdministrationActionType | string;
+    occurred_at: Date;
+    actual_start_at?: Date;
+    actual_end_at?: Date;
+    performed_by?: string;
+    performed_by_user_id?: string;
+    note?: string;
+    created_at: Date;
 }

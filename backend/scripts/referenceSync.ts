@@ -11,7 +11,7 @@ export async function syncTenantReference(tenantClient: PoolClient, tenantId: st
 
     // 2. Create Tables (in order)
     for (const tableSpec of REFERENCE_SCHEMA_DDL) {
-        // console.log(`[ReferenceSync] Ensuring table reference.${tableSpec.tableName}...`);
+        console.log(`[ReferenceSync] Ensuring table reference.${tableSpec.tableName}...`);
         await tenantClient.query(tableSpec.ddl);
     }
 
@@ -31,27 +31,33 @@ export async function syncTenantReference(tenantClient: PoolClient, tenantId: st
     for (const tableName of REFERENCE_TABLES_ORDER) {
         try {
             // Check if source table exists in global (some might be optional or missing)
+            // Check if source table exists in global (some might be in public, some in reference)
             const check = await globalQuery(`
-                SELECT EXISTS (
-                    SELECT FROM information_schema.tables 
-                    WHERE table_schema = 'public' 
-                    AND table_name = $1
-                );
+                SELECT table_schema 
+                FROM information_schema.tables 
+                WHERE table_name = $1
+                AND table_schema IN ('public', 'reference')
+                LIMIT 1;
             `, [tableName]);
             
-            if (!check[0].exists) {
-                console.warn(`[ReferenceSync] Source table public.${tableName} does not exist in Global DB. Skipping.`);
+            if (check.length === 0) {
+                console.warn(`[ReferenceSync] Source table ${tableName} does not exist in Global DB. Skipping.`);
                 continue;
             }
 
+            const sourceSchema = check[0].table_schema;
+
             // Fetch data from Global
-            // console.log(`[ReferenceSync] Fetching ${tableName} from Global...`);
-            const rows = await globalQuery(`SELECT * FROM public.${tableName}`);
+            console.log(`[ReferenceSync] Fetching ${tableName} from Global (${sourceSchema})...`);
+            const rows = await globalQuery(`SELECT * FROM ${sourceSchema}.${tableName}`);
             
-            if (rows.length === 0) continue;
+            if (rows.length === 0) {
+                 console.log(`[ReferenceSync] 0 rows in global ${tableName}. Skipping.`);
+                 continue;
+            }
 
             // Insert into Tenant Reference
-            // console.log(`[ReferenceSync] Inserting ${rows.length} rows into reference.${tableName}...`);
+            console.log(`[ReferenceSync] Inserting ${rows.length} rows into reference.${tableName}...`);
             
             // Generate INSERT statement dynamically
             const columns = Object.keys(rows[0]);

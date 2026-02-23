@@ -121,13 +121,15 @@ export interface Molecule {
 export type DosageUnit = 
   | 'ng' | 'mcg' | 'mg' | 'g' | 'kg'
   | 'IU' | 'mIU' | 'kIU' | 'U' | 'mU' | 'kU'
-  | 'ng/mL' | 'mcg/mL' | 'mg/mL' | 'g/L' | 'g/mL' | 'IU/mL' | 'mIU/mL' | 'U/mL' | 'mmol/L' | 'µmol/L' | 'mEq/L'
+  | 'ng/mL' | 'mcg/mL' | 'mg/mL' | 'g/L' | 'g/mL' | 'IU/mL' | 'mIU/mL' | 'U/mL' | 'mmol/L' | 'µmol/L' | 'mEq/L' | 'mEq' | 'mOsm'
   | 'mol' | 'mmol' | 'µmol' | 'nmol'
   | '%'
-  | 'mg/kg' | 'mcg/kg' | 'IU/kg' | 'mg/kg/day' | 'mcg/kg/day'
-  | 'mg/m²' | 'mcg/m²'
-  | 'mcg/dose' | 'mg/dose' | 'g/dose' | 'mL/dose'
-  | 'ml';
+  | 'mg/kg' | 'mcg/kg' | 'IU/kg' | 'mg/kg/day' | 'mcg/kg/day' | 'µg/kg' | 'UI/kg' | 'mmol/kg'
+  | 'mg/m²' | 'mcg/m²' | 'µg/m²'
+  | 'mcg/dose' | 'mg/dose' | 'g/dose' | 'mL/dose' | 'dose(s)'
+  | 'L' | 'µL' | 'mL' | 'ml'
+  | 'mg/h' | 'µg/kg/min' | 'mg/kg/h' | 'mL/min' | 'mL/kg/h' | 'UI/h' | 'UI/kg/h' | 'mg/min' | 'UI/min'
+  | 'gouttes (drops / gtt)' | 'sachet(s)' | 'ampoule(s)' | 'flacon(s)' | 'poche(s)' | 'spray(s)' | 'application(s)' | 'patch(s)' | 'suppositoire(s)' | 'ovule(s)' | 'unité(s)' | 'comprimés' | 'gélules' | 'bouffées';
 
 export enum UnitType {
   BOX = 'Boîte',
@@ -138,16 +140,10 @@ export interface ProductDCIComponent {
   dciId: string;
   name?: string; // Enriched by backend
   atcCode?: string; // Enriched by backend
-  dosage: number;
-  unit: DosageUnit;
-  // For complex dosages like "15mg / 5ml"
-  // dosage would be 3, unit 'mg/mL'
-  presentation?: {
-    numerator: number;       // 15
-    numeratorUnit: string;   // 'mg'
-    denominator: number;     // 5
-    denominatorUnit: string; // 'ml'
-  };
+  amount_value: number;
+  amount_unit_id: string;
+  diluent_volume_value?: number;
+  diluent_volume_unit_id?: string;
 }
 
 export interface ProductDefinition {
@@ -169,6 +165,9 @@ export interface ProductDefinition {
     ph?: number;
     pfht?: number;
   };
+
+  defaultPrescUnit?: string;
+  defaultPrescRoute?: string;
 
   manufacturer?: string;
   suppliers: ProductSupplier[];

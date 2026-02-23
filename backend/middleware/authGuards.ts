@@ -52,6 +52,12 @@ export function requireModule(module: string) {
             return res.status(401).json({ error: 'Unauthenticated' });
         }
         if (!req.auth.hasModule(module)) {
+            // SuperAdmins bypass module checks
+            const userType = req.user?.user_type;
+            if (userType === 'SUPER_ADMIN' || userType === 'PUBLISHER_SUPERADMIN') {
+                return next();
+            }
+
             console.warn(`[Guard] Module denied: ${req.auth.userId} lacks '${module}'`);
             return res.status(403).json({ 
                 error: 'Access Denied', 

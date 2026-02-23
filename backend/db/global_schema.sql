@@ -84,6 +84,8 @@ CREATE TABLE IF NOT EXISTS global_products (
     sahty_code TEXT,
     code TEXT, -- GTIN
     units_per_pack INTEGER DEFAULT 1,
+    default_presc_unit TEXT,
+    default_presc_route TEXT,
     is_active BOOLEAN DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP

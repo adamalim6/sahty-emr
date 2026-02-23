@@ -68,6 +68,8 @@ class AuthService {
         const payload: any = {
             userId: user.id,
             username: user.username,
+            nom: user.nom,
+            prenom: user.prenom,
             role: user.role_code || 'USER',
             realm,
             user_type: user.user_type

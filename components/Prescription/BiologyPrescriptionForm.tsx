@@ -85,10 +85,10 @@ export const BiologyPrescriptionForm: React.FC<BiologyPrescriptionFormProps> = (
     const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({});
 
     // Dose Management State
-    const [manualDoseAdjustments, setManualDoseAdjustments] = useState<Map<string, string>>(new Map());
+    const [manuallyAdjustedEvents, setManuallyAdjustedEvents] = useState<Map<string, string>>(new Map());
     const [editingDoseId, setEditingDoseId] = useState<string | null>(null);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
-    const [skippedDoses, setSkippedDoses] = useState<string[]>([]);
+    const [skippedEvents, setSkippedEvents] = useState<string[]>([]);
 
 
 
@@ -112,8 +112,8 @@ export const BiologyPrescriptionForm: React.FC<BiologyPrescriptionFormProps> = (
     const [prescriptionType, setPrescriptionType] = useState<PrescriptionType>('one-time');
 
     useEffect(() => {
-        if (manualDoseAdjustments.size > 0) {
-            setManualDoseAdjustments(new Map());
+        if (manuallyAdjustedEvents.size > 0) {
+            setManuallyAdjustedEvents(new Map());
             setToastMessage("Le calendrier a changé, les modifications manuelles ont été réinitialisées.");
             setTimeout(() => setToastMessage(null), 3000);
         }
@@ -267,8 +267,8 @@ export const BiologyPrescriptionForm: React.FC<BiologyPrescriptionFormProps> = (
     const getDoseScheduleCards = useMemo((): DoseScheduleResult => {
         return generateDoseSchedule(
             scheduleData,
+            'biology',
             prescriptionType,
-            undefined,
             'instant',
             '00:00'
         );
@@ -277,10 +277,10 @@ export const BiologyPrescriptionForm: React.FC<BiologyPrescriptionFormProps> = (
     const finalDoses = useMemo(() => {
         if (!getDoseScheduleCards.cards) return [];
         return getDoseScheduleCards.cards.map(dose => {
-            const adjustedTime = manualDoseAdjustments.get(dose.id);
+            const adjustedTime = manuallyAdjustedEvents.get(dose.id);
             const originalDate = dose.date;
             const originalTime = dose.time;
-            const isSkipped = skippedDoses.includes(dose.id);
+            const isSkipped = skippedEvents.includes(dose.id);
 
             if (adjustedTime) {
                 const newDate = new Date(adjustedTime);
@@ -304,19 +304,19 @@ export const BiologyPrescriptionForm: React.FC<BiologyPrescriptionFormProps> = (
                 skipped: isSkipped
             };
         });
-    }, [getDoseScheduleCards, manualDoseAdjustments, skippedDoses]);
+    }, [getDoseScheduleCards, manuallyAdjustedEvents, skippedEvents]);
 
-    const modifiedDosesSummary = useMemo(() => {
-        if (manualDoseAdjustments.size === 0) return null;
-        const count = manualDoseAdjustments.size;
+    const modifiedEventsSummary = useMemo(() => {
+        if (manuallyAdjustedEvents.size === 0) return null;
+        const count = manuallyAdjustedEvents.size;
         return `${count} horaire${count > 1 ? 's' : ''} modifié${count > 1 ? 's' : ''} manuellement`;
-    }, [manualDoseAdjustments]);
+    }, [manuallyAdjustedEvents]);
 
-    const skippedDosesSummary = useMemo(() => {
-        if (skippedDoses.length === 0) return null;
-        const count = skippedDoses.length;
+    const skippedEventsSummary = useMemo(() => {
+        if (skippedEvents.length === 0) return null;
+        const count = skippedEvents.length;
         return `${count} prise${count > 1 ? 's' : ''} ignorée${count > 1 ? 's' : ''}`;
-    }, [skippedDoses]);
+    }, [skippedEvents]);
 
     const handleEditDose = (doseId: string) => {
         setEditingDoseId(doseId);
@@ -324,7 +324,7 @@ export const BiologyPrescriptionForm: React.FC<BiologyPrescriptionFormProps> = (
 
     const handleSaveDose = (newTimeIso: string) => {
         if (editingDoseId) {
-            setManualDoseAdjustments(prev => {
+            setManuallyAdjustedEvents(prev => {
                 const next = new Map(prev);
                 next.set(editingDoseId, newTimeIso);
                 return next;
@@ -338,7 +338,7 @@ export const BiologyPrescriptionForm: React.FC<BiologyPrescriptionFormProps> = (
     };
 
     const handleResetDose = (doseId: string) => {
-        setManualDoseAdjustments(prev => {
+        setManuallyAdjustedEvents(prev => {
             const next = new Map(prev);
             next.delete(doseId);
             return next;
@@ -346,7 +346,7 @@ export const BiologyPrescriptionForm: React.FC<BiologyPrescriptionFormProps> = (
     };
 
     const handleToggleDoseSkipped = (doseId: string) => {
-        setSkippedDoses(prev => {
+        setSkippedEvents(prev => {
             if (prev.includes(doseId)) return prev.filter(id => id !== doseId);
             return [...prev, doseId];
         });
@@ -520,7 +520,7 @@ export const BiologyPrescriptionForm: React.FC<BiologyPrescriptionFormProps> = (
         // No, invalid data is blocking (Error). Warning is strictly informational.
         // Let's proceed to save.
 
-        const manualAdjustmentsRecord = Object.fromEntries(manualDoseAdjustments);
+        const manualAdjustmentsRecord = Object.fromEntries(manuallyAdjustedEvents);
 
         const prescriptions: FormData[] = selectedExams.map(exam => ({
             molecule: exam,
@@ -531,13 +531,13 @@ export const BiologyPrescriptionForm: React.FC<BiologyPrescriptionFormProps> = (
             route: '',
             adminMode: 'instant' as const,
             adminDuration: '00:00',
-            type: prescriptionType,
+            schedule_type: prescriptionType,
             dilutionRequired: false,
             solvent: undefined,
             databaseMode: 'hospital' as const,
             substitutable: false,
-            skippedDoses: skippedDoses,
-            manualDoseAdjustments: manualAdjustmentsRecord,
+            skippedEvents: skippedEvents,
+            manuallyAdjustedEvents: manualAdjustmentsRecord,
             conditionComment: comment,
             schedule: scheduleData
         }));
@@ -554,14 +554,14 @@ export const BiologyPrescriptionForm: React.FC<BiologyPrescriptionFormProps> = (
         qty: "--", unit: "", route: "",
         adminMode: 'instant' as const,
         adminDuration: "",
-        type: prescriptionType,
+        schedule_type: prescriptionType,
         dilutionRequired: false,
         substitutable: false,
         solvent: undefined,
         databaseMode: 'hospital',
         schedule: scheduleData,
-        skippedDoses: skippedDoses,
-        manualDoseAdjustments: Object.fromEntries(manualDoseAdjustments),
+        skippedEvents: skippedEvents,
+        manuallyAdjustedEvents: Object.fromEntries(manuallyAdjustedEvents),
         conditionComment: comment
     };
 
@@ -1117,10 +1117,10 @@ export const BiologyPrescriptionForm: React.FC<BiologyPrescriptionFormProps> = (
                                 <div className="flex items-center gap-2 mb-4 p-3 bg-indigo-50/50 border border-indigo-100/50 rounded-xl">
                                     <Clock className="w-5 h-5 text-indigo-600" />
                                     <h3 className="font-bold text-indigo-900 text-sm">Détail des horaires calculés</h3>
-                                    {(modifiedDosesSummary || skippedDosesSummary) && (
+                                    {(modifiedEventsSummary || skippedEventsSummary) && (
                                         <div className="flex flex-wrap gap-2 ml-auto">
-                                            {modifiedDosesSummary && <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200">{modifiedDosesSummary}</span>}
-                                            {skippedDosesSummary && <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200">{skippedDosesSummary}</span>}
+                                            {modifiedEventsSummary && <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200">{modifiedEventsSummary}</span>}
+                                            {skippedEventsSummary && <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200">{skippedEventsSummary}</span>}
                                         </div>
                                     )}
                                 </div>
@@ -1131,8 +1131,8 @@ export const BiologyPrescriptionForm: React.FC<BiologyPrescriptionFormProps> = (
                                             {finalDoses.map((dose, index) => {
                                                 const isEditing = editingDoseId === dose.id;
                                                 const showDateHeader = index === 0 || finalDoses[index - 1].date.getDate() !== dose.date.getDate();
-                                                const isModified = manualDoseAdjustments.has(dose.id);
-                                                const isSkipped = skippedDoses.includes(dose.id);
+                                                const isModified = manuallyAdjustedEvents.has(dose.id);
+                                                const isSkipped = skippedEvents.includes(dose.id);
 
                                                 return (
                                                     <div key={dose.id}>

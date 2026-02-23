@@ -31,7 +31,7 @@ export const formatDuration = (duration: string): string => {
 
 export const getPosologyText = (formData: FormData): string | null => {
     if (!formData || !formData.schedule) return null;
-    const { type, schedule, adminMode, dilutionRequired, solvent } = formData;
+    const { schedule_type: type, schedule, adminMode, dilutionRequired, solvent } = formData;
 
     if (!schedule.startDateTime && type !== 'punctual-frequency') return null;
     if (type === 'punctual-frequency' && !schedule.startDateTime) return null;
@@ -123,8 +123,8 @@ export const generateDoseSchedule = (
     adminMode: string = 'standard',
     adminDuration: string = '00:00',
     overrides?: {
-        skippedDoses?: string[];
-        manualDoseAdjustments?: Record<string, string>;
+        skippedEvents?: string[];
+        manuallyAdjustedEvents?: Record<string, string>;
     }
 ): DoseScheduleResult => {
     const { startDateTime, durationValue, durationUnit, dailySchedule, selectedDays, mode, interval, specificTimes, simpleCount, intervalDuration } = scheduleData;
@@ -150,8 +150,8 @@ export const generateDoseSchedule = (
         const scheduledDoses: ScheduledDose[] = [{
             id: oneTimeDose.id,
             plannedDateTime: oneTimeDose.id,
-            effectiveDateTime: overrides?.manualDoseAdjustments?.[oneTimeDose.id] || null,
-            isSkipped: overrides?.skippedDoses?.includes(oneTimeDose.id) || false
+            effectiveDateTime: overrides?.manuallyAdjustedEvents?.[oneTimeDose.id] || null,
+            isSkipped: overrides?.skippedEvents?.includes(oneTimeDose.id) || false
         }];
         return { needsDetail: true, message: null, cards: [oneTimeDose], scheduledDoses, allDosesMap: singleDoseMap, isError: false };
     }
@@ -286,8 +286,8 @@ export const generateDoseSchedule = (
 
     const scheduledDoses: ScheduledDose[] = Array.from(uniqueDosesMap.values()).map(d => {
         const id = d.id;
-        const isSkipped = overrides?.skippedDoses?.includes(id) || false;
-        const adjustedDateStr = overrides?.manualDoseAdjustments?.[id];
+        const isSkipped = overrides?.skippedEvents?.includes(id) || false;
+        const adjustedDateStr = overrides?.manuallyAdjustedEvents?.[id];
 
         // Pour l'affichage "cards", on doit peut-être utiliser la date ajustée si elle existe ?
         // Le comportement actuel de Monitoring Sheet doit utliser ce tableau scheduledDoses.

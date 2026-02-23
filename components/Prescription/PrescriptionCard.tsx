@@ -12,32 +12,36 @@ import {
     Scan,
     Stethoscope,
     Droplet,
-    List
+    List,
+    User,
+    Ban
 } from 'lucide-react';
-import { FormData } from './types';
+import { FormData, Prescription } from './types';
 import { getPosologyText, formatDuration, generateDoseSchedule } from './utils';
 import { ScheduleDetailsModal } from './ScheduleDetailsModal';
 
 interface PrescriptionCardProps {
     formData: FormData;
     extraContent?: React.ReactNode;
-    manualDoseAdjustments?: Map<string, string>;
+    manuallyAdjustedEvents?: Map<string, string>;
+    createdBy?: string;
+    prescription?: Prescription;
 }
 
-export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, extraContent, manualDoseAdjustments }) => {
+export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, extraContent, manuallyAdjustedEvents, createdBy, prescription }) => {
     const [isScheduleModalOpen, setIsScheduleModalOpen] = React.useState(false);
 
-    const { schedule, type, adminMode } = formData;
+    const { schedule, schedule_type, adminMode } = formData;
     const { startDateTime, durationValue } = schedule;
     const startDate = new Date(startDateTime);
 
-    const scheduleResult = generateDoseSchedule(schedule, 'medication', type, adminMode, formData.adminDuration);
+    const scheduleResult = generateDoseSchedule(schedule, 'medication', schedule_type, adminMode, formData.adminDuration);
 
     // Apply manual adjustments if present
-    if (manualDoseAdjustments && manualDoseAdjustments.size > 0 && scheduleResult.cards.length > 0) {
+    if (manuallyAdjustedEvents && manuallyAdjustedEvents.size > 0 && scheduleResult.cards.length > 0) {
         const adjustedCards = scheduleResult.cards.map(card => {
-            if (manualDoseAdjustments.has(card.id)) {
-                const newTime = manualDoseAdjustments.get(card.id)!;
+            if (manuallyAdjustedEvents.has(card.id)) {
+                const newTime = manuallyAdjustedEvents.get(card.id)!;
                 const dateObj = new Date(newTime);
                 return {
                     ...card,
@@ -66,7 +70,7 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
         const dateStr = startDate.toLocaleDateString('fr-FR');
         const timeStr = startDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
-        if (data.type === 'one-time') {
+        if (data.schedule_type === 'one-time') {
             return `À faire le ${dateStr} à ${timeStr}`;
         }
 
@@ -107,7 +111,7 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
         let fullText = [freqText, modeText, durationText, startText].filter(Boolean).join(', ');
 
         // Specific handling for Ponct + Freq
-        if (data.type === 'punctual-frequency') {
+        if (data.schedule_type === 'punctual-frequency') {
             // Logic for immediate dose is implied by the type, usually we might add "1 prise tout de suite puis..."
             // But user asked for specific format: "Tous les jours, toutes les 6h..."
             // The medical form usually generates "1 prise immédiate puis..." if applicable.
@@ -155,6 +159,38 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
         );
     };
 
+    const renderStatusBadge = () => {
+        if (!prescription || !prescription.derived_status) return null;
+        const status = prescription.derived_status;
+        if (status === 'ACTIVE') return <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 uppercase tracking-wide">🟢 Actif</span>;
+        if (status === 'PAUSED') return <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-800 uppercase tracking-wide">🟠 En pause</span>;
+        if (status === 'STOPPED') return <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-800 uppercase tracking-wide">🔴 Arrêté</span>;
+        if (status === 'ELAPSED') return <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800 uppercase tracking-wide">⚪ Terminé</span>;
+        return null;
+    };
+
+    const renderAuditInfo = () => {
+        if (!prescription || (!prescription.paused_at && !prescription.stopped_at)) return null;
+        return (
+            <div className="mt-3 pt-3 border-t border-slate-100 text-xs space-y-1">
+                {prescription.paused_at && (
+                    <div className="flex items-center gap-1.5 text-orange-600 bg-orange-50 px-2 py-1.5 rounded-md border border-orange-100">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        <span>Mise en pause le {new Date(prescription.paused_at).toLocaleString('fr-FR')}</span>
+                    </div>
+                )}
+                {prescription.stopped_at && (
+                    <div className="flex items-center gap-1.5 text-red-600 bg-red-50 px-2 py-1.5 rounded-md border border-red-100">
+                        <Ban className="w-3.5 h-3.5" />
+                        <span>Arrêtée le {new Date(prescription.stopped_at).toLocaleString('fr-FR')}
+                            {prescription.stopped_reason && ` - Motif: ${prescription.stopped_reason}`}
+                        </span>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     if (formData.prescriptionType === 'biology') {
         const bioDescription = getProcedureDescription(formData);
 
@@ -162,7 +198,10 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
             <div className="space-y-4">
                 <div className="flex items-start justify-between">
                     <div>
-                        <h2 className="text-lg font-bold text-blue-800">{formData.molecule}</h2>
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-lg font-bold text-blue-800">{formData.molecule}</h2>
+                            {renderStatusBadge()}
+                        </div>
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 mt-1">
                             Examen Biologique
                         </span>
@@ -180,6 +219,13 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
                 )}
 
                 <ScheduleDisplay text={bioDescription} />
+
+                {createdBy && (
+                    <div className="flex items-center gap-1.5 text-xs text-slate-400 pt-1">
+                        <User className="w-3 h-3" />
+                        <span>Prescrit par <strong className="text-slate-500">{createdBy}</strong></span>
+                    </div>
+                )}
             </div>
         );
     }
@@ -191,7 +237,10 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
             <div className="space-y-4">
                 <div className="flex items-start justify-between">
                     <div>
-                        <h2 className="text-lg font-bold text-purple-800">{formData.molecule}</h2>
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-lg font-bold text-purple-800">{formData.molecule}</h2>
+                            {renderStatusBadge()}
+                        </div>
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 mt-1">
                             Acte d'Imagerie
                         </span>
@@ -209,6 +258,13 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
                 )}
 
                 <ScheduleDisplay text={imgDescription} />
+
+                {createdBy && (
+                    <div className="flex items-center gap-1.5 text-xs text-slate-400 pt-1">
+                        <User className="w-3 h-3" />
+                        <span>Prescrit par <strong className="text-slate-500">{createdBy}</strong></span>
+                    </div>
+                )}
             </div>
         );
     }
@@ -220,7 +276,10 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
             <div className="space-y-4">
                 <div className="flex items-start justify-between">
                     <div>
-                        <h2 className="text-lg font-bold text-orange-800">{formData.molecule}</h2>
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-lg font-bold text-orange-800">{formData.molecule}</h2>
+                            {renderStatusBadge()}
+                        </div>
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 mt-1">
                             Acte & Soin
                         </span>
@@ -238,6 +297,13 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
                 )}
 
                 <ScheduleDisplay text={careDescription} />
+
+                {createdBy && (
+                    <div className="flex items-center gap-1.5 text-xs text-slate-400 pt-1">
+                        <User className="w-3 h-3" />
+                        <span>Prescrit par <strong className="text-slate-500">{createdBy}</strong></span>
+                    </div>
+                )}
             </div>
         );
     }
@@ -249,7 +315,10 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
             <div className="space-y-4">
                 <div className="flex items-start justify-between">
                     <div>
-                        <h2 className="text-lg font-bold text-rose-800">{formData.molecule}</h2>
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-lg font-bold text-rose-800">{formData.molecule}</h2>
+                            {renderStatusBadge()}
+                        </div>
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-rose-100 text-rose-800 mt-1">
                             Transfusion Sanguine
                         </span>
@@ -281,13 +350,13 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
 
                 <ScheduleDisplay text={transDescription} />
 
-                {formData.skippedDoses && formData.skippedDoses.length > 0 && (
+                {formData.skippedEvents && formData.skippedEvents.length > 0 && (
                     <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 animate-in fade-in">
                         <AlertCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-amber-600" />
                         <div>
                             <span className="font-bold block mb-1">Transfusion(s) annulée(s) :</span>
                             <ul className="list-disc pl-4 space-y-0.5">
-                                {formData.skippedDoses.map(dateStr => {
+                                {formData.skippedEvents.map(dateStr => {
                                     const d = new Date(dateStr);
                                     return (
                                         <li key={dateStr}>
@@ -300,7 +369,7 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
                     </div>
                 )}
 
-                {formData.manualDoseAdjustments && Object.keys(formData.manualDoseAdjustments).length > 0 && (
+                {formData.manuallyAdjustedEvents && Object.keys(formData.manuallyAdjustedEvents).length > 0 && (
                     <div className="flex items-start gap-2 text-xs text-indigo-800 bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 animate-in fade-in">
                         <Clock className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-indigo-600" />
                         <div>
@@ -308,12 +377,12 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
                             <ul className="list-disc pl-4 space-y-0.5">
                                 {(() => {
                                     // Calculate original schedule to find original times
-                                    const scheduleType = formData.type || 'frequency'; // Fallback
+                                    const scheduleType = formData.schedule_type || 'frequency'; // Fallback
                                     const scheduleResult = generateDoseSchedule(formData.schedule, formData.prescriptionType || 'medication', scheduleType, 'standard', '00:00');
                                     const allDosesMap = scheduleResult.allDosesMap;
 
                                     const modifiedDetails: Array<{ originalDate?: Date; newDate: Date; id: string }> = [];
-                                    Object.entries(formData.manualDoseAdjustments).forEach(([id, dateStr]) => {
+                                    Object.entries(formData.manuallyAdjustedEvents).forEach(([id, dateStr]) => {
                                         const newDate = new Date(dateStr);
                                         const originalDose = allDosesMap.get(id);
                                         modifiedDetails.push({
@@ -345,7 +414,15 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
                     </div>
                 )}
 
+                {renderAuditInfo()}
                 {extraContent}
+
+                {createdBy && (
+                    <div className="flex items-center gap-1.5 text-xs text-slate-400 pt-1">
+                        <User className="w-3 h-3" />
+                        <span>Prescrit par <strong className="text-slate-500">{createdBy}</strong></span>
+                    </div>
+                )}
             </div>
         );
     }
@@ -356,7 +433,10 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
         <div className="space-y-4">
             <div className="flex items-start justify-between">
                 <div>
-                    <h2 className="text-lg font-bold text-slate-800">{formData.commercialName || formData.molecule}</h2>
+                    <div className="flex items-center gap-2">
+                        <h2 className="text-lg font-bold text-slate-800">{formData.commercialName || formData.molecule}</h2>
+                        {renderStatusBadge()}
+                    </div>
                     <p className="text-sm text-slate-500">{formData.commercialName ? `(${formData.molecule})` : 'Générique'}</p>
                 </div>
                 <div className="bg-slate-200 rounded-full p-2">
@@ -368,7 +448,7 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
                 <div className="flex items-center gap-3 text-sm text-slate-700 bg-white p-3 rounded-lg border border-slate-100 shadow-sm">
                     <span className="font-bold text-emerald-700">{formData.qty === '--' ? '0' : formData.qty} {formData.unit}</span>
                     <span className="text-slate-300">|</span>
-                    <span>{formData.route}</span>
+                    <span>{formData.routeLabel || formData.route}</span>
                 </div>
                 {formData.adminMode === 'continuous' && (
                     <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100">
@@ -407,13 +487,13 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
             <ScheduleDisplay text={posologyText} />
 
             {/* Skipped Doses Display - Moved Below Posology */}
-            {formData.skippedDoses && formData.skippedDoses.length > 0 && (
+            {formData.skippedEvents && formData.skippedEvents.length > 0 && (
                 <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 px-3 py-2 rounded-lg border border-amber-100 animate-in fade-in">
                     <AlertCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-amber-600" />
                     <div>
                         <span className="font-bold block mb-1">Prises sautées :</span>
                         <ul className="list-disc pl-4 space-y-0.5">
-                            {formData.skippedDoses.map(dateStr => {
+                            {formData.skippedEvents.map(dateStr => {
                                 const d = new Date(dateStr);
                                 return (
                                     <li key={dateStr}>
@@ -428,12 +508,12 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
 
             {/* Modified Doses Display (Medication, Biology, Imagery, Care) */}
             {(() => {
-                const adjustmentsObj = formData.manualDoseAdjustments;
+                const adjustmentsObj = formData.manuallyAdjustedEvents;
 
                 if (!adjustmentsObj || Object.keys(adjustmentsObj).length === 0) return null;
 
                 // Calculate original schedule to find original times
-                const scheduleType = formData.type || 'frequency';
+                const scheduleType = formData.schedule_type || 'frequency';
                 const baseSchedule = generateDoseSchedule(formData.schedule, 'medication', scheduleType, formData.adminMode, formData.adminDuration);
                 const allDosesMap = baseSchedule.allDosesMap;
 
@@ -476,17 +556,16 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
                 );
             })()}
 
+            {renderAuditInfo()}
             {extraContent}
 
             {(() => {
-                const isPunctual = formData.type === 'punctual-frequency';
+                const isPunctual = formData.schedule_type === 'punctual-frequency';
                 const displayDate = isPunctual
                     ? new Date()
                     : (formData.schedule.startDateTime ? new Date(formData.schedule.startDateTime) : null);
 
                 const shouldShowDateInfo = isPunctual || (displayDate && !isNaN(displayDate.getTime()));
-
-                if (!shouldShowDateInfo || !displayDate) return null;
 
                 // For biology, imagery, care and transfusion, we already returned early or 
                 // showed detailed info, so this block is logically intended for medication.
@@ -494,14 +573,24 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
 
                 return (
                     <div className="text-xs text-slate-500 space-y-1 pt-2 border-t border-slate-200">
-                        <div className="flex items-center gap-2">
-                            <Calendar className="w-3 h-3" />
-                            <span>Début : {displayDate.toLocaleDateString('fr-FR')}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Clock className="w-3 h-3" />
-                            <span>Heure : {displayDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
-                        </div>
+                        {shouldShowDateInfo && displayDate && (
+                            <>
+                                <div className="flex items-center gap-2">
+                                    <Calendar className="w-3 h-3" />
+                                    <span>Début : {displayDate.toLocaleDateString('fr-FR')}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Clock className="w-3 h-3" />
+                                    <span>Heure : {displayDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                </div>
+                            </>
+                        )}
+                        {createdBy && (
+                            <div className="flex items-center gap-1.5 text-slate-400">
+                                <User className="w-3 h-3" />
+                                <span>Prescrit par <strong className="text-slate-500">{createdBy}</strong></span>
+                            </div>
+                        )}
                     </div>
                 );
             })()}
@@ -510,8 +599,8 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
                 isOpen={isScheduleModalOpen}
                 onClose={() => setIsScheduleModalOpen(false)}
                 formData={formData}
-                manualDoseAdjustments={formData.manualDoseAdjustments} // Or pass prop if it overrides
-                skippedDoses={formData.skippedDoses}
+                manuallyAdjustedEvents={formData.manuallyAdjustedEvents} // Or pass prop if it overrides
+                skippedEvents={formData.skippedEvents}
             />
         </div>
     );

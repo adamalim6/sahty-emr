@@ -72,6 +72,46 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ patientId }) => {
     }
   };
 
+  const handlePause = async (id: string, currentStatus: string) => {
+    if (currentStatus === 'STOPPED') {
+      alert("Impossible de mettre en pause une prescription arrêtée.");
+      return;
+    }
+    try {
+      await api.pausePrescription(id);
+      setPrescriptions(prev => prev.map(p => p.id === id ? { ...p, derived_status: 'PAUSED', paused_at: new Date().toISOString() } : p));
+    } catch (e) {
+      console.error(e);
+      alert('Erreur lors de la mise en pause');
+    }
+  };
+
+  const handleResume = async (id: string, currentStatus: string) => {
+    if (currentStatus === 'STOPPED') {
+      alert("Impossible de reprendre une prescription arrêtée.");
+      return;
+    }
+    try {
+      await api.resumePrescription(id);
+      setPrescriptions(prev => prev.map(p => p.id === id ? { ...p, derived_status: 'ACTIVE', paused_at: null } : p));
+    } catch (e) {
+      console.error(e);
+      alert('Erreur lors de la reprise');
+    }
+  };
+
+  const handleStop = async (id: string) => {
+    const reason = window.prompt("Raison de l'arrêt (optionnel) :");
+    if (reason === null) return; // user clicked cancel
+    try {
+      await api.stopPrescription(id, reason);
+      setPrescriptions(prev => prev.map(p => p.id === id ? { ...p, derived_status: 'STOPPED', stopped_at: new Date().toISOString(), stopped_reason: reason } : p));
+    } catch (e) {
+      console.error(e);
+      alert('Erreur lors de l\'arrêt');
+    }
+  };
+
   const handleOpenMedication = () => {
     setFormMode('medication');
     setShowModal(true);
@@ -272,7 +312,7 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ patientId }) => {
                 const searchableText = [
                   p.data.molecule,
                   p.data.commercialName,
-                  p.data.type,
+                  p.data.schedule_type,
                   p.data.prescriptionType,
                   p.data.conditionComment
                 ].filter(Boolean).join(' ').toLowerCase();
@@ -308,7 +348,31 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ patientId }) => {
                     >
                       <X className="w-4 h-4" />
                     </button>
-                    <PrescriptionCard formData={p.data} />
+                    <PrescriptionCard
+                      formData={p.data}
+                      prescription={p}
+                      createdBy={
+                        (p.createdByFirstName && p.createdByLastName)
+                          ? `${p.createdByFirstName} ${p.createdByLastName}`
+                          : undefined
+                      }
+                      extraContent={
+                        <div className="flex gap-2 mt-2">
+                          {p.derived_status === 'ACTIVE' && (
+                            <>
+                              <button onClick={() => handlePause(p.id, p.derived_status)} className="px-3 py-1.5 text-xs font-medium bg-orange-50 text-orange-700 hover:bg-orange-100 rounded-lg transition-colors border border-orange-200">Mettre en pause</button>
+                              <button onClick={() => handleStop(p.id)} className="px-3 py-1.5 text-xs font-medium bg-red-50 text-red-700 hover:bg-red-100 rounded-lg transition-colors border border-red-200">Arrêter</button>
+                            </>
+                          )}
+                          {p.derived_status === 'PAUSED' && (
+                            <>
+                              <button onClick={() => handleResume(p.id, p.derived_status)} className="px-3 py-1.5 text-xs font-medium bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-200">Reprendre</button>
+                              <button onClick={() => handleStop(p.id)} className="px-3 py-1.5 text-xs font-medium bg-red-50 text-red-700 hover:bg-red-100 rounded-lg transition-colors border border-red-200">Arrêter</button>
+                            </>
+                          )}
+                        </div>
+                      }
+                    />
                   </div>
                 ))}
               </div>
