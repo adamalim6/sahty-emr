@@ -4,7 +4,7 @@ export interface DCI {
     id: string;
     name: string;
     atcCode?: string;
-    synonyms?: string[];
+    synonyms?: { id: string; synonym: string }[];
     therapeuticClass?: string;
     createdAt: string;
     updatedAt: string;
@@ -14,16 +14,24 @@ export class GlobalDCIService {
     
     public async getAllDCIs(): Promise<DCI[]> {
         const rows = await globalQuery('SELECT * FROM global_dci');
-        return rows.map(r => this.mapDCI(r));
+        const syncRes = await globalQuery('SELECT id, dci_id, synonym FROM dci_synonyms');
+        
+        const synonymsMap = new Map<string, { id: string; synonym: string }[]>();
+        for (const row of syncRes) {
+            if (!synonymsMap.has(row.dci_id)) synonymsMap.set(row.dci_id, []);
+            synonymsMap.get(row.dci_id)!.push({ id: row.id, synonym: row.synonym });
+        }
+
+        return rows.map(r => this.mapDCI(r, synonymsMap.get(r.id) || []));
     }
 
-    private mapDCI(r: any): DCI {
+    private mapDCI(r: any, synonyms: { id: string; synonym: string }[] = []): DCI {
         return {
             id: r.id,
             name: r.name,
             atcCode: r.atc_code,
             therapeuticClass: r.therapeutic_class,
-            synonyms: r.synonyms ? (typeof r.synonyms === 'string' ? JSON.parse(r.synonyms) : r.synonyms) : [],
+            synonyms: synonyms,
             createdAt: r.created_at,
             updatedAt: r.created_at
         };
@@ -31,7 +39,9 @@ export class GlobalDCIService {
 
     public async getDCIById(id: string): Promise<DCI | undefined> {
         const row = await globalQueryOne('SELECT * FROM global_dci WHERE id = $1', [id]);
-        return row ? this.mapDCI(row) : undefined;
+        if (!row) return undefined;
+        const syncRes = await globalQuery('SELECT id, synonym FROM dci_synonyms WHERE dci_id = $1', [id]);
+        return this.mapDCI(row, syncRes);
     }
 
     private normalizeName(name: string): string {
@@ -41,7 +51,6 @@ export class GlobalDCIService {
     public async createDCI(data: Omit<DCI, 'id' | 'createdAt' | 'updatedAt'>): Promise<DCI> {
         const normalizedName = this.normalizeName(data.name);
 
-        // Check Duplicate
         const existing = await globalQueryOne('SELECT id FROM global_dci WHERE lower(name) = lower($1)', [normalizedName]);
         if (existing) {
              throw new Error(`Une DCI avec le nom "${normalizedName}" existe déjà.`);
@@ -50,28 +59,48 @@ export class GlobalDCIService {
         const newId = `DCI_${Date.now()}_${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
         const now = new Date().toISOString();
 
-        await globalQuery(`
-            INSERT INTO global_dci (id, name, atc_code, therapeutic_class, synonyms, created_at)
-            VALUES ($1, $2, $3, $4, $5, $6)
-        `, [
-            newId, 
-            normalizedName, 
-            data.atcCode?.trim() || null, 
-            data.therapeuticClass?.trim() || null, 
-            JSON.stringify(data.synonyms?.map(s => s.trim()).filter(s => s.length > 0) || []),
-            now
-        ]);
+        await globalQuery('BEGIN');
+        try {
+            await globalQuery(`
+                INSERT INTO global_dci (id, name, atc_code, therapeutic_class, created_at)
+                VALUES ($1, $2, $3, $4, $5)
+            `, [
+                newId, 
+                normalizedName, 
+                data.atcCode?.trim() || null, 
+                data.therapeuticClass?.trim() || null, 
+                now
+            ]);
 
-        this.invalidateCache();
-        return {
-            id: newId,
-            name: normalizedName,
-            atcCode: data.atcCode?.trim(),
-            synonyms: data.synonyms,
-            therapeuticClass: data.therapeuticClass,
-            createdAt: now,
-            updatedAt: now
-        };
+            const newSynonyms = [];
+            if (data.synonyms && data.synonyms.length > 0) {
+                for (const syn of data.synonyms) {
+                    const text = typeof syn === 'string' ? syn : syn.synonym;
+                    if (text && text.trim().length > 0) {
+                        const synRes = await globalQuery(`
+                            INSERT INTO dci_synonyms (dci_id, synonym, created_at)
+                            VALUES ($1, $2, $3) RETURNING id, synonym
+                        `, [newId, text.trim(), now]);
+                        newSynonyms.push(synRes[0]);
+                    }
+                }
+            }
+
+            await globalQuery('COMMIT');
+            this.invalidateCache();
+            return {
+                id: newId,
+                name: normalizedName,
+                atcCode: data.atcCode?.trim(),
+                synonyms: newSynonyms,
+                therapeuticClass: data.therapeuticClass,
+                createdAt: now,
+                updatedAt: now
+            };
+        } catch (e) {
+            await globalQuery('ROLLBACK');
+            throw e;
+        }
     }
 
     public async updateDCI(id: string, updates: Partial<Omit<DCI, 'id' | 'createdAt' | 'updatedAt'>>): Promise<DCI> {
@@ -87,25 +116,48 @@ export class GlobalDCIService {
             }
         }
 
-        const atcCode = updates.atcCode !== undefined ? updates.atcCode.trim() : current.atcCode;
-        const therapeuticClass = updates.therapeuticClass !== undefined ? updates.therapeuticClass.trim() : current.therapeuticClass;
-        const synonyms = updates.synonyms ? updates.synonyms.map(s => s.trim()).filter(s => s.length > 0) : current.synonyms;
+        const atcCode = updates.atcCode !== undefined ? updates.atcCode?.trim() : current.atcCode;
+        const therapeuticClass = updates.therapeuticClass !== undefined ? updates.therapeuticClass?.trim() : current.therapeuticClass;
+        
+        await globalQuery('BEGIN');
+        try {
+            await globalQuery(`
+                UPDATE global_dci 
+                SET name=$1, atc_code=$2, therapeutic_class=$3
+                WHERE id=$4
+            `, [normalizedName, atcCode || null, therapeuticClass || null, id]);
 
-        await globalQuery(`
-            UPDATE global_dci 
-            SET name=$1, atc_code=$2, therapeutic_class=$3, synonyms=$4
-            WHERE id=$5
-        `, [normalizedName, atcCode || null, therapeuticClass || null, JSON.stringify(synonyms), id]);
+            let newSynonyms = current.synonyms || [];
+            if (updates.synonyms !== undefined) {
+                await globalQuery('DELETE FROM dci_synonyms WHERE dci_id = $1', [id]);
+                newSynonyms = [];
+                const now = new Date().toISOString();
+                for (const syn of updates.synonyms) {
+                    const text = typeof syn === 'string' ? syn : syn.synonym;
+                    if (text && text.trim().length > 0) {
+                        const synRes = await globalQuery(`
+                            INSERT INTO dci_synonyms (dci_id, synonym, created_at)
+                            VALUES ($1, $2, $3) RETURNING id, synonym
+                        `, [id, text.trim(), now]);
+                        newSynonyms.push(synRes[0]);
+                    }
+                }
+            }
 
-        this.invalidateCache();
-        return {
-            ...current,
-            name: normalizedName,
-            atcCode: atcCode,
-            therapeuticClass: therapeuticClass,
-            synonyms: synonyms,
-            updatedAt: new Date().toISOString()
-        };
+            await globalQuery('COMMIT');
+            this.invalidateCache();
+            return {
+                ...current,
+                name: normalizedName,
+                atcCode: atcCode,
+                therapeuticClass: therapeuticClass,
+                synonyms: newSynonyms,
+                updatedAt: new Date().toISOString()
+            };
+        } catch (e) {
+            await globalQuery('ROLLBACK');
+            throw e;
+        }
     }
 
     public async deleteDCI(id: string): Promise<void> {

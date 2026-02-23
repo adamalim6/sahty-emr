@@ -156,7 +156,7 @@ export const GlobalDCIManager: React.FC = () => {
                                     {dci.therapeuticClass || '-'}
                                 </td>
                                 <td className="px-6 py-4 text-slate-500 text-sm">
-                                    {dci.synonyms?.join(', ') || '-'}
+                                    {dci.synonyms?.map(s => typeof s === 'string' ? s : s.synonym).join(', ') || '-'}
                                 </td>
                                 <td className="px-6 py-4 text-right">
                                     <button 

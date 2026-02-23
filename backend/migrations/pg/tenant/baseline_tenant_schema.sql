@@ -239,12 +239,19 @@ CREATE TABLE IF NOT EXISTS reference.global_dci (
     name              TEXT NOT NULL,
     atc_code          TEXT,
     therapeutic_class TEXT,
-    synonyms          JSONB,
     care_category_id  UUID REFERENCES reference.care_categories(id),
     created_at        TIMESTAMPTZ
 );
 CREATE INDEX IF NOT EXISTS idx_ref_dci_name ON reference.global_dci (name);
 CREATE INDEX IF NOT EXISTS idx_ref_dci_atc ON reference.global_dci (atc_code) WHERE atc_code IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS reference.dci_synonyms (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    dci_id UUID NOT NULL REFERENCES reference.global_dci(id) ON DELETE CASCADE,
+    synonym TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_ref_dci_synonyms_dci_id ON reference.dci_synonyms(dci_id);
 
 CREATE TABLE IF NOT EXISTS reference.global_emdn (
     code     TEXT PRIMARY KEY,

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { FlaskConical, Save, X } from 'lucide-react';
+import { FlaskConical, Save, X, Plus, Trash2 } from 'lucide-react';
 import { api } from '../../services/api';
 import { DCI } from '../../types/pharmacy';
 import { ATCNode } from '../../types/atc';
@@ -15,7 +15,7 @@ interface DCIModalProps {
 export const DCIModal: React.FC<DCIModalProps> = ({ isOpen, onClose, onSuccess, editingDCI }) => {
     const [name, setName] = useState('');
     const [atcCode, setAtcCode] = useState('');
-    const [synonyms, setSynonyms] = useState(''); 
+    const [synonyms, setSynonyms] = useState<string[]>([]);
     const [therapeuticClass, setTherapeuticClass] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -73,12 +73,12 @@ export const DCIModal: React.FC<DCIModalProps> = ({ isOpen, onClose, onSuccess, 
             if (editingDCI) {
                 setName(editingDCI.name);
                 setAtcCode(editingDCI.atcCode || '');
-                setSynonyms(editingDCI.synonyms?.join(', ') || '');
+                setSynonyms(editingDCI.synonyms?.map(s => typeof s === 'string' ? s : s.synonym) || []);
                 setTherapeuticClass(editingDCI.therapeuticClass || '');
             } else {
                 setName('');
                 setAtcCode('');
-                setSynonyms('');
+                setSynonyms([]);
                 setTherapeuticClass('');
             }
         }
@@ -141,7 +141,7 @@ export const DCIModal: React.FC<DCIModalProps> = ({ isOpen, onClose, onSuccess, 
         const payload: any = { // Relax type for payload matching backend expected DCI partial
             name,
             atcCode: atcCode, // camelCase matching backend
-            synonyms: synonyms.split(',').map(s => s.trim()).filter(s => s.length > 0),
+            synonyms: synonyms.map(s => s.trim()).filter(s => s.length > 0),
             therapeuticClass: therapeuticClass
         };
 
@@ -260,16 +260,40 @@ export const DCIModal: React.FC<DCIModalProps> = ({ isOpen, onClose, onSuccess, 
                         </div>
                     </div>
 
-                    <div>
+                    <div className="space-y-2">
                         <label className="block text-sm font-medium mb-1 text-slate-700">Synonymes</label>
-                        <input 
-                            type="text" 
-                            className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-purple-500"
-                            value={synonyms}
-                            onChange={e => setSynonyms(e.target.value)}
-                            placeholder="ex: Acetaminophen, Doliprane..."
-                        />
-                        <p className="text-xs text-slate-500 mt-1">Séparés par des virgules.</p>
+                        {synonyms.map((syn, index) => (
+                            <div key={index} className="flex items-center gap-2">
+                                <input 
+                                    type="text" 
+                                    className="flex-1 border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-purple-500"
+                                    value={syn}
+                                    onChange={(e) => {
+                                        const newSyns = [...synonyms];
+                                        newSyns[index] = e.target.value;
+                                        setSynonyms(newSyns);
+                                    }}
+                                    placeholder="ex: Acetaminophen"
+                                />
+                                <button 
+                                    type="button"
+                                    onClick={() => {
+                                        const newSyns = synonyms.filter((_, i) => i !== index);
+                                        setSynonyms(newSyns);
+                                    }}
+                                    className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                                >
+                                    <Trash2 size={18} />
+                                </button>
+                            </div>
+                        ))}
+                        <button 
+                            type="button" 
+                            onClick={() => setSynonyms([...synonyms, ''])}
+                            className="mt-2 text-sm text-purple-600 hover:text-purple-800 flex items-center gap-1 font-medium"
+                        >
+                            <Plus size={16} /> Ajouter un synonyme
+                        </button>
                     </div>
 
                     <div className="flex justify-end space-x-3 pt-6 border-t border-slate-100 mt-6">

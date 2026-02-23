@@ -12,6 +12,7 @@ export const REFERENCE_TABLES_ORDER = [
     'units',                          // Must come before observation_parameters and global_products (FK)
     'routes',                         // Must come before global_products (FK)
     'global_dci',
+    'dci_synonyms',
     'global_products',                // Must come before global_product_price_history (FK)
     'global_product_price_history',
     'observation_parameters',
@@ -163,12 +164,23 @@ export const REFERENCE_SCHEMA_DDL: ReferenceTableSpec[] = [
                 name TEXT NOT NULL,
                 atc_code TEXT,
                 therapeutic_class TEXT,
-                synonyms JSONB,
                 care_category_id UUID REFERENCES reference.care_categories(id),
                 created_at TIMESTAMPTZ
             );
             CREATE INDEX IF NOT EXISTS idx_ref_dci_name ON reference.global_dci(name);
             CREATE INDEX IF NOT EXISTS idx_ref_dci_atc ON reference.global_dci(atc_code) WHERE atc_code IS NOT NULL;
+        `
+    },
+    {
+        tableName: 'dci_synonyms',
+        ddl: `
+            CREATE TABLE IF NOT EXISTS reference.dci_synonyms (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                dci_id UUID NOT NULL REFERENCES reference.global_dci(id) ON DELETE CASCADE,
+                synonym TEXT NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_ref_dci_synonyms_dci_id ON reference.dci_synonyms(dci_id);
         `
     },
     {
