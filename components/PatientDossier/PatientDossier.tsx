@@ -276,68 +276,77 @@ export const PatientDossier: React.FC = () => {
   ];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-100px)]">
-      {/* Header */}
-      <div className="flex flex-col space-y-4 mb-6 shrink-0">
-        <button onClick={() => navigate('/')} className="flex items-center text-gray-500 hover:text-gray-900 w-fit">
-          <ArrowLeft size={20} className="mr-1" /> Retour
-        </button>
+    <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden">
+      {/* Fixed Top Section: Header + Tabs */}
+      <div className="flex flex-col shrink-0 bg-slate-50/50 z-20 sticky top-0">
+        
+        {/* Header (Patient Info) */}
+        <div className="pt-4 pb-2">
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-6">
+            {/* Back Button */}
+            <button 
+              onClick={() => navigate('/')} 
+              title="Retour"
+              className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors self-start md:self-auto shrink-0"
+            >
+              <ArrowLeft size={24} />
+            </button>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-6">
-          {/* Avatar Cliquable */}
-          <button
-            onClick={handleOpenEdit}
-            title="Modifier les informations patient"
-            className={`group relative h-20 w-20 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden border-2 transition-all active:scale-95 ${isFemale ? 'bg-pink-50 text-pink-600 border-pink-100 hover:border-pink-500' : 'bg-blue-50 text-blue-600 border-blue-100 hover:border-blue-500'}`}
-          >
-            <User size={40} className="group-hover:opacity-20 transition-opacity" />
-            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/5">
-              <Pencil size={24} className={isFemale ? 'text-pink-600' : 'text-blue-600'} />
-            </div>
-          </button>
+            {/* Avatar Cliquable */}
+            <button
+              onClick={handleOpenEdit}
+              title="Modifier les informations patient"
+              className={`group relative h-16 w-16 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden border-2 transition-all active:scale-95 ${isFemale ? 'bg-pink-50 text-pink-600 border-pink-100 hover:border-pink-500' : 'bg-blue-50 text-blue-600 border-blue-100 hover:border-blue-500'}`}
+            >
+              <User size={32} className="group-hover:opacity-20 transition-opacity" />
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/5">
+                <Pencil size={20} className={isFemale ? 'text-pink-600' : 'text-blue-600'} />
+              </div>
+            </button>
 
-          <div className="flex-1 text-center md:text-left">
-            <div className="flex items-center justify-center md:justify-start space-x-3 mb-1">
-              <h1 className="text-2xl font-black text-gray-900 tracking-tight">{patient.lastName.toUpperCase()} {patient.firstName}</h1>
-              <button onClick={handleOpenEdit} className="p-1.5 text-gray-300 hover:text-indigo-600 transition-colors"><Pencil size={14} /></button>
+            <div className="flex-1 text-center md:text-left">
+              <div className="flex items-center justify-center md:justify-start space-x-3 mb-1">
+                <h1 className="text-xl font-black text-gray-900 tracking-tight">{patient.lastName.toUpperCase()} {patient.firstName}</h1>
+                <button onClick={handleOpenEdit} className="p-1.5 text-gray-300 hover:text-indigo-600 transition-colors"><Pencil size={14} /></button>
+              </div>
+              <div className="flex flex-wrap justify-center md:justify-start gap-4 mt-1 text-sm text-gray-600">
+                <span className="bg-slate-100 px-3 py-0.5 rounded-lg font-mono text-[11px] font-black text-slate-500 uppercase border border-slate-200">IPP: {patient.ipp}</span>
+                <span className="flex items-center"><Calendar size={14} className="mr-1.5 text-gray-400" />Né(e) le: <span className="font-bold text-gray-900 ml-1">{new Date(patient.dateOfBirth).toLocaleDateString()}</span> ({calculateAge(patient.dateOfBirth)} ans)</span>
+                <span className="flex items-center"><Activity size={14} className="mr-1.5 text-gray-400" />Sexe: <span className="font-bold text-gray-900 ml-1">{patient.gender}</span></span>
+                {patient.cin && <span className="flex items-center"><IdCard size={14} className="mr-1.5 text-gray-400" />CIN: <span className="font-bold text-gray-900 ml-1">{patient.cin}</span></span>}
+              </div>
             </div>
-            <div className="flex flex-wrap justify-center md:justify-start gap-4 mt-2 text-sm text-gray-600">
-              <span className="bg-slate-100 px-3 py-1 rounded-lg font-mono text-[11px] font-black text-slate-500 uppercase border border-slate-200">IPP: {patient.ipp}</span>
-              <span className="flex items-center"><Calendar size={14} className="mr-1.5 text-gray-400" />Né(e) le: <span className="font-bold text-gray-900 ml-1">{new Date(patient.dateOfBirth).toLocaleDateString()}</span> ({calculateAge(patient.dateOfBirth)} ans)</span>
-              <span className="flex items-center"><Activity size={14} className="mr-1.5 text-gray-400" />Sexe: <span className="font-bold text-gray-900 ml-1">{patient.gender}</span></span>
-              {patient.cin && <span className="flex items-center"><IdCard size={14} className="mr-1.5 text-gray-400" />CIN: <span className="font-bold text-gray-900 ml-1">{patient.cin}</span></span>}
-            </div>
+          </div>
+        </div>
+
+        {/* Navigation Tabs */}
+        <div className="bg-white border-b border-gray-200 mx-[-24px] px-6 lg:mx-[-40px] lg:px-10 shadow-sm transition-all">
+          <div className="flex overflow-x-auto pb-px space-x-8 scrollbar-none">
+            {tabs.map(tab => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`
+                    flex items-center whitespace-nowrap py-3 border-b-2 font-black uppercase text-[11px] tracking-widest transition-all duration-200 group
+                    ${isActive
+                      ? 'border-emerald-500 text-emerald-700'
+                      : 'border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300'}
+                  `}
+                >
+                  <Icon size={16} className={`mr-2 ${isActive ? 'text-emerald-500' : 'text-gray-300 group-hover:text-gray-500'}`} />
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shrink-0 mx-[-24px] px-6 lg:mx-[-40px] lg:px-10 shadow-sm">
-        <div className="flex overflow-x-auto pb-px space-x-8 scrollbar-none">
-          {tabs.map(tab => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`
-                  flex items-center whitespace-nowrap py-4 border-b-2 font-black uppercase text-[11px] tracking-widest transition-all duration-200 group
-                  ${isActive
-                    ? 'border-emerald-500 text-emerald-700'
-                    : 'border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300'}
-                `}
-              >
-                <Icon size={16} className={`mr-2 ${isActive ? 'text-emerald-500' : 'text-gray-300 group-hover:text-gray-500'}`} />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Tab Content */}
-      <div className="flex-1 overflow-auto py-6">
+      {/* Scrollable Tab Content */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden pt-6 pb-20">
         {tabs.find(t => t.id === activeTab)?.component}
       </div>
 
