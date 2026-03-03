@@ -36,6 +36,14 @@ export const SuperAdminLayout: React.FC = () => {
                         <FileText size={20} />
                         <span>Référentiel Actes</span>
                     </NavLink>
+                    <NavLink to="/super-admin/familles" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+                        <FolderTree size={16} className="ml-2" />
+                        <span className="text-sm">Actes: Familles</span>
+                    </NavLink>
+                    <NavLink to="/super-admin/sous-familles" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+                        <Layers size={16} className="ml-2" />
+                        <span className="text-sm">Actes: Sous-Familles</span>
+                    </NavLink>
                     <NavLink to="/super-admin/roles" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
                         <Shield size={20} />
                         <span>Global Roles</span>

@@ -3,10 +3,10 @@
 
 BEGIN;
 
-CREATE SCHEMA IF NOT EXISTS reference;
+-- 1. Create the care_categories table in public
 
 -- 1. Create the care_categories table
-CREATE TABLE IF NOT EXISTS reference.care_categories (
+CREATE TABLE IF NOT EXISTS public.care_categories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   code TEXT UNIQUE NOT NULL,
   label TEXT NOT NULL,
@@ -17,10 +17,10 @@ CREATE TABLE IF NOT EXISTS reference.care_categories (
 );
 
 CREATE INDEX IF NOT EXISTS idx_care_categories_active_order
-ON reference.care_categories (is_active, sort_order);
+ON public.care_categories (is_active, sort_order);
 
 -- 2. Seed V1 core MAR groups
-INSERT INTO reference.care_categories (code, label, sort_order, is_active)
+INSERT INTO public.care_categories (code, label, sort_order, is_active)
 VALUES
     ('ANTIBIOTIQUES', 'Antibiotiques', 10, true),
     ('ANTIVIRAUX_ANTIFONGIQUES', 'Antiviraux / Antifongiques', 20, true),
@@ -50,7 +50,7 @@ DROP CONSTRAINT IF EXISTS fk_global_dci_care_category;
 ALTER TABLE public.global_dci
 ADD CONSTRAINT fk_global_dci_care_category
 FOREIGN KEY (care_category_id)
-REFERENCES reference.care_categories(id);
+REFERENCES public.care_categories(id);
 
 CREATE INDEX IF NOT EXISTS idx_global_dci_care_category
 ON public.global_dci (care_category_id);
@@ -66,7 +66,7 @@ DROP CONSTRAINT IF EXISTS fk_global_products_care_category;
 ALTER TABLE public.global_products
 ADD CONSTRAINT fk_global_products_care_category
 FOREIGN KEY (care_category_id)
-REFERENCES reference.care_categories(id);
+REFERENCES public.care_categories(id);
 
 CREATE INDEX IF NOT EXISTS idx_global_products_care_category
 ON public.global_products (care_category_id);

@@ -4,7 +4,8 @@ import { surveillanceService } from '../services/surveillanceService';
 
 const getContext = (req: Request) => {
     const tenantId = getTenantId(req as any);
-    return { tenantId, user: (req as any).user };
+    const authReq = req as any;
+    return { tenantId, user: authReq.user, auth: authReq.auth };
 };
 
 export const getSurveillanceTimeline = async (req: AuthRequest, res: Response) => {
@@ -35,28 +36,31 @@ export const getSurveillanceTimeline = async (req: AuthRequest, res: Response) =
 export const updateSurveillanceCell = async (req: AuthRequest, res: Response) => {
     try {
         const { tenantId, user } = getContext(req);
+        console.log("updateSurveillanceCell incoming payload:", req.body);
         const { 
-            admission_id, 
-            patient_id, 
-            bucket_start, 
-            parameter_code, 
-            value, 
-            expected_revision 
+            admissionId, 
+            tenantPatientId, 
+            parameterId, 
+            parameterCode,
+            recordedAt, 
+            value
         } = req.body;
 
-        if (!patient_id || !bucket_start || !parameter_code || expected_revision === undefined) {
-            return res.status(400).json({ error: 'Missing required body fields' });
+        if (!tenantPatientId || !parameterId || !parameterCode || !recordedAt) {
+            return res.status(400).json({ error: 'Missing required body fields', missing: ['tenantPatientId', 'parameterId', 'parameterCode', 'recordedAt'] });
         }
+
+        const userId = user?.userId || (req as any).auth?.userId;
 
         const result = await surveillanceService.updateCell(
             tenantId,
-            patient_id,
-            admission_id || null,
-            bucket_start,
-            parameter_code,
+            tenantPatientId,
+            admissionId || null,
+            recordedAt,
+            parameterId,
+            parameterCode,
             value,
-            expected_revision,
-            user.id
+            userId
         );
 
         res.json(result);

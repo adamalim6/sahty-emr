@@ -498,8 +498,9 @@ export const TransfusionPrescriptionForm: React.FC<TransfusionPrescriptionFormPr
                 molecule: productDef?.fullName || pid,
                 commercialName: productDef?.fullName || pid,
                 prescriptionType: 'transfusion' as const,
-                qty: qty,
-                unit: 'poche(s)',
+                qty: qty === '--' ? 0 : Number(qty),
+                blood_product_type: pid,
+                unit: 'poche(s)', // Still supplied for backwards compatibility, backend removes it
                 route: 'IV',
                 adminMode: 'continuous' as const,
                 adminDuration: transfusionDuration,

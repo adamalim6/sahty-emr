@@ -35,8 +35,10 @@ export interface FormData {
   moleculeId?: string;
   commercialName: string;
   productId?: string;
-  qty: string;
+  qty: string | number;
   unit: string;
+  unit_id?: string;
+  blood_product_type?: string;
   route: string;
   routeLabel?: string; // Route display name
   adminMode: AdminMode;
@@ -51,6 +53,8 @@ export interface FormData {
   skippedEvents?: string[]; // Nouveau champ pour les prises sautées (IDs/Dates)
   manuallyAdjustedEvents?: Record<string, string>; // ID -> ISO Date string for time shifts
   prescriptionType?: 'medication' | 'biology' | 'imagery' | 'care' | 'transfusion'; // Type de prescription
+  libelle_sih?: string; // Used for biology, imagery, care exams
+  acte_id?: string; // Tracks the taxonomy UUID
 }
 
 // Ajout de l'interface pour le retour de getDoseScheduleCards, incluant isError

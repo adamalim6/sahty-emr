@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Save,
   Copy,
@@ -28,97 +29,98 @@ import {
   CheckCircle2,
   XCircle,
   AlertTriangle,
+  PauseCircle,
+  StopCircle,
   Info,
   ShieldAlert,
-  FileText
+  FileText,
+  Pause,
+  Square,
+  Ban,
+  Hourglass
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { Prescription, PrescriptionExecution, ExecutionStatus } from '../Prescription/types';
-import { AdministrationModal } from './AdministrationModal';
+import { AdministrationModal, AdministrationSavePayload } from './AdministrationModal';
 import { generateDoseSchedule, durationToDecimal } from '../Prescription/utils';
 
-// --- Configuration des Heures (08h -> 07h J+1) ---
-const START_HOUR = 8;
-const HOURS = Array.from({ length: 24 }, (_, i) => {
-  const h = (START_HOUR + i) % 24;
-  return h.toString().padStart(2, '0') + 'h';
-});
+// --- Point-Collision Lane Allocator ---
+export type LaneAssigned<T> = T & { lane: number };
 
-// --- Helper Functions for Timeline ---
+export type LaneAllocatorOpts<T> = {
+  // X coordinate (px) for the point you want to protect from collisions (usually actualX)
+  xOf: (item: T) => number;
 
-// Calculates planned slot times (HHh) for a given date based on prescription schedule
+  // Existing fixed X positions that must also be avoided (scheduled dots, etc.)
+  fixedXsOf?: (item: T) => number[];
 
-
-const isSlotLate = (
-  plannedHour: string,
-  currentDate: Date,
-  execution?: PrescriptionExecution
-): boolean => {
-  const now = new Date();
-  const plannedTime = new Date(currentDate);
-  const hour = parseInt(plannedHour.replace('h', ''));
-  plannedTime.setHours(hour, 0, 0, 0);
-
-  // Adjust for surveillance grid crossing midnight
-  if (hour < START_HOUR) {
-    plannedTime.setDate(plannedTime.getDate() + 1);
-  }
-
-  // If already executed, check if execution time was after planned time + grace period
-  if (execution && execution.status === 'administered') {
-    // Logic for late administration if needed, but usually we just care if it WAS administered.
-    // Late status is for UNEXECUTED past items.
-    return false;
-  }
-
-  // If not executed, check if current time is after planned time + grace period
-  if (now.getTime() > (plannedTime.getTime() + (30 * 60 * 1000))) { // 30 min grace period
-    return true;
-  }
-
-  return false;
+  // Minimum distance (px) required between two points in the same lane
+  minSeparationPx: number;
 };
 
+/**
+ * Assigns the smallest possible lane index to each item so that
+ * no two items in the same lane collide (|x1 - x2| < minSeparationPx).
+ * Additionally, items placed in lane 0 must not collide with fixedXs.
+ *
+ * This is a greedy lane assignment (like calendar events),
+ * but for POINTS (not intervals).
+ */
+export function assignPointLanes<T>(
+  items: T[],
+  opts: LaneAllocatorOpts<T>
+): LaneAssigned<T>[] {
+  const { xOf, fixedXsOf, minSeparationPx } = opts;
 
+  // Sort by x so greedy works deterministically
+  const sorted = [...items].sort((a, b) => xOf(a) - xOf(b));
 
-// --- Types de Données ---
-type CellValue = string | boolean | number;
-type DailyGridData = Record<string, Record<string, CellValue>>;
-type AllData = Record<string, DailyGridData>;
+  // lanes[laneIndex] = list of x already placed in that lane
+  const lanes: number[][] = [];
+  const out: LaneAssigned<T>[] = [];
 
-interface RowConfig {
-  id: string;
-  label: string | React.ReactNode;
-  unit?: string;
-  type: 'number' | 'text' | 'select' | 'checkbox' | 'computed' | 'computed_vertical' | 'section_header' | 'prescription_timeline';
-  options?: string[];
-  bgColor?: string;
-  computeSource?: string;
-  textColor?: string;
-  isInput?: boolean; // For Bilan Hydrique Inputs
-  isOutput?: boolean; // For Bilan Hydrique Outputs
-  parentId?: string; // For grouping dynamic rows
-  prescriptionId?: string; // For timeline rows
-  prescriptionData?: any; // For timeline rows
-  scheduledSlots?: string[]; // Pre-calculated strict slots (HHh)
-  normalMin?: number;
-  normalMax?: number;
-  warningMin?: number;
-  warningMax?: number;
-  hardMin?: number;
-  hardMax?: number;
-}
+  for (const item of sorted) {
+    const x = xOf(item);
+    const fixedXs = fixedXsOf ? fixedXsOf(item) : [];
 
-interface FicheSurveillanceProps {
-  patientId?: string;
-}
+    let lane = 0;
+    while (true) {
+      let collides = false;
+      const laneXs = lanes[lane] || [];
+      
+      for (const lx of laneXs) {
+        if (Math.abs(x - lx) < minSeparationPx) {
+          collides = true;
+          break;
+        }
+      }
+      
+      // If we are considering the centerline (lane 0), 
+      // we MUST avoid fixedXs (the scheduled dots). 
+      // Other lanes (> 0) are visually separate from the centerline dots.
+      if (!collides && lane === 0) {
+        for (const fx of fixedXs) {
+          if (Math.abs(x - fx) < minSeparationPx) {
+            collides = true;
+            break;
+          }
+        }
+      }
+      
+      if (!collides) {
+        break; // we found a safe lane!
+      }
+      lane++;
+    }
 
-interface SectionConfig {
-  id: string;
-  title: string;
-  icon: React.ElementType;
-  color: string;
-  rows: RowConfig[];
+    if (!lanes[lane]) lanes[lane] = [];
+    lanes[lane].push(x);
+
+    out.push({ ...(item as any), lane });
+  }
+
+  return out;
 }
 
 // --- Composant Graphique SVG (Vital Signs) ---
@@ -233,164 +235,376 @@ const VitalSignsChart: React.FC<{ data: DailyGridData, hours: string[] }> = ({ d
   );
 };
 
-// --- Initial Data Config ---
-const STATIC_SECTIONS: SectionConfig[] = [
-  // --- PAGE 1 CONTENT ---
-  {
-    id: 'vital', title: 'Paramètres Vitaux', icon: Activity, color: 'text-rose-600',
-    rows: [
-      { id: 'pa_sys', label: 'PA Systolique', unit: 'mmHg', type: 'number', normalMin: 90, normalMax: 140, warningMin: 80, warningMax: 160, hardMin: 50, hardMax: 250 },
-      { id: 'pa_dia', label: 'PA Diastolique', unit: 'mmHg', type: 'number', normalMin: 60, normalMax: 90, warningMin: 50, warningMax: 100, hardMin: 30, hardMax: 150 },
-      { id: 'fc', label: 'Fréquence Cardiaque', unit: 'bpm', type: 'number', bgColor: 'bg-emerald-50', normalMin: 60, normalMax: 100, warningMin: 50, warningMax: 120, hardMin: 30, hardMax: 200 },
-      { id: 'temp', label: 'Température', unit: '°C', type: 'number', bgColor: 'bg-blue-50', normalMin: 36.5, normalMax: 37.5, warningMin: 36.0, warningMax: 38.5, hardMin: 34.0, hardMax: 42.0 },
-    ]
-  },
-  {
-    id: 'neuro', title: 'État Clinique & Neuro', icon: Brain, color: 'text-indigo-600',
-    rows: [
-      { id: 'spo2', label: 'SpO₂', unit: '%', type: 'number' },
-      { id: 'eva', label: 'Douleur (EVA)', unit: '/10', type: 'number' },
-      { id: 'ramsay', label: 'Score Ramsay', type: 'select', options: ['1', '2', '3', '4', '5', '6'] },
-      { id: 'glasgow', label: 'Score Glasgow', unit: '/15', type: 'number' },
-      { id: 'pupilles', label: 'Pupilles', type: 'select', options: ['N/N', 'Myosis', 'Mydriase', 'Aniso'] },
-    ]
-  },
-  {
-    id: 'hemo', title: 'Monitorage Hémo. Invasif', icon: Activity, color: 'text-red-700',
-    rows: [
-      { id: 'pap', label: 'PAP', unit: 'mmHg', type: 'number' },
-      { id: 'pcp', label: 'PCP', unit: 'mmHg', type: 'number' },
-      { id: 'pvc', label: 'POD / PVC', unit: 'mmHg', type: 'number' },
-      { id: 'dc', label: 'DC / IC', unit: 'L/min', type: 'number' },
-      { id: 'svo2', label: 'SvO₂', unit: '%', type: 'number' },
-    ]
-  },
-  {
-    id: 'ventilation', title: 'Paramètres Ventilatoires', icon: Wind, color: 'text-sky-600',
-    rows: [
-      { id: 'mode', label: 'Mode ventilatoire', type: 'select', options: ['VACI', 'VS', 'VSAI', 'PC', 'VC'] },
-      { id: 'vt', label: 'Vol. Courant (VT)', unit: 'ml', type: 'number' },
-      { id: 'fr', label: 'Fréquence (FR)', unit: '/min', type: 'number' },
-      { id: 'pins', label: 'P. Ins', unit: 'cmH2O', type: 'number' },
-      { id: 'pai', label: 'PAI', unit: 'cmH2O', type: 'number' },
-      { id: 'peep', label: 'PEEP', unit: 'cmH2O', type: 'number' },
-      { id: 'fio2', label: 'FiO₂ / O₂', unit: '%/L', type: 'text' },
-    ]
-  },
-  {
-    id: 'secretion', title: 'Aspirations Trachéales', icon: Thermometer, color: 'text-slate-600',
-    rows: [
-      { id: 'aspi_cote', label: 'Cotation', type: 'select', options: ['0', '1', '2', '3'] },
-      { id: 'aspi_aspect', label: 'Aspect Sécrétions', type: 'text' },
-    ]
-  },
-  {
-    id: 'drains', title: 'Drains & Redons', icon: Droplet, color: 'text-amber-600',
-    rows: [] // Dynamic
-  },
-  {
-    id: 'diurese', title: 'Diurèse', icon: FlaskConical, color: 'text-yellow-600',
-    rows: [
-      { id: 'diurese_qty', label: 'SU / Miction', unit: 'ml', type: 'number', isOutput: true },
-      { id: 'diurese_cumul', label: 'Cumul (ml)', unit: 'ml', type: 'computed', computeSource: 'diurese_qty', bgColor: 'bg-yellow-50 font-bold' },
-    ]
-  },
-  {
-    id: 'gastrique', title: 'Sonde Gastrique', icon: Syringe, color: 'text-green-600',
-    rows: [
-      { id: 'aspi_gastrique', label: 'Aspiration Gastrique', unit: 'ml', type: 'number', isOutput: true },
-      { id: 'residu', label: 'Résidu Gastrique', unit: 'ml', type: 'number', isOutput: true },
-      { id: 'vomis', label: 'Vomis / Selles', unit: 'ml', type: 'text', isOutput: true },
-      { id: 'cumul_gastrique', label: 'Cumul Gastrique', unit: 'ml', type: 'computed', computeSource: 'gastrique_all', bgColor: 'bg-green-50 font-bold' },
-    ]
-  },
-  {
-    id: 'gaz', title: 'Gaz du Sang & Bio', icon: FlaskConical, color: 'text-purple-600',
-    rows: [
-      { id: 'ph', label: 'pH', type: 'number' },
-      { id: 'po2', label: 'PaO₂', unit: 'mmHg', type: 'number' },
-      { id: 'pco2', label: 'PaCO₂', unit: 'mmHg', type: 'number' },
-      { id: 'hco3', label: 'HCO₃⁻', unit: 'mmol/L', type: 'number' },
-      { id: 'sao2_gaz', label: 'SaO₂', unit: '%', type: 'number' },
-      { id: 'hb', label: 'Hb / Hte', type: 'text' },
-      { id: 'glyc', label: 'Glycémie', unit: 'g/L', type: 'number' },
-      { id: 'k', label: 'K⁺', unit: 'mmol/L', type: 'number' },
-      { id: 'lactate', label: 'Ac. Lactique', unit: 'mmol/L', type: 'number', bgColor: 'bg-purple-50' },
-    ]
-  },
-  {
-    id: 'bilan', title: 'Bilan Hydrique (Auto)', icon: Calculator, color: 'text-blue-800',
-    rows: [
-      { id: 'apports_total', label: 'Apports Totaux (Perf/PO)', unit: 'ml', type: 'number', isInput: true, bgColor: 'bg-blue-50' },
-      { id: 'bilan_horaire', label: 'Bilan Horaire', unit: 'ml', type: 'computed_vertical', bgColor: 'bg-gray-100 font-bold' },
-      { id: 'bilan_cumul_24h', label: 'Bilan Cumulé 24h', unit: 'ml', type: 'computed', computeSource: 'bilan_horaire', bgColor: 'bg-gray-200 font-black text-blue-900' },
-    ]
-  },
-  // --- PAGE 2 CONTENT (INTEGRATED) ---
-  {
-    id: 'cutane', title: 'Soins Infirmiers & Cutané', icon: CheckSquare, color: 'text-teal-600',
-    rows: [
-      { id: 'intubation_fix', label: 'Intubation fixée à :', unit: 'cm', type: 'text' },
-      { id: 'ballonnet', label: 'Vérif° ballonnet', type: 'checkbox' },
-      { id: 'filtre', label: 'Chgt filtre anti-bact.', type: 'checkbox' },
-      { id: 'toilette', label: 'Toilette', type: 'checkbox' },
-      { id: 'visage', label: 'Soins Visage', type: 'checkbox' },
-      { id: 'rasage', label: 'Rasage', type: 'checkbox' },
-      { id: 'soins_sondes', label: 'Soins des sondes', type: 'checkbox' },
-    ]
-  },
-  {
-    id: 'divers', title: 'Divers', icon: CheckSquare, color: 'text-gray-600',
-    rows: [
-      { id: 'tour_secu', label: 'Tour de sécurité', type: 'text' },
-      { id: 'environnement', label: 'Environnement', type: 'text' },
-      { id: 'contentions', label: 'Tour contentions', type: 'text' },
-    ]
+// --- Helper Functions for Timeline ---
+
+const generateTimeSlots = (centerDate: Date) => {
+  const intervals: { iso: string, label: string, isMidnight: boolean, isStartOfDay: boolean }[] = [];
+  const start = new Date(centerDate);
+  start.setHours(8, 0, 0, 0); // Always start at 08:00
+  start.setDate(start.getDate() - 1); // Yesterday 08:00
+  
+  for(let i = 0; i < 72; i++) {
+    const slot = new Date(start.getTime() + i * 3600000);
+    intervals.push({
+      iso: slot.toISOString(),
+      label: slot.getHours().toString().padStart(2, '0') + 'h',
+      isMidnight: slot.getHours() === 0,
+      isStartOfDay: slot.getHours() === 8
+    });
   }
-];
+  return intervals;
+};
+
+const isSlotLate = (
+  slotIso: string,
+  execution?: PrescriptionExecution
+): boolean => {
+  const now = new Date();
+  const plannedTime = new Date(slotIso);
+
+  if (execution && execution.status === 'administered') {
+    return false;
+  }
+
+  // 30 min grace period
+  if (now.getTime() > (plannedTime.getTime() + (30 * 60 * 1000))) {
+    return true;
+  }
+
+  return false;
+};
+
+// --- Types de Données ---
+type CellValue = string | boolean | number;
+type DailyGridData = Record<string, Record<string, CellValue>>;
+type AllData = Record<string, DailyGridData>;
+
+interface RowConfig {
+  id: string; // parameter code
+  parameterId?: string; // parameter UUID
+  label: React.ReactNode;
+  epicHeader?: React.ReactNode;
+  epicSubtext?: React.ReactNode;
+  unit?: string;
+  type: 'number' | 'text' | 'select' | 'checkbox' | 'prescription_timeline' | 'computed' | 'computed_vertical' | 'section_header';
+  options?: string[];
+  isInput?: boolean; 
+  isOutput?: boolean;
+  isSubheader?: boolean;
+  computeSource?: string; // Styling Overrides
+  bgColor?: string; // Defines the base row background (e.g., 'bg-white', 'bg-amber-50')
+  hoverBg?: string; // Defines the interactive hover layer explicitly (e.g., 'group-hover:bg-blue-50')
+  status?: string;
+  textColor?: string;
+  prescriptionId?: string;
+  prescriptionData?: any;
+  normalMin?: number;
+  normalMax?: number;
+  warningMin?: number;
+  warningMax?: number;
+  hardMin?: number;
+  hardMax?: number;
+}
+
+interface FicheSurveillanceProps {
+  patientId?: string;
+}
+
+interface SectionConfig {
+  id: string;
+  title: string;
+  icon: React.ElementType;
+  color: string;
+  rows: RowConfig[];
+}
+
+const ExpandableNameBadge = ({ name, molecule }: { name: string, molecule?: string }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  const formattedName = name ? (name.charAt(0).toUpperCase() + name.slice(1).toLowerCase()) : '';
+  const formattedMolecule = molecule ? (molecule.charAt(0).toUpperCase() + molecule.slice(1).toLowerCase()) : '';
+  const isLong = formattedName.length > 25 || formattedMolecule.length > 30;
+
+  const handleOpen = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isOpen && containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setCoords({ top: rect.top - 8, left: rect.left - 8 });
+    }
+    setIsOpen(true);
+  };
+
+  return (
+    <div className="relative flex flex-col min-w-0 w-full" ref={containerRef} onMouseLeave={() => setIsOpen(false)}>
+      {isOpen && isLong && createPortal(
+         <div 
+           className="fixed z-[99999] bg-white shadow-2xl border border-slate-300 ring-1 ring-slate-200/50 rounded-lg p-3 w-[340px] cursor-pointer animate-in fade-in zoom-in-95 duration-100" 
+           style={{ top: coords.top, left: coords.left }}
+           onClick={() => setIsOpen(false)}
+           onMouseLeave={() => setIsOpen(false)}
+         >
+            <div className="font-bold text-slate-800 text-[14px] leading-snug whitespace-normal break-words">{formattedName}</div>
+            {molecule && molecule !== name && (
+              <div className="italic text-blue-600 font-medium text-[11px] leading-snug mt-1.5 whitespace-normal break-words">{formattedMolecule}</div>
+            )}
+         </div>,
+         document.body
+      )}
+
+      {isLong ? (
+        <button 
+           onClick={handleOpen}
+           className="text-left flex flex-col items-start min-w-0 w-full hover:bg-slate-50 rounded-md -ml-1.5 px-1.5 py-0.5 transition-colors border border-transparent hover:border-slate-300 shadow-sm hover:shadow"
+        >
+           <span className="font-bold text-slate-800 text-[14px] leading-tight truncate w-full">{formattedName}</span>
+           {molecule && molecule !== name && (
+             <span className="italic text-blue-600 font-medium text-[11px] truncate w-full leading-tight mt-0.5">
+               {formattedMolecule}
+             </span>
+           )}
+        </button>
+      ) : (
+        <div className="flex flex-col items-start min-w-0 w-full px-1.5 py-0.5 -ml-1.5">
+          <span className="font-bold text-slate-800 text-[14px] leading-tight truncate w-full">
+            {formattedName}
+          </span>
+          {molecule && molecule !== name && (
+            <span className="italic text-blue-600 font-medium text-[11px] truncate w-full leading-tight mt-0.5">
+              {formattedMolecule}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// A dedicated GridCell component is critical for Excel-style tables.
+// It manages its own typing state so the global FicheSurveillance (and all 72 columns)
+// does not re-render on every single keystroke.
+const GridCell = ({
+  initialValue,
+  isNumberType,
+  isVomis,
+  config,
+  isCurrentHour,
+  onCommit
+}: {
+  initialValue: string;
+  isNumberType: boolean;
+  isVomis: boolean;
+  config: RowConfig;
+  isCurrentHour: boolean;
+  onCommit: (val: string) => void;
+}) => {
+  const [localVal, setLocalVal] = useState(initialValue || '');
+  const [isFocused, setIsFocused] = useState(false);
+
+  // Sync if row/global data heavily changes (e.g. initial load)
+  useEffect(() => {
+    setLocalVal(initialValue || '');
+  }, [initialValue]);
+
+  // Compute color class & tooltip strictly derived from local value + blur state
+  let colorClass = "text-gray-900 bg-transparent font-medium";
+  let tooltip = "";
+
+  if (isNumberType && localVal !== undefined && localVal !== '' && !isFocused) {
+    const numVal = Number(localVal);
+    
+    const hasHardMin = config.hardMin !== undefined && config.hardMin !== null;
+    const hasHardMax = config.hardMax !== undefined && config.hardMax !== null;
+    const hasWarnMin = config.warningMin !== undefined && config.warningMin !== null;
+    const hasWarnMax = config.warningMax !== undefined && config.warningMax !== null;
+    const hasNormMin = config.normalMin !== undefined && config.normalMin !== null;
+    const hasNormMax = config.normalMax !== undefined && config.normalMax !== null;
+
+    const breaksHardMin = hasHardMin && numVal < config.hardMin!;
+    const breaksHardMax = hasHardMax && numVal > config.hardMax!;
+
+    if (breaksHardMin || breaksHardMax) {
+      // 1. HARD LIMIT VIOLATION
+      colorClass = "text-red-600 font-bold bg-transparent ring-2 ring-inset ring-red-500 m-[1px]";
+      if (hasHardMin && hasHardMax) {
+        tooltip = `Valeur hors limites. Autorisé: ${config.hardMin} - ${config.hardMax} ${config.unit || ''}`.trim();
+      } else if (hasHardMin) {
+        tooltip = `Valeur sous le minimum autorisé: ${config.hardMin} ${config.unit || ''}`.trim();
+      } else {
+        tooltip = `Valeur au-dessus du maximum autorisé: ${config.hardMax} ${config.unit || ''}`.trim();
+      }
+    } else {
+      // 2. CRITICAL LIMIT VIOLATION (Warning in DB context, mapped to red)
+      const breaksWarnMin = hasWarnMin && numVal < config.warningMin!;
+      const breaksWarnMax = hasWarnMax && numVal > config.warningMax!;
+      
+      if (breaksWarnMin || breaksWarnMax) {
+        colorClass = "text-red-500 font-bold bg-transparent";
+      } else {
+        // 3. WARNING LIMIT VIOLATION (Normal min/max breached, mapped to orange)
+        const breaksNormMin = hasNormMin && numVal < config.normalMin!;
+        const breaksNormMax = hasNormMax && numVal > config.normalMax!;
+
+        if (breaksNormMin || breaksNormMax) {
+          colorClass = "text-orange-500 font-bold bg-transparent";
+        } else if (hasNormMin || hasNormMax) { 
+          // 4. NORMAL (strictly inside all bounds)
+          colorClass = "text-emerald-600 font-bold bg-transparent";
+        }
+      }
+    }
+  }
+
+  return (
+    <input
+      type={isNumberType ? 'number' : 'text'}
+      min={isNumberType ? "0" : undefined}
+      value={localVal}
+      onFocus={() => setIsFocused(true)}
+      onChange={(e) => {
+        let newValue = e.target.value;
+        if (isNumberType && newValue !== '' && Number(newValue) < 0) {
+          return; // Ignore negative
+        }
+        if (isVomis && newValue.trim().startsWith('-')) {
+          return;
+        }
+        setLocalVal(newValue);
+      }}
+      onBlur={(e) => {
+        setIsFocused(false);
+        if (e.target.value !== initialValue) {
+           onCommit(e.target.value);
+        }
+      }}
+      onKeyDown={(e) => {
+        if ((isNumberType || isVomis) && e.key === '-') e.preventDefault();
+        if (e.key === 'Enter') {
+          (e.target as HTMLInputElement).blur();
+        }
+      }}
+      title={tooltip || undefined}
+      // [&::-webkit...]:appearance-none hides the up/down chevrons (spinners) on number inputs
+      className={`w-full h-full border-none text-center focus:outline-none focus:ring-2 focus:ring-emerald-500 p-0 text-sm transition-colors [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${colorClass}`}
+      placeholder={isCurrentHour ? '...' : ''}
+    />
+  );
+};
 
 export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId }) => {
+  const { user, loading, isAuthenticated } = useAuth();
+
   // --- State ---
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [allData, setAllData] = useState<AllData>({});
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
   // Data State
   const [allPrescriptions, setAllPrescriptions] = useState<Prescription[]>([]);
+  const [timelineEvents, setTimelineEvents] = useState<any[]>([]);
+  // We can eventually phase out `executions` state as timelineEvents contains `administration`, but keep it for now if needed elsewhere.
   const [executions, setExecutions] = useState<PrescriptionExecution[]>([]);
+  
+  const [flowsheets, setFlowsheets] = useState<any[]>([]);
+  const [activeFlowsheetId, setActiveFlowsheetId] = useState<string | null>(null);
+  const [routes, setRoutes] = useState<any[]>([]);
+  const [unitsList, setUnitsList] = useState<any[]>([]);
+  const [isMobile, setIsMobile] = useState(false);
+  const [activeOnly, setActiveOnly] = useState(true);
 
-  // Administration Modal State
+  // Expanded Event Action Modal Payload
   const [adminModal, setAdminModal] = useState<{
-    isOpen: boolean;
-    prescriptionId: string;
-    slotTime: string; // HHh
-    prescriptionName: string;
-    execution?: PrescriptionExecution;
-  }>({ isOpen: false, prescriptionId: '', slotTime: '', prescriptionName: '' });
+    isOpen: boolean,
+    prescriptionId: string,
+    eventId: string,
+    prescriptionName: string,
+    slotTime: string,
+    duration: number, // 0 for bolus, >0 for perfusion
+    activePerfusionEvent: any | null, // The 'started' event if it's currently running
+    historyEvents: any[] // The local chunk of administration actions previously recorded
+  }>({ isOpen: false, prescriptionId: '', eventId: '', prescriptionName: '', slotTime: '', duration: 0, activePerfusionEvent: null, historyEvents: [] });
 
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
-    const defaults = STATIC_SECTIONS.reduce((acc, sec) => ({ ...acc, [sec.id]: true }), {} as Record<string, boolean>);
-    // Default open dynamic sections
-    defaults['medication'] = true;
-    defaults['biology'] = true;
-    defaults['imagery'] = true;
-    defaults['care'] = true;
-    defaults['transfusion'] = true;
-    return defaults;
+  const closeAdminModal = () => {
+    setAdminModal({ isOpen: false, prescriptionId: '', eventId: '', prescriptionName: '', slotTime: '', duration: 0, activePerfusionEvent: null, historyEvents: [] });
+  };
+
+  const handleCancelAdminEvent = async (adminEventId: string, reason?: string) => {
+    if (!patientId || !adminModal.prescriptionId || !adminModal.eventId) return;
+    try {
+        await api.cancelAdministrationEvent(adminModal.prescriptionId, adminModal.eventId, adminEventId, reason);
+        // Force a fresh fetch of the 72h window immediately to clear the UI
+        const survStart = new Date(timeSlots[0].iso);
+        const survEnd = new Date(timeSlots[timeSlots.length - 1].iso);
+        survEnd.setHours(survEnd.getHours() + 1);
+        const res = await api.getSurveillanceTimeline(patientId!, {
+            flowsheetId: activeFlowsheetId!,
+            fromDate: survStart.toISOString(),
+            toDate: survEnd.toISOString()
+        });
+        if (res.timelineEvents) setTimelineEvents(res.timelineEvents);
+        
+        // Modal must close or trigger a refetch of its own history. 
+        // For simplicity and clinical safety, closing the modal forces them to re-click if they want to see the updated crossed-out state
+        closeAdminModal();
+    } catch (err) {
+        console.error("Failed to cancel administration event", err);
+        alert("Erreur lors de l'annulation de l'événement.");
+    }
+  };
+
+  // Stop Confirmation Modal Payload
+  const [stopModal, setStopModal] = useState<{
+      isOpen: boolean;
+      prescriptionId: string;
+  }>({
+      isOpen: false,
+      prescriptionId: ''
   });
 
-  // Derived
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    medication: true, biology: true, imagery: true, care: true, transfusion: true
+  });
+
+  // Derived Timeline Geometry
+  const timeSlots = useMemo(() => generateTimeSlots(selectedDate), [selectedDate]);
   const dateKey = selectedDate.toISOString().split('T')[0];
   const currentDayData = allData[dateKey] || {};
-  const isToday = new Date().toDateString() === selectedDate.toDateString();
-  const currentHourIndex = new Date().getHours() >= 8
-    ? new Date().getHours() - 8
-    : new Date().getHours() + 16;
-  const currentHourLabel = isToday ? (HOURS[currentHourIndex] || '') : '';
+  
+  const currentHourIso = new Date();
+  currentHourIso.setMinutes(0, 0, 0); // Floor exactly to hour
+  const currentHourLabel = timeSlots.find(t => t.iso === currentHourIso.toISOString())?.iso || timeSlots[24]?.iso || '';
 
-  // Fetch Prescriptions (Global)
+  // Auto-scroll to geometric center or current hour
   useEffect(() => {
-    if (patientId) {
-      const fetchGlobalData = async () => {
+    if (scrollContainerRef.current && currentHourLabel) {
+      const targetId = `col-${currentHourLabel.replace(/[:.]/g, '-')}`;
+      const targetCol = scrollContainerRef.current.querySelector(`#${targetId}`);
+      // Slight delay to ensure DOM is fully repainted before scrolling
+      if (targetCol) {
+        setTimeout(() => {
+            targetCol.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }, 100);
+      }
+    }
+  }, [currentHourLabel, timeSlots]);
+
+  // Fetch Global Data (Flowsheets & Prescriptions)
+  useEffect(() => {
+    const fetchGlobalData = async () => {
+      try {
+        const flowsheetsData = await api.getObservationFlowsheets();
+        setFlowsheets(flowsheetsData);
+        if (flowsheetsData.length > 0) setActiveFlowsheetId(flowsheetsData[0].id);
+
+        const routesData = await api.getRoutes().catch(() => []);
+        setRoutes(routesData);
+      } catch (e) {
+        console.error("Failed to load flowsheets or routes", e);
+      }
+      
+      if (patientId) {
         try {
           const fetchedPrescriptions: any[] = await api.getPrescriptions(patientId);
           setAllPrescriptions(fetchedPrescriptions);
@@ -399,53 +613,70 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
           const allExecutions = (await Promise.all(executionPromises)).flat();
           setExecutions(allExecutions);
         } catch (error) {
-          console.error("Failed to fetch global surveillance data", error);
+          console.error("Failed to fetch prescriptions global data", error);
         }
-      };
-      fetchGlobalData();
-    }
+      }
+      try {
+        const unitsData = await api.getUnits();
+        setUnitsList(unitsData);
+      } catch (err) {
+        console.error("Failed to fetch units data", err);
+      }
+    };
+    fetchGlobalData();
   }, [patientId]);
 
-  // Fetch Surveillance Grid (Day-specific)
+  // Fetch Surveillance Grid (72h window)
   useEffect(() => {
-    if (patientId) {
-      const fetchDayData = async () => {
+    if (patientId && activeFlowsheetId) {
+      const fetchWindowData = async () => {
         try {
-          const survStart = new Date(selectedDate);
-          survStart.setHours(START_HOUR, 0, 0, 0);
-          const survEnd = new Date(survStart);
-          survEnd.setDate(survEnd.getDate() + 1);
+          const survStart = new Date(timeSlots[0].iso);
+          const survEnd = new Date(timeSlots[timeSlots.length - 1].iso);
+          survEnd.setHours(survEnd.getHours() + 1); // +1h to include the full last hour bucket
 
           const res = await api.getSurveillanceTimeline(patientId, {
+            flowsheetId: activeFlowsheetId,
             fromDate: survStart.toISOString(),
             toDate: survEnd.toISOString()
           });
 
-          const newDayData: DailyGridData = {};
+          const newGridData: DailyGridData = {};
           
           if (res.buckets) {
             res.buckets.forEach((b: any) => {
-                const hDate = new Date(b.bucketStart);
-                const hStr = hDate.getHours().toString().padStart(2, '0') + 'h';
-                
+                const iso = new Date(b.bucketStart).toISOString();
                 Object.entries(b.values || {}).forEach(([rowId, cellObj]: [string, any]) => {
-                    if (!newDayData[rowId]) newDayData[rowId] = {};
-                    newDayData[rowId][hStr] = cellObj.v; 
+                    if (!newGridData[rowId]) newGridData[rowId] = {};
+                    newGridData[rowId][iso] = (cellObj && typeof cellObj === 'object' && cellObj.v !== undefined) ? cellObj.v : cellObj; 
                 });
             });
           }
 
-          setAllData(prev => ({ ...prev, [dateKey]: newDayData }));
+          setAllData(prev => ({ ...prev, [dateKey]: newGridData }));
+          if (res.timelineEvents) {
+              setTimelineEvents(res.timelineEvents);
+          }
+          
+          // Optionally, sync server flowsheets if it returns full structure
+          if (res.flowsheet) {
+              setOpenSections(prev => {
+                  const np = { ...prev };
+                  res.flowsheet.groups.forEach((g: any) => np[g.id] = np[g.id] ?? true);
+                  return np;
+              });
+          }
+
         } catch (error) {
-          console.error("Failed to fetch daily buckets", error);
+          console.error("Failed to fetch 72h window buckets", error);
         }
       };
       
-      fetchDayData();
-      const interval = setInterval(fetchDayData, 30000); // 30s refresh
+      fetchWindowData();
+      const interval = setInterval(fetchWindowData, 30000); // 30s refresh
       return () => clearInterval(interval);
     }
-  }, [patientId, selectedDate, dateKey]);
+  }, [patientId, selectedDate, dateKey, timeSlots, activeFlowsheetId]);
 
   // Chart Modal State
   const [showChart, setShowChart] = useState(false);
@@ -460,10 +691,15 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
   const [newRowName, setNewRowName] = useState('');
 
   // --- Logic : Building Dynamic Grid ---
-  const sections = useMemo(() => {
-    // Generate Prescription Sections
+  const sections = useMemo<SectionConfig[]>(() => {
     const prescriptionSections: SectionConfig[] = [];
+    
+    // Globally filter prescriptions if Active Only is enabled
+    const visiblePrescriptions = activeOnly 
+         ? allPrescriptions.filter(p => p.status !== 'STOPPED')
+         : allPrescriptions;
 
+    // Build prescription sections based on care categories
     const categories = [
       { id: 'medication', title: 'Médicaments', icon: Pill, color: 'text-blue-600', filter: (p: Prescription) => !p.data.prescriptionType || p.data.prescriptionType === 'medication' },
       { id: 'biology', title: 'Biologie', icon: FlaskConical, color: 'text-purple-600', filter: (p: Prescription) => p.data.prescriptionType === 'biology' },
@@ -473,47 +709,40 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
     ];
 
     const survStart = new Date(selectedDate);
-    survStart.setHours(START_HOUR, 0, 0, 0);
+    survStart.setHours(8, 0, 0, 0); // Replaced START_HOUR
     const survEnd = new Date(survStart);
     survEnd.setDate(survEnd.getDate() + 1);
 
     const isPrescriptionVisible = (p: Prescription) => {
-      // 1. Generate doses
-      const scheduleResult = generateDoseSchedule(p.data.schedule, p.data.prescriptionType || 'medication');
-
-      // 2. Check for overlap with surveillance window (survStart -> survEnd)
-      return scheduleResult.cards.some(dose => {
-        const doseStart = new Date(dose.date);
-
-        // Calculate admin duration in ms
-        let adminDurationMs = 0;
-        if (p.data.adminDuration && p.data.adminMode !== 'instant') {
-          adminDurationMs = durationToDecimal(p.data.adminDuration) * 60 * 60 * 1000;
-        }
-
-        const doseEnd = new Date(doseStart.getTime() + adminDurationMs);
-
-        // Check overlap: doseStart <= survEnd && doseEnd >= survStart
-        // Strict inequality for end of window to match "08:00" being start of NEXT window? 
-        // Usually [start, end). start included, end excluded.
-        // survStart = 08:00 D. survEnd = 08:00 D+1.
-        // Dose must start before 08:00 D+1 AND end after 08:00 D.
-        return doseStart.getTime() < survEnd.getTime() && doseEnd.getTime() > survStart.getTime();
-      });
+      // Direct check against backend timeline events for the loaded 72h window
+      return timelineEvents.some(te => te.prescriptionId === p.id);
     };
 
     categories.forEach(cat => {
-      // Use allPrescriptions here instead of prescriptions
-      const matchingPrescriptions = allPrescriptions.filter(p => cat.filter(p) && isPrescriptionVisible(p));
+      let matchingPrescriptions = visiblePrescriptions;
+      
+      if (cat.id === 'medication') {
+        matchingPrescriptions = visiblePrescriptions.filter(p => (!p.data.prescriptionType || p.data.prescriptionType === 'medication') && isPrescriptionVisible(p));
+      } else {
+        matchingPrescriptions = visiblePrescriptions.filter(p => p.data.prescriptionType === cat.id && isPrescriptionVisible(p));
+      }
+      
+      matchingPrescriptions.sort((a, b) => {
+          const dataA = a.data as any;
+          const dataB = b.data as any;
+          const catA = dataA.careCategory || 'Z_Autre';
+          const catB = dataB.careCategory || 'Z_Autre';
+          if (catA !== catB) return catA.localeCompare(catB);
+          
+          const nameA = dataA.commercialName || '';
+          const nameB = dataB.commercialName || '';
+          return nameA.localeCompare(nameB);
+      });
+
       if (matchingPrescriptions.length > 0) {
-        prescriptionSections.push({
-          id: cat.id,
-          title: cat.title,
-          icon: cat.icon,
-          color: cat.color,
-          rows: matchingPrescriptions.map(p => {
-            const data = p.data;
-            const isNonSubstitutable = !data.substitutable && (!data.prescriptionType || data.prescriptionType === 'medication');
+        let mappedRows = matchingPrescriptions.map(p => {
+          const data = p.data;
+          const isNonSubstitutable = !data.substitutable && (!data.prescriptionType || data.prescriptionType === 'medication');
 
             // Helper to generate full natural language schedule description
             const generateFullScheduleDescription = (s: any, type?: string) => {
@@ -603,242 +832,215 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
             };
 
             const fullScheduleText = generateFullScheduleDescription(data.schedule, data.prescriptionType);
+            // No frontend slot calculation needed, timelineEvents maps directly
 
-            // --- STRICT SLOT CALCULATION ---
-            // 1. Generate full schedule with overrides
-            const doseResult = generateDoseSchedule(
-              data.schedule,
-              data.prescriptionType || 'medication',
-              undefined,
-              data.adminMode,
-              data.adminDuration,
-              {
-                skippedEvents: data.skippedEvents,
-                manuallyAdjustedEvents: data.manuallyAdjustedEvents
-              }
-            );
+            const isMedication = !data.prescriptionType || data.prescriptionType === 'medication';
 
-            // 2. Filter doses in surveillance window & map to slots
-            const validSlots: string[] = [];
-            if (doseResult.scheduledDoses) {
-              doseResult.scheduledDoses.forEach(dose => {
-                if (dose.isSkipped) return;
+            const isAct = data.prescriptionType === 'biology' || data.prescriptionType === 'imagery' || data.prescriptionType === 'care';
 
-                const timeToUse = dose.effectiveDateTime || dose.plannedDateTime;
-                const doseDate = new Date(timeToUse);
+            const rowLabel = isAct
+                ? (data.libelle_sih || 'Examen/Acte Inconnu') 
+                : (data.blood_product_type || data.commercialName || 'Produit Inconnu');
 
-                // Check if in window [survStart, survEnd)
-                if (doseDate.getTime() >= survStart.getTime() && doseDate.getTime() < survEnd.getTime()) {
-                  const h = doseDate.getHours();
-                  const hStr = h.toString().padStart(2, '0') + 'h';
-                  if (!validSlots.includes(hStr)) validSlots.push(hStr);
-                }
-              });
-            }
+            // THE LEFT COLUMN METADATA: Content for the sticky left column
+            const epicHeader = (
+              <div className="flex w-full h-full overflow-hidden relative group">
+                {/* Main Content Area */}
+                <div className="flex flex-col items-start justify-center flex-1 px-3 py-1.5 min-w-0 pr-2 relative">
+                  {/* Line 1 & 2: Expandable Name and Molecule badge */}
+                  <ExpandableNameBadge name={rowLabel} molecule={data.molecule} />
+                  
+                  {/* Line 3: Dose, Route, Specs */}
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 w-full text-[12px] mt-1 pr-1">
+                    {data.prescriptionType === 'transfusion' ? (
+                       <span className="font-bold text-emerald-600">
+                         {data.qty} {(() => {
+                           if (!data.unit_id) return data.unit || 'poche(s)';
+                           const u = unitsList.find(u => u.id === data.unit_id);
+                           if (!u) return data.unit || 'poche(s)';
+                           return Number(data.qty) > 1 ? (u.plural_label || u.label) : u.label;
+                         })()}
+                       </span>
+                    ) : (data.qty || data.unit) && isMedication && (
+                       <span className="font-bold text-emerald-600">
+                         {data.qty}{data.unit}
+                       </span>
+                    )}
+                    {data.route && (
+                       <span className="text-slate-600 font-bold uppercase">
+                         {routes.find(r => r.id === data.route)?.label || data.route}
+                       </span>
+                    )}
+                  </div>
 
-            const labelNode = (
-              <div className="flex flex-col items-start w-full overflow-hidden space-y-0.5">
-                {/* Header Line: Name (Bold) */}
-                <div className="font-bold text-gray-900 truncate w-full flex items-center" title={data.commercialName}>
-                  <span className="truncate">{data.commercialName}</span>
+                  <div className="flex flex-col gap-0.5 mt-1.5 w-full">
+                    {isNonSubstitutable && (
+                      <span className="flex items-center text-red-500 font-semibold text-[11px] uppercase">
+                        <Ban size={12} className="mr-1 shrink-0" strokeWidth={2.5} />
+                        NON SUBSTITUABLE
+                      </span>
+                    )}
+                    {data.adminDuration && data.adminMode !== 'instant' && (
+                      <span className="flex items-center text-blue-600 font-medium text-[11px]">
+                        <Hourglass size={12} className="mr-1 shrink-0" strokeWidth={2} />
+                        Durée d'administration: {data.adminDuration}
+                      </span>
+                    )}
+                    {data.dilutionRequired && data.solvent && (
+                      <span className="flex items-center text-fuchsia-500 font-medium text-[11px]">
+                        <Syringe size={12} className="mr-1 shrink-0" strokeWidth={2} />
+                        Diluer dans {data.solvent.qty} {data.solvent.unit || 'mL'} {data.solvent.commercialName || data.solvent.molecule || 'Solvant'}
+                      </span>
+                    )}
+                  </div>
+                  
+                  {/* Note block if exists */}
+                  {data.conditionComment && (
+                    <div className="text-[11px] text-amber-700 flex items-start mt-1 w-full">
+                      <FileText size={12} className="mr-1 mt-[2px] shrink-0" />
+                      <span className="font-medium italic leading-tight truncate">{data.conditionComment}</span>
+                    </div>
+                  )}
                 </div>
 
-                {/* Details Line 1: Molecule - Dosage - Route */}
-                <div className="text-[10px] text-gray-600 truncate w-full flex items-center space-x-1">
-                  {data.molecule && data.molecule !== data.commercialName && (
-                    <span className="font-mono">{data.molecule}</span>
+                {/* Right Action Icons Container (Vertical Strip) */}
+                <div className="flex flex-col items-center justify-center shrink-0 border-l border-slate-200 px-3 gap-2">
+                  {p.status === 'STOPPED' ? (
+                     <span className="text-[10px] text-red-600 font-bold uppercase rotate-[-90deg] tracking-widest my-4">Arrêt</span>
+                  ) : p.status === 'PAUSED' ? (
+                     <>
+                        <button onClick={() => handleResumePrescription(p.id)} title="Reprendre" className="text-emerald-500 hover:text-white border-2 border-emerald-500 hover:bg-emerald-500 w-[24px] h-[24px] rounded-full flex items-center justify-center transition-colors">
+                          <CheckCircle2 size={14} strokeWidth={2.5}/>
+                        </button>
+                        <button onClick={() => setStopModal({ isOpen: true, prescriptionId: p.id })} title="Arrêter" className="text-white hover:bg-red-600 bg-red-500 w-[24px] h-[24px] rounded-full flex items-center justify-center shadow-sm transition-colors border-2 border-red-500">
+                           <div className="w-2.5 h-2.5 bg-white rounded-sm"></div>
+                        </button>
+                     </>
+                  ) : (
+                     <>
+                        <button onClick={() => handlePausePrescription(p.id)} title="Mettre en pause" className="text-white bg-blue-500 hover:bg-blue-600 w-[24px] h-[24px] rounded-full flex items-center justify-center shadow-sm transition-colors">
+                          <Pause size={12} fill="currentColor" strokeWidth={0}/>
+                        </button>
+                        <button onClick={() => setStopModal({ isOpen: true, prescriptionId: p.id })} title="Arrêter" className="text-red-500 border-2 border-red-500 hover:bg-red-50 w-[24px] h-[24px] rounded-full flex items-center justify-center transition-colors">
+                           <div className="w-2 h-2 bg-red-500 rounded-sm"></div>
+                        </button>
+                     </>
                   )}
-                  {(data.qty || data.unit) && (!data.prescriptionType || data.prescriptionType === 'medication') && (
-                    <span className="bg-gray-100 px-1 rounded text-gray-700 font-medium border border-gray-200">
-                      {data.qty} {data.unit}
-                    </span>
-                  )}
-                  {data.route && (
-                    <span className="italic text-gray-500">({data.route})</span>
-                  )}
-                </div>
-
-                {/* Line 2: Administration Duration (if not instant) */}
-                {data.adminDuration && data.adminMode !== 'instant' && (
-                  <div className="text-[10px] text-gray-500 flex items-center w-full truncate">
-                    <Activity size={10} className="mr-1 text-blue-500" />
-                    Administration sur une durée de {data.adminDuration}
-                  </div>
-                )}
-
-                {/* Line 3: Dilution Details */}
-                {data.dilutionRequired && data.solvent && (
-                  <div className="text-[10px] text-gray-500 flex items-center w-full truncate">
-                    <Syringe size={10} className="mr-1 text-purple-500" />
-                    Dilué dans {data.solvent.qty} {data.solvent.unit || 'mL'} de {data.solvent.commercialName || data.solvent.molecule || 'Solvant'}
-                  </div>
-                )}
-
-                {/* Line 4: Substitution Status */}
-                {isNonSubstitutable && (
-                  <div className="text-[10px] text-rose-600 font-bold flex items-center w-full truncate">
-                    <ShieldAlert size={10} className="mr-1" />
-                    Non substituable
-                  </div>
-                )}
-
-                {/* Line 5: Conditions / Comments */}
-                {data.conditionComment && (
-                  <div className="text-[10px] text-amber-600 italic flex items-center w-full truncate bg-amber-50 px-1 rounded -ml-1 mt-0.5 border border-amber-100">
-                    <FileText size={10} className="mr-1 flex-shrink-0" />
-                    <span className="truncate">Note: {data.conditionComment}</span>
-                  </div>
-                )}
-
-                {/* Footer Line: Full Schedule Description */}
-                <div className="pt-1 w-full text-[9px] text-blue-700 bg-blue-50/50 rounded px-1 py-0.5 border border-blue-100 flex items-start break-words whitespace-normal">
-                  <CalendarIcon size={10} className="mr-1 mt-0.5 flex-shrink-0" />
-                  <span className="leading-tight">{fullScheduleText}</span>
                 </div>
               </div>
             );
 
+            let bgColor = 'bg-white';
+            let hoverBg = 'group-hover:bg-blue-50';
+
+            if (p.status === 'STOPPED') {
+                bgColor = 'bg-[repeating-linear-gradient(45deg,rgba(0,0,0,0.05),rgba(0,0,0,0.05)_10px,transparent_10px,transparent_20px)] bg-gray-50';
+                hoverBg = ''; // Stopped rows are totally inert
+            } else if (p.status === 'PAUSED') {
+                bgColor = 'bg-amber-50';
+                hoverBg = 'group-hover:bg-amber-100';
+            }
+
             return {
               id: p.id,
-              label: labelNode,
-              type: 'prescription_timeline',
+              label: rowLabel, // defensive fallback
+              epicHeader,
+              type: 'prescription_timeline' as const,
               prescriptionId: p.id,
               prescriptionData: p.data,
-              scheduledSlots: validSlots
+              status: p.status,
+              bgColor,
+              hoverBg
             };
-          })
+        });
+
+        if (cat.id === 'medication') {
+           const groupedRows: any[] = [];
+           let currentCat = '';
+           mappedRows.forEach((row, i) => {
+               const pCat = (matchingPrescriptions[i].data as any).careCategory || 'Z_Autre';
+               if (pCat !== currentCat) {
+                   groupedRows.push({
+                       id: `subheader-${pCat}`,
+                       isSubheader: true,
+                       label: pCat === 'Z_Autre' ? 'AUTRES MÉDICAMENTS' : pCat,
+                   });
+                   currentCat = pCat;
+               }
+               groupedRows.push(row);
+           });
+           mappedRows = groupedRows;
+        }
+
+        prescriptionSections.push({
+          id: cat.id,
+          title: cat.title,
+          icon: cat.icon,
+          color: cat.color,
+          rows: mappedRows
         });
       }
     });
 
-    const staticProcessed = STATIC_SECTIONS.map(section => {
-      if (section.id === 'drains') {
-        const rows: RowConfig[] = [];
+    const activeFlowsheet = flowsheets.find(f => f.id === activeFlowsheetId);
+    let flowsheetSections: SectionConfig[] = [];
+    
+    if (activeFlowsheet && activeFlowsheet.groups) {
+      flowsheetSections = activeFlowsheet.groups.map((g: any) => ({
+        id: g.id,
+        title: g.label || g.name,
+        icon: Activity, // Provide a default icon
+        color: 'text-slate-700',
+        rows: (g.parameters || []).map((p: any) => ({
+          parameterId: p.id,
+          id: p.code,
+          label: p.label || p.name,
+          epicHeader: (
+            <div className="flex w-full items-center justify-between font-bold text-gray-700 text-[11px] px-2 py-1 leading-tight">
+              <span className="truncate">{p.label || p.name}</span>
+              {p.unit && <span className="text-[9px] text-gray-400 font-normal ml-2">{p.unit}</span>}
+            </div>
+          ),
+          epicSubtext: <span className="w-0 h-0 block" />, 
+          unit: p.unit, // unit is a flat field on the parameter
+          type: p.valueType?.toLowerCase() === 'boolean' ? 'checkbox' : p.options ? 'select' : ['number', 'numeric'].includes(p.valueType?.toLowerCase()) ? 'number' : 'text',
+          options: p.options,
+          normalMin: p.normalMin,
+          normalMax: p.normalMax,
+          warningMin: p.warningMin,
+          warningMax: p.warningMax,
+          hardMin: p.hardMin,
+          hardMax: p.hardMax
+        }) as RowConfig)
+      }));
+    }
 
-        // --- DRAINS (Complex Structure) ---
-        rows.push({ id: 'header_drains', label: 'DRAINS', type: 'section_header', bgColor: 'bg-amber-100 text-amber-900 font-bold' });
-
-        for (let i = 1; i <= drainCount; i++) {
-          rows.push({ id: `drain_header_${i} `, label: `Drain ${i} `, type: 'section_header', bgColor: 'bg-gray-50 text-xs italic' });
-          rows.push({ id: `drain_${i} _bullage`, label: `Bullage`, type: 'checkbox' });
-          rows.push({ id: `drain_${i} _traite`, label: `Traite`, type: 'checkbox' });
-          rows.push({ id: `drain_${i} _qty`, label: `Quantité`, unit: 'ml/h', type: 'number', isOutput: true });
-          rows.push({ id: `drain_${i} _chgt`, label: `Changement`, type: 'checkbox' });
-        }
-
-        // Global Drains Cumul
-        rows.push({
-          id: 'total_drains_cumul',
-          label: 'Cumul Drains (Total)',
-          unit: 'ml',
-          type: 'computed',
-          computeSource: 'drain_all_qty',
-          bgColor: 'bg-amber-200 font-bold',
-          textColor: 'text-amber-900'
-        });
-
-        // --- REDONS (Grouped Sum) ---
-        rows.push({ id: 'header_redons', label: 'REDONS', type: 'section_header', bgColor: 'bg-orange-100 text-orange-900 font-bold' });
-
-        for (let i = 1; i <= redonCount; i++) {
-          rows.push({ id: `redon_${i} _qty`, label: `Redon ${i} (Qté)`, unit: 'ml/h', type: 'number', isOutput: true });
-        }
-
-        // Global Redon Cumul
-        rows.push({
-          id: 'total_redons_cumul',
-          label: 'Cumul Redons (Total)',
-          unit: 'ml',
-          type: 'computed',
-          computeSource: 'redon_all_qty', // Special flag handled in calc
-          bgColor: 'bg-orange-200 font-bold',
-          textColor: 'text-orange-900'
-        });
-
-        return { ...section, rows };
-      }
-
-      if (section.id === 'divers') {
-        const rows = [...section.rows];
-        customDiversRows.forEach(custom => {
-          rows.push({
-            id: custom.id,
-            label: custom.label,
-            type: 'text'
-          });
-        });
-        return { ...section, rows };
-      }
-
-      return section;
-    });
-
-    return [...prescriptionSections, ...staticProcessed];
-  }, [allPrescriptions, selectedDate, drainCount, redonCount, customDiversRows]);
+    return [...prescriptionSections, ...flowsheetSections];
+  }, [allPrescriptions, selectedDate, flowsheets, activeFlowsheetId, drainCount, redonCount, customDiversRows, timelineEvents, activeOnly]);
 
   // --- Calculations ---
 
-  const calculateCumul = (sourceRowId: string, currentHour: string): number => {
+  const calculateCumul = (sourceRowId: string, currentIso: string): number => {
     let total = 0;
-    const hourIndex = HOURS.indexOf(currentHour);
+    const hourIndex = timeSlots.findIndex(t => t.iso === currentIso);
+    if (hourIndex === -1) return 0;
 
-    // Total Drains Cumul
-    if (sourceRowId === 'drain_all_qty') {
-      for (let i = 0; i <= hourIndex; i++) {
-        const h = HOURS[i];
-        for (let d = 1; d <= drainCount; d++) {
-          const val = parseFloat(currentDayData[`drain_${d} _qty`]?.[h] as string || '0');
-          if (!isNaN(val)) total += val;
-        }
-      }
-      return total;
-    }
-
-    // Special Case: Total Redons Cumul (Sums all redon rows vertically then horizontally)
-    if (sourceRowId === 'redon_all_qty') {
-      for (let i = 0; i <= hourIndex; i++) {
-        const h = HOURS[i];
-        // Sum all redons for this hour
-        for (let r = 1; r <= redonCount; r++) {
-          const val = parseFloat(currentDayData[`redon_${r} _qty`]?.[h] as string || '0');
-          if (!isNaN(val)) total += val;
-        }
-      }
-      return total;
-    }
-
-    // Special Case: Total Gastric Cumul
-    if (sourceRowId === 'gastrique_all') {
-      for (let i = 0; i <= hourIndex; i++) {
-        const h = HOURS[i];
-        const aspi = parseFloat(currentDayData['aspi_gastrique']?.[h] as string || '0');
-        const residu = parseFloat(currentDayData['residu']?.[h] as string || '0');
-        const vomis = parseFloat(currentDayData['vomis']?.[h] as string || '0');
-
-        if (!isNaN(aspi)) total += aspi;
-        if (!isNaN(residu)) total += residu;
-        if (!isNaN(vomis)) total += vomis;
-      }
-      return total;
-    }
-
-    // Standard Horizontal Cumul
+    // Standard Horizontal Cumul up to current hour
     for (let i = 0; i <= hourIndex; i++) {
-      const h = HOURS[i];
-      const val = parseFloat(currentDayData[sourceRowId]?.[h] as string || '0');
+      const slotIso = timeSlots[i].iso;
+      const val = parseFloat(currentDayData[sourceRowId]?.[slotIso] as string || '0');
       if (!isNaN(val)) total += val;
     }
     return total;
   };
 
-  const calculateBilanHoraire = (hour: string): number => {
+  const calculateBilanHoraire = (iso: string): number => {
     let inputs = 0;
     let outputs = 0;
 
-    // Scan all active sections to find inputs/outputs
-    // We need to look at 'sections' derived from state to include dynamic rows
+    // Scan all configured rows in sections to identify inputs/outputs dynamically
     sections.forEach(sec => sec.rows.forEach(row => {
-      const val = parseFloat(currentDayData[row.id]?.[hour] as string || '0');
+      const val = parseFloat(currentDayData[row.id]?.[iso] as string || '0');
       if (!isNaN(val)) {
         if (row.isInput) inputs += val;
         if (row.isOutput) outputs += val;
@@ -846,69 +1048,72 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
     }));
 
     // Add Apports manually if needed from other logic
-    const apports = parseFloat(currentDayData['apports_total']?.[hour] as string || '0');
+    const apports = parseFloat(currentDayData['apports_total']?.[iso] as string || '0');
     if (!isNaN(apports)) inputs += apports;
-
-    // Robust calculation based on ALL configured rows (static + dynamic generated logic)
-    // Re-generate dynamic IDs
-    const dynamicOutputIds = [];
-    for (let i = 1; i <= drainCount; i++) dynamicOutputIds.push(`drain_${i} _qty`);
-    for (let i = 1; i <= redonCount; i++) dynamicOutputIds.push(`redon_${i} _qty`);
-
-    const staticOutputIds = ['diurese_qty', 'aspi_gastrique', 'residu', 'vomis'];
-
-    [...dynamicOutputIds, ...staticOutputIds].forEach(id => {
-      const v = parseFloat(currentDayData[id]?.[hour] as string || '0');
-      if (!isNaN(v)) outputs += v;
-    });
 
     return inputs - outputs;
   };
 
-  const handleInputChange = async (rowId: string, hour: string, value: any) => {
-    // Optimistic Update
+  const handleLocalChange = (rowId: string, slotIso: string, value: any) => {
+    // Optimistic Update (Instant, purely local)
     setAllData(prev => ({
       ...prev,
       [dateKey]: {
         ...(prev[dateKey] || {}),
         [rowId]: {
           ...(prev[dateKey]?.[rowId] || {}),
-          [hour]: value
+          [slotIso]: value
         }
       }
     }));
+  };
 
+  const handleCommit = async (rowId: string, slotIso: string, value: any) => {
     if (!patientId) return;
 
-    // Network Sync
-    try {
-        const h = parseInt(hour.replace('h', ''));
-        const bucketStart = new Date(selectedDate);
-        bucketStart.setHours(h, 0, 0, 0);
-        if (h < START_HOUR) bucketStart.setDate(bucketStart.getDate() + 1);
+    // Find the parameter UUID assigned to this row (rowId is the parameterCode)
+    let parameterId = '';
+    for (const sec of sections) {
+        const found = sec.rows.find(r => r.id === rowId);
+        if (found && found.parameterId) {
+            parameterId = found.parameterId;
+            break;
+        }
+    }
 
-        await api.updateSurveillanceCell(patientId, {
-            bucketStart: bucketStart.toISOString(),
-            parameterCode: rowId,
-            value: value,
-            expectedRevision: 0 // Simplification for now, server merges it
-        });
-    } catch (e) {
-        console.error("Failed to sync cell to backend", e);
+    console.log("FicheSurveillance handleCommit payload:", {
+      patientId,
+      rowId,
+      parameterId,
+      slotIso,
+      value
+    });
+
+    try {
+      await api.updateSurveillanceCell(patientId, {
+        tenantPatientId: patientId, // This might actually be the admission's patient UUID if passed from dossier
+        parameterId: parameterId,
+        parameterCode: rowId, 
+        recordedAt: slotIso,
+        value: value === '' ? null : value
+      });
+    } catch (e: any) {
+      console.error("Failed to commit cell", e);
+      // Rollback local state ideally here if we had pristine tracking
     }
   };
 
-  const copyPreviousColumn = (targetHour: string) => {
-    const targetIndex = HOURS.indexOf(targetHour);
+  const copyPreviousColumn = (targetIso: string) => {
+    const targetIndex = timeSlots.findIndex(t => t.iso === targetIso);
     if (targetIndex <= 0) return;
-    const prevHour = HOURS[targetIndex - 1];
+    const prevIso = timeSlots[targetIndex - 1].iso;
     const newDayData = { ...currentDayData };
 
     // Copy logic (simplified)
     Object.keys(currentDayData).forEach(rowId => {
-      if (currentDayData[rowId]?.[prevHour] !== undefined) {
+      if (currentDayData[rowId]?.[prevIso] !== undefined) {
         if (!newDayData[rowId]) newDayData[rowId] = {};
-        newDayData[rowId][targetHour] = currentDayData[rowId][prevHour];
+        newDayData[rowId][targetIso] = currentDayData[rowId][prevIso];
       }
     });
 
@@ -929,122 +1134,579 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
     }
   };
 
-  const handleSaveAdministration = async (status: PrescriptionExecution['status'], justification?: string) => {
-    if (!patientId || !adminModal.prescriptionId) return;
-
-    // Calculate Planned Date appropriately
-    const h = parseInt(adminModal.slotTime.replace('h', ''));
-    const pDate = new Date(selectedDate);
-    pDate.setHours(h, 0, 0, 0);
-    if (h < 8) pDate.setDate(pDate.getDate() + 1); // Next day for 00h-07h
-
-    const execution: PrescriptionExecution = {
-      id: adminModal.execution?.id || crypto.randomUUID(),
-      prescriptionId: adminModal.prescriptionId,
-      plannedDate: pDate.toISOString(),
-      actualDate: new Date().toISOString(),
-      status: status,
-      justification: justification,
-      performedBy: 'CurrentUser', // TODO: Get from auth
-      updatedAt: new Date()
-    };
-
+  const handlePausePrescription = async (id: string) => {
+    if (!window.confirm("Voulez-vous suspendre cette prescription ?")) return;
     try {
-      await api.recordExecution(adminModal.prescriptionId, execution);
-
-      setExecutions(prev => {
-        const existingIdx = prev.findIndex(e => e.id === execution.id);
-        if (existingIdx >= 0) {
-          const newExs = [...prev];
-          newExs[existingIdx] = execution;
-          return newExs;
-        }
-        return [...prev, execution];
-      });
-
-      setAdminModal(prev => ({ ...prev, isOpen: false }));
-    } catch (err) {
-      console.error("Error saving execution", err);
+      await api.pausePrescription(id);
+      setAllPrescriptions(prev => prev.map(p => p.id === id ? { ...p, status: 'PAUSED' } : p));
+    } catch (err: any) {
+      alert("Erreur: " + err.message);
     }
   };
 
-  // --- Render Cell Helper ---
-  const renderCell = (row: RowConfig, hour: string) => {
-    // Timeline Row
-    if (row.type === 'prescription_timeline' && row.prescriptionData) {
-      const isPlanned = row.scheduledSlots?.includes(hour);
+  const handleResumePrescription = async (id: string) => {
+    try {
+      await api.resumePrescription(id);
+      setAllPrescriptions(prev => prev.map(p => p.id === id ? { ...p, status: 'ACTIVE' } : p));
+    } catch (err: any) {
+      alert("Erreur: " + err.message);
+    }
+  };
 
-      // Find execution for this specific slot
-      const execution = executions.find(e => {
-        if (e.prescriptionId !== row.prescriptionId) return false;
-        // Match hour of plannedDate
-        const pDate = new Date(e.plannedDate);
-        const pHour = pDate.getHours().toString().padStart(2, '0') + 'h';
+  const handleStopPrescription = async (id: string, reason: string) => {
+    try {
+      await api.stopPrescription(id, reason);
+      const stoppedIso = new Date().toISOString();
+      setAllPrescriptions(prev => prev.map(p => p.id === id ? { ...p, status: 'STOPPED', stopped_at: stoppedIso } : p));
+      setStopModal({ isOpen: false, prescriptionId: '' });
+    } catch (err: any) {
+      alert("Erreur: " + err.message);
+    }
+  };
 
-        // Check if dates match (considering the surveillance day shift)
-        // Grid Date for this hour:
-        const h = parseInt(hour.replace('h', ''));
-        const gridDate = new Date(selectedDate);
-        if (h < 8) gridDate.setDate(gridDate.getDate() + 1);
+  const handleSaveAdministration = async (payload: AdministrationSavePayload | AdministrationSavePayload[]) => {
+    if (!user?.id) {
+      alert("Authentication context missing. Please refresh.");
+      return;
+    }
+    if (!patientId || !adminModal.prescriptionId) return;
 
-        return pHour === hour && pDate.getDate() === gridDate.getDate() && pDate.getMonth() === gridDate.getMonth();
-      });
+    const pDate = new Date(adminModal.slotTime);
 
-      if (!isPlanned && !execution) return <div className="w-full h-full border-r border-gray-100"></div>;
-
-      let icon = <div className="w-3 h-3 rounded-full bg-gray-300"></div>; // Future
-      let statusColor = "";
-
-      if (execution) {
-        if (execution.status === 'administered') {
-          icon = <CheckCircle2 size={16} className="text-emerald-600" />;
-          statusColor = "bg-emerald-50/50";
-        } else if (execution.status === 'not-administered') {
-          icon = <XCircle size={16} className="text-red-500" />;
-          statusColor = "bg-red-50/50";
-        }
-      } else if (isPlanned) {
-        const late = isSlotLate(hour, selectedDate, undefined);
-        if (late) {
-          icon = <AlertTriangle size={16} className="text-amber-500 animate-pulse" />;
-          statusColor = "bg-amber-50/30";
-        }
+    try {
+      const payloads = Array.isArray(payload) ? payload : [payload];
+      
+      for (const p of payloads) {
+        await api.recordExecution(adminModal.prescriptionId, {
+           prescriptionId: adminModal.prescriptionId,
+           eventId: adminModal.eventId, // <-- Strict requirement now
+           patientId: patientId, // Fallback if recordExecution expects it
+           action_type: p.action_type,
+           occurred_at: p.occurred_at,
+           actual_start_at: p.actual_start_at,
+           actual_end_at: p.actual_end_at,
+           planned_date: pDate.toISOString(),
+           justification: p.justification
+        });
       }
 
-      return (
-        <div
-          className={`w-full h-full flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors ${statusColor}`}
-          onClick={() => setAdminModal({
-            isOpen: true,
-            prescriptionId: row.prescriptionId!,
-            prescriptionName: row.prescriptionData?.commercialName || (typeof row.label === 'string' ? row.label : 'Prescription'),
-            slotTime: hour,
-            execution: execution
-          })}
-        >
-          {icon}
-        </div>
-      );
-    }
+      // Refetch events
+      if (activeFlowsheetId && timeSlots.length > 0) {
+          const survStart = new Date(timeSlots[0].iso);
+          const survEnd = new Date(timeSlots[timeSlots.length - 1].iso);
+          survEnd.setHours(survEnd.getHours() + 1); 
 
+          const res = await api.getSurveillanceTimeline(patientId, {
+            flowsheetId: activeFlowsheetId,
+            fromDate: survStart.toISOString(),
+            toDate: survEnd.toISOString()
+          });
+          setTimelineEvents(res.timelineEvents);
+      }
+      
+      // We close the modal to let the user see the updated timeline grid cell
+      setAdminModal(prev => ({ ...prev, isOpen: false }));
+    } catch (err: any) {
+      console.error("Error saving execution", err);
+      alert("Error: " + err.message);
+    }
+  };
+
+  const timeToPct = (timeTs: number, timelineStartTs: number, totalDuration: number) => {
+      if (totalDuration === 0) return 0;
+      return ((timeTs - timelineStartTs) / totalDuration) * 100;
+  };
+
+  const getDurationMinsLocal = (duration: any): number => {
+      if (!duration) return 0;
+      if (typeof duration === 'number') return duration;
+      if (typeof duration === 'string') {
+          if (duration === '0' || duration === '00:00:00') return 0;
+          if (duration.includes(':')) {
+              const [h, m] = duration.split(':');
+              return (parseInt(h) || 0) * 60 + (parseInt(m) || 0);
+          }
+          return parseInt(duration) || 0;
+      }
+      return 0;
+  };
+
+  const renderPrescriptionTimelineRow = (row: RowConfig) => {
+      if (!row.prescriptionData || timeSlots.length === 0) return null;
+
+      const timelineStartTs = new Date(timeSlots[0].iso).getTime();
+      const timelineEndTs = new Date(timeSlots[timeSlots.length - 1].iso).getTime() + 3600000;
+      const totalDuration = timelineEndTs - timelineStartTs;
+
+      const rowEvents = timelineEvents.filter(te => te.prescriptionId === row.prescriptionId);
+      
+      const infusions = rowEvents.filter(te => getDurationMinsLocal(te.adminDuration) > 0);
+      const instants = rowEvents.filter(te => getDurationMinsLocal(te.adminDuration) === 0);
+
+      infusions.sort((a,b) => new Date(a.plannedDate).getTime() - new Date(b.plannedDate).getTime());
+      
+      const eventTracks = new Map<string, number>();
+      const trackEnds: number[] = [];
+      infusions.forEach((evt, idx) => {
+          const evtId = evt.eventId || `evt-${idx}`;
+          const duration = getDurationMinsLocal(evt.adminDuration);
+          const pS = new Date(evt.plannedDate).getTime();
+          const pE = pS + duration * 60000;
+          let aS = pS;
+          let aE = pE;
+          const sEv = evt.administrationEvents?.find((e: any) => e.action_type === 'started' && e.status === 'ACTIVE');
+          const eEv = evt.administrationEvents?.find((e: any) => e.action_type === 'ended' && e.status === 'ACTIVE');
+          if (sEv) {
+              aS = new Date(sEv.actual_start_at).getTime();
+              aE = eEv && eEv.actual_end_at ? new Date(eEv.actual_end_at).getTime() : Date.now();
+          }
+          const oS = Math.min(pS, aS);
+          const oE = Math.max(pE, aE);
+          
+          let t = 0;
+          while (t < trackEnds.length && trackEnds[t] > oS) {
+              t++;
+          }
+          trackEnds[t] = oE;
+          eventTracks.set(evtId, t);
+      });
+
+      const maxTrack = Math.max(1, trackEnds.length); // at least 1 track container to render
+
+      // --- Bolus Overlap Check (Point Collisions) ---
+      // Deduplicate instants by plannedDate because a single scheduled event 
+      // might have been joined natively to multiple administration events.
+      // We want exactly 1 scheduled dot per scheduled time!
+      const uniqueInstantsMap = new Map<string, typeof instants[0]>();
+      instants.forEach(te => {
+          const key = te.eventId ? String(te.eventId) : te.plannedDate;
+          if (!uniqueInstantsMap.has(key)) {
+              // Copy the object so we can safely merge administrationEvents
+              uniqueInstantsMap.set(key, { ...te, administrationEvents: te.administrationEvents ? [...te.administrationEvents] : [] });
+          } else {
+              // Merge administration events onto the unique item
+              const existing = uniqueInstantsMap.get(key)!;
+              if (te.administrationEvents && te.administrationEvents.length > 0) {
+                  existing.administrationEvents = [
+                      ...(existing.administrationEvents || []),
+                      ...te.administrationEvents
+                  ];
+              }
+          }
+      });
+      const uniqueInstants = Array.from(uniqueInstantsMap.values());
+
+      const scheduledXs: number[] = [];
+
+      const processedInstantsBase = uniqueInstants.map((te) => {
+          const pStartTs = new Date(te.plannedDate).getTime();
+          const pLeft = timeToPct(pStartTs, timelineStartTs, totalDuration);
+          scheduledXs.push(pLeft);
+
+          const sortedAEvs = [...(te.administrationEvents || [])].sort((a, b) => 
+              new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime()
+          );
+          
+          const terminalEv = sortedAEvs.find(e => (e.action_type === 'administered' || e.action_type === 'refused') && e.status === 'ACTIVE');
+
+          if (!terminalEv) {
+              return { te, type: 'pending', pStartTs, pLeft };
+          }
+
+          const actualTs = terminalEv.actual_start_at ? new Date(terminalEv.actual_start_at).getTime() : new Date(terminalEv.occurred_at).getTime();
+          const deltaMin = (actualTs - pStartTs) / 60000;
+          const aLeft = timeToPct(actualTs, timelineStartTs, totalDuration);
+
+          if (Math.abs(deltaMin) <= 30) {
+              return { te, type: 'on-time', terminalEv, pStartTs, pLeft, actualTs, aLeft, deltaMin };
+          }
+
+          return { te, type: 'deviated', terminalEv, pStartTs, pLeft, actualTs, aLeft, deltaMin };
+      });
+
+      const lateDeviationsUnassigned = processedInstantsBase.filter(i => i.type === 'deviated' && i.deltaMin! > 0);
+      const earlyDeviationsUnassigned = processedInstantsBase.filter(i => i.type === 'deviated' && i.deltaMin! < 0);
+
+      // Icon width (e.g., 28px) mapped to percent approx. 
+      // Timeline width is large, but to be safe let's use approx 3.5% = ~35px gap
+      // This is a dynamic percentage-based collision rather than pixel-based to match `pLeft`/`aLeft`.
+      const MIN_PERCENT_SEP = 3.5; 
+
+      const lateWithLanes = assignPointLanes(lateDeviationsUnassigned as any[], {
+          xOf: d => (d as any).aLeft,
+          // Ignore it's own scheduled dot when checking collisions!
+          fixedXsOf: d => scheduledXs.filter(sx => sx !== (d as any).pLeft),
+          minSeparationPx: MIN_PERCENT_SEP
+      });
+
+      const earlyWithLanes = assignPointLanes(earlyDeviationsUnassigned as any[], {
+          xOf: d => (d as any).aLeft,
+          // Ignore it's own scheduled dot when checking collisions!
+          fixedXsOf: d => scheduledXs.filter(sx => sx !== (d as any).pLeft),
+          minSeparationPx: MIN_PERCENT_SEP
+      });
+
+      // Increase spacing as requested by the user
+      const VERTICAL_STEP = 34;
+      const BASE_HEIGHT = 72;
+      
+      const maxLateLane = lateWithLanes.length > 0 ? Math.max(...lateWithLanes.map(i => i.lane)) + 1 : 0;
+      const maxEarlyLane = earlyWithLanes.length > 0 ? Math.max(...earlyWithLanes.map(i => i.lane)) + 1 : 0;
+
+      const topExtra = maxLateLane * VERTICAL_STEP;
+      const bottomExtra = maxEarlyLane * VERTICAL_STEP;
+      const computedHeight = BASE_HEIGHT + topExtra + bottomExtra;
+
+      // Reconstruct merged array with lane data
+      const processedInstants = processedInstantsBase.map(item => {
+          if (item.type === 'deviated') {
+              if (item.deltaMin! > 0) return lateWithLanes.find(a => a.te === item.te)!;
+              return earlyWithLanes.find(a => a.te === item.te)!;
+          }
+          return item; // pending or on-time
+      });
+
+      const formatDelta = (minutes: number) => {
+          const absMin = Math.abs(minutes);
+          if (absMin < 60) return ''; 
+          const h = Math.floor(absMin / 60);
+          const m = Math.floor(absMin % 60);
+          return m > 0 ? `${h}h${m}` : `${h}h`;
+      };
+
+      const getIconInst = (ev: any, isPending: boolean) => {
+          if (isPending || !ev) return <div className="w-6 h-6 rounded-full bg-gray-300 pointer-events-auto cursor-pointer shadow-sm border border-gray-400"></div>;
+          if (ev.action_type === 'administered') return <CheckCircle2 size={28} className="text-emerald-500 bg-white rounded-full pointer-events-auto cursor-pointer shadow-sm relative z-10" />;
+          if (ev.action_type === 'refused') return <XCircle size={28} className="text-red-500 bg-white rounded-full pointer-events-auto cursor-pointer shadow-sm relative z-10" />;
+          return null;
+      };
+
+      return (
+        <tr key={row.id} className={`group transition-colors ${row.bgColor || 'bg-white'}`}>
+             <td className={`align-middle p-0 sticky left-0 z-30 border-r border-b border-gray-300 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] transition-colors ${row.bgColor || 'bg-white'} ${row.hoverBg !== undefined ? row.hoverBg : 'group-hover:bg-blue-50'} ${row.textColor || ''} w-[300px] min-w-[300px] max-w-[300px] relative`} style={{ height: computedHeight }}>
+                 {/* Pause Left Accent Border */}
+                 {row.status === 'PAUSED' && (
+                     <div className="absolute left-0 top-0 bottom-0 w-[4px] bg-amber-500 z-40"></div>
+                 )}
+                 {/* Stopped Opacity Overlay */}
+                 <div className={`w-full h-full ${row.status === 'STOPPED' ? 'opacity-60 grayscale' : ''}`}>
+                    {row.epicHeader}
+                 </div>
+             </td>
+             <td colSpan={timeSlots.length} className={`p-0 border-b border-gray-200 relative align-middle overflow-hidden transition-colors ${row.hoverBg !== undefined ? row.hoverBg : 'group-hover:bg-blue-50'}`} style={{ height: computedHeight }}>
+                 {/* Background Grid Underlay */}
+                 <div className="absolute inset-0 flex pointer-events-none z-0">
+                     {timeSlots.map((slot) => {
+                         const isExtraBorder = slot.isMidnight || slot.isStartOfDay;
+                         return (
+                             <div key={`grid-${slot.iso}`} className={`flex-1 border-r border-gray-200 h-full ${slot.iso === currentHourLabel ? 'bg-emerald-50/40 ring-1 ring-inset ring-emerald-100' : ''} ${isExtraBorder ? 'border-r-2 border-r-gray-400' : ''}`} />
+                         );
+                     })}
+                 </div>
+
+                 {/* Foreground Overlay Container */}
+                 <div className="relative z-10 flex flex-col justify-center gap-[6px] py-2 w-full">
+                    {/* Render Tracks */}
+                    {Array.from({length: maxTrack}).map((_, trackIdx) => {
+                        return (
+                            <div key={`track-${trackIdx}`} className="relative w-full h-[20px]">
+                                {infusions.filter(te => (eventTracks.get(te.eventId || `evt-${infusions.indexOf(te)}`) || 0) === trackIdx).map((te) => {
+                                    const durationMins = getDurationMinsLocal(te.adminDuration);
+                                    const evtId = te.eventId || `evt-${infusions.indexOf(te)}`;
+                                    
+                                    const pStartTs = new Date(te.plannedDate).getTime();
+                                    const pEndTs = pStartTs + durationMins * 60000;
+                                    
+                                    const startedEv = te.administrationEvents?.find((e: any) => e.action_type === 'started' && e.status === 'ACTIVE');
+                                    const endedEv = te.administrationEvents?.find((e: any) => e.action_type === 'ended' && e.status === 'ACTIVE');
+                                    const refusedEv = te.administrationEvents?.find((e: any) => e.action_type === 'refused' && e.status === 'ACTIVE');
+                                    
+                                    const pLeft = timeToPct(pStartTs, timelineStartTs, totalDuration);
+                                    const pWidth = timeToPct(pEndTs, timelineStartTs, totalDuration) - pLeft;
+
+                                    const isOngoing = startedEv && !endedEv;
+                                    let aBar = null;
+                                    
+                                    if (refusedEv) {
+                                        aBar = (
+                                            <div key={`${evtId}-refused`}
+                                                className="absolute cursor-pointer transition-colors shadow-sm border border-red-500 rounded-[1px]"
+                                                style={{ 
+                                                    left: `${pLeft}%`, 
+                                                    width: `${pWidth}%`,
+                                                    height: '14px',
+                                                    top: '50%',
+                                                    transform: 'translateY(-50%)',
+                                                    zIndex: 20,
+                                                    backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(239, 68, 68, 0.4) 4px, rgba(239, 68, 68, 0.4) 8px)',
+                                                    backgroundColor: 'rgba(254, 226, 226, 0.5)'
+                                                }}
+                                                title={`Perfusion refusée à ${new Date(refusedEv.occurred_at).toLocaleTimeString()}`}
+                                                onClick={(e) => { 
+                                                    e.stopPropagation(); 
+                                                    if (row.prescriptionData?.status !== 'PAUSED' && row.prescriptionData?.status !== 'STOPPED') {
+                                                        setAdminModal({
+                                                            isOpen: true,
+                                                            prescriptionId: row.prescriptionId!,
+                                                            eventId: te.eventId || te.id,
+                                                            prescriptionName: row.prescriptionData?.commercialName || '',
+                                                            slotTime: te.plannedDate,
+                                                            duration: durationMins,
+                                                            activePerfusionEvent: null,
+                                                            historyEvents: te.administrationEvents || []
+                                                        });
+                                                    }
+                                                }}
+                                            />
+                                        );
+                                    } else if (startedEv) {
+                                        const aStartExact = new Date(startedEv.actual_start_at || startedEv.occurred_at).getTime();
+                                        const aEndExact = endedEv && (endedEv.actual_end_at || endedEv.occurred_at) ? new Date(endedEv.actual_end_at || endedEv.occurred_at).getTime() : Date.now();
+
+                                        const aLeft = timeToPct(aStartExact, timelineStartTs, totalDuration);
+                                        const aWidth = Math.max(0.1, timeToPct(aEndExact, timelineStartTs, totalDuration) - aLeft);
+
+                                        aBar = (
+                                            <div key={`${evtId}-actual`}
+                                                className={`absolute cursor-pointer transition-colors shadow-sm ${isOngoing ? 'animate-shimmer-sweep outline outline-violet-500' : 'bg-violet-600'} rounded-[1px]`}
+                                                style={{ 
+                                                    left: `${aLeft}%`, 
+                                                    width: `${aWidth}%`,
+                                                    height: '14px',
+                                                    top: '50%',
+                                                    transform: 'translateY(-50%)',
+                                                    zIndex: 20
+                                                }}
+                                                title={isOngoing ? `Perfusion en cours depuis ${new Date(aStartExact).toLocaleTimeString()}` : `Perfusion: ${new Date(aStartExact).toLocaleTimeString()} - ${new Date(aEndExact).toLocaleTimeString()}`}
+                                                onClick={(e) => { 
+                                                    e.stopPropagation(); 
+                                                    console.log("Clicked prescription event:", te.eventId || te.id);
+                                                    if (row.prescriptionData?.status !== 'PAUSED' && row.prescriptionData?.status !== 'STOPPED') {
+                                                        setAdminModal({
+                                                            isOpen: true,
+                                                            prescriptionId: row.prescriptionId!,
+                                                            eventId: te.eventId || te.id,
+                                                            prescriptionName: row.prescriptionData?.commercialName || '',
+                                                            slotTime: te.plannedDate,
+                                                            duration: durationMins,
+                                                            activePerfusionEvent: isOngoing ? startedEv : null,
+                                                            historyEvents: te.administrationEvents || []
+                                                        });
+                                                    }
+                                                }}
+                                            >
+                                                <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-violet-800 rounded-full shadow-[1px_0_2px_rgba(0,0,0,0.3)]" />
+                                                {!isOngoing && (
+                                                     <div className="absolute right-0 top-0 bottom-0 w-[2px] bg-violet-800 rounded-full shadow-[1px_0_2px_rgba(0,0,0,0.3)]" />
+                                                )}
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <React.Fragment key={`${evtId}-wrapper`}>
+                                            <div key={`${evtId}-planned`}
+                                                className="absolute bg-gray-200 cursor-pointer hover:brightness-95 transition-all rounded-[2px]"
+                                                style={{ 
+                                                    left: `${pLeft}%`, 
+                                                    width: `${pWidth}%`,
+                                                    height: '24px', 
+                                                    top: '50%',
+                                                    transform: 'translateY(-50%)',
+                                                    zIndex: 10
+                                                }}
+                                                title={`Prévu: ${new Date(te.plannedDate).toLocaleTimeString()} pour ${durationMins} min`}
+                                                onClick={(e) => { 
+                                                    e.stopPropagation(); 
+                                                    console.log("Clicked prescription event:", te.eventId || te.id);
+                                                    const status = row.status;
+                                                    const isFuture = pStartTs > Date.now();
+                                                    
+                                                    // Stop Matrix: Block ALL new administrations
+                                                    if (status === 'STOPPED') return;
+                                                    
+                                                    // Pause Matrix: Block FUTURE new administrations, unless ending active perfusion
+                                                    if (status === 'PAUSED' && isFuture) return;
+
+                                                    setAdminModal({
+                                                        isOpen: true,
+                                                        prescriptionId: row.prescriptionId!,
+                                                        eventId: te.eventId || te.id,
+                                                        prescriptionName: row.prescriptionData?.commercialName || '',
+                                                        slotTime: te.plannedDate,
+                                                        duration: durationMins,
+                                                        activePerfusionEvent: isOngoing ? startedEv : null,
+                                                        historyEvents: te.administrationEvents || []
+                                                    });
+                                                }}
+                                            />
+                                            {aBar}
+                                        </React.Fragment>
+                                    );
+                                })}
+                            </div>
+                        );
+                    })}
+                    
+                    {/* Render Instants */}
+                    {instants.length > 0 && (
+                        <div className="absolute inset-0 pointer-events-none z-30">
+                            {processedInstants.map((item: any, idx) => {
+                                const openModal = (e: React.MouseEvent) => {
+                                    e.stopPropagation();
+                                    console.log("Clicked prescription event:", item.te.eventId || item.te.id);
+                                    
+                                    const status = row.status;
+                                    const isFuture = new Date(item.te.plannedDate).getTime() > Date.now();
+
+                                    // Block explicitly per new strict matrix
+                                    if (status === 'STOPPED') return;
+                                    if (status === 'PAUSED' && isFuture) return;
+
+                                    setAdminModal({
+                                        isOpen: true,
+                                        prescriptionId: row.prescriptionId!,
+                                        eventId: item.te.eventId || item.te.id,
+                                        prescriptionName: row.prescriptionData?.commercialName || '',
+                                        slotTime: item.te.plannedDate,
+                                        duration: 0,
+                                        activePerfusionEvent: null,
+                                        historyEvents: item.te.administrationEvents || []
+                                    });
+                                };
+
+                                if (item.type === 'pending') {
+                                    const late = isSlotLate(item.te.plannedDate, undefined);
+                                    const icon = late ? <AlertTriangle size={28} className="text-amber-500 animate-pulse bg-white rounded-full pointer-events-auto cursor-pointer shadow-sm" /> : getIconInst(null, true);
+                                    
+                                    // Dim future dots on Paused rows
+                                    const isFuture = new Date(item.te.plannedDate).getTime() > Date.now();
+                                    const isDimmed = row.status === 'PAUSED' && isFuture;
+                                    
+                                    return (
+                                        <div key={`inst-pending-${idx}`} className={`absolute -translate-y-1/2 -translate-x-1/2 ${isDimmed ? 'opacity-30' : ''}`} style={{ left: `${item.pLeft}%`, top: '50%'}}>
+                                            <div onClick={openModal} className={`pointer-events-auto ${row.status === 'STOPPED' || isDimmed ? 'cursor-not-allowed' : 'cursor-pointer'}`}>{icon}</div>
+                                        </div>
+                                    );
+                                }
+
+                                if (item.type === 'on-time') {
+                                    return (
+                                        <div key={`inst-ontime-${idx}`} className="absolute -translate-y-1/2 -translate-x-1/2" style={{ left: `${item.pLeft}%`, top: '50%'}}>
+                                             <div onClick={openModal} className="pointer-events-auto cursor-pointer">
+                                                 {getIconInst(item.terminalEv, false)}
+                                             </div>
+                                        </div>
+                                    );
+                                }
+
+                                // Deviated (Stacking Geometry - Point Collisions)
+                                if (item.type === 'deviated') {
+                                    const isLate = item.deltaMin! > 0;
+                                    const leftPct = Math.min(item.pLeft, item.aLeft!);
+                                    const widthPct = Math.abs(item.aLeft! - item.pLeft);
+                                    
+                                    const lane = item.lane || 0;
+                                    
+                                    // Late stacks up (-), early stacks down (+)
+                                    const yOffsetPx = isLate ? -(lane * VERTICAL_STEP) : (lane * VERTICAL_STEP);
+
+                                    const arrowLabel = formatDelta(item.deltaMin!);
+
+                                    return (
+                                        <React.Fragment key={`inst-dev-${idx}`}>
+                                            {/* Scheduled Grey Dot - Always on the centerline */}
+                                            <div className="absolute -translate-y-1/2 -translate-x-1/2 z-0" style={{ left: `${item.pLeft}%`, top: '50%'}}>
+                                                 <div className="w-6 h-6 rounded-full bg-gray-200 border border-gray-300"></div>
+                                            </div>
+
+                                            {/* Dashed Connector - Runs strictly from scheduledX to actualX horizontally, at the final yOffsetPx */}
+                                            <div className="absolute flex items-center justify-center pointer-events-none z-0"
+                                                 style={{ 
+                                                     left: `${leftPct}%`, 
+                                                     width: `${widthPct}%`, 
+                                                     height: '0px',
+                                                     top: `calc(50% + ${yOffsetPx}px)` 
+                                                 }}>
+                                                {/* The line itself */}
+                                                <div className="absolute w-full border-t border-dashed border-gray-400"></div>
+                                                
+                                                {/* Directional Arrowhead (Always points logically to actual event) */}
+                                                <div className={`absolute border-t-4 border-b-4 border-transparent ${isLate ? 'border-l-4 border-l-gray-400' : 'border-r-4 border-r-gray-400'}`} 
+                                                     style={{ 
+                                                         right: isLate ? '-1px' : 'auto', 
+                                                         left: isLate ? 'auto' : '-1px' 
+                                                     }}>
+                                                </div>
+
+                                                {/* Label overlay (If >= 60m) */}
+                                                {arrowLabel && (
+                                                    <div className="bg-white px-1 text-[9px] font-bold text-gray-500 z-10 group-hover:bg-blue-50 transition-colors">
+                                                        {isLate ? '+' : '-'}{arrowLabel}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Vertical Drop Lines (only if strictly on a non-zero offset lane) */}
+                                            {lane > 0 && (
+                                                <div className="absolute w-[1px] border-l border-dashed border-gray-400"
+                                                     style={{ 
+                                                         left: `${item.pLeft}%`, 
+                                                         top: isLate ? `calc(50% + ${yOffsetPx}px)` : '50%',
+                                                         height: `${Math.abs(yOffsetPx)}px` 
+                                                     }}></div>
+                                            )}
+
+                                            {/* Finally, the Actual Event Icon - Rides the connector height precisely */}
+                                            <div className="absolute -translate-x-1/2 -translate-y-1/2 z-10" 
+                                                 style={{ 
+                                                     left: `${item.aLeft}%`, 
+                                                     top: `calc(50% + ${yOffsetPx}px)`
+                                                 }}>
+                                                 <div onClick={openModal} className="pointer-events-auto cursor-pointer">
+                                                     {getIconInst(item.terminalEv, false)}
+                                                 </div>
+                                            </div>
+                                        </React.Fragment>
+                                    );
+                                }
+                                
+                                return null;
+                            })}
+                        </div>
+                    )}
+                 </div>
+             </td>
+        </tr>
+      );
+  };
+
+  // --- Render Cell Helper ---
+  const renderCell = (row: RowConfig, slotIso: string) => {
     if (row.type === 'section_header') return <div className={`w-full h-full ${row.bgColor}`}></div>;
 
     if (row.type === 'computed') {
-      const val = calculateCumul(row.computeSource!, hour);
+      const val = calculateCumul(row.computeSource!, slotIso);
       return <div className="w-full h-full flex items-center justify-center text-xs font-bold text-gray-600">{val !== 0 ? val : '-'}</div>;
     }
 
     if (row.type === 'computed_vertical' && row.id === 'bilan_horaire') {
-      const val = calculateBilanHoraire(hour);
+      const val = calculateBilanHoraire(slotIso);
       const color = val > 0 ? 'text-blue-600' : (val < 0 ? 'text-red-600' : 'text-gray-400');
       return <div className={`w-full h-full flex items-center justify-center text-xs font-bold ${color}`}>{val !== 0 ? (val > 0 ? ` + ${val} ` : val) : '0'}</div>;
     }
 
-    const val = currentDayData[row.id]?.[hour];
+    const val = currentDayData[row.id]?.[slotIso];
 
     if (row.type === 'checkbox') {
       return (
-        <div className="flex items-center justify-center w-full h-full cursor-pointer transition-colors hover:bg-emerald-50/30" onClick={() => handleInputChange(row.id, hour, !(val as boolean))}>
+        <div className="flex items-center justify-center w-full h-full cursor-pointer transition-colors hover:bg-emerald-50/30" onClick={() => {
+            const nextValue = !(val as boolean);
+            handleCommit(row.id, slotIso, nextValue); // Instant commit
+            // The background fetch will sync this to the global grid. For immediate visual feedback on checkboxes without re-rendering the whole grid, 
+            // a local state wrapper like GridCell would be needed, or we accept the slight visual delay until the next fetch.
+            // For now, to stop the lag, we just commit. (The legacy setAllData was dragging performance down)
+        }}>
           {val ? (
             <CheckSquare size={18} className="text-emerald-600" strokeWidth={2.5} />
           ) : (
@@ -1058,7 +1720,11 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
       return (
         <select
           value={val as string || ''}
-          onChange={(e) => handleInputChange(row.id, hour, e.target.value)}
+          onChange={(e) => {
+            const nextValue = e.target.value;
+            handleCommit(row.id, slotIso, nextValue); // Instant commit
+            // Background fetch will sync this.
+          }}
           className="w-full h-full bg-transparent border-none text-xs text-center focus:ring-0 p-0 appearance-none font-medium text-gray-800"
         >
           <option value=""></option>
@@ -1071,91 +1737,106 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
     const isNumberType = row.type === 'number';
     const isVomis = row.id === 'vomis';
 
-    let colorClass = "text-gray-900";
-    if (isNumberType && val !== undefined && val !== '') {
-        const numVal = Number(val);
-        // Warning check first (it's wider than normal)
-        if (row.warningMin !== undefined && numVal < row.warningMin) colorClass = "text-red-600 font-bold bg-red-50";
-        else if (row.warningMax !== undefined && numVal > row.warningMax) colorClass = "text-red-600 font-bold bg-red-50";
-        // Then outside normal but inside warning
-        else if (row.normalMin !== undefined && numVal < row.normalMin) colorClass = "text-amber-600 font-bold bg-amber-50";
-        else if (row.normalMax !== undefined && numVal > row.normalMax) colorClass = "text-amber-600 font-bold bg-amber-50";
-        // Inside normal - implicit default is regular or maybe explicitly green? Wait, standard is black/gray-900 unless abnormal
-    }
+    // Color calculation is now handled strictly internally by the GridCell component on blur
 
     return (
-      <input
-        type={isNumberType ? 'number' : 'text'}
-        min={isNumberType ? "0" : undefined}
-        value={val as string || ''}
-        onChange={(e) => {
-          let newValue = e.target.value;
-          if (isNumberType && newValue !== '' && Number(newValue) < 0) {
-            return; // Ignore negative input
-          }
-          if (isVomis && newValue.trim().startsWith('-')) {
-            return;
-          }
-          handleInputChange(row.id, hour, newValue);
+      <GridCell
+        initialValue={val as string || ''}
+        isNumberType={isNumberType}
+        isVomis={isVomis}
+        config={row}
+        isCurrentHour={slotIso === currentHourLabel}
+        onCommit={(newVal) => {
+           // We intentionally do NOT call handleLocalChange here.
+           // GridCell already holds 'localVal' optimistically.
+           // Calling handleLocalChange triggers setAllData which re-renders all 72xN cells causing lag.
+           // The background fetchWindowData (every 30s) will eventually resync the global state natively.
+           handleCommit(row.id, slotIso, newVal);
         }}
-        onKeyDown={(e) => {
-          // Block minus sign for number fields and specific text fields that act as quantities
-          if ((isNumberType || isVomis) && e.key === '-') {
-            e.preventDefault();
-          }
-        }}
-        className={`w-full h-full bg-transparent border-none text-center focus:ring-2 focus:ring-emerald-500 p-0 text-sm font-medium placeholder-gray-300 ${colorClass}`}
-        placeholder={hour === currentHourLabel ? '...' : ''}
       />
     );
   };
 
   return (
-    <div className="flex flex-col bg-white rounded-lg shadow-sm border border-gray-200 font-sans w-full relative h-[calc(100vh-300px)]">
-      {/* --- Top Bar --- */}
+    <div className="w-full flex-1 flex flex-col min-h-0 bg-white shadow-sm overflow-hidden mb-8 relative">
+       <style dangerouslySetInnerHTML={{__html: `
+        @keyframes shimmer-sweep {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+        .animate-shimmer-sweep {
+          animation: shimmer-sweep 2.5s infinite linear;
+          background-image: linear-gradient(90deg, #7c3aed 0%, #a78bfa 20%, #7c3aed 40%, #7c3aed 100%);
+          background-size: 200% 100%;
+        }
+       `}} />
+      {/* View Toggle / Timeline controls */}
       <div className="flex-none flex flex-col sm:flex-row items-center justify-between p-3 border-b border-gray-200 bg-gray-50 gap-4 shadow-sm z-30 rounded-t-lg">
-        {/* Date Nav */}
-        <div className="flex items-center bg-white border border-gray-300 rounded-lg shadow-sm p-0.5">
-          <button onClick={() => setSelectedDate(d => new Date(d.setDate(d.getDate() - 1)))} className="p-1 hover:bg-gray-100 text-gray-600"><ChevronLeft size={20} /></button>
-          <div className="flex items-center mx-2 px-2 py-1 bg-gray-50 border-x border-gray-100">
-            <CalendarIcon size={16} className="text-gray-500 mr-2" />
-            <span className="font-bold text-gray-800 text-sm">{selectedDate.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' })}</span>
-          </div>
-          <button onClick={() => setSelectedDate(d => new Date(d.setDate(d.getDate() + 1)))} className="p-1 hover:bg-gray-100 text-gray-600"><ChevronRight size={20} /></button>
+        {/* Flowsheet Tabs */}
+        <div className="flex overflow-x-auto space-x-2 hide-scrollbar max-w-[50%]">
+            {flowsheets.map(fs => (
+                <button 
+                  key={fs.id}
+                  onClick={() => setActiveFlowsheetId(fs.id)}
+                  className={`px-4 py-1.5 rounded-full text-sm font-bold whitespace-nowrap transition-colors border ${activeFlowsheetId === fs.id ? 'bg-indigo-600 text-white border-indigo-700 shadow-sm' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'}`}
+                >
+                    {fs.label || fs.name}
+                </button>
+            ))}
         </div>
 
-        <div className="flex space-x-2">
-          {isToday && (
-            <button onClick={() => copyPreviousColumn(HOURS[currentHourIndex])} className="flex items-center px-3 py-1.5 text-xs font-bold text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50">
-              <Copy size={14} className="mr-2" /> Recopier H-1
+        <div className="flex items-center space-x-4">
+            {/* Date Nav */}
+            <div className="flex items-center bg-white border border-gray-300 rounded-lg shadow-sm p-0.5">
+              <button onClick={() => setSelectedDate(d => new Date(d.setDate(d.getDate() - 1)))} className="p-1 hover:bg-gray-100 text-gray-600"><ChevronLeft size={20} /></button>
+              <div className="flex items-center mx-2 px-2 py-1 bg-gray-50 border-x border-gray-100">
+                <CalendarIcon size={16} className="text-gray-500 mr-2" />
+                <span className="font-bold text-gray-800 text-sm">{selectedDate.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' })}</span>
+              </div>
+              <button onClick={() => setSelectedDate(d => new Date(d.setDate(d.getDate() + 1)))} className="p-1 hover:bg-gray-100 text-gray-600"><ChevronRight size={20} /></button>
+            </div>
+
+            <div className="flex z-10 p-2 gap-4 items-center">
+        {/* Global Active Only Toggle */}
+        <div className="flex items-center gap-2 ml-4">
+            <span className="text-sm font-semibold text-slate-700">Active Only</span>
+            <button 
+                onClick={() => setActiveOnly(!activeOnly)}
+                className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out flex items-center shadow-inner ${activeOnly ? 'bg-emerald-500' : 'bg-gray-300'}`}
+            >
+                <div className={`w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform duration-200 ease-in-out ${activeOnly ? 'translate-x-6' : 'translate-x-0'}`} />
             </button>
-          )}
-          <button
+        </div>
+      </div>          <button
             onClick={() => setShowChart(true)}
-            className="flex items-center px-3 py-1.5 text-xs font-bold text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 shadow-sm"
+            className="flex items-center px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 shadow-sm transition-colors"
           >
             <LineChart size={14} className="mr-2" /> Voir Courbes
-          </button>
-          <button className="flex items-center px-3 py-1.5 text-xs font-bold text-white bg-emerald-600 rounded hover:bg-emerald-700 shadow-sm">
-            <Save size={14} className="mr-2" /> Valider
           </button>
         </div>
       </div>
 
       {/* --- Grid --- */}
-      <div className="flex-1 w-full overflow-auto">
-        <table className="border-collapse w-full min-w-max">
+      <div ref={scrollContainerRef} className="flex-1 w-full overflow-auto scroll-smooth hide-scrollbar relative">
+        <table className="border-separate border-spacing-0 w-full min-w-max">
           {/* Header */}
-          <thead className="shadow-md">
+          <thead className="shadow-md relative z-50">
             <tr className="bg-slate-800 text-white">
-              <th className="p-2 text-left min-w-[200px] sticky left-0 top-0 z-50 bg-slate-900 border-r border-slate-700 text-xs font-bold uppercase tracking-wider shadow-[2px_2px_5px_-2px_rgba(0,0,0,0.5)]">
-
+              {/* Restored Left Column Header */}
+              <th className="p-2 text-left w-[300px] min-w-[300px] max-w-[300px] sticky left-0 top-0 z-50 bg-slate-900 border-r border-slate-700 text-xs font-bold uppercase tracking-wider shadow-[2px_2px_5px_-2px_rgba(0,0,0,0.5)]">
               </th>
-              {HOURS.map((h, i) => (
-                <th key={h} className={`w-14 min-w-[56px] text-center text-xs font-mono py-2 border-r border-slate-700 sticky top-0 z-40 ${h === currentHourLabel ? 'bg-emerald-600' : 'bg-slate-800'}`}>
-                  {h}
-                </th>
-              ))}
+              {timeSlots.map((slot) => {
+                let bgClass = slot.iso === currentHourLabel ? 'bg-emerald-600' : 'bg-slate-800';
+                if (slot.isMidnight) bgClass = 'bg-slate-700';
+                if (slot.isStartOfDay && slot.iso !== currentHourLabel) bgClass = 'bg-slate-600';
+
+                return (
+                    <th key={slot.iso} id={`col-${slot.iso.replace(/[:.]/g, '-')}`} className={`w-20 min-w-[80px] text-center text-xs font-mono py-2.5 border-r border-b border-slate-700 sticky top-0 z-40 ${bgClass} shadow-[0_1px_0_0_#334155]`}>
+                        {slot.label}
+                        {slot.isMidnight && <div className="text-[9px] text-gray-400 mt-1 uppercase font-sans">Minuit</div>}
+                    </th>
+                );
+              })}
             </tr>
           </thead>
 
@@ -1163,10 +1844,10 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
             {sections.map(section => (
               <React.Fragment key={section.id}>
                 {/* Section Header Row */}
-                <tr className="bg-slate-100">
-                  {/* Sticky Title Cell */}
-                  <td className="sticky left-0 z-20 p-0 border-y border-r border-gray-300 bg-slate-100 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                    <div className="flex items-center justify-between px-2 py-1.5 min-w-[200px]">
+                <tr className="bg-slate-200">
+                  {/* Sticky Title Overlay (Spans entire grid) */}
+                  <td colSpan={timeSlots.length + 1} className="p-0 border-b border-gray-400 bg-slate-200 relative">
+                    <div className="sticky left-0 z-30 flex items-center justify-between px-2 py-1.5 w-[300px] min-w-[300px] bg-slate-200 border-r border-gray-400 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
                       <button
                         onClick={() => setOpenSections(p => ({ ...p, [section.id]: !p[section.id] }))}
                         className="flex items-center font-bold text-sm text-gray-800 uppercase truncate"
@@ -1197,48 +1878,58 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
                       )}
                     </div>
                   </td>
-
-                  {/* Filler Cell */}
-                  <td colSpan={HOURS.length} className="p-0 border-y border-gray-300 bg-slate-100"></td>
                 </tr>
 
                 {/* Data Rows */}
-                {openSections[section.id] && section.rows.map(row => (
-                  <tr key={row.id} className={`group hover:bg-blue-50/50 ${row.bgColor || 'bg-white'}`}>
-                    {/* Sticky Label Column */}
-                    <td className={`
-p-1.5 sticky left-0 z-10 border-r border-b border-gray-200 text-xs font-medium text-gray-700 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]
-                           ${row.bgColor || 'bg-white'}
-                           ${row.type === 'section_header' ? 'text-center font-bold italic' : ''}
-                           ${row.textColor || ''}
-`}>
-                      <div className="flex justify-between items-center px-1 w-full overflow-hidden">
-                        {React.isValidElement(row.label) ? (
-                          row.label
-                        ) : (
-                          <>
-                            <span className="truncate" title={row.label as string}>{row.label}</span>
-                            {row.unit && <span className="text-[9px] text-gray-400 ml-1 flex-shrink-0">{row.unit}</span>}
-                          </>
-                        )}
-                      </div>
-                    </td>
+                {openSections[section.id] && section.rows.map(row => {
+                  if (row.isSubheader) {
+                    return (
+                        <tr key={row.id} className="bg-slate-100 group">
+                            <td colSpan={timeSlots.length + 1} className="p-0 border-b border-gray-300">
+                                <div className="sticky left-0 z-30 flex items-center px-4 py-1.5 w-[300px] min-w-[300px] bg-slate-100 border-r border-gray-300 text-[11px] font-bold text-slate-500 tracking-wider uppercase">
+                                    {row.label}
+                                </div>
+                            </td>
+                        </tr>
+                    );
+                  }
 
-                    {/* Cells */}
-                    {HOURS.map((h) => (
-                      <td
-                        key={h}
-                        className={`
-border-r border-b border-gray-200 h-8 p-0 relative transition-colors
-                               ${row.type === 'section_header' ? row.bgColor : ''}
-                               ${h === currentHourLabel && row.type !== 'section_header' ? 'bg-emerald-50/40 ring-1 ring-inset ring-emerald-100' : ''}
-`}
-                      >
-                        {renderCell(row, h)}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
+                  return (
+                    <React.Fragment key={row.id}>
+                      {/* THE TIMELINE ROW (Single row layout) */}
+                      {row.type === 'prescription_timeline' ? renderPrescriptionTimelineRow(row) : (
+                          <tr className={`group transition-colors ${row.bgColor || 'bg-white'}`}>
+                            {/* Left column holding all metadata */}
+                            <td className={`align-top p-0 sticky left-0 z-30 border-r border-b border-gray-300 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)] transition-colors ${row.bgColor || 'bg-white'} ${row.hoverBg !== undefined ? row.hoverBg : 'group-hover:bg-blue-50'} ${row.textColor || ''} w-[300px] min-w-[300px] max-w-[300px] ${row.epicHeader ? 'h-[72px]' : 'h-10'}`}>
+                                 {row.epicHeader ? row.epicHeader : (
+                                    <div className="flex w-full items-center justify-between px-2 overflow-hidden h-full font-bold text-gray-700 text-[11px] py-1">
+                                       <span className="truncate" title={row.label as string}>{row.label}</span>
+                                       {row.unit && <span className="text-[9px] text-gray-400 font-normal ml-2 shrink-0">{row.unit}</span>}
+                                    </div>
+                                 )}
+                            </td>
+                            {timeSlots.map((slot, index) => {
+                              const isExtraBorder = slot.isMidnight || slot.isStartOfDay;
+                              return (
+                                  <td
+                                    key={`${row.id}-${slot.iso}`}
+                                    className={`
+                                        border-r border-b border-gray-200 p-0 relative transition-colors ${row.epicHeader ? 'h-[72px]' : 'h-10'}
+                                        ${slot.iso === currentHourLabel ? 'bg-emerald-50/40 ring-1 ring-inset ring-emerald-100' : ''}
+                                        ${isExtraBorder ? 'border-r-2 border-r-gray-400' : ''}
+                                        ${row.textColor || ''}
+                                        ${row.hoverBg !== undefined ? row.hoverBg : 'group-hover:bg-blue-50'}
+                                    `}
+                                  >
+                                    {renderCell(row, slot.iso)}
+                                  </td>
+                              )
+                            })}
+                          </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
               </React.Fragment>
             ))}
           </tbody>
@@ -1259,9 +1950,9 @@ border-r border-b border-gray-200 h-8 p-0 relative transition-colors
               </button>
             </div>
             <div className="p-6 overflow-x-auto bg-gray-50 flex-1">
-              <VitalSignsChart data={currentDayData} hours={HOURS} />
+              <VitalSignsChart data={currentDayData} hours={timeSlots.map(t => t.iso)} />
               <p className="text-center text-sm text-gray-500 mt-4">
-                Les données affichées correspondent à la journée du <strong>{selectedDate.toLocaleDateString('fr-FR')}</strong>.
+                Les données affichées correspondent à la plage de surveillance de 72h.
               </p>
             </div>
           </div>
@@ -1297,15 +1988,73 @@ border-r border-b border-gray-200 h-8 p-0 relative transition-colors
         </div>
       )}
 
+      {/* Stop Confirmation Modal */}
+      {stopModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] backdrop-blur-sm" onClick={() => setStopModal({ isOpen: false, prescriptionId: '' })}>
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-[450px] relative animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                <button 
+                   onClick={() => setStopModal({ isOpen: false, prescriptionId: '' })}
+                   className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                    <X size={20} />
+                </button>
+                <div className="flex items-center gap-3 mb-4 text-red-600">
+                    <AlertTriangle size={28} />
+                    <h3 className="text-xl font-bold">Confirmer l'arrêt</h3>
+                </div>
+                <p className="text-slate-600 mb-6 text-sm">
+                    Vous êtes sur le point d'arrêter définitivement cette prescription. Cette action rayera la ligne et bloquera toute nouvelle administration.
+                </p>
+                <form 
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        const formData = new FormData(e.currentTarget);
+                        const reason = formData.get('reason') as string;
+                        handleStopPrescription(stopModal.prescriptionId, reason);
+                    }}
+                    className="flex flex-col gap-4"
+                >
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">Raison de l'arrêt (Optionnel)</label>
+                        <input 
+                            name="reason"
+                            type="text" 
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all"
+                            placeholder="Ex: Fin de traitement, Intolérance..."
+                            autoFocus
+                        />
+                    </div>
+                    <div className="flex justify-end gap-3 mt-2">
+                        <button
+                            type="button"
+                            onClick={() => setStopModal({ isOpen: false, prescriptionId: '' })}
+                            className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                        >
+                            Annuler
+                        </button>
+                        <button
+                            type="submit"
+                            className="px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-sm"
+                        >
+                            Confirmer l'arrêt
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+      )}
+
       {/* --- Administration Modal --- */}
       <AdministrationModal
         isOpen={adminModal.isOpen}
-        onClose={() => setAdminModal(prev => ({ ...prev, isOpen: false }))}
+        onClose={closeAdminModal}
+        onSave={handleSaveAdministration}
+        onCancelEvent={handleCancelAdminEvent}
         prescriptionName={adminModal.prescriptionName}
         slotTime={adminModal.slotTime}
-        initialStatus={adminModal.execution?.status || undefined}
-        initialJustification={adminModal.execution?.justification}
-        onSave={(status, justification) => handleSaveAdministration(status, justification)}
+        duration={adminModal.duration}
+        activePerfusionEvent={adminModal.activePerfusionEvent}
+        historyEvents={adminModal.historyEvents}
       />
 
     </div>

@@ -68,12 +68,48 @@ export const api = {
     // Actes Référentiel
     getActes: (params?: any) => {
         const query = new URLSearchParams(params).toString();
+        return fetchJson<any>(`/super-admin/reference/actes?${query}`);
+    },
+    getTenantActes: (params?: { search?: string, family?: string, page?: number, limit?: number }) => {
+        const query = new URLSearchParams(params as any).toString();
         return fetchJson<any>(`/actes?${query}`);
     },
-    updateActe: (code: string, data: any) => fetchJson<any>(`/actes/${code}`, {
+    updateActe: (code: string, data: any) => fetchJson<any>(`/super-admin/reference/actes/${code}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
+    }),
+
+    // Familles d'Actes
+    getFamilles: () => fetchJson<any[]>('/super-admin/reference/familles'),
+    createFamille: (data: any) => fetchJson<any>('/super-admin/reference/familles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    updateFamille: (id: string, data: any) => fetchJson<any>(`/super-admin/reference/familles/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    deleteFamille: (id: string) => fetchJson<any>(`/super-admin/reference/familles/${id}`, {
+        method: 'DELETE'
+    }),
+
+    // Sous-Familles d'Actes
+    getSousFamilles: () => fetchJson<any[]>('/super-admin/reference/sous-familles'),
+    createSousFamille: (data: any) => fetchJson<any>('/super-admin/reference/sous-familles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    updateSousFamille: (id: string, data: any) => fetchJson<any>(`/super-admin/reference/sous-familles/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    deleteSousFamille: (id: string) => fetchJson<any>(`/super-admin/reference/sous-familles/${id}`, {
+        method: 'DELETE'
     }),
 
     // Authentication
@@ -740,18 +776,59 @@ export const api = {
     }),
 
     // ==========================================
+    // *** DIAGNOSES (MEDICAL DOSSIER) ***
+    getPatientDiagnoses: (tenantPatientId: string) => fetchJson<any[]>(`/emr/patients/${tenantPatientId}/diagnoses`),
+    createDiagnosis: (tenantPatientId: string, payload: any) => fetchJson<any>(`/emr/patients/${tenantPatientId}/diagnoses`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    }),
+    resolveDiagnosis: (diagnosisId: string, resolution_note?: string) => fetchJson<any>(`/emr/diagnoses/${diagnosisId}/resolve`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resolution_note })
+    }),
+    voidDiagnosis: (diagnosisId: string, void_reason: string) => fetchJson<any>(`/emr/diagnoses/${diagnosisId}/void`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ void_reason })
+    }),
+    reactivateDiagnosis: (diagnosisId: string) => fetchJson<any>(`/emr/diagnoses/${diagnosisId}/reactivate`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' }
+    }),
+
+    // ==========================================
     // EMR SURVEILLANCE / MAR
     // ==========================================
     getSurveillanceTimeline: (patientId: string, params: { admissionId?: string, flowsheetId?: string, fromDate: string, toDate: string }) => {
-        let qs = `?fromDate=${encodeURIComponent(params.fromDate)}&toDate=${encodeURIComponent(params.toDate)}`;
-        if (params.admissionId) qs += `&admissionId=${encodeURIComponent(params.admissionId)}`;
-        if (params.flowsheetId) qs += `&flowsheetId=${encodeURIComponent(params.flowsheetId)}`;
-        return fetchJson<any>(`/patients/${patientId}/surveillance${qs}`);
+        let qs = `?from=${encodeURIComponent(params.fromDate)}&to=${encodeURIComponent(params.toDate)}`;
+        if (params.admissionId) qs += `&admission_id=${encodeURIComponent(params.admissionId)}`;
+        if (params.flowsheetId) qs += `&flowsheet_id=${encodeURIComponent(params.flowsheetId)}`;
+        return fetchJson<any>(`/emr/patients/${patientId}/surveillance/timeline${qs}`);
     },
 
     updateSurveillanceCell: (patientId: string, data: { admissionId?: string, bucketStart: string, parameterCode: string, value: any, expectedRevision: number }) => fetchJson<any>(`/patients/${patientId}/surveillance/cell`, {
         method: 'POST',
         body: JSON.stringify(data)
+    }),
+
+    getExecutions: (prescriptionId: string) => fetchJson<any[]>(`/prescriptions/${prescriptionId}/executions`),
+
+    recordExecution: (prescriptionId: string, payload: any) => fetchJson<any>(`/prescriptions/${prescriptionId}/events/${payload.eventId}/admin`, {
+        method: 'POST',
+        body: JSON.stringify({
+            actionType: payload.action_type,
+            occurredAt: payload.occurred_at,
+            actualStartAt: payload.actual_start_at,
+            actualEndAt: payload.actual_end_at,
+            note: payload.justification
+        })
+    }),
+
+    cancelAdministrationEvent: (prescriptionId: string, prescriptionEventId: string, adminEventId: string, cancellationReason?: string) => fetchJson<any>(`/prescriptions/${prescriptionId}/events/${prescriptionEventId}/admin/${adminEventId}/cancel`, {
+        method: 'POST',
+        body: JSON.stringify({ cancellationReason })
     })
 };
 

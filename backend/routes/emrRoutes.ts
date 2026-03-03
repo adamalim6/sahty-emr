@@ -28,6 +28,7 @@ import {
     getPatientMergeHistory,
     getTenantOrganismes,
     getTenantCountries,
+    getTenantCareCategories,
     getTenantIdentityDocumentTypes,
     searchCoverages,
     getHospitalServices,
@@ -63,6 +64,7 @@ router.get('/config', requireTenant, getGlobalConfig); // For doc types, countri
 // --- REFERENCE DATA (TENANT) ---
 router.get('/reference/organismes', requireTenant, getTenantOrganismes);
 router.get('/reference/countries', requireTenant, getTenantCountries);
+router.get('/reference/care-categories', requireTenant, getTenantCareCategories);
 router.get('/reference/identity-document-types', requireTenant, getTenantIdentityDocumentTypes);
 router.get('/hospital/services', requireTenant, getHospitalServices);
 router.get('/hospital/doctors', requireTenant, getHospitalDoctors);
@@ -128,9 +130,17 @@ router.post('/admissions/:admissionId/stays', requireTenant, assignBed);
 router.post('/admissions/:admissionId/transfer', requireTenant, transferBed);
 
 import { getSurveillanceTimeline, updateSurveillanceCell } from '../controllers/surveillanceController';
+import { getDiagnoses, createDiagnosis, resolveDiagnosis, voidDiagnosis, reactivateDiagnosis } from '../controllers/diagnosisController';
+
+// --- MEDICAL DOSSIER / DIAGNOSES ---
+router.get('/patients/:tenantPatientId/diagnoses', requireTenant, getDiagnoses);
+router.post('/patients/:tenantPatientId/diagnoses', requireTenant, createDiagnosis);
+router.patch('/diagnoses/:id/resolve', requireTenant, resolveDiagnosis);
+router.patch('/diagnoses/:id/void', requireTenant, voidDiagnosis);
+router.patch('/diagnoses/:id/reactivate', requireTenant, reactivateDiagnosis);
 
 // --- SURVEILLANCE / MAR ---
-router.get('/patients/:patientId/surveillance', requireTenant, getSurveillanceTimeline);
+router.get('/patients/:patientId/surveillance/timeline', requireTenant, getSurveillanceTimeline);
 router.post('/patients/:patientId/surveillance/cell', requireTenant, updateSurveillanceCell);
 
 export default router;

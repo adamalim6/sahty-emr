@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { FormData, ScheduleData, PrescriptionType, DoseScheduleResult } from './types';
 import { PrescriptionCard } from './PrescriptionCard';
+import { api } from '../../services/api';
 import { durationToDecimal, formatDuration, generateDoseSchedule } from './utils';
 import { DoseEditor } from './DoseEditor';
 
@@ -19,17 +20,6 @@ interface Dose {
 }
 
 // --- CONSTANTS ---
-const CARE_ACTS = [
-    'Pansement simple', 'Pansement complexe', 'Ablation de fils/agrafes',
-    'Injection IM', 'Injection SC', 'Injection IV', 'Pose de perfusion',
-    'Prise de sang', 'Prise de constantes (TA, Puls, Temp, Sat)',
-    'Surveillance glycémie capillaire', 'Administration médicament',
-    'Pose de sonde urinaire', 'Changement de poche de stomie',
-    'Toilette au lit', 'Aide à la toilette', 'Soins de bouche',
-    'Prevention d\'escarres', 'Mobilisation', 'Sondage évacuateur',
-    'Lavement évacuateur', 'Oxygénothérapie', 'Aérosolthérapie',
-    'ECG', 'Pose de SNG', 'Retrait de SNG'
-];
 
 const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 const MONTHS_FR = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
@@ -76,9 +66,11 @@ interface CarePrescriptionFormProps {
 
 export const CarePrescriptionForm: React.FC<CarePrescriptionFormProps> = ({ onSave }) => {
     // --- STATE ---
-    const [selectedActs, setSelectedActs] = useState<string[]>([]);
+    const [selectedActs, setSelectedActs] = useState<{ id: string, label: string }[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [showSuggestions, setShowSuggestions] = useState(false);
+    const [searchResults, setSearchResults] = useState<{ id: string, label: string }[]>([]);
+    const [isLoadingSearchResults, setIsLoadingSearchResults] = useState(false);
     const [comment, setComment] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [warning, setWarning] = useState<string | null>(null);
@@ -212,9 +204,29 @@ export const CarePrescriptionForm: React.FC<CarePrescriptionFormProps> = ({ onSa
     const [tempSelectedDate, setTempSelectedDate] = useState<Date | null>(null);
     const [tempTime, setTempTime] = useState("");
 
-    const filteredActs = CARE_ACTS.filter(act =>
-        act.toLowerCase().includes(searchTerm.toLowerCase()) &&
-        !selectedActs.includes(act)
+    useEffect(() => {
+        if (!searchTerm) {
+            setSearchResults([]);
+            return;
+        }
+
+        const delayDebounceFn = setTimeout(async () => {
+            setIsLoadingSearchResults(true);
+            try {
+                const res = await api.getTenantActes({ family: 'Soins Infirmiers', search: searchTerm, limit: 20 });
+                setSearchResults(res.data);
+            } catch (err) {
+                console.error("Error fetching care actes", err);
+            } finally {
+                setIsLoadingSearchResults(false);
+            }
+        }, 300); // 300ms debounce
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchTerm]);
+
+    const filteredActs = searchResults.filter(act =>
+        !selectedActs.some(e => e.id === act.id)
     );
 
     const isSpecificTimeRestricted = prescriptionType === 'punctual-frequency' && scheduleData.mode === 'specific-time' && scheduleData.specificTimes.length > 0;
@@ -222,18 +234,19 @@ export const CarePrescriptionForm: React.FC<CarePrescriptionFormProps> = ({ onSa
 
     // --- HANDLERS ---
 
-    const handleToggleAct = (act: string) => {
-        if (selectedActs.includes(act)) {
-            setSelectedActs(prev => prev.filter(e => e !== act));
+    const handleToggleAct = (act: { id: string, label: string }) => {
+        if (selectedActs.some(e => e.id === act.id)) {
+            setSelectedActs(prev => prev.filter(e => e.id !== act.id));
         } else {
             setSelectedActs(prev => [...prev, act]);
             setSearchTerm('');
+            setShowSuggestions(false);
         }
         setError(null);
     };
 
-    const handleRemoveAct = (act: string) => {
-        setSelectedActs(prev => prev.filter(e => e !== act));
+    const handleRemoveAct = (actId: string) => {
+        setSelectedActs(prev => prev.filter(e => e.id !== actId));
     };
 
     // Schedule Handlers
@@ -498,8 +511,10 @@ export const CarePrescriptionForm: React.FC<CarePrescriptionFormProps> = ({ onSa
         const manualAdjustmentsRecord = Object.fromEntries(manuallyAdjustedEvents);
 
         const prescriptions: FormData[] = selectedActs.map(act => ({
-            molecule: act,
-            commercialName: act,
+            molecule: act.label,
+            commercialName: act.label,
+            acte_id: act.id,
+            libelle_sih: act.label,
             prescriptionType: 'care' as const,
             qty: '--',
             unit: '',
@@ -523,7 +538,7 @@ export const CarePrescriptionForm: React.FC<CarePrescriptionFormProps> = ({ onSa
     };
 
     const previewData: FormData = {
-        molecule: selectedActs.length > 0 ? selectedActs.join(', ') : "Aucun acte sélectionné",
+        molecule: selectedActs.length > 0 ? selectedActs.map(e => e.label).join(', ') : "Aucun acte sélectionné",
         commercialName: "",
         prescriptionType: 'care' as const,
         qty: "--", unit: "", route: "",
@@ -629,18 +644,29 @@ export const CarePrescriptionForm: React.FC<CarePrescriptionFormProps> = ({ onSa
                                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-orange-600 transition-colors" />
 
                                 {/* Suggestions */}
-                                {showSuggestions && searchTerm.length > 0 && filteredActs.length > 0 && (
+                                {showSuggestions && searchTerm.length > 0 && (
                                     <div className="absolute z-10 w-full bg-white border border-slate-200 rounded-xl shadow-lg mt-1 max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2">
-                                        {filteredActs.map((act) => (
-                                            <button
-                                                type="button"
-                                                key={act}
-                                                onClick={() => handleToggleAct(act)}
-                                                className="block w-full text-left px-4 py-3 text-sm text-slate-700 hover:bg-orange-50 hover:text-orange-700 transition-colors border-b border-slate-100 last:border-0 font-medium"
-                                            >
-                                                {act}
-                                            </button>
-                                        ))}
+                                        {isLoadingSearchResults ? (
+                                            <div className="px-4 py-4 text-sm text-slate-500 text-center flex items-center justify-center gap-2">
+                                                <Activity className="w-4 h-4 animate-spin text-orange-600" />
+                                                <span>Recherche en cours...</span>
+                                            </div>
+                                        ) : filteredActs.length > 0 ? (
+                                            filteredActs.map((act) => (
+                                                <button
+                                                    type="button"
+                                                    key={act.id}
+                                                    onClick={() => handleToggleAct(act)}
+                                                    className="block w-full text-left px-4 py-3 text-sm text-slate-700 hover:bg-orange-50 hover:text-orange-700 transition-colors border-b border-slate-100 last:border-0 font-medium"
+                                                >
+                                                    {act.label}
+                                                </button>
+                                            ))
+                                        ) : (
+                                            <div className="px-4 py-4 text-sm text-slate-500 text-center">
+                                                Aucun acte trouvé pour "{searchTerm}"
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -650,11 +676,11 @@ export const CarePrescriptionForm: React.FC<CarePrescriptionFormProps> = ({ onSa
                         {selectedActs.length > 0 && (
                             <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2">
                                 {selectedActs.map(act => (
-                                    <div key={act} className="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-orange-700 rounded-lg border border-orange-100 shadow-sm">
-                                        <span className="text-sm font-semibold">{act}</span>
+                                    <div key={act.id} className="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-orange-700 rounded-lg border border-orange-100 shadow-sm">
+                                        <span className="text-sm font-semibold">{act.label}</span>
                                         <button
                                             type="button"
-                                            onClick={() => handleRemoveAct(act)}
+                                            onClick={() => handleRemoveAct(act.id)}
                                             className="p-0.5 hover:bg-orange-100 rounded-full transition-colors"
                                         >
                                             <X className="w-3.5 h-3.5" />

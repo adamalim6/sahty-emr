@@ -2,6 +2,7 @@
 // Server restart trigger 10
 import express from 'express';
 import cors from 'cors';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 import emrRoutes from './routes/emrRoutes';
 import pharmacyRoutes from './routes/pharmacyRoutes';
 import prescriptionRoutes from './routes/prescriptionRoutes';
@@ -18,22 +19,25 @@ import globalEMDNRoutes from './routes/globalEMDNRoutes';
 import devRoutes from './routes/devRoutes';
 import stockTransferRoutes from './routes/stockTransferRoutes';
 import stockReservationRoutes from './routes/stockReservationRoutes';
-import { authenticateToken } from './middleware/authMiddleware';
+import escarresRoutes from './routes/escarresRoutes';
+import { authenticateToken, authenticateAnyToken } from './middleware/authMiddleware';
 import { requireModule } from './middleware/moduleMiddleware';
 import { startIdentitySyncWorker } from './workers/identitySyncWorker';
 import { identitySyncService } from './services/identitySyncService';
 import { startAuthSyncWorker } from './workers/authSyncWorker';
 import { authSyncService } from './services/authSyncService';
 import { globalQuery } from './db/globalPg';
+import referenceRoutes from './routes/referenceRoutes';
+import { authenticateGlobalAdmin } from './middleware/globalAuthMiddleware';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors({
-    origin: ['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000'],
+    origin: ['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://localhost:3002', 'http://127.0.0.1:3002'],
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'API-Version', 'Accept-Language']
 }));
 app.use(express.json());
 
@@ -47,12 +51,26 @@ app.use('/api/super-admin', superAdminRoutes); // SuperAdmin auth handled intern
 
 // Protected Tenant Routes
 app.use('/api/settings', authenticateToken, settingsRoutes);
-app.use('/api/actes', authenticateToken, actesRoutes);
+app.use('/api/actes', authenticateAnyToken, actesRoutes);
 app.use('/api/dev', devRoutes);
 app.use('/api/global/products', globalProductRoutes);
 app.use('/api/global/dci', globalDCIRoutes);
-app.use('/api/global/atc', authenticateToken, globalATCRoutes);
-app.use('/api/global/emdn', authenticateToken, globalEMDNRoutes);
+app.use('/api/global/atc', authenticateGlobalAdmin, globalATCRoutes);
+app.use('/api/global/emdn', authenticateGlobalAdmin, globalEMDNRoutes);
+
+// WHO ICD-11 Local Proxy (No Auth required for raw search engine queries)
+app.use('/api/icd', createProxyMiddleware({
+    target: 'http://localhost:8090',
+    changeOrigin: true,
+    pathRewrite: {
+        '^/api/icd': '', // Strip /api/icd when forwarding to docker container root
+    }
+}));
+
+// Catalog Reference Endpoints (Tenant safe)
+app.use('/api/reference', referenceRoutes);
+app.use('/api/reference/atc', authenticateToken, globalATCRoutes);
+app.use('/api/reference/emdn', authenticateToken, globalEMDNRoutes);
 
 app.use('/api/emr', authenticateToken, requireModule('EMR'), emrRoutes);
 app.use('/api/pharmacy', authenticateToken, requireModule('PHARMACY'), pharmacyRoutes);
@@ -63,6 +81,7 @@ app.use('/api/prescriptions', authenticateToken, prescriptionRoutes);
 app.use('/api/stock-transfers', authenticateToken, stockTransferRoutes); 
 app.use('/api/stock-reservations', authenticateToken, stockReservationRoutes); // Shared API
 app.use('/api', authenticateToken, dispensationRoutes);
+app.use('/api/escarres', authenticateToken, escarresRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -101,6 +120,6 @@ app.get('/api/dev/auth-sync-status', async (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
-    startIdentitySyncWorker();
-    startAuthSyncWorker();
+    // startIdentitySyncWorker();
+    // startAuthSyncWorker();
 });

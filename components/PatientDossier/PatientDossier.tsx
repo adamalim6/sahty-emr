@@ -78,6 +78,7 @@ import { Allergies } from './Allergies';
 import { Addictologie } from './Addictologie';
 import { Biologie } from './Biologie';
 import { Imagerie } from './Imagerie';
+import { Escarres } from './Escarres';
 
 // --- Reusable UI Components (Redefined for the dossier) ---
 
@@ -259,9 +260,10 @@ export const PatientDossier: React.FC = () => {
     { id: 'Addictologie', label: 'Addictologie', icon: Cigarette, component: <Addictologie /> },
     { id: 'Biologie', label: 'Biologie', icon: FlaskConical, component: <Biologie /> },
     { id: 'Imagerie', label: 'Imagerie', icon: ScanLine, component: <Imagerie /> },
-    { id: 'Diagnostic', label: 'Diagnostic', icon: Microscope, component: <Diagnostic /> },
+    { id: 'Diagnostic', label: 'Diagnostic', icon: Microscope, component: <Diagnostic patientId={patient.id} /> },
     { id: 'Prescriptions', label: 'Prescriptions', icon: FileText, component: <Prescriptions patientId={patient.id} /> },
     { id: 'Surveillance', label: 'Fiche de Surveillance', icon: ClipboardCheck, component: <FicheSurveillance patientId={patient.id} /> },
+    { id: 'Escarres', label: 'Escarres', icon: Activity, component: <Escarres patientId={patient.id} sex={patient.sex} /> },
     { id: 'PrescriptionSortie', label: 'Prescription Externe', icon: LogOut, component: <PrescriptionSortie /> },
     { id: 'CAT', label: 'Conduite à tenir', icon: Compass, component: <ConduiteATenir /> },
     { id: 'Evolution', label: 'Évolution', icon: TrendingUp, component: <Evolution /> },
@@ -276,12 +278,12 @@ export const PatientDossier: React.FC = () => {
   ];
 
   return (
-    <div className="absolute inset-x-0 bottom-0 top-16 flex flex-col bg-gray-50 z-[15] overflow-hidden">
+    <div className="absolute inset-x-0 bottom-0 top-16 flex flex-col bg-gray-50 overflow-hidden">
       {/* Fixed Top Section: Header + Tabs */}
       <div className="flex flex-col shrink-0 w-full z-20 bg-gray-50">
         
         {/* Header (Patient Info) */}
-        <div className="pt-6 lg:pt-10 px-6 lg:px-10 pb-4 w-full">
+        <div className="pt-2 lg:pt-4 px-6 lg:px-10 pb-4 w-full">
           <div className="max-w-7xl mx-auto">
             <div className="bg-white p-4 lg:p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-6">
               {/* Back Button */}

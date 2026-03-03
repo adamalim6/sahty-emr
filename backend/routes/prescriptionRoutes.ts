@@ -39,8 +39,15 @@ router.get('/:prescriptionId/dispensations', getDispensationsByPrescription);
 // Record an execution
 router.post('/:id/execute', async (req: any, res) => {
     try {
+        if (!req.user || !req.user.userId) {
+            return res.status(401).json({ error: 'Invalid authentication context' });
+        }
+
         const { id } = req.params;
         const executionData = req.body;
+        
+        const userId = req.user.userId;
+
         let tenantId;
         try {
             tenantId = getTenantId(req);
@@ -48,7 +55,11 @@ router.post('/:id/execute', async (req: any, res) => {
             return res.status(403).json({ error: 'Tenant ID is required' });
         }
 
-        const result = await prescriptionService.recordExecution(tenantId, { ...executionData, prescriptionId: id });
+        const result = await prescriptionService.recordExecution(tenantId, { 
+            ...executionData, 
+            prescriptionId: id,
+            performedByUserId: userId
+        });
         res.json(result);
     } catch (error) {
         console.error('Error recording execution:', error);
@@ -80,8 +91,14 @@ router.get('/:id/executions', async (req: any, res) => {
 // Log an administration action for a specific event
 router.post('/:id/events/:eventId/admin', async (req: any, res) => {
     try {
+        if (!req.user || !req.user.userId) {
+            return res.status(401).json({ error: 'Invalid authentication context' });
+        }
+
         const { eventId } = req.params;
-        const { actionType, actualStartAt, actualEndAt, performedBy, performedByUserId, note } = req.body;
+        const { actionType, occurredAt, actualStartAt, actualEndAt, note } = req.body;
+        const userId = req.user.userId;
+
         let tenantId;
         try {
             tenantId = getTenantId(req);
@@ -94,10 +111,10 @@ router.post('/:id/events/:eventId/admin', async (req: any, res) => {
         }
 
         const result = await prescriptionService.logAdministrationAction(tenantId, eventId, actionType, {
+            occurredAt: occurredAt ? new Date(occurredAt) : undefined,
             actualStartAt: actualStartAt ? new Date(actualStartAt) : undefined,
             actualEndAt: actualEndAt ? new Date(actualEndAt) : undefined,
-            performedBy,
-            performedByUserId,
+            performedByUserId: userId,
             note
         });
         res.status(201).json(result);
@@ -123,6 +140,35 @@ router.get('/:id/events/:eventId/admin', async (req: any, res) => {
     } catch (error) {
         console.error('Error fetching administration history:', error);
         res.status(500).json({ error: 'Failed to fetch administration history' });
+    }
+});
+
+// Cancel a specific administration event
+router.post('/:id/events/:eventId/admin/:adminEventId/cancel', async (req: any, res) => {
+    try {
+        if (!req.user || !req.user.userId) {
+            return res.status(401).json({ error: 'Invalid authentication context' });
+        }
+
+        const { adminEventId } = req.params;
+        const { cancellationReason } = req.body;
+
+        let tenantId;
+        try {
+            tenantId = getTenantId(req);
+        } catch (err) {
+            return res.status(403).json({ error: 'Tenant ID is required' });
+        }
+
+        await prescriptionService.cancelAdministrationEvent(tenantId, adminEventId, cancellationReason);
+        res.status(200).json({ success: true, message: 'Event successfully cancelled' });
+    } catch (error: any) {
+        console.error('Error cancelling administration event:', error);
+        // Map specific throws to specific statuses if needed
+        if (error.message === 'Event not found') return res.status(404).json({ error: error.message });
+        if (error.message === 'Event is already cancelled.') return res.status(400).json({ error: error.message });
+        
+        res.status(500).json({ error: 'Failed to cancel administration event' });
     }
 });
 

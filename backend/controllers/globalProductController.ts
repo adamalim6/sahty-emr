@@ -5,7 +5,7 @@ import { referenceDataService } from '../services/referenceDataService';
 
 export const getAllProducts = async (req: Request, res: Response) => {
     try {
-        const tenantId = (req as any).user?.tenantId;
+        const tenantId = (req as any).auth?.tenantId || (req as any).user?.client_id || (req as any).user?.tenantId;
         const isTenantUser = tenantId && tenantId !== 'GLOBAL';
 
         // Pagination Support
@@ -39,7 +39,7 @@ export const getAllProducts = async (req: Request, res: Response) => {
 
 export const getProductById = async (req: Request, res: Response) => {
     try {
-        const tenantId = (req as any).user?.tenantId;
+        const tenantId = (req as any).auth?.tenantId || (req as any).user?.client_id || (req as any).user?.tenantId;
         const isTenantUser = tenantId && tenantId !== 'GLOBAL';
         
         let product;
@@ -87,7 +87,7 @@ export const deleteProduct = async (req: Request, res: Response) => {
 
 export const getProductPriceHistory = async (req: Request, res: Response) => {
     try {
-        const tenantId = (req as any).user?.tenantId;
+        const tenantId = (req as any).auth?.tenantId || (req as any).user?.client_id || (req as any).user?.tenantId;
         const isTenantUser = tenantId && tenantId !== 'GLOBAL';
         
         let history;

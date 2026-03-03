@@ -175,17 +175,32 @@ export class ReferenceDataService {
         tenantId: string, 
         page: number = 1, 
         limit: number = 50, 
-        search?: string
+        search?: string,
+        familyFilter?: string // [NEW] Optional family filter
     ) {
         const offset = (page - 1) * limit;
-        let query = 'SELECT * FROM reference.global_actes';
-        let countQuery = 'SELECT COUNT(*) FROM reference.global_actes';
+        let query = `
+            SELECT a.*, f.libelle as famille_sih, sf.libelle as sous_famille_sih 
+            FROM reference.global_actes a
+            LEFT JOIN reference.sih_familles f ON a.famille_id = f.id
+            LEFT JOIN reference.sih_sous_familles sf ON a.sous_famille_id = sf.id
+        `;
+        let countQuery = `
+            SELECT COUNT(*) FROM reference.global_actes a
+            LEFT JOIN reference.sih_familles f ON a.famille_id = f.id
+            LEFT JOIN reference.sih_sous_familles sf ON a.sous_famille_id = sf.id
+        `;
         const params: any[] = [];
         let whereClause = ' WHERE 1=1';
 
         if (search) {
              params.push(`%${search}%`);
-             whereClause += ` AND (libelle_sih ILIKE $${params.length} OR code_sih ILIKE $${params.length})`;
+             whereClause += ` AND (a.libelle_sih ILIKE $${params.length} OR a.code_sih ILIKE $${params.length})`;
+        }
+
+        if (familyFilter) {
+             params.push(`%${familyFilter}%`);
+             whereClause += ` AND f.libelle ILIKE $${params.length}`;
         }
 
         query += whereClause;
@@ -197,12 +212,13 @@ export class ReferenceDataService {
         params.push(limit);
         params.push(offset);
         
-        query += ` ORDER BY libelle_sih ASC LIMIT $${params.length - 1} OFFSET $${params.length}`;
+        query += ` ORDER BY a.libelle_sih ASC LIMIT $${params.length - 1} OFFSET $${params.length}`;
 
         const rows = await tenantQuery(tenantId, query, params);
         
         // Map to Acte Model
         const data = rows.map((row: any) => ({
+            id: row.id, // [NEW] Ensure UUID is returned
             code: row.code_sih,
             label: row.libelle_sih,
             family: row.famille_sih,
@@ -225,8 +241,8 @@ export class ReferenceDataService {
         };
     }
 
-    async getGlobalActes(tenantId: string, search?: string) {
-         return this.getGlobalActesPaginated(tenantId, 1, 1000, search).then(r => r.data);
+    async getGlobalActes(tenantId: string, search?: string, familyFilter?: string) {
+         return this.getGlobalActesPaginated(tenantId, 1, 1000, search, familyFilter).then(r => r.data);
     }
 }
 

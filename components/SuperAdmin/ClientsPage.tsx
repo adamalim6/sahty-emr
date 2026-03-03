@@ -100,9 +100,17 @@ export const ClientsPage: React.FC = () => {
         try {
             const res = await api.updateTenantReferenceSchema(id);
             if (res.status === 'skipped') {
-                alert(`${name} : Déjà à jour (Version ${res.fromVersion})`);
+                if (res.dataSyncStatus === 'error') {
+                    alert(`${name} : Le schéma est à jour (Version ${res.fromVersion}) MAIS l'erreur de synchronisation des données: ${res.dataSyncError}`);
+                } else {
+                    alert(`${name} : Déjà à jour (Version ${res.fromVersion}) et données synchronisées.`);
+                }
             } else {
-                alert(`${name} : Mis à jour avec succès de V${res.fromVersion} vers V${res.toVersion}.`);
+                if (res.dataSyncStatus === 'error') {
+                    alert(`${name} : Schéma mis à jour (V${res.toVersion}) MAIS erreur de synchronisation des données: ${res.dataSyncError}`);
+                } else {
+                    alert(`${name} : Mis à jour avec succès de V${res.fromVersion} vers V${res.toVersion} et données synchronisées.`);
+                }
             }
         } catch (err: any) {
             alert(`Erreur pour ${name}: ${err.message}`);

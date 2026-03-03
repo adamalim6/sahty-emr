@@ -35,8 +35,10 @@ export interface PrescriptionData {
     moleculeId?: string;
     commercialName: string;
     productId?: string;
-    qty: string;
+    qty: string | number;
     unit: string;
+    unit_id?: string;
+    blood_product_type?: string;
     route: string;
     adminMode: AdminMode;
     adminDuration: string;
@@ -112,8 +114,12 @@ export interface AdministrationEvent {
     occurred_at: Date;
     actual_start_at?: Date;
     actual_end_at?: Date;
-    performed_by?: string;
     performed_by_user_id?: string;
+    performed_by_first_name?: string;
+    performed_by_last_name?: string;
     note?: string;
+    status: string;
+    cancellation_reason?: string;
+    linked_event_id?: string;
     created_at: Date;
 }

@@ -1,10 +1,11 @@
 import express from 'express';
-import { getActes, updateActe } from '../controllers/actesController';
+import { getTenantActes, getTenantActeById } from '../controllers/tenant.referenceActes.controller';
 import { authenticateToken } from '../middleware/authMiddleware';
 
 const router = express.Router();
 
-router.get('/', authenticateToken, getActes);
-router.put('/:code', authenticateToken, updateActe);
+// Tenant EMR reference routes (read-only)
+router.get('/', authenticateToken, getTenantActes);
+router.get('/:id', authenticateToken, getTenantActeById);
 
 export default router;

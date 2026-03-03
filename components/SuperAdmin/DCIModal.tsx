@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { FlaskConical, Save, X, Plus, Trash2 } from 'lucide-react';
-import { api } from '../../services/api';
+import { api, CareCategory } from '../../services/api';
 import { DCI } from '../../types/pharmacy';
 import { ATCNode } from '../../types/atc';
 
@@ -17,9 +17,16 @@ export const DCIModal: React.FC<DCIModalProps> = ({ isOpen, onClose, onSuccess, 
     const [atcCode, setAtcCode] = useState('');
     const [synonyms, setSynonyms] = useState<string[]>([]);
     const [therapeuticClass, setTherapeuticClass] = useState('');
+    const [careCategoryId, setCareCategoryId] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     
+    // Care Categories Logic
+    const [careCategories, setCareCategories] = useState<CareCategory[]>([]);
+    const [isCareCategoryOpen, setIsCareCategoryOpen] = useState(false);
+    const [careCategorySearch, setCareCategorySearch] = useState('');
+    const careCategoryRef = React.useRef<HTMLDivElement>(null);
+
     // ATC Logic
     const [atcTree, setATCTree] = useState<ATCNode[]>([]);
 
@@ -32,7 +39,16 @@ export const DCIModal: React.FC<DCIModalProps> = ({ isOpen, onClose, onSuccess, 
                 console.error('Failed to load ATC tree', err);
             }
         };
+        const fetchCategories = async () => {
+            try {
+                const categories = await api.getCareCategories();
+                setCareCategories(categories.filter(c => c.isActive !== false));
+            } catch (err) {
+                console.error('Failed to load care categories', err);
+            }
+        };
         fetchTree();
+        fetchCategories();
     }, []);
 
     const findClassification = (code: string, nodes: ATCNode[], path: string[] = []): string | null => {
@@ -73,16 +89,34 @@ export const DCIModal: React.FC<DCIModalProps> = ({ isOpen, onClose, onSuccess, 
             if (editingDCI) {
                 setName(editingDCI.name);
                 setAtcCode(editingDCI.atcCode || '');
-                setSynonyms(editingDCI.synonyms?.map(s => typeof s === 'string' ? s : s.synonym) || []);
+                setSynonyms(editingDCI.synonyms?.map(s => typeof s === 'string' ? s : (s as any).synonym) || []);
                 setTherapeuticClass(editingDCI.therapeuticClass || '');
+                setCareCategoryId(editingDCI.careCategoryId || '');
             } else {
                 setName('');
                 setAtcCode('');
                 setSynonyms([]);
                 setTherapeuticClass('');
+                setCareCategoryId('');
             }
         }
     }, [isOpen, editingDCI]);
+
+    // Close Care Category dropdown when clicking outside
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (careCategoryRef.current && !careCategoryRef.current.contains(event.target as Node)) {
+                setIsCareCategoryOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [careCategoryRef]);
+
+    const filteredCareCategories = careCategories.filter(cat => 
+        cat.label.toLowerCase().includes(careCategorySearch.toLowerCase()) || 
+        cat.code.toLowerCase().includes(careCategorySearch.toLowerCase())
+    );
 
     // Flatten ATC Tree to get Level 5 nodes for selection
     const [selectableATCs, setSelectableATCs] = useState<{ code: string, label: string }[]>([]);
@@ -142,7 +176,8 @@ export const DCIModal: React.FC<DCIModalProps> = ({ isOpen, onClose, onSuccess, 
             name,
             atcCode: atcCode, // camelCase matching backend
             synonyms: synonyms.map(s => s.trim()).filter(s => s.length > 0),
-            therapeuticClass: therapeuticClass
+            therapeuticClass: therapeuticClass,
+            careCategoryId: careCategoryId || undefined
         };
 
         try {
@@ -257,6 +292,55 @@ export const DCIModal: React.FC<DCIModalProps> = ({ isOpen, onClose, onSuccess, 
                                 title="Calculé automatiquement selon le code ATC"
                                 placeholder="Auto-population..."
                             />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium mb-1 text-slate-700">Classe thérapeutique (Catégorie de Soins)</label>
+                        <div className="relative" ref={careCategoryRef}>
+                            <div 
+                                className="w-full border border-slate-300 rounded-lg px-3 py-2 flex items-center justify-between cursor-pointer hover:border-purple-400 bg-white"
+                                onClick={() => setIsCareCategoryOpen(!isCareCategoryOpen)}
+                            >
+                                <span className={careCategoryId ? "text-slate-900" : "text-slate-400"}>
+                                    {careCategories.find(c => c.id === careCategoryId)?.label || "Sélectionner une classe..."}
+                                </span>
+                                <span className="text-xs text-slate-400">▼</span>
+                            </div>
+
+                            {isCareCategoryOpen && (
+                                <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-60 overflow-hidden flex flex-col">
+                                    <div className="p-2 border-b border-slate-100 bg-slate-50">
+                                        <input 
+                                            type="text"
+                                            className="w-full text-sm border border-slate-200 rounded px-2 py-1 outline-none focus:border-purple-500"
+                                            placeholder="Filtrer..."
+                                            value={careCategorySearch}
+                                            onChange={(e) => setCareCategorySearch(e.target.value)}
+                                            autoFocus
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                    </div>
+                                    <div className="overflow-y-auto flex-1">
+                                        <div 
+                                            className={`px-3 py-2 text-sm hover:bg-purple-50 cursor-pointer border-b border-slate-50 ${!careCategoryId ? 'bg-purple-50 text-purple-700' : 'text-slate-700'}`}
+                                            onClick={() => { setCareCategoryId(''); setIsCareCategoryOpen(false); }}
+                                        >
+                                            <div className="italic">Aucune classe</div>
+                                        </div>
+                                        {filteredCareCategories.map(item => (
+                                            <div 
+                                                key={item.id}
+                                                className={`px-3 py-2 text-sm hover:bg-purple-50 cursor-pointer border-b border-slate-50 last:border-0 ${careCategoryId === item.id ? 'bg-purple-50 text-purple-700' : 'text-slate-700'}`}
+                                                onClick={() => { setCareCategoryId(item.id); setCareCategorySearch(''); setIsCareCategoryOpen(false); }}
+                                            >
+                                                <div className="font-medium">{item.label}</div>
+                                                <div className="text-xs text-slate-500">{item.code}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 

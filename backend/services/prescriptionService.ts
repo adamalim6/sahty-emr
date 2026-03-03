@@ -10,6 +10,7 @@ export class PrescriptionService {
         const query = `
             SELECT
               p.*,
+              cc.label as care_category_label,
               CASE
                 WHEN p.stopped_at IS NOT NULL THEN 'STOPPED'
                 WHEN p.paused_at IS NOT NULL THEN 'PAUSED'
@@ -26,6 +27,11 @@ export class PrescriptionService {
                 ELSE 'ACTIVE'
               END AS derived_status
             FROM public.prescriptions p
+            LEFT JOIN reference.global_dci gd 
+                ON p.prescription_type = 'medication' 
+                AND gd.id::text = split_part(p.details->>'moleculeId', ',', 1)
+            LEFT JOIN reference.care_categories cc 
+                ON cc.id = gd.care_category_id
             WHERE p.tenant_id = $1
               AND p.tenant_patient_id = $2
             ORDER BY p.created_at DESC;
@@ -37,6 +43,7 @@ export class PrescriptionService {
             patientId: row.tenant_patient_id,
             data: {
                 ...row.details,
+                careCategory: row.care_category_label || 'Z_Autre',
                 conditionComment: row.condition_comment,
                 prescriptionType: row.prescription_type
             } as any,
@@ -71,6 +78,24 @@ export class PrescriptionService {
         const details = this.sanitizeDetailsForStorage(data, pType);
 
         return await tenantTransaction(tenantId, async (client: any) => {
+            // Refactor Transfusion Unit Normalization
+            if (pType === 'transfusion') {
+                const getUnitQuery = `SELECT id FROM reference.units WHERE code = 'poche' LIMIT 1`;
+                const unitRes = await client.query(getUnitQuery);
+                if (unitRes.rows.length > 0) {
+                    details.unit_id = unitRes.rows[0].id;
+                }
+                
+                // Convert qty strictly to number
+                if (details.qty !== undefined) {
+                    details.qty = Number(details.qty);
+                }
+                
+                // Keep the 'unit' key around for legacy code internally, or remove it entirely as instructed
+                // "Ne plus stocker label dans JSON."
+                delete details.unit;
+            }
+
             const queryPrescription = `
                 INSERT INTO prescriptions (
                     tenant_id, tenant_patient_id, admission_id, 
@@ -161,13 +186,13 @@ export class PrescriptionService {
         // --- Strip medication-only fields from non-medication types ---
         const MEDICATION_ONLY_FIELDS = [
             'molecule', 'commercialName', 'moleculeId', 'productId',
-            'unit', 'route', 'qty', 'solvent',
+            'unit', 'unit_id', 'blood_product_type', 'route', 'qty', 'solvent',
             'adminMode', 'adminDuration',
             'substitutable', 'dilutionRequired', 'databaseMode'
         ];
 
         // Transfusion exception: keeps qty, unit, adminDuration, route
-        const TRANSFUSION_KEEP = ['qty', 'unit', 'adminDuration', 'route'];
+        const TRANSFUSION_KEEP = ['qty', 'unit_id', 'blood_product_type', 'adminDuration', 'route'];
 
         if (prescriptionType !== 'medication') {
             for (const field of MEDICATION_ONLY_FIELDS) {
@@ -324,7 +349,7 @@ export class PrescriptionService {
                 latest_admin.occurred_at as admin_occurred_at,
                 latest_admin.actual_start_at,
                 latest_admin.actual_end_at,
-                latest_admin.performed_by,
+                latest_admin.performed_by_user_id,
                 latest_admin.note
             FROM prescription_events pe
             LEFT JOIN LATERAL (
@@ -348,7 +373,7 @@ export class PrescriptionService {
             // Compute effective status from admin action or plan status
             status: this.computeEffectiveStatus(row.plan_status, row.action_type),
             justification: row.note || undefined,
-            performedBy: row.performed_by || undefined,
+            performedBy: row.performed_by_user_id || undefined,
             updatedAt: row.admin_occurred_at ? row.admin_occurred_at : undefined
         }));
     }
@@ -381,11 +406,16 @@ export class PrescriptionService {
      */
     async recordExecution(tenantId: string, execution: { 
         prescriptionId: string, 
-        plannedDate: string, 
-        status?: string, 
+        eventId: string, // Enforcing explicit event ID
+        action_type?: string,
+        occurred_at?: string,
+        actual_start_at?: string | null,
+        actual_end_at?: string | null,
+        status?: string, // legacy fallback
         justification?: string, 
         performedBy?: string, 
-        actualDate?: string 
+        performedByUserId?: string, // new field added for user linkage
+        actualDate?: string // legacy fallback
     }): Promise<any> {
 
         // Enforce safety rules: block administration if PAUSED or STOPPED
@@ -396,67 +426,50 @@ export class PrescriptionService {
             if (checkPRes[0].paused_at) throw new Error("Cannot execute: Prescription is PAUSED.");
         }
         
-        // Find the prescription_event by scheduled_at match
-        const selectQuery = `
-            SELECT id FROM prescription_events 
-            WHERE prescription_id = $1 AND scheduled_at = $2
-        `;
-        const selectRes = await tenantQuery<{id: string}>(tenantId, selectQuery, [
-            execution.prescriptionId, 
-            new Date(execution.plannedDate)
-        ]);
-
-        let eventId: string;
-
-        if (selectRes.length > 0) {
-            eventId = selectRes[0].id;
-        } else {
-            // Event doesn't exist yet (drift recovery) — create it as scheduled
-            const insertEventQuery = `
-                INSERT INTO prescription_events (
-                    tenant_id, prescription_id, scheduled_at, status
-                ) VALUES ($1, $2, $3, 'scheduled')
-                RETURNING id
-            `;
-            const insertRes = await tenantQuery<{id: string}>(tenantId, insertEventQuery, [
-                tenantId,
-                execution.prescriptionId,
-                new Date(execution.plannedDate)
-            ]);
-            eventId = insertRes[0].id;
+        const eventId = execution.eventId;
+        if (!eventId) {
+            throw new Error("Cannot record administration: missing prescription_event_id.");
         }
 
-        // Map legacy status to action_type
-        const actionType = this.mapStatusToActionType(execution.status || 'planned');
+        // Use action_type directly if provided, else map from legacy status
+        const actionType = execution.action_type || this.mapStatusToActionType(execution.status || 'planned');
+        
+        // Coalesce dates
+        const occurredAt = execution.occurred_at ? new Date(execution.occurred_at) : new Date();
+        const actualStart = execution.actual_start_at ? new Date(execution.actual_start_at) : (execution.actualDate ? new Date(execution.actualDate) : null);
+        const actualEnd = execution.actual_end_at ? new Date(execution.actual_end_at) : null;
 
         // Insert administration event
-        const actualStart = execution.actualDate ? new Date(execution.actualDate) : null;
         const adminInsertQuery = `
             INSERT INTO administration_events (
                 tenant_id, prescription_event_id, action_type, occurred_at,
-                actual_start_at, performed_by, note
-            ) VALUES ($1, $2, $3, now(), $4, $5, $6)
+                actual_start_at, actual_end_at, note, performed_by_user_id,
+                status, linked_event_id
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'ACTIVE', NULL)
             RETURNING *
         `;
         const adminRes = await tenantQuery<any>(tenantId, adminInsertQuery, [
             tenantId,
             eventId,
             actionType,
+            occurredAt,
             actualStart,
-            execution.performedBy || null,
-            execution.justification || null
+            actualEnd,
+            execution.justification || null,
+            execution.performedByUserId || null
         ]);
 
         const r = adminRes[0];
         return {
-            id: eventId,
+            id: r.id,
+            eventId: eventId,
             prescriptionId: execution.prescriptionId,
-            plannedDate: execution.plannedDate,
-            actualDate: r.actual_start_at ? r.actual_start_at.toISOString() : undefined,
-            status: execution.status || 'planned',
+            action_type: r.action_type,
+            occurred_at: r.occurred_at,
+            actual_start_at: r.actual_start_at,
+            actual_end_at: r.actual_end_at,
             justification: r.note || undefined,
-            performedBy: r.performed_by || undefined,
-            updatedAt: r.occurred_at
+            performedBy: r.performed_by_user_id || undefined
         };
     }
 
@@ -474,6 +487,13 @@ export class PrescriptionService {
         }
     }
 
+    private async getEventById(tenantId: string, id: string): Promise<AdministrationEvent> {
+        const query = `SELECT * FROM administration_events WHERE id = $1`;
+        const res = await tenantQuery<AdministrationEvent>(tenantId, query, [id]);
+        if (res.length === 0) throw new Error("Event not found");
+        return res[0];
+    }
+
     /**
      * NEW: Explicit administration action logging (Epic-like)
      */
@@ -482,6 +502,7 @@ export class PrescriptionService {
         prescriptionEventId: string,
         actionType: string,
         payload?: {
+            occurredAt?: Date;
             actualStartAt?: Date;
             actualEndAt?: Date;
             performedBy?: string;
@@ -491,33 +512,191 @@ export class PrescriptionService {
     ): Promise<AdministrationEvent> {
         // Enforce safety rules via join back to prescriptions
         const checkSafetyQuery = `
-            SELECT p.paused_at, p.stopped_at 
+            SELECT p.paused_at, p.stopped_at, pe.scheduled_at 
             FROM prescriptions p
             JOIN prescription_events pe ON pe.prescription_id = p.id
             WHERE pe.id = $1
         `;
-        const checkSafetyRes = await tenantQuery<{paused_at: Date | null, stopped_at: Date | null}>(tenantId, checkSafetyQuery, [prescriptionEventId]);
+        const checkSafetyRes = await tenantQuery<{paused_at: Date | null, stopped_at: Date | null, scheduled_at: Date}>(tenantId, checkSafetyQuery, [prescriptionEventId]);
         if (checkSafetyRes.length > 0) {
             if (checkSafetyRes[0].stopped_at) throw new Error("Cannot log administration action: Prescription is STOPPED.");
             if (checkSafetyRes[0].paused_at) throw new Error("Cannot log administration action: Prescription is PAUSED.");
+            
+            const scheduledAt = new Date(checkSafetyRes[0].scheduled_at).getTime();
+            const now = Date.now();
+            const targetTime = payload?.occurredAt ? new Date(payload.occurredAt).getTime() : now;
+            
+            if (targetTime > now) {
+                throw new Error("Administration time cannot be in the future.");
+            }
+            if (targetTime < scheduledAt - (48 * 60 * 60 * 1000) || targetTime > scheduledAt + (48 * 60 * 60 * 1000)) {
+                throw new Error("Administration time outside allowed window.");
+            }
+        }
+
+        let linkedEventId = null;
+        const finalOccurredAt = payload?.occurredAt ? new Date(payload.occurredAt) : new Date();
+
+        // ---------------------------------------------------------
+        // ALIGNMENT: The frontend might send 'started' instead of 
+        // 'PERFUSION_START'. We normalize it here to map cleanly.
+        // ---------------------------------------------------------
+        let internalActionType = actionType;
+        if (internalActionType === 'started') internalActionType = 'PERFUSION_START';
+        if (internalActionType === 'ended') internalActionType = 'PERFUSION_END';
+
+        // ---------------------------------------------------------
+        // UNIVERSAL WIPE FOR REFUSALS AND BOLUS
+        // ---------------------------------------------------------
+        if (internalActionType === 'refused' || internalActionType === 'administered') {
+            const findExactQuery = `
+                SELECT id, occurred_at 
+                FROM administration_events
+                WHERE prescription_event_id = $1 
+                  AND action_type = $2 
+                  AND status = 'ACTIVE'
+                ORDER BY occurred_at DESC
+                LIMIT 1
+            `;
+            const exactRes = await tenantQuery<{id: string, occurred_at: Date}>(tenantId, findExactQuery, [prescriptionEventId, internalActionType]);
+            if (exactRes.length > 0 && Math.abs(exactRes[0].occurred_at.getTime() - finalOccurredAt.getTime()) < 60000) {
+                return this.getEventById(tenantId, exactRes[0].id);
+            }
+
+            const wipeAllQuery = `
+                UPDATE administration_events
+                SET status = 'CANCELLED', cancellation_reason = 'Superseded by overriding state'
+                WHERE prescription_event_id = $1
+                  AND status = 'ACTIVE'
+            `;
+            await tenantQuery(tenantId, wipeAllQuery, [prescriptionEventId]);
+            linkedEventId = null;
+        }
+
+        // ---------------------------------------------------------
+        // PERFUSION START RULES
+        // ---------------------------------------------------------
+        else if (internalActionType === 'PERFUSION_START') {
+            const wipeNonPerfusionQuery = `
+                UPDATE administration_events
+                SET status = 'CANCELLED', cancellation_reason = 'Superseded by perfusion start'
+                WHERE prescription_event_id = $1
+                  AND action_type IN ('refused', 'administered')
+                  AND status = 'ACTIVE'
+            `;
+            await tenantQuery(tenantId, wipeNonPerfusionQuery, [prescriptionEventId]);
+
+            const findStartQuery = `
+                SELECT id, linked_event_id, occurred_at 
+                FROM administration_events
+                WHERE prescription_event_id = $1 
+                  AND action_type = 'PERFUSION_START' 
+                  AND status = 'ACTIVE'
+                ORDER BY occurred_at DESC
+                LIMIT 1
+            `;
+            const startRes = await tenantQuery<{id: string, linked_event_id: string, occurred_at: Date}>(tenantId, findStartQuery, [prescriptionEventId]);
+
+            if (startRes.length > 0) {
+                const existing = startRes[0];
+                if (Math.abs(existing.occurred_at.getTime() - finalOccurredAt.getTime()) < 60000) {
+                    return this.getEventById(tenantId, existing.id);
+                } else {
+                    const cancelQuery = `
+                        UPDATE administration_events
+                        SET status = 'CANCELLED', cancellation_reason = 'Superseded by slider update'
+                        WHERE linked_event_id = $1
+                          AND status = 'ACTIVE'
+                    `;
+                    await tenantQuery(tenantId, cancelQuery, [existing.linked_event_id]);
+                }
+            }
+            
+            linkedEventId = crypto.randomUUID();
+        } 
+        
+        // ---------------------------------------------------------
+        // PERFUSION END RULES
+        // ---------------------------------------------------------
+        else if (internalActionType === 'PERFUSION_END') {
+            const findEndQuery = `
+                SELECT id, occurred_at
+                FROM administration_events
+                WHERE prescription_event_id = $1
+                  AND action_type = 'PERFUSION_END'
+                  AND status = 'ACTIVE'
+                ORDER BY occurred_at DESC
+                LIMIT 1
+            `;
+            const endRes = await tenantQuery<{id: string, occurred_at: Date}>(tenantId, findEndQuery, [prescriptionEventId]);
+            
+            if (endRes.length > 0) {
+                const existing = endRes[0];
+                if (Math.abs(existing.occurred_at.getTime() - finalOccurredAt.getTime()) < 60000) {
+                    return this.getEventById(tenantId, existing.id);
+                } else {
+                    const cancelEndQuery = `
+                        UPDATE administration_events
+                        SET status = 'CANCELLED', cancellation_reason = 'Superseded by slider update'
+                        WHERE id = $1
+                    `;
+                    await tenantQuery(tenantId, cancelEndQuery, [existing.id]);
+                }
+            }
+
+            const findStartQuery = `
+                SELECT linked_event_id 
+                FROM administration_events
+                WHERE prescription_event_id = $1 
+                  AND action_type = 'PERFUSION_START' 
+                  AND status = 'ACTIVE'
+                ORDER BY occurred_at DESC
+                LIMIT 1
+            `;
+            const startRes = await tenantQuery<{linked_event_id: string}>(tenantId, findStartQuery, [prescriptionEventId]);
+            if (startRes.length > 0 && startRes[0].linked_event_id) {
+                linkedEventId = startRes[0].linked_event_id;
+            } else {
+                throw new Error("Cannot end perfusion: No active PERFUSION_START found to link to.");
+            }
+        }
+
+
+
+        let firstName = null;
+        let lastName = null;
+        if (payload?.performedByUserId) {
+            const userRes = await tenantQuery<{first_name: string, last_name: string}>(
+                tenantId,
+                'SELECT first_name, last_name FROM auth.users WHERE user_id = $1',
+                [payload.performedByUserId]
+            );
+            if (userRes.length > 0) {
+                firstName = userRes[0].first_name;
+                lastName = userRes[0].last_name;
+            }
         }
 
         const query = `
             INSERT INTO administration_events (
                 tenant_id, prescription_event_id, action_type, occurred_at,
-                actual_start_at, actual_end_at, performed_by, performed_by_user_id, note
-            ) VALUES ($1, $2, $3, now(), $4, $5, $6, $7, $8)
+                actual_start_at, actual_end_at, performed_by_user_id, note,
+                status, linked_event_id, performed_by_first_name, performed_by_last_name
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'ACTIVE', $9, $10, $11)
             RETURNING *
         `;
         const res = await tenantQuery<any>(tenantId, query, [
             tenantId,
             prescriptionEventId,
-            actionType,
+            internalActionType,
+            finalOccurredAt,
             payload?.actualStartAt || null,
             payload?.actualEndAt || null,
-            payload?.performedBy || null,
             payload?.performedByUserId || null,
-            payload?.note || null
+            payload?.note || null,
+            linkedEventId,
+            firstName,
+            lastName
         ]);
 
         const row = res[0];
@@ -527,11 +706,14 @@ export class PrescriptionService {
             prescription_event_id: row.prescription_event_id,
             action_type: row.action_type,
             occurred_at: row.occurred_at,
-            actual_start_at: row.actual_start_at,
             actual_end_at: row.actual_end_at,
-            performed_by: row.performed_by,
             performed_by_user_id: row.performed_by_user_id,
+            performed_by_first_name: row.performed_by_first_name,
+            performed_by_last_name: row.performed_by_last_name,
             note: row.note,
+            status: row.status,
+            cancellation_reason: row.cancellation_reason,
+            linked_event_id: row.linked_event_id,
             created_at: row.created_at
         };
     }
@@ -554,11 +736,62 @@ export class PrescriptionService {
             occurred_at: row.occurred_at,
             actual_start_at: row.actual_start_at,
             actual_end_at: row.actual_end_at,
-            performed_by: row.performed_by,
             performed_by_user_id: row.performed_by_user_id,
+            performed_by_first_name: row.performed_by_first_name,
+            performed_by_last_name: row.performed_by_last_name,
             note: row.note,
+            status: row.status,
+            cancellation_reason: row.cancellation_reason,
+            linked_event_id: row.linked_event_id,
             created_at: row.created_at
         }));
+    }
+
+    /**
+     * Cancel an administration event safely.
+     * Uses the flat `linked_event_id` to automatically sweep linked END events 
+     * when a START event is cancelled, avoiding cyclic recursion.
+     */
+    async cancelAdministrationEvent(
+        tenantId: string,
+        adminEventId: string,
+        cancellationReason?: string
+    ): Promise<void> {
+        
+        // 1. Fetch the target event
+        const getQuery = `SELECT status, action_type, linked_event_id FROM administration_events WHERE id = $1`;
+        const getRes = await tenantQuery<{status: string, action_type: string, linked_event_id: string | null}>(tenantId, getQuery, [adminEventId]);
+        
+        if (getRes.length === 0) throw new Error("Event not found");
+        const event = getRes[0];
+
+        if (event.status === 'CANCELLED') {
+            throw new Error("Event is already cancelled.");
+        }
+
+        // 2. Perform Flat Atomic Cancellation
+        let cancelQuery = "";
+        let params: any[] = [];
+
+        if (event.action_type === 'PERFUSION_START' && event.linked_event_id) {
+            // Cancel the START and its associated END in one atomic sweep using the flat group ID
+            cancelQuery = `
+                UPDATE administration_events 
+                SET status = 'CANCELLED', cancellation_reason = $1
+                WHERE linked_event_id = $2 AND status = 'ACTIVE'
+            `;
+            params = [cancellationReason || null, event.linked_event_id];
+        } else {
+            // Cancel a normal event OR an isolated END event
+            cancelQuery = `
+                UPDATE administration_events 
+                SET status = 'CANCELLED', cancellation_reason = $1
+                WHERE id = $2 AND status = 'ACTIVE'
+            `;
+            params = [cancellationReason || null, adminEventId];
+        }
+
+        await tenantQuery(tenantId, cancelQuery, params);
     }
 }
 

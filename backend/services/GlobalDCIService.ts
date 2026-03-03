@@ -6,6 +6,7 @@ export interface DCI {
     atcCode?: string;
     synonyms?: { id: string; synonym: string }[];
     therapeuticClass?: string;
+    careCategoryId?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -31,6 +32,7 @@ export class GlobalDCIService {
             name: r.name,
             atcCode: r.atc_code,
             therapeuticClass: r.therapeutic_class,
+            careCategoryId: r.care_category_id,
             synonyms: synonyms,
             createdAt: r.created_at,
             updatedAt: r.created_at
@@ -62,13 +64,14 @@ export class GlobalDCIService {
         await globalQuery('BEGIN');
         try {
             await globalQuery(`
-                INSERT INTO global_dci (id, name, atc_code, therapeutic_class, created_at)
-                VALUES ($1, $2, $3, $4, $5)
+                INSERT INTO global_dci (id, name, atc_code, therapeutic_class, care_category_id, created_at)
+                VALUES ($1, $2, $3, $4, $5, $6)
             `, [
                 newId, 
                 normalizedName, 
                 data.atcCode?.trim() || null, 
                 data.therapeuticClass?.trim() || null, 
+                data.careCategoryId || null,
                 now
             ]);
 
@@ -94,6 +97,7 @@ export class GlobalDCIService {
                 atcCode: data.atcCode?.trim(),
                 synonyms: newSynonyms,
                 therapeuticClass: data.therapeuticClass,
+                careCategoryId: data.careCategoryId,
                 createdAt: now,
                 updatedAt: now
             };
@@ -118,14 +122,15 @@ export class GlobalDCIService {
 
         const atcCode = updates.atcCode !== undefined ? updates.atcCode?.trim() : current.atcCode;
         const therapeuticClass = updates.therapeuticClass !== undefined ? updates.therapeuticClass?.trim() : current.therapeuticClass;
+        const careCategoryId = updates.careCategoryId !== undefined ? updates.careCategoryId : current.careCategoryId;
         
         await globalQuery('BEGIN');
         try {
             await globalQuery(`
                 UPDATE global_dci 
-                SET name=$1, atc_code=$2, therapeutic_class=$3
-                WHERE id=$4
-            `, [normalizedName, atcCode || null, therapeuticClass || null, id]);
+                SET name=$1, atc_code=$2, therapeutic_class=$3, care_category_id=$4
+                WHERE id=$5
+            `, [normalizedName, atcCode || null, therapeuticClass || null, careCategoryId || null, id]);
 
             let newSynonyms = current.synonyms || [];
             if (updates.synonyms !== undefined) {
@@ -151,6 +156,7 @@ export class GlobalDCIService {
                 name: normalizedName,
                 atcCode: atcCode,
                 therapeuticClass: therapeuticClass,
+                careCategoryId: careCategoryId,
                 synonyms: newSynonyms,
                 updatedAt: new Date().toISOString()
             };

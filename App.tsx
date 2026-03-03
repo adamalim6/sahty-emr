@@ -17,6 +17,8 @@ import { AuthProvider, useAuth, UserType } from './context/AuthContext';
 import { Login } from './components/Login';
 import { SuperAdminLayout } from './components/SuperAdmin/SuperAdminLayout';
 import { ActesPage } from './components/SuperAdmin/ActesPage';
+import { FamillesPage } from './components/SuperAdmin/FamillesPage';
+import { SousFamillesPage } from './components/SuperAdmin/SousFamillesPage';
 import { ClientsPage } from './components/SuperAdmin/ClientsPage';
 import { ClientDetailPage } from './components/SuperAdmin/ClientDetailPage';
 import { OrganismesPage } from './components/SuperAdmin/OrganismesPage';
@@ -136,6 +138,8 @@ const App: React.FC = () => {
              <Route path="clients/:id" element={<ClientDetailPage />} />
              <Route path="organismes" element={<OrganismesPage />} />
              <Route path="actes" element={<ActesPage />} />
+             <Route path="familles" element={<FamillesPage />} />
+             <Route path="sous-familles" element={<SousFamillesPage />} />
              <Route path="roles" element={<SuperAdminRolesPage />} />
              <Route path="roles/:id" element={<RoleDetailPage />} />
              <Route path="suppliers" element={<SuppliersPage />} />

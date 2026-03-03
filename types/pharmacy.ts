@@ -109,6 +109,7 @@ export interface DCI {
     atcCode?: string;
     synonyms?: string[];
     therapeuticClass?: string;
+    careCategoryId?: string;
     createdAt: string;
     updatedAt: string;
 }

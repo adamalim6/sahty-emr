@@ -32,6 +32,17 @@ services:
       postgres:
         condition: service_healthy
 
+  whoicd:
+    image: whoicd/icd-api:latest
+    container_name: sahty_icd_api
+    restart: unless-stopped
+    ports:
+      - "8090:80"
+    environment:
+      acceptLicense: "true"
+      saveAnalytics: "false"
+      include: "2024-01_en-fr"
+
 volumes:
   pgdata:
   pgadmin_data:

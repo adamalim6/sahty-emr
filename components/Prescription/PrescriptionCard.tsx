@@ -129,7 +129,11 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
         ? getProcedureDescription(formData)
         : getPosologyText(formData);
 
-    if (!formData.molecule) {
+    const displayLabel = formData.prescriptionType === 'biology' ? (formData.libelle_sih || formData.molecule) : 
+                         formData.prescriptionType === 'care' || formData.prescriptionType === 'imagery' ? (formData.libelle_sih || formData.molecule) :
+                         formData.molecule;
+
+    if (!displayLabel) {
         return (
             <div className="flex flex-col items-center text-center text-slate-400 py-4">
                 <Activity className="w-8 h-8 mb-2 opacity-50" />
@@ -199,7 +203,7 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
                 <div className="flex items-start justify-between">
                     <div>
                         <div className="flex items-center gap-2">
-                            <h2 className="text-lg font-bold text-blue-800">{formData.molecule}</h2>
+                            <h2 className="text-lg font-bold text-blue-800">{displayLabel}</h2>
                             {renderStatusBadge()}
                         </div>
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 mt-1">
@@ -238,7 +242,7 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
                 <div className="flex items-start justify-between">
                     <div>
                         <div className="flex items-center gap-2">
-                            <h2 className="text-lg font-bold text-purple-800">{formData.molecule}</h2>
+                            <h2 className="text-lg font-bold text-purple-800">{displayLabel}</h2>
                             {renderStatusBadge()}
                         </div>
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 mt-1">
@@ -277,7 +281,7 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
                 <div className="flex items-start justify-between">
                     <div>
                         <div className="flex items-center gap-2">
-                            <h2 className="text-lg font-bold text-orange-800">{formData.molecule}</h2>
+                            <h2 className="text-lg font-bold text-orange-800">{displayLabel}</h2>
                             {renderStatusBadge()}
                         </div>
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 mt-1">
@@ -316,7 +320,7 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
                 <div className="flex items-start justify-between">
                     <div>
                         <div className="flex items-center gap-2">
-                            <h2 className="text-lg font-bold text-rose-800">{formData.molecule}</h2>
+                            <h2 className="text-lg font-bold text-rose-800">{displayLabel}</h2>
                             {renderStatusBadge()}
                         </div>
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-rose-100 text-rose-800 mt-1">
@@ -434,10 +438,10 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
             <div className="flex items-start justify-between">
                 <div>
                     <div className="flex items-center gap-2">
-                        <h2 className="text-lg font-bold text-slate-800">{formData.commercialName || formData.molecule}</h2>
+                        <h2 className="text-lg font-bold text-slate-800">{formData.commercialName || displayLabel}</h2>
                         {renderStatusBadge()}
                     </div>
-                    <p className="text-sm text-slate-500">{formData.commercialName ? `(${formData.molecule})` : 'Générique'}</p>
+                    <p className="text-sm text-slate-500">{formData.commercialName ? `(${displayLabel})` : 'Générique'}</p>
                 </div>
                 <div className="bg-slate-200 rounded-full p-2">
                     <Pill className="w-5 h-5 text-slate-600" />

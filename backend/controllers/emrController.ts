@@ -361,6 +361,16 @@ export const getTenantCountries = async (req: Request, res: Response) => {
     }
 };
 
+export const getTenantCareCategories = async (req: Request, res: Response) => {
+    try {
+        const { tenantId } = getContext(req);
+        const categories = await emrService.getCareCategories(tenantId);
+        res.json(categories);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 export const getTenantIdentityDocumentTypes = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);

@@ -19,13 +19,13 @@ export class GlobalCareCategoryService {
 
     async getCategories(): Promise<CareCategory[]> {
         const pool = getGlobalPool();
-        const res = await pool.query('SELECT * FROM reference.care_categories ORDER BY sort_order ASC, label ASC');
+        const res = await pool.query('SELECT * FROM public.care_categories ORDER BY sort_order ASC, label ASC');
         return res.rows.map(this.mapRow);
     }
 
     async getCategoryById(id: string): Promise<CareCategory | null> {
         const pool = getGlobalPool();
-        const res = await pool.query('SELECT * FROM reference.care_categories WHERE id = $1', [id]);
+        const res = await pool.query('SELECT * FROM public.care_categories WHERE id = $1', [id]);
         return res.rows.length ? this.mapRow(res.rows[0]) : null;
     }
 
@@ -33,7 +33,7 @@ export class GlobalCareCategoryService {
         const pool = getGlobalPool();
         const id = uuidv4();
         const res = await pool.query(`
-            INSERT INTO reference.care_categories (id, code, label, is_active, sort_order)
+            INSERT INTO public.care_categories (id, code, label, is_active, sort_order)
             VALUES ($1, $2, $3, $4, $5)
             RETURNING *
         `, [id, data.code, data.label, data.isActive !== false, data.sortOrder || 0]);
@@ -71,7 +71,7 @@ export class GlobalCareCategoryService {
         values.push(id);
         
         const res = await pool.query(`
-            UPDATE reference.care_categories 
+            UPDATE public.care_categories 
             SET ${updates.join(', ')} 
             WHERE id = $${idx} 
             RETURNING *

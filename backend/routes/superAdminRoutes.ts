@@ -8,6 +8,11 @@ import {
     getGroups, getGroup, createGroup, updateGroup, deleteGroup,
     updateTenantReferenceSchema, updateAllReferenceSchemas
 } from '../controllers/superAdminController';
+import { 
+    getGlobalActes, createGlobalActe, updateGlobalActe, deleteGlobalActe,
+    getFamilles, createFamille, updateFamille, deleteFamille,
+    getSousFamilles, createSousFamille, updateSousFamille, deleteSousFamille
+} from '../controllers/superadmin.globalActes.controller';
 import { loginGlobalAdmin } from '../controllers/globalAuthController';
 import { authenticateGlobalAdmin } from '../middleware/globalAuthMiddleware';
 import {
@@ -38,6 +43,25 @@ router.delete('/tenants/:id', authenticateGlobalAdmin, deleteTenant);
 
 // Backwards-compat aliases (legacy /clients routes)
 router.get('/clients', authenticateGlobalAdmin, getTenants);
+
+// Reference: Actes
+router.get('/reference/actes', authenticateGlobalAdmin, getGlobalActes);
+router.post('/reference/actes', authenticateGlobalAdmin, createGlobalActe);
+router.put('/reference/actes/:id', authenticateGlobalAdmin, updateGlobalActe);
+router.delete('/reference/actes/:id', authenticateGlobalAdmin, deleteGlobalActe);
+
+// Reference: Familles
+router.get('/reference/familles', authenticateGlobalAdmin, getFamilles);
+router.post('/reference/familles', authenticateGlobalAdmin, createFamille);
+router.put('/reference/familles/:id', authenticateGlobalAdmin, updateFamille);
+router.delete('/reference/familles/:id', authenticateGlobalAdmin, deleteFamille);
+
+// Reference: Sous-Familles
+router.get('/reference/sous-familles', authenticateGlobalAdmin, getSousFamilles);
+router.post('/reference/sous-familles', authenticateGlobalAdmin, createSousFamille);
+router.put('/reference/sous-familles/:id', authenticateGlobalAdmin, updateSousFamille);
+router.delete('/reference/sous-familles/:id', authenticateGlobalAdmin, deleteSousFamille);
+
 router.post('/clients', authenticateGlobalAdmin, createTenant);
 router.get('/clients/:id', authenticateGlobalAdmin, getTenantDetails);
 router.put('/clients/:id', authenticateGlobalAdmin, updateTenant);

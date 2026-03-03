@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { FormData, ScheduleData, PrescriptionType, DoseScheduleResult } from './types';
 import { PrescriptionCard } from './PrescriptionCard';
+import { api } from '../../services/api';
 import { durationToDecimal, formatDuration, generateDoseSchedule } from './utils';
 import { DoseEditor } from './DoseEditor';
 
@@ -18,17 +19,7 @@ interface Dose {
     skipped?: boolean;
 }
 
-// --- CONSTANTS ---
-const IMAGERY_EXAMS = [
-    'Radio Thorax', 'Radio Abdomen Sans Préparation (ASP)',
-    'Radio Rachis Cervical', 'Radio Rachis Dorsal', 'Radio Rachis Lombaire',
-    'Radio Bassin', 'Radio Hanche', 'Radio Genou', 'Radio Cheville', 'Radio Pied',
-    'Radio Main', 'Radio Poignet', 'Radio Coude', 'Radio Epaule',
-    'Echographie Abdominale', 'Echographie Pelvienne', 'Echographie Abdomino-pelvienne',
-    'Echographie Thyroïdienne', 'Echographie Cervicale', 'Echographie Doppler Veineux MI',
-    'Scanner Cérébral', 'Scanner Thoracique', 'Scanner Abdomino-pelvien', 'Scanner TAP', 'Scanner Rachis',
-    'IRM Cérébrale', 'IRM Médullaire', 'IRM Genou', 'IRM Epaule', 'IRM Pelvienne'
-];
+// Constants
 
 const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 const MONTHS_FR = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
@@ -75,9 +66,11 @@ interface ImageryPrescriptionFormProps {
 
 export const ImageryPrescriptionForm: React.FC<ImageryPrescriptionFormProps> = ({ onSave }) => {
     // --- STATE ---
-    const [selectedExams, setSelectedExams] = useState<string[]>([]);
+    const [selectedExams, setSelectedExams] = useState<{ id: string, label: string }[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [showSuggestions, setShowSuggestions] = useState(false);
+    const [searchResults, setSearchResults] = useState<{ id: string, label: string }[]>([]);
+    const [isLoadingSearchResults, setIsLoadingSearchResults] = useState(false);
     const [comment, setComment] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [warning, setWarning] = useState<string | null>(null);
@@ -212,9 +205,29 @@ export const ImageryPrescriptionForm: React.FC<ImageryPrescriptionFormProps> = (
     const [tempSelectedDate, setTempSelectedDate] = useState<Date | null>(null);
     const [tempTime, setTempTime] = useState("");
 
-    const filteredExams = IMAGERY_EXAMS.filter(exam =>
-        exam.toLowerCase().includes(searchTerm.toLowerCase()) &&
-        !selectedExams.includes(exam)
+    useEffect(() => {
+        if (!searchTerm) {
+            setSearchResults([]);
+            return;
+        }
+
+        const delayDebounceFn = setTimeout(async () => {
+            setIsLoadingSearchResults(true);
+            try {
+                const res = await api.getTenantActes({ family: 'Imagerie', search: searchTerm, limit: 20 });
+                setSearchResults(res.data);
+            } catch (err) {
+                console.error("Error fetching imagery actes", err);
+            } finally {
+                setIsLoadingSearchResults(false);
+            }
+        }, 300); // 300ms debounce
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchTerm]);
+
+    const filteredExams = searchResults.filter(exam =>
+        !selectedExams.some(e => e.id === exam.id)
     );
 
     const isSpecificTimeRestricted = prescriptionType === 'punctual-frequency' && scheduleData.mode === 'specific-time' && scheduleData.specificTimes.length > 0;
@@ -222,18 +235,19 @@ export const ImageryPrescriptionForm: React.FC<ImageryPrescriptionFormProps> = (
 
     // --- HANDLERS ---
 
-    const handleToggleExam = (exam: string) => {
-        if (selectedExams.includes(exam)) {
-            setSelectedExams(prev => prev.filter(e => e !== exam));
+    const handleToggleExam = (exam: { id: string, label: string }) => {
+        if (selectedExams.some(e => e.id === exam.id)) {
+            setSelectedExams(prev => prev.filter(e => e.id !== exam.id));
         } else {
             setSelectedExams(prev => [...prev, exam]);
             setSearchTerm('');
+            setShowSuggestions(false);
         }
         setError(null);
     };
 
-    const handleRemoveExam = (exam: string) => {
-        setSelectedExams(prev => prev.filter(e => e !== exam));
+    const handleRemoveExam = (examId: string) => {
+        setSelectedExams(prev => prev.filter(e => e.id !== examId));
     };
 
     // Schedule Handlers
@@ -499,12 +513,13 @@ export const ImageryPrescriptionForm: React.FC<ImageryPrescriptionFormProps> = (
             return;
         }
 
-        // Proceed if valid
         const manualAdjustmentsRecord = Object.fromEntries(manuallyAdjustedEvents);
 
         const prescriptions: FormData[] = selectedExams.map(exam => ({
-            molecule: exam,
-            commercialName: exam,
+            molecule: exam.label, // Fallback string representation
+            commercialName: exam.label,
+            acte_id: exam.id, // NEW: Include the UUID representation
+            libelle_sih: exam.label, // NEW: Target taxonomy name
             prescriptionType: 'imagery' as const,
             qty: '--',
             unit: '',
@@ -528,7 +543,7 @@ export const ImageryPrescriptionForm: React.FC<ImageryPrescriptionFormProps> = (
     };
 
     const previewData: FormData = {
-        molecule: selectedExams.length > 0 ? selectedExams.join(', ') : "Aucun examen sélectionné",
+        molecule: selectedExams.length > 0 ? selectedExams.map(e => e.label).join(', ') : "Aucun examen sélectionné",
         commercialName: "",
         prescriptionType: 'imagery' as const,
         qty: "--", unit: "", route: "",
@@ -634,18 +649,29 @@ export const ImageryPrescriptionForm: React.FC<ImageryPrescriptionFormProps> = (
                                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-purple-600 transition-colors" />
 
                                 {/* Suggestions */}
-                                {showSuggestions && searchTerm.length > 0 && filteredExams.length > 0 && (
+                                {showSuggestions && searchTerm.length > 0 && (
                                     <div className="absolute z-10 w-full bg-white border border-slate-200 rounded-xl shadow-lg mt-1 max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2">
-                                        {filteredExams.map((exam) => (
-                                            <button
-                                                type="button"
-                                                key={exam}
-                                                onClick={() => handleToggleExam(exam)}
-                                                className="block w-full text-left px-4 py-3 text-sm text-slate-700 hover:bg-purple-50 hover:text-purple-700 transition-colors border-b border-slate-100 last:border-0 font-medium"
-                                            >
-                                                {exam}
-                                            </button>
-                                        ))}
+                                        {isLoadingSearchResults ? (
+                                            <div className="px-4 py-4 text-sm text-slate-500 text-center flex items-center justify-center gap-2">
+                                                <Activity className="w-4 h-4 animate-spin text-purple-600" />
+                                                <span>Recherche en cours...</span>
+                                            </div>
+                                        ) : filteredExams.length > 0 ? (
+                                            filteredExams.map((exam) => (
+                                                <button
+                                                    type="button"
+                                                    key={exam.id}
+                                                    onClick={() => handleToggleExam(exam)}
+                                                    className="block w-full text-left px-4 py-3 text-sm text-slate-700 hover:bg-purple-50 hover:text-purple-700 transition-colors border-b border-slate-100 last:border-0 font-medium"
+                                                >
+                                                    {exam.label}
+                                                </button>
+                                            ))
+                                        ) : (
+                                            <div className="px-4 py-4 text-sm text-slate-500 text-center">
+                                                Aucun acte trouvé pour "{searchTerm}"
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -655,11 +681,11 @@ export const ImageryPrescriptionForm: React.FC<ImageryPrescriptionFormProps> = (
                         {selectedExams.length > 0 && (
                             <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2">
                                 {selectedExams.map(exam => (
-                                    <div key={exam} className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg border border-purple-100 shadow-sm">
-                                        <span className="text-sm font-semibold">{exam}</span>
+                                    <div key={exam.id} className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg border border-purple-100 shadow-sm">
+                                        <span className="text-sm font-semibold">{exam.label}</span>
                                         <button
                                             type="button"
-                                            onClick={() => handleRemoveExam(exam)}
+                                            onClick={() => handleRemoveExam(exam.id)}
                                             className="p-0.5 hover:bg-purple-100 rounded-full transition-colors"
                                         >
                                             <X className="w-3.5 h-3.5" />

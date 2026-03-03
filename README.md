@@ -17,6 +17,7 @@ Complete hospital Electronic Medical Records (EMR) system with integrated pharma
 ### Frontend Setup
 
 1. Install dependencies:
+
    ```bash
    npm install
    ```
@@ -24,6 +25,7 @@ Complete hospital Electronic Medical Records (EMR) system with integrated pharma
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 
 3. Run the development server:
+
    ```bash
    npm run dev
    ```
@@ -36,11 +38,13 @@ Complete hospital Electronic Medical Records (EMR) system with integrated pharma
 ### Backend Setup
 
 1. Navigate to backend directory:
+
    ```bash
    cd backend
    ```
 
 2. Install dependencies:
+
    ```bash
    npm install
    ```
@@ -50,10 +54,11 @@ Complete hospital Electronic Medical Records (EMR) system with integrated pharma
    npm run dev
    ```
 
-## Architecture
+## Architecture & Security Invariants
 
+- **Identity**: All clinical write operations derive actor identity exclusively from backend-authenticated JWT context. Frontend-supplied identity fields are ignored.
 - **Frontend**: React + TypeScript + Vite
-- **Backend**: Node.js + Express + TypeScript
+- **Backend**: Node.js + Express + TypeScript + PostgreSQL (Multi-tenant)
 - **Styling**: Custom CSS
 - **AI Integration**: Google Gemini API
 

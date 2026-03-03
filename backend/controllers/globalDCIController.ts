@@ -6,7 +6,7 @@ import { referenceDataService } from '../services/referenceDataService';
 
 export const getAllDCIs = async (req: Request, res: Response) => {
     try {
-        const tenantId = (req as any).user?.tenantId;
+        const tenantId = (req as any).auth?.tenantId || (req as any).user?.client_id || (req as any).user?.tenantId;
         const isTenantUser = tenantId && tenantId !== 'GLOBAL';
 
         if (isTenantUser) {

@@ -209,11 +209,30 @@ CREATE TABLE IF NOT EXISTS reference.countries (
     name       TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS reference.sih_familles (
+    id uuid primary key default gen_random_uuid(),
+    code text not null unique,
+    libelle text not null,
+    actif boolean not null default true,
+    created_at timestamptz not null default now()
+);
+
+CREATE TABLE IF NOT EXISTS reference.sih_sous_familles (
+    id uuid primary key default gen_random_uuid(),
+    famille_id uuid not null references reference.sih_familles(id) on delete restrict,
+    code text not null,
+    libelle text not null,
+    actif boolean not null default true,
+    created_at timestamptz not null default now(),
+    unique (famille_id, code)
+);
+
 CREATE TABLE IF NOT EXISTS reference.global_actes (
-    code_sih       TEXT PRIMARY KEY,
+    id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code_sih       TEXT NOT NULL UNIQUE,
     libelle_sih    TEXT NOT NULL,
-    famille_sih    TEXT,
-    sous_famille_sih TEXT,
+    famille_id     UUID REFERENCES reference.sih_familles(id) on delete set null,
+    sous_famille_id UUID REFERENCES reference.sih_sous_familles(id) on delete set null,
     code_ngap      TEXT,
     libelle_ngap   TEXT,
     cotation_ngap  TEXT,
@@ -221,7 +240,23 @@ CREATE TABLE IF NOT EXISTS reference.global_actes (
     libelle_ccam   TEXT,
     type_acte      TEXT,
     duree_moyenne  INTEGER,
-    actif          BOOLEAN DEFAULT TRUE
+    actif          BOOLEAN DEFAULT TRUE,
+    catalog_version INTEGER NOT NULL DEFAULT 1,
+    bio_grise BOOLEAN,
+    bio_grise_prescription BOOLEAN,
+    bio_delai_resultats_heures INTEGER,
+    bio_cle_facturation TEXT,
+    bio_nombre_b INTEGER,
+    bio_nombre_b1 INTEGER,
+    bio_nombre_b2 INTEGER,
+    bio_nombre_b3 INTEGER,
+    bio_nombre_b4 INTEGER,
+    bio_instructions_prelevement TEXT,
+    bio_commentaire TEXT,
+    bio_commentaire_prescription TEXT,
+    default_specimen_type TEXT,
+    is_lims_enabled BOOLEAN DEFAULT FALSE,
+    lims_template_code TEXT
 );
 
 CREATE TABLE IF NOT EXISTS reference.global_atc (

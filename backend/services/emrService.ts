@@ -347,6 +347,10 @@ export class EmrService {
         return await tenantQuery(tenantId, 'SELECT * FROM reference.countries ORDER BY name', []);
     }
 
+    async getCareCategories(tenantId: string) {
+        return await tenantQuery(tenantId, 'SELECT id, code, label, is_active, sort_order FROM reference.care_categories WHERE is_active = TRUE ORDER BY sort_order ASC, label ASC', []);
+    }
+
     async getIdentityDocumentTypes(tenantId: string) {
         // Hardcoded list to avoid missing table issues during refactor
         return [
