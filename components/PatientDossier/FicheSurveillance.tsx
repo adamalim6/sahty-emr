@@ -511,6 +511,7 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
   const [activeFlowsheetId, setActiveFlowsheetId] = useState<string | null>(null);
   const [routes, setRoutes] = useState<any[]>([]);
   const [unitsList, setUnitsList] = useState<any[]>([]);
+  const [bloodBags, setBloodBags] = useState<any[]>([]);
   const [isMobile, setIsMobile] = useState(false);
   const [activeOnly, setActiveOnly] = useState(true);
 
@@ -523,11 +524,12 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
     slotTime: string,
     duration: number, // 0 for bolus, >0 for perfusion
     activePerfusionEvent: any | null, // The 'started' event if it's currently running
-    historyEvents: any[] // The local chunk of administration actions previously recorded
-  }>({ isOpen: false, prescriptionId: '', eventId: '', prescriptionName: '', slotTime: '', duration: 0, activePerfusionEvent: null, historyEvents: [] });
+    historyEvents: any[], // The local chunk of administration actions previously recorded
+    isTransfusion?: boolean
+  }>({ isOpen: false, prescriptionId: '', eventId: '', prescriptionName: '', slotTime: '', duration: 0, activePerfusionEvent: null, historyEvents: [], isTransfusion: false });
 
   const closeAdminModal = () => {
-    setAdminModal({ isOpen: false, prescriptionId: '', eventId: '', prescriptionName: '', slotTime: '', duration: 0, activePerfusionEvent: null, historyEvents: [] });
+    setAdminModal({ isOpen: false, prescriptionId: '', eventId: '', prescriptionName: '', slotTime: '', duration: 0, activePerfusionEvent: null, historyEvents: [], isTransfusion: false });
   };
 
   const handleCancelAdminEvent = async (adminEventId: string, reason?: string) => {
@@ -614,6 +616,13 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
           setExecutions(allExecutions);
         } catch (error) {
           console.error("Failed to fetch prescriptions global data", error);
+        }
+        
+        try {
+          const bagsData = await api.getTransfusionBags(patientId);
+          setBloodBags(bagsData);
+        } catch (err) {
+          console.error("Failed to fetch transfusion bags", err);
         }
       }
       try {
@@ -838,9 +847,15 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
 
             const isAct = data.prescriptionType === 'biology' || data.prescriptionType === 'imagery' || data.prescriptionType === 'care';
 
+            const TRANSFUSION_PRODUCT_MAPPING: Record<string, string> = {
+                CGR: 'Concentré de Globules Rouges',
+                PFC: 'Plasma Frais Congelé',
+                CPA: 'Concentré Plaquettaire'
+            };
+
             const rowLabel = isAct
                 ? (data.libelle_sih || 'Examen/Acte Inconnu') 
-                : (data.blood_product_type || data.commercialName || 'Produit Inconnu');
+                : (data.prescriptionType === 'transfusion' ? (TRANSFUSION_PRODUCT_MAPPING[data.blood_product_type as string] || data.blood_product_type || data.molecule) : (data.commercialName || 'Produit Inconnu'));
 
             // THE LEFT COLUMN METADATA: Content for the sticky left column
             const epicHeader = (
@@ -1179,14 +1194,17 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
       for (const p of payloads) {
         await api.recordExecution(adminModal.prescriptionId, {
            prescriptionId: adminModal.prescriptionId,
-           eventId: adminModal.eventId, // <-- Strict requirement now
+           assigned_prescription_event_id: adminModal.eventId,
            patientId: patientId, // Fallback if recordExecution expects it
            action_type: p.action_type,
            occurred_at: p.occurred_at,
            actual_start_at: p.actual_start_at,
            actual_end_at: p.actual_end_at,
            planned_date: pDate.toISOString(),
-           justification: p.justification
+           justification: p.justification,
+           transfusion: p.transfusion,
+           administered_bags: p.administered_bags,
+           linked_event_id: p.linked_event_id
         });
       }
 
@@ -1453,7 +1471,8 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
                                                             slotTime: te.plannedDate,
                                                             duration: durationMins,
                                                             activePerfusionEvent: null,
-                                                            historyEvents: te.administrationEvents || []
+                                                            historyEvents: te.administrationEvents || [],
+                                                            isTransfusion: row.prescriptionData?.prescriptionType === 'transfusion'
                                                         });
                                                     }
                                                 }}
@@ -1490,7 +1509,8 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
                                                             slotTime: te.plannedDate,
                                                             duration: durationMins,
                                                             activePerfusionEvent: isOngoing ? startedEv : null,
-                                                            historyEvents: te.administrationEvents || []
+                                                            historyEvents: te.administrationEvents || [],
+                                                            isTransfusion: row.prescriptionData?.prescriptionType === 'transfusion'
                                                         });
                                                     }
                                                 }}
@@ -1536,7 +1556,8 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
                                                         slotTime: te.plannedDate,
                                                         duration: durationMins,
                                                         activePerfusionEvent: isOngoing ? startedEv : null,
-                                                        historyEvents: te.administrationEvents || []
+                                                        historyEvents: te.administrationEvents || [],
+                                                        isTransfusion: row.prescriptionData?.prescriptionType === 'transfusion'
                                                     });
                                                 }}
                                             />
@@ -1571,7 +1592,8 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
                                         slotTime: item.te.plannedDate,
                                         duration: 0,
                                         activePerfusionEvent: null,
-                                        historyEvents: item.te.administrationEvents || []
+                                        historyEvents: item.te.administrationEvents || [],
+                                        isTransfusion: row.prescriptionData?.prescriptionType === 'transfusion'
                                     });
                                 };
 
@@ -2055,6 +2077,9 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
         duration={adminModal.duration}
         activePerfusionEvent={adminModal.activePerfusionEvent}
         historyEvents={adminModal.historyEvents}
+        isTransfusion={adminModal.isTransfusion}
+        availableBags={bloodBags}
+        eventId={adminModal.eventId}
       />
 
     </div>

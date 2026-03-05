@@ -20,15 +20,22 @@ import { FormData, Prescription } from './types';
 import { getPosologyText, formatDuration, generateDoseSchedule } from './utils';
 import { ScheduleDetailsModal } from './ScheduleDetailsModal';
 
+const TRANSFUSION_PRODUCT_MAPPING: Record<string, string> = {
+  CGR: 'Concentré de Globules Rouges',
+  PFC: 'Plasma Frais Congelé',
+  CPA: 'Concentré Plaquettaire'
+};
+
 interface PrescriptionCardProps {
     formData: FormData;
     extraContent?: React.ReactNode;
     manuallyAdjustedEvents?: Map<string, string>;
     createdBy?: string;
     prescription?: Prescription;
+    unitsList?: any[];
 }
 
-export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, extraContent, manuallyAdjustedEvents, createdBy, prescription }) => {
+export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, extraContent, manuallyAdjustedEvents, createdBy, prescription, unitsList }) => {
     const [isScheduleModalOpen, setIsScheduleModalOpen] = React.useState(false);
 
     const { schedule, schedule_type, adminMode } = formData;
@@ -129,7 +136,10 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
         ? getProcedureDescription(formData)
         : getPosologyText(formData);
 
-    const displayLabel = formData.prescriptionType === 'biology' ? (formData.libelle_sih || formData.molecule) : 
+    const displayLabel = formData.prescriptionType === 'transfusion' ? (
+                            TRANSFUSION_PRODUCT_MAPPING[formData.blood_product_type as string] || formData.blood_product_type || formData.molecule
+                         ) :
+                         formData.prescriptionType === 'biology' ? (formData.libelle_sih || formData.molecule) : 
                          formData.prescriptionType === 'care' || formData.prescriptionType === 'imagery' ? (formData.libelle_sih || formData.molecule) :
                          formData.molecule;
 
@@ -333,7 +343,14 @@ export const PrescriptionCard: React.FC<PrescriptionCardProps> = ({ formData, ex
                 </div>
 
                 <div className="flex items-center gap-3 text-sm text-rose-900 bg-rose-50/50 p-3 rounded-lg border border-rose-100 shadow-sm">
-                    <span className="font-bold text-rose-700">{formData.qty === '--' ? '0' : formData.qty} {formData.unit}</span>
+                    <span className="font-bold text-rose-700">
+                        {formData.qty === '--' ? '0' : formData.qty} {(() => {
+                            if (!formData.unit_id) return formData.unit || 'poche(s)';
+                            const u = unitsList?.find((u: any) => u.id === formData.unit_id);
+                            if (!u) return formData.unit || 'poche(s)';
+                            return Number(formData.qty) > 1 ? (u.plural_label || u.label) : u.label;
+                        })()}
+                    </span>
                     <span className="text-rose-200">|</span>
                     <span className="font-medium">{formData.route}</span>
                 </div>

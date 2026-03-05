@@ -143,4 +143,14 @@ router.patch('/diagnoses/:id/reactivate', requireTenant, reactivateDiagnosis);
 router.get('/patients/:patientId/surveillance/timeline', requireTenant, getSurveillanceTimeline);
 router.post('/patients/:patientId/surveillance/cell', requireTenant, updateSurveillanceCell);
 
+import { listBloodBags, createBloodBag, discardBloodBag, getTimeline as getTransfusionTimeline } from '../controllers/transfusionController';
+
+// ----------------------------------------------------------------------
+// Transfusion Routes
+// ----------------------------------------------------------------------
+router.get('/patients/:tenantPatientId/transfusions/bags', requireTenant, listBloodBags);
+router.post('/patients/:tenantPatientId/transfusions/bags', requireTenant, createBloodBag);
+router.post('/transfusions/bags/:id/discard', requireTenant, discardBloodBag);
+router.get('/patients/:tenantPatientId/transfusions/timeline', requireTenant, getTransfusionTimeline);
+
 export default router;

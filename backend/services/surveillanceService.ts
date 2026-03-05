@@ -46,7 +46,14 @@ class SurveillanceService {
                         'performed_by_last_name', ae_inner.performed_by_last_name,
                         'note', ae_inner.note,
                         'status', ae_inner.status,
-                        'linked_event_id', ae_inner.linked_event_id
+                        'linked_event_id', ae_inner.linked_event_id,
+                        'reaction', (
+                            SELECT jsonb_build_object(
+                                'reaction_type', tr.reaction_type,
+                                'description', tr.description,
+                                'actions_taken', tr.actions_taken
+                            ) FROM transfusion_reactions tr WHERE tr.administration_event_id = ae_inner.id
+                        )
                     ) ORDER BY ae_inner.occurred_at ASC
                 ), '[]'::jsonb) as events
                 FROM administration_events ae_inner

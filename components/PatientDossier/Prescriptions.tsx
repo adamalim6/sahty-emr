@@ -20,6 +20,7 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ patientId }) => {
   const [showModal, setShowModal] = useState(false);
   const [formMode, setFormMode] = useState<'medication' | 'biology' | 'imagery' | 'care' | 'transfusion'>('medication');
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
+  const [unitsList, setUnitsList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'all' | 'medication' | 'biology' | 'imagery' | 'care' | 'transfusion'>('all');
   const [showTodayOnly, setShowTodayOnly] = useState(false);
@@ -31,8 +32,12 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ patientId }) => {
     const loadPrescriptions = async () => {
       try {
         setLoading(true);
-        const data = await api.getPrescriptions(patientId);
+        const [data, unitsData] = await Promise.all([
+            api.getPrescriptions(patientId),
+            api.getUnits().catch(() => [])
+        ]);
         setPrescriptions(data);
+        setUnitsList(unitsData);
       } catch (error) {
         console.error('Failed to load prescriptions:', error);
       } finally {
@@ -351,6 +356,7 @@ export const Prescriptions: React.FC<PrescriptionsProps> = ({ patientId }) => {
                     <PrescriptionCard
                       formData={p.data}
                       prescription={p}
+                      unitsList={unitsList}
                       createdBy={
                         (p.createdByFirstName && p.createdByLastName)
                           ? `${p.createdByFirstName} ${p.createdByLastName}`

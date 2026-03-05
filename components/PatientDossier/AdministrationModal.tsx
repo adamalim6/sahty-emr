@@ -9,7 +9,25 @@ export interface AdministrationSavePayload {
     actual_start_at: string | null;
     actual_end_at: string | null;
     justification?: string;
-    // Note: status, linked_event_id, etc. are returned by the backend but not sent on native save directly
+    transfusion?: {
+        bloodBagIds: string[];
+        checks: {
+            identity_check_done: boolean;
+            compatibility_check_done: boolean;
+            bedside_double_check_done: boolean;
+            vitals_baseline_done: boolean;
+            notes?: string;
+        };
+        reaction?: {
+            reaction_present: boolean;
+            reaction_type?: string;
+            severity?: string;
+            description?: string;
+            actions_taken?: string;
+        };
+    };
+    administered_bags?: { id: string, volume_ml: number }[];
+    linked_event_id?: string;
 }
 
 interface AdministrationModalProps {
@@ -22,10 +40,13 @@ interface AdministrationModalProps {
     duration: number; // 0 = instant, >0 = perfusion
     activePerfusionEvent: any | null; // If a perfusion is currently running
     historyEvents: any[]; // The events for this specific slot
+    isTransfusion?: boolean;
+    availableBags?: any[];
+    eventId?: string;
 }
 
 export const AdministrationModal: React.FC<AdministrationModalProps> = ({
-    isOpen, onClose, onSave, onCancelEvent, prescriptionName, slotTime, duration, activePerfusionEvent, historyEvents
+    isOpen, onClose, onSave, onCancelEvent, prescriptionName, slotTime, duration, activePerfusionEvent, historyEvents, isTransfusion = false, availableBags = [], eventId
 }) => {
     const isPerfusion = duration > 0;
     const isPerfusionStarted = !!activePerfusionEvent;
@@ -33,6 +54,23 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     const [tacheEffectuee, setTacheEffectuee] = useState<'OUI' | 'NON'>('OUI');
     const [motif, setMotif] = useState('');
     
+    // Transfusion States
+    const [selectedBags, setSelectedBags] = useState<string[]>([]);
+    const [bagVolumes, setBagVolumes] = useState<Record<string, number>>({});
+    
+    const [checks, setChecks] = useState({
+        identity: false,
+        compatibility: false,
+        bedside: false,
+        vitals: false
+    });
+
+    const [reaction, setReaction] = useState({
+        present: false,
+        type: '',
+        notes: ''
+    });
+
     // Slider state
     const [sliderOffsetMin, setSliderOffsetMin] = useState<number>(0);
     // For perfusions, if they are ending it, we need an offset for the end time.
@@ -46,6 +84,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
             setTacheEffectuee('OUI');
             setMotif('');
             setLogEndSimultaneously(false);
+            setSelectedBags([]);
+            setBagVolumes({});
+            setChecks({ identity: false, compatibility: false, bedside: false, vitals: false });
+            setReaction({ present: false, type: '', notes: '' });
             const nowTs = Date.now();
             const schedTs = new Date(slotTime).getTime();
             const expectedEndTs = schedTs + (duration * 60000);
@@ -212,7 +254,42 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
             if (selectedEndObj.getTime() < selectedStartObj.getTime()) return "La fin ne peut pas précéder le début.";
         }
         if (tacheEffectuee === 'NON' && !motif.trim()) return "Un motif de refus est obligatoire.";
-        
+        if (tacheEffectuee === 'OUI' && isTransfusion) {
+            if (!isPerfusionStarted) {
+                if (selectedBags.length === 0) return "Veuillez sélectionner au moins une poche de sang à administrer.";
+                
+                const isEnding = logEndSimultaneously;
+                if (isEnding) {
+                    for (const bagId of selectedBags) {
+                         const bag = availableBags.find(b => b.id === bagId);
+                         const v = bagVolumes[bagId] || 0;
+                         if (v <= 0) return `Le volume administré pour la poche ${bag?.bag_number} doit être supérieur à 0.`;
+                         if (bag?.volume_ml && v > bag.volume_ml) return `Le volume administré (${v} ml) pour la poche ${bag?.bag_number} dépasse le volume total de la poche (${bag.volume_ml} ml). Modifiez le volume de la poche dans l'onglet Réception si nécessaire.`;
+                    }
+                }
+
+                if (!checks.identity || !checks.compatibility || !checks.bedside || !checks.vitals) {
+                    return "Veuillez confirmer tous les contrôles pré-transfusionnels.";
+                }
+            } else {
+                // If ending an already started perfusion
+                const assignedBags = availableBags.filter(b => b.assigned_prescription_event_id === eventId);
+                for (const bag of assignedBags) {
+                     const v = bagVolumes[bag.id] || 0;
+                     if (v <= 0) return `Le volume administré pour la poche ${bag?.bag_number} doit être supérieur à 0.`;
+                     if (bag?.volume_ml && v > bag.volume_ml) return `Le volume administré (${v} ml) pour la poche ${bag?.bag_number} dépasse le volume total de la poche (${bag.volume_ml} ml). Modifiez le volume de la poche dans l'onglet Réception si nécessaire.`;
+                }
+            }
+        }
+
+        // Reaction mandatory rules: mandatory if START+END or END after START
+        if (tacheEffectuee === 'OUI' && isTransfusion) {
+            const isEnding = (isPerfusionStarted) || (!isPerfusionStarted && logEndSimultaneously);
+            if (isEnding && reaction.present && !reaction.type) {
+                 return "Vous avez indiqué une réaction transfusionnelle. Veuillez en préciser le type.";
+            }
+        }
+
         return null;
     };
 
@@ -249,20 +326,71 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
             }
 
             // OUI logic for Perfusion
+            let transfusionPayload: any = undefined;
+            let adminBags: { id: string; volume_ml: number; }[] = [];
+
+            if (tacheEffectuee === 'OUI' && isTransfusion) {
+                if (!isPerfusionStarted) {
+                    transfusionPayload = {
+                        bloodBagIds: selectedBags,
+                        checks: {
+                            identity_check_done: checks.identity,
+                            compatibility_check_done: checks.compatibility,
+                            bedside_double_check_done: checks.bedside,
+                            vitals_baseline_done: checks.vitals,
+                            notes: ''
+                        }
+                    };
+                    if (logEndSimultaneously) {
+                        adminBags = selectedBags.map(id => ({ id, volume_ml: bagVolumes[id] || 0 }));
+                        transfusionPayload.reaction = {
+                            reaction_present: reaction.present,
+                            reaction_type: reaction.type,
+                            description: reaction.notes || undefined,
+                            actions_taken: undefined
+                        };
+                    }
+                } else {
+                    // Ending an already started perfusion
+                    const assignedBags = availableBags.filter(b => b.assigned_prescription_event_id === eventId);
+                    adminBags = assignedBags.map(b => ({ id: b.id, volume_ml: bagVolumes[b.id] || 0 }));
+                    transfusionPayload = {
+                        bloodBagIds: assignedBags.map(b => b.id),
+                        checks: {
+                            identity_check_done: true,
+                            compatibility_check_done: true,
+                            bedside_double_check_done: true,
+                            vitals_baseline_done: true,
+                            notes: ''
+                        },
+                        reaction: {
+                            reaction_present: reaction.present,
+                            reaction_type: reaction.type,
+                            description: reaction.notes || undefined,
+                            actions_taken: undefined
+                        }
+                    };
+                }
+            }
+
             if (!isPerfusionStarted) {
                 // Initial START log
                 const payloads: AdministrationSavePayload[] = [{
                     action_type: 'started',
                     occurred_at: new Date().toISOString(),
                     actual_start_at: selectedStartObj.toISOString(),
-                    actual_end_at: null
+                    actual_end_at: null,
+                    transfusion: transfusionPayload,
+                    administered_bags: adminBags
                 }];
                 if (logEndSimultaneously) {
                     payloads.push({
                         action_type: 'ended',
                         occurred_at: new Date().toISOString(),
                         actual_start_at: selectedStartObj.toISOString(),
-                        actual_end_at: selectedEndObj.toISOString()
+                        actual_end_at: selectedEndObj.toISOString(),
+                        transfusion: transfusionPayload, // Pass reaction info if ending simultaneously
+                        administered_bags: adminBags
                     });
                 }
                 onSave(payloads);
@@ -272,7 +400,16 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     action_type: 'ended',
                     occurred_at: new Date().toISOString(),
                     actual_start_at: selectedStartObj.toISOString(), // the mapped locked start
-                    actual_end_at: selectedEndObj.toISOString()
+                    actual_end_at: selectedEndObj.toISOString(),
+                    transfusion: isTransfusion ? {
+                        bloodBagIds: [], // handled on start
+                        checks: { identity_check_done: true, compatibility_check_done: true, bedside_double_check_done: true, vitals_baseline_done: true }, // dummy 
+                        reaction: {
+                            reaction_present: reaction.present,
+                            reaction_type: reaction.type,
+                            description: reaction.notes
+                        }
+                    } : undefined
                 };
                 onSave(payload);
             }
@@ -476,6 +613,176 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                 </div>
                             )}
 
+                            {/* TRANSFUSION SPECIFIC UI */}
+                            {tacheEffectuee === 'OUI' && isTransfusion && !isPerfusionStarted && (
+                                <div className="space-y-6 mt-6 p-5 bg-red-50 border border-red-200 rounded-lg shadow-inner">
+                                    <h4 className="font-bold text-red-800 flex items-center mb-4">
+                                        <AlertCircle size={18} className="mr-2" />
+                                        Protocole de Transfusion (Sécurité)
+                                    </h4>
+
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Poches à raccorder</label>
+                                        <div className="grid grid-cols-1 gap-3">
+                                            {availableBags.filter(b => b.status !== 'DISCARDED' && (!b.assigned_prescription_event_id || b.assigned_prescription_event_id === eventId)).map(bag => (
+                                                <div key={bag.id} className={`flex flex-col p-3 rounded-lg border transition-colors ${selectedBags.includes(bag.id) ? 'bg-red-100 border-red-400' : 'bg-white border-gray-300 hover:bg-gray-50'}`}>
+                                                    <label className="flex items-center cursor-pointer w-full">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500 mr-3"
+                                                            checked={selectedBags.includes(bag.id)}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) setSelectedBags(p => [...p, bag.id]);
+                                                                else setSelectedBags(p => p.filter(id => id !== bag.id));
+                                                            }}
+                                                        />
+                                                        <div className="flex-1">
+                                                            <div className="font-bold text-sm text-gray-900">{bag.bag_number}</div>
+                                                            <div className="text-xs text-gray-500">{bag.blood_product_code} • Gr: {bag.abo_group}{bag.rhesus} {bag.volume_ml ? `• Volume de la poche: ${bag.volume_ml} ml` : ''}</div>
+                                                        </div>
+                                                    </label>
+                                                    
+                                                    {selectedBags.includes(bag.id) && logEndSimultaneously && (
+                                                        <div className="ml-7 mt-3 flex items-center bg-white p-2 rounded shadow-sm border border-red-200">
+                                                            <span className="text-xs font-bold text-red-700 mr-3 w-[150px]">Volume administré (ml) * :</span>
+                                                            <input 
+                                                                type="number" 
+                                                                className="w-[100px] border-gray-300 rounded text-sm font-bold shadow-sm focus:border-red-500 focus:ring-red-500"
+                                                                value={bagVolumes[bag.id] || ''}
+                                                                onChange={e => setBagVolumes(prev => ({ ...prev, [bag.id]: parseFloat(e.target.value) }))}
+                                                                placeholder="ex: 250"
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                            {availableBags.filter(b => b.status !== 'DISCARDED' && (!b.assigned_prescription_event_id || b.assigned_prescription_event_id === eventId)).length === 0 && (
+                                                <div className="text-sm text-red-600 italic p-3 bg-red-100 rounded text-center">
+                                                    Aucune poche disponible. Allez dans l'onglet Transfusion pour en ajouter.
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <label className="block text-sm font-bold text-gray-700 border-b border-red-200 pb-2">Contrôle Ultime Pré-Transfusionnel</label>
+                                        <label className="flex items-center">
+                                            <input type="checkbox" checked={checks.identity} onChange={e => setChecks(c => ({...c, identity: e.target.checked}))} className="w-4 h-4 text-red-600 rounded mr-3" />
+                                            <span className="text-sm font-medium">Contrôle d'identité patient (Concordance Bracelet/Dossier)</span>
+                                        </label>
+                                        <label className="flex items-center">
+                                            <input type="checkbox" checked={checks.compatibility} onChange={e => setChecks(c => ({...c, compatibility: e.target.checked}))} className="w-4 h-4 text-red-600 rounded mr-3" />
+                                            <span className="text-sm font-medium">Vérification de la compatibilité ABO/Rhésus (Fiche / Poche)</span>
+                                        </label>
+                                        <label className="flex items-center">
+                                            <input type="checkbox" checked={checks.bedside} onChange={e => setChecks(c => ({...c, bedside: e.target.checked}))} className="w-4 h-4 text-red-600 rounded mr-3" />
+                                            <span className="text-sm font-medium">Double contrôle infirmier/médecin effectué au lit</span>
+                                        </label>
+                                        <label className="flex items-center">
+                                            <input type="checkbox" checked={checks.vitals} onChange={e => setChecks(c => ({...c, vitals: e.target.checked}))} className="w-4 h-4 text-red-600 rounded mr-3" />
+                                            <span className="text-sm font-medium">Constantes de base (TA, T°, FC) enregistrées (Cf. Surveillance)</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* TRANSFUSION END VOLUME UI */}
+                            {tacheEffectuee === 'OUI' && isTransfusion && isPerfusionStarted && (
+                                <div className="space-y-6 mt-6 p-5 bg-red-50 border border-red-200 rounded-lg shadow-inner">
+                                    <h4 className="font-bold text-red-800 flex items-center mb-4 border-b border-red-200 pb-2">
+                                        <AlertCircle size={18} className="mr-2" />
+                                        Volume Administré
+                                    </h4>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Saisissez le volume final pour les poches raccordées :</label>
+                                        <div className="grid grid-cols-1 gap-3">
+                                            {availableBags.filter(b => b.assigned_prescription_event_id === eventId).map(bag => (
+                                                <div key={bag.id} className="flex flex-col p-3 rounded-lg border bg-white border-gray-300">
+                                                    <div className="flex-1 mb-2">
+                                                        <div className="font-bold text-sm text-gray-900">{bag.bag_number}</div>
+                                                        <div className="text-xs text-gray-500">{bag.blood_product_code} • Gr: {bag.abo_group}{bag.rhesus} {bag.volume_ml ? `• Volume de la poche: ${bag.volume_ml} ml` : ''}</div>
+                                                    </div>
+                                                    <div className="flex items-center bg-gray-50 p-2 rounded shadow-sm border border-red-200">
+                                                        <span className="text-xs font-bold text-red-700 mr-3 w-[150px]">Volume administré (ml) * :</span>
+                                                        <input 
+                                                            type="number" 
+                                                            className="w-[100px] border-gray-300 rounded text-sm font-bold shadow-sm focus:border-red-500 focus:ring-red-500"
+                                                            value={bagVolumes[bag.id] || ''}
+                                                            onChange={e => setBagVolumes(prev => ({ ...prev, [bag.id]: parseFloat(e.target.value) }))}
+                                                            placeholder="ex: 250"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {availableBags.filter(b => b.assigned_prescription_event_id === eventId).length === 0 && (
+                                                <div className="text-sm text-red-600 italic p-3 bg-red-100 rounded text-center">
+                                                    Aucune poche n'a été associée à ce début de transfusion.
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* REACTION TRANSFUSIONNELLE (END PHASE) */}
+                            {tacheEffectuee === 'OUI' && isTransfusion && ((isPerfusionStarted) || (!isPerfusionStarted && logEndSimultaneously)) && (
+                                <div className="space-y-4 mt-6 p-5 bg-orange-50 border border-orange-200 rounded-lg shadow-inner">
+                                    <h4 className="font-bold text-orange-800 flex items-center mb-4 border-b border-orange-200 pb-2">
+                                        <AlertCircle size={18} className="mr-2" />
+                                        Évaluation de la Transfusion
+                                    </h4>
+
+                                    <div className="flex items-center space-x-6">
+                                        <span className="font-semibold text-gray-700 uppercase text-xs">Réaction Transfusionnelle ?</span>
+                                        <div className="flex rounded-md overflow-hidden bg-white border border-gray-300 shadow-sm">
+                                            <button 
+                                                className={`px-4 py-1.5 font-bold transition-all text-sm ${!reaction.present ? 'bg-orange-100 text-orange-800' : 'bg-transparent text-gray-500'}`}
+                                                onClick={() => setReaction(r => ({ ...r, present: false, type: '', notes: '' }))}
+                                            >
+                                                NON
+                                            </button>
+                                            <button 
+                                                className={`px-4 py-1.5 font-bold transition-all text-sm ${reaction.present ? 'bg-red-600 text-white' : 'bg-transparent text-gray-500'}`}
+                                                onClick={() => setReaction(r => ({ ...r, present: true }))}
+                                            >
+                                                OUI
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {reaction.present && (
+                                        <div className="animate-in fade-in slide-in-from-top-2 pt-3 space-y-3">
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Type de réaction *</label>
+                                                <select 
+                                                    className="w-full border-gray-300 rounded shadow-sm focus:ring-red-500 text-sm font-medium"
+                                                    value={reaction.type}
+                                                    onChange={e => setReaction(r => ({ ...r, type: e.target.value }))}
+                                                >
+                                                    <option value="">Sélectionnez un type...</option>
+                                                    <option value="ALLERGY">Allergique (Urticaire, Prurit)</option>
+                                                    <option value="FEBRILE">Fébrile non hémolytique (Frissons, Fièvre &gt; 1°C)</option>
+                                                    <option value="HEMOLYTIC">Hémolytique aiguë</option>
+                                                    <option value="TACO">Surcharge volémique (TACO)</option>
+                                                    <option value="TRALI">Lésion pulmonaire aiguë (TRALI)</option>
+                                                    <option value="INFECTION">Infection bactérienne</option>
+                                                    <option value="OTHER">Autre</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Détails de la réaction / Actions entreprises (Optionnel)</label>
+                                                <textarea 
+                                                    className="w-full text-sm border-gray-300 rounded shadow-sm h-16 focus:ring-red-500"
+                                                    value={reaction.notes}
+                                                    onChange={e => setReaction(r => ({ ...r, notes: e.target.value }))}
+                                                    placeholder="Décrivez les symptômes et les soins prodigués..."
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             {/* Motif de refus / note facultative */}
                             <div className="space-y-2">
                                 <div className="flex justify-between items-center">
@@ -550,6 +857,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                             return <HistoryItem key={block.event.id} ev={block.event} onCancel={() => onCancelClick(block.event.id)} />;
                                         } else {
                                             const group = block as any;
+                                            // The reaction is identical for start/end, so just pick one (prefer start)
+                                            const reactionEv = group.start || group.end;
                                             return (
                                                 <div key={`perf-group-${idx}`} className="bg-gray-300/50 p-3 rounded-lg border border-gray-300 relative">
                                                     <div className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 flex items-center">
@@ -557,9 +866,19 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                                         Groupe Perfusion
                                                     </div>
                                                     <div className="space-y-2 relative pl-4 border-l-2 border-gray-400/30 ml-2">
-                                                        {group.end && <HistoryItem ev={group.end} onCancel={() => onCancelClick(group.end.id)} />}
-                                                        {group.start && <HistoryItem ev={group.start} onCancel={() => onCancelClick(group.start.id)} />}
+                                                        {group.start && <HistoryItem ev={group.start} onCancel={() => onCancelClick(group.start.id)} hideReaction={true} />}
+                                                        {group.end && <HistoryItem ev={group.end} onCancel={() => onCancelClick(group.end.id)} hideReaction={true} />}
                                                     </div>
+                                                    {reactionEv && reactionEv.reaction && reactionEv.reaction.reaction_type && (
+                                                        <div className="text-xs p-2 rounded mt-2 shadow-sm bg-red-50 text-red-900 border border-red-200">
+                                                            <div className="font-bold flex items-center text-red-700 mb-1">
+                                                                <AlertCircle size={12} className="mr-1" />
+                                                                Réaction: {reactionEv.reaction.reaction_type}
+                                                            </div>
+                                                            {reactionEv.reaction.description && <div className="italic text-red-600 mb-0.5"><span className="font-semibold not-italic text-red-800">Détails:</span> {reactionEv.reaction.description}</div>}
+                                                            {reactionEv.reaction.actions_taken && <div className="italic text-red-600"><span className="font-semibold not-italic text-red-800">Actions:</span> {reactionEv.reaction.actions_taken}</div>}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             );
                                         }
@@ -593,16 +912,14 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 };
 
 // -- Helper Component for History Item --
-const HistoryItem = ({ ev, onCancel }: { ev: any, onCancel: () => void }) => {
+const HistoryItem = ({ ev, onCancel, hideReaction = false }: { ev: any, onCancel: () => void, hideReaction?: boolean }) => {
     const isCancelled = ev.status === 'CANCELLED';
     
     const actionLabels: Record<string, string> = {
         administered: 'Administré',
         refused: 'Refusé',
         started: 'Début',
-        ended: 'Fin',
-        'PERFUSION_START': 'Début Perfusion',
-        'PERFUSION_END': 'Fin Perfusion'
+        ended: 'Fin'
     };
     
     const label = actionLabels[ev.action_type] || ev.action_type;
@@ -610,9 +927,9 @@ const HistoryItem = ({ ev, onCancel }: { ev: any, onCancel: () => void }) => {
     
     const targetAt = ev.actual_start_at || ev.actual_end_at || ev.occurred_at;
     let actionAt = ev.occurred_at;
-    if (ev.action_type === 'ended' || ev.action_type === 'PERFUSION_END') {
+    if (ev.action_type === 'ended') {
         actionAt = ev.actual_end_at || ev.occurred_at;
-    } else if (ev.action_type === 'started' || ev.action_type === 'PERFUSION_START' || ev.action_type === 'administered') {
+    } else if (ev.action_type === 'started' || ev.action_type === 'administered') {
         actionAt = ev.actual_start_at || ev.occurred_at;
     }
 
@@ -642,6 +959,17 @@ const HistoryItem = ({ ev, onCancel }: { ev: any, onCancel: () => void }) => {
             {(ev.justification || ev.note || ev.cancellation_reason) && (
                 <div className={`text-xs p-1.5 rounded mt-1 shadow-inner ${isCancelled ? 'bg-gray-300/50 text-gray-600 line-through' : 'bg-orange-50 text-orange-800 border-l-2 border-orange-300'}`}>
                     {ev.cancellation_reason ? `Motif annulation: ${ev.cancellation_reason}` : (ev.note || ev.justification)}
+                </div>
+            )}
+
+            {!hideReaction && !isCancelled && ev.reaction && ev.reaction.reaction_type && (
+                <div className="text-xs p-2 rounded mt-1.5 shadow-inner bg-red-50 text-red-900 border border-red-200">
+                    <div className="font-bold flex items-center text-red-700 mb-1">
+                        <AlertCircle size={12} className="mr-1" />
+                        Réaction: {ev.reaction.reaction_type}
+                    </div>
+                    {ev.reaction.description && <div className="italic text-red-600 mb-0.5"><span className="font-semibold not-italic text-red-800">Détails:</span> {ev.reaction.description}</div>}
+                    {ev.reaction.actions_taken && <div className="italic text-red-600"><span className="font-semibold not-italic text-red-800">Actions:</span> {ev.reaction.actions_taken}</div>}
                 </div>
             )}
             

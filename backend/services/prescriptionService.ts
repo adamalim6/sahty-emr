@@ -1,6 +1,6 @@
 import { Prescription, PrescriptionData, PrescriptionEvent, AdministrationEvent } from '../models/prescription';
 import { patientTenantService } from './patientTenantService';
-import { tenantQuery, tenantTransaction } from '../db/tenantPg';
+import { tenantQuery, tenantTransaction, getTenantClient } from '../db/tenantPg';
 import { generateDoseSchedule } from '../utils/prescriptionScheduler';
 
 export class PrescriptionService {
@@ -80,7 +80,7 @@ export class PrescriptionService {
         return await tenantTransaction(tenantId, async (client: any) => {
             // Refactor Transfusion Unit Normalization
             if (pType === 'transfusion') {
-                const getUnitQuery = `SELECT id FROM reference.units WHERE code = 'poche' LIMIT 1`;
+                const getUnitQuery = `SELECT id FROM reference.units WHERE code = 'ml' LIMIT 1`;
                 const unitRes = await client.query(getUnitQuery);
                 if (unitRes.rows.length > 0) {
                     details.unit_id = unitRes.rows[0].id;
@@ -508,6 +508,25 @@ export class PrescriptionService {
             performedBy?: string;
             performedByUserId?: string;
             note?: string;
+            transfusion?: {
+                bloodBagIds: string[];
+                checks: {
+                    identity_check_done: boolean;
+                    compatibility_check_done: boolean;
+                    bedside_double_check_done: boolean;
+                    vitals_baseline_done: boolean;
+                    notes?: string;
+                };
+                reaction?: {
+                    reaction_present: boolean;
+                    reaction_type?: string;
+                    severity?: string;
+                    description?: string;
+                    actions_taken?: string;
+                };
+            };
+            administered_bags?: { id: string, volume_ml: number }[];
+            linked_event_id?: string;
         }
     ): Promise<AdministrationEvent> {
         // Enforce safety rules via join back to prescriptions
@@ -537,13 +556,7 @@ export class PrescriptionService {
         let linkedEventId = null;
         const finalOccurredAt = payload?.occurredAt ? new Date(payload.occurredAt) : new Date();
 
-        // ---------------------------------------------------------
-        // ALIGNMENT: The frontend might send 'started' instead of 
-        // 'PERFUSION_START'. We normalize it here to map cleanly.
-        // ---------------------------------------------------------
         let internalActionType = actionType;
-        if (internalActionType === 'started') internalActionType = 'PERFUSION_START';
-        if (internalActionType === 'ended') internalActionType = 'PERFUSION_END';
 
         // ---------------------------------------------------------
         // UNIVERSAL WIPE FOR REFUSALS AND BOLUS
@@ -576,7 +589,7 @@ export class PrescriptionService {
         // ---------------------------------------------------------
         // PERFUSION START RULES
         // ---------------------------------------------------------
-        else if (internalActionType === 'PERFUSION_START') {
+        else if (internalActionType === 'started') {
             const wipeNonPerfusionQuery = `
                 UPDATE administration_events
                 SET status = 'CANCELLED', cancellation_reason = 'Superseded by perfusion start'
@@ -590,7 +603,7 @@ export class PrescriptionService {
                 SELECT id, linked_event_id, occurred_at 
                 FROM administration_events
                 WHERE prescription_event_id = $1 
-                  AND action_type = 'PERFUSION_START' 
+                  AND action_type = 'started' 
                   AND status = 'ACTIVE'
                 ORDER BY occurred_at DESC
                 LIMIT 1
@@ -618,7 +631,7 @@ export class PrescriptionService {
         // ---------------------------------------------------------
         // PERFUSION END RULES
         // ---------------------------------------------------------
-        else if (internalActionType === 'PERFUSION_END') {
+        else if (internalActionType === 'ended') {
             const findEndQuery = `
                 SELECT id, occurred_at
                 FROM administration_events
@@ -648,7 +661,7 @@ export class PrescriptionService {
                 SELECT linked_event_id 
                 FROM administration_events
                 WHERE prescription_event_id = $1 
-                  AND action_type = 'PERFUSION_START' 
+                  AND action_type = 'started' 
                   AND status = 'ACTIVE'
                 ORDER BY occurred_at DESC
                 LIMIT 1
@@ -657,7 +670,7 @@ export class PrescriptionService {
             if (startRes.length > 0 && startRes[0].linked_event_id) {
                 linkedEventId = startRes[0].linked_event_id;
             } else {
-                throw new Error("Cannot end perfusion: No active PERFUSION_START found to link to.");
+                throw new Error("Cannot end perfusion: No active 'started' event found to link to.");
             }
         }
 
@@ -685,21 +698,151 @@ export class PrescriptionService {
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'ACTIVE', $9, $10, $11)
             RETURNING *
         `;
-        const res = await tenantQuery<any>(tenantId, query, [
-            tenantId,
-            prescriptionEventId,
-            internalActionType,
-            finalOccurredAt,
-            payload?.actualStartAt || null,
-            payload?.actualEndAt || null,
-            payload?.performedByUserId || null,
-            payload?.note || null,
-            linkedEventId,
-            firstName,
-            lastName
-        ]);
 
-        const row = res[0];
+        const client = await getTenantClient(tenantId);
+        let row;
+        try {
+            await client.query('BEGIN');
+            const res = await client.query(query, [
+                tenantId,
+                prescriptionEventId,
+                internalActionType,
+                finalOccurredAt,
+                payload?.actualStartAt || null,
+                payload?.actualEndAt || null,
+                payload?.performedByUserId || null,
+                payload?.note || null,
+                linkedEventId,
+                firstName,
+                lastName
+            ]);
+            row = res.rows[0];
+
+            if (payload?.transfusion && internalActionType === 'started' && payload.transfusion.bloodBagIds?.length > 0) {
+                const adminEventId = row.id;
+
+                // 1. Mark bags as IN_USE
+                for (const bagId of payload.transfusion.bloodBagIds) {
+                    
+                    // Verify Bag Status before assignment
+                    const bagRes = await client.query(`SELECT status, volume_ml, bag_number, assigned_prescription_event_id FROM public.transfusion_blood_bags WHERE id = $1 AND tenant_id = $2 FOR UPDATE`, [bagId, tenantId]);
+                    if (bagRes.rows.length === 0) throw new Error(`Blood bag ${bagId} not found.`);
+                    const bag = bagRes.rows[0];
+                    if (bag.status === 'USED' || bag.status === 'DISCARDED') {
+                        throw new Error(`Cannot administer blood bag ${bag.bag_number} because it has already been used or discarded.`);
+                    }
+
+                    // Enforce Assignment Rule
+                    if (bag.assigned_prescription_event_id && bag.assigned_prescription_event_id !== prescriptionEventId) {
+                        throw new Error(`Cette poche de sang a déjà été assignée à une autre session de transfusion.`);
+                    }
+                    if (!bag.assigned_prescription_event_id) {
+                        await client.query(`
+                            UPDATE public.transfusion_blood_bags 
+                            SET assigned_prescription_event_id = $1 
+                            WHERE id = $2 AND tenant_id = $3
+                        `, [prescriptionEventId, bagId, tenantId]);
+                    }
+
+                    // Extract Admin Volume
+                    const adminBag = payload.administered_bags?.find(b => b.id === bagId);
+                    const adminVolume = adminBag?.volume_ml || 0;
+                    
+                    // Only enforce volume must be > 0 if this is NOT just a START event,
+                    // or if the frontend actually provided a volume.
+                    if (adminVolume <= 0 && internalActionType !== 'started') {
+                        throw new Error(`Administered volume for blood bag ${bag.bag_number} must be greater than 0.`);
+                    }
+                    if (adminVolume > bag.volume_ml) {
+                        throw new Error(`Administered volume (${adminVolume} ml) for blood bag ${bag.bag_number} exceeds the bag's total volume (${bag.volume_ml} ml).`);
+                    }
+
+                    // (Status corresponds to derived 'IN_USE', 'USED' state managed by PostgreSQL trigger recompute_blood_bag_status)
+
+                    // 2. Insert mapping with volume
+                    await client.query(`
+                        INSERT INTO public.administration_event_blood_bags (
+                            tenant_id, administration_event_id, blood_bag_id, volume_administered_ml
+                        ) VALUES ($1, $2, $3, $4)
+                    `, [tenantId, adminEventId, bagId, adminVolume]);
+                }
+
+                // 3. Insert checks
+                if (payload.transfusion.checks) {
+                    await client.query(`
+                        INSERT INTO public.transfusion_checks (
+                            tenant_id, administration_event_id, checked_by_user_id,
+                            identity_check_done, compatibility_check_done, 
+                            bedside_double_check_done, vitals_baseline_done, notes
+                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                    `, [
+                        tenantId, adminEventId, payload.performedByUserId,
+                        payload.transfusion.checks.identity_check_done,
+                        payload.transfusion.checks.compatibility_check_done,
+                        payload.transfusion.checks.bedside_double_check_done,
+                        payload.transfusion.checks.vitals_baseline_done,
+                        payload.transfusion.checks.notes || null
+                    ]);
+                }
+
+                // 4. Insert reaction if present
+                if (payload.transfusion.reaction && payload.transfusion.reaction.reaction_present) {
+                    await client.query(`
+                        INSERT INTO public.transfusion_reactions (
+                            tenant_id, administration_event_id, recorded_by_user_id,
+                            reaction_type, severity, description, actions_taken
+                        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    `, [
+                        tenantId, adminEventId, payload.performedByUserId,
+                        payload.transfusion.reaction.reaction_type,
+                        payload.transfusion.reaction.severity || null,
+                        payload.transfusion.reaction.description || null,
+                        payload.transfusion.reaction.actions_taken || null
+                    ]);
+                }
+            }
+
+            // PERFUSION_END: Transition IN_USE bags to USED
+            if (internalActionType === 'ended') {
+                const adminEventId = row.id;
+                
+                // Find original START event bags to mark as USED
+                if (linkedEventId) {
+                    await client.query(`
+                        UPDATE public.transfusion_blood_bags 
+                        SET status = 'USED' 
+                        WHERE id IN (
+                            SELECT blood_bag_id 
+                            FROM public.administration_event_blood_bags 
+                            WHERE administration_event_id = (
+                                SELECT id FROM administration_events WHERE linked_event_id = $1 AND action_type = 'started'
+                            )
+                        )
+                    `, [linkedEventId]);
+                }
+
+                if (payload?.transfusion?.reaction && payload.transfusion.reaction.reaction_present) {
+                     await client.query(`
+                        INSERT INTO public.transfusion_reactions (
+                            tenant_id, administration_event_id, recorded_by_user_id,
+                            reaction_type, severity, description, actions_taken
+                        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    `, [
+                        tenantId, adminEventId, payload.performedByUserId,
+                        payload.transfusion.reaction.reaction_type,
+                        payload.transfusion.reaction.severity || null,
+                        payload.transfusion.reaction.description || null,
+                        payload.transfusion.reaction.actions_taken || null
+                    ]);
+                }
+            }
+            await client.query('COMMIT');
+        } catch (e) {
+            await client.query('ROLLBACK');
+            throw e;
+        } finally {
+            client.release();
+        }
         return {
             id: row.id,
             tenant_id: row.tenant_id,
@@ -791,7 +934,33 @@ export class PrescriptionService {
             params = [cancellationReason || null, adminEventId];
         }
 
-        await tenantQuery(tenantId, cancelQuery, params);
+        const client = await getTenantClient(tenantId);
+        try {
+            await client.query('BEGIN');
+            await client.query(cancelQuery, params);
+
+            // 3. Revert blood bags to RECEIVED safely
+            const revertBagsQuery = `
+                UPDATE public.transfusion_blood_bags
+                SET status = 'RECEIVED'
+                WHERE id IN (
+                    SELECT blood_bag_id FROM public.administration_event_blood_bags
+                    WHERE administration_event_id IN (
+                        SELECT id FROM public.administration_events
+                        WHERE ${event.action_type === 'PERFUSION_START' && event.linked_event_id ? `linked_event_id = $1` : `id = $1`}
+                    ) AND tenant_id = $2
+                ) AND tenant_id = $2
+            `;
+            const revertTarget = (event.action_type === 'PERFUSION_START' && event.linked_event_id) ? event.linked_event_id : adminEventId;
+            await client.query(revertBagsQuery, [revertTarget, tenantId]);
+
+            await client.query('COMMIT');
+        } catch (e) {
+            await client.query('ROLLBACK');
+            throw e;
+        } finally {
+            client.release();
+        }
     }
 }
 

@@ -96,7 +96,7 @@ router.post('/:id/events/:eventId/admin', async (req: any, res) => {
         }
 
         const { eventId } = req.params;
-        const { actionType, occurredAt, actualStartAt, actualEndAt, note } = req.body;
+        const { actionType, occurredAt, actualStartAt, actualEndAt, note, transfusion, administered_bags, linked_event_id } = req.body;
         const userId = req.user.userId;
 
         let tenantId;
@@ -115,7 +115,10 @@ router.post('/:id/events/:eventId/admin', async (req: any, res) => {
             actualStartAt: actualStartAt ? new Date(actualStartAt) : undefined,
             actualEndAt: actualEndAt ? new Date(actualEndAt) : undefined,
             performedByUserId: userId,
-            note
+            note,
+            transfusion,
+            administered_bags,
+            linked_event_id
         });
         res.status(201).json(result);
     } catch (error) {

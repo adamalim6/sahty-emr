@@ -149,6 +149,20 @@ export const api = {
     getServiceBeds: (serviceId: string) => fetchJson<any[]>(`/emr/services/${serviceId}/occupancy`),
 
     // ===========================================
+    // TRANSFUSION
+    // ===========================================
+    getTransfusionBags: (patientId: string) => fetchJson<any[]>(`/emr/patients/${patientId}/transfusions/bags`),
+    createTransfusionBag: (patientId: string, data: any) => fetchJson<any>(`/emr/patients/${patientId}/transfusions/bags`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    discardTransfusionBag: (bagId: string) => fetchJson<any>(`/emr/transfusions/bags/${bagId}/discard`, {
+        method: 'POST'
+    }),
+    getTransfusionTimeline: (patientId: string) => fetchJson<any>(`/emr/patients/${patientId}/transfusions/timeline`),
+
+    // ===========================================
     // ADMISSIONS
     // ===========================================
     getAdmissions: () => fetchJson<Admission[]>('/emr/admissions'),
@@ -815,16 +829,25 @@ export const api = {
 
     getExecutions: (prescriptionId: string) => fetchJson<any[]>(`/prescriptions/${prescriptionId}/executions`),
 
-    recordExecution: (prescriptionId: string, payload: any) => fetchJson<any>(`/prescriptions/${prescriptionId}/events/${payload.eventId}/admin`, {
-        method: 'POST',
-        body: JSON.stringify({
-            actionType: payload.action_type,
-            occurredAt: payload.occurred_at,
-            actualStartAt: payload.actual_start_at,
-            actualEndAt: payload.actual_end_at,
-            note: payload.justification
-        })
-    }),
+    recordExecution: (prescriptionId: string, payload: any) => {
+        // Find which event ID to use for the URL path.
+        const targetEventId = payload.assigned_prescription_event_id || payload.predictionEventId || payload.eventId;
+        
+        return fetchJson<any>(`/prescriptions/${prescriptionId}/events/${targetEventId}/admin`, {
+            method: 'POST',
+            body: JSON.stringify({
+                actionType: payload.action_type,
+                occurredAt: payload.occurred_at,
+                actualStartAt: payload.actual_start_at,
+                actualEndAt: payload.actual_end_at,
+                note: payload.justification,
+                transfusion: payload.transfusion,
+                administered_bags: payload.administered_bags,
+                assigned_prescription_event_id: payload.assigned_prescription_event_id,
+                linked_event_id: payload.linked_event_id
+            })
+        });
+    },
 
     cancelAdministrationEvent: (prescriptionId: string, prescriptionEventId: string, adminEventId: string, cancellationReason?: string) => fetchJson<any>(`/prescriptions/${prescriptionId}/events/${prescriptionEventId}/admin/${adminEventId}/cancel`, {
         method: 'POST',
