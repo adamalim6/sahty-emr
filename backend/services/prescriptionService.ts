@@ -2,6 +2,7 @@ import { Prescription, PrescriptionData, PrescriptionEvent, AdministrationEvent 
 import { patientTenantService } from './patientTenantService';
 import { tenantQuery, tenantTransaction, getTenantClient } from '../db/tenantPg';
 import { generateDoseSchedule } from '../utils/prescriptionScheduler';
+import { hydricEngineService } from './hydricEngineService';
 
 export class PrescriptionService {
     
@@ -96,20 +97,46 @@ export class PrescriptionService {
                 delete details.unit;
             }
 
+            let requiresFluidInfo = false;
+            let requiresEndEvent = false;
+
+            if (adminMode === 'continuous') {
+                requiresEndEvent = true;
+            }
+
+            if (pType === 'transfusion' || data.dilutionRequired) {
+                requiresFluidInfo = true;
+            } else {
+                if (data.unit) {
+                    const uRes = await client.query(`SELECT requires_fluid_info FROM reference.units WHERE code = $1 LIMIT 1`, [data.unit]);
+                    if (uRes.rows.length > 0 && uRes.rows[0].requires_fluid_info) {
+                        requiresFluidInfo = true;
+                    }
+                }
+                if (!requiresFluidInfo && data.route) {
+                    const rRes = await client.query(`SELECT requires_fluid_info FROM reference.routes WHERE code = $1 LIMIT 1`, [data.route]);
+                    if (rRes.rows.length > 0 && rRes.rows[0].requires_fluid_info) {
+                        requiresFluidInfo = true;
+                    }
+                }
+            }
+
             const queryPrescription = `
                 INSERT INTO prescriptions (
                     tenant_id, tenant_patient_id, admission_id, 
                     prescription_type, condition_comment, status, details, 
-                    created_by, created_by_first_name, created_by_last_name
+                    created_by, created_by_first_name, created_by_last_name,
+                    requires_fluid_info
                 ) 
-                VALUES ($1, $2, $3, $4, $5, 'ACTIVE', $6, $7, $8, $9)
+                VALUES ($1, $2, $3, $4, $5, 'ACTIVE', $6, $7, $8, $9, $10)
                 RETURNING id, created_at
             `;
 
             const pRes = await client.query(queryPrescription, [
                 tenantId, patientId, admissionId,
                 pType, comment, JSON.stringify(details),
-                createdBy, createdByFirstName || null, createdByLastName || null
+                createdBy, createdByFirstName || null, createdByLastName || null,
+                requiresFluidInfo
             ]);
 
             const newId = pRes.rows[0].id;
@@ -138,8 +165,10 @@ export class PrescriptionService {
                         const eventQuery = `
                             INSERT INTO prescription_events (
                                 tenant_id, prescription_id, admission_id,
-                                scheduled_at, duration, status
-                            ) VALUES ($1, $2, $3, $4, $5, $6)
+                                scheduled_at, duration, status,
+                                requires_fluid_info, requires_end_event,
+                                tenant_patient_id
+                            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                         `;
                         
                         const scheduledAt = new Date(dose.plannedDateTime);
@@ -147,7 +176,9 @@ export class PrescriptionService {
                         
                         await client.query(eventQuery, [
                             tenantId, newId, admissionId,
-                            scheduledAt, durationMinutes, status
+                            scheduledAt, durationMinutes, status,
+                            requiresFluidInfo, requiresEndEvent,
+                            patientId
                         ]);
                     }
                 }
@@ -356,6 +387,7 @@ export class PrescriptionService {
                 SELECT ae.*
                 FROM administration_events ae
                 WHERE ae.prescription_event_id = pe.id
+                  AND ae.status != 'CANCELLED'
                 ORDER BY ae.occurred_at DESC
                 LIMIT 1
             ) latest_admin ON true
@@ -527,16 +559,17 @@ export class PrescriptionService {
             };
             administered_bags?: { id: string, volume_ml: number }[];
             linked_event_id?: string;
+            volume_administered_ml?: number | null;
         }
     ): Promise<AdministrationEvent> {
         // Enforce safety rules via join back to prescriptions
         const checkSafetyQuery = `
-            SELECT p.paused_at, p.stopped_at, pe.scheduled_at 
+            SELECT p.tenant_patient_id, p.paused_at, p.stopped_at, pe.scheduled_at, pe.requires_fluid_info 
             FROM prescriptions p
             JOIN prescription_events pe ON pe.prescription_id = p.id
             WHERE pe.id = $1
         `;
-        const checkSafetyRes = await tenantQuery<{paused_at: Date | null, stopped_at: Date | null, scheduled_at: Date}>(tenantId, checkSafetyQuery, [prescriptionEventId]);
+        const checkSafetyRes = await tenantQuery<{tenant_patient_id: string, paused_at: Date | null, stopped_at: Date | null, scheduled_at: Date, requires_fluid_info: boolean}>(tenantId, checkSafetyQuery, [prescriptionEventId]);
         if (checkSafetyRes.length > 0) {
             if (checkSafetyRes[0].stopped_at) throw new Error("Cannot log administration action: Prescription is STOPPED.");
             if (checkSafetyRes[0].paused_at) throw new Error("Cannot log administration action: Prescription is PAUSED.");
@@ -615,13 +648,7 @@ export class PrescriptionService {
                 if (Math.abs(existing.occurred_at.getTime() - finalOccurredAt.getTime()) < 60000) {
                     return this.getEventById(tenantId, existing.id);
                 } else {
-                    const cancelQuery = `
-                        UPDATE administration_events
-                        SET status = 'CANCELLED', cancellation_reason = 'Superseded by slider update'
-                        WHERE linked_event_id = $1
-                          AND status = 'ACTIVE'
-                    `;
-                    await tenantQuery(tenantId, cancelQuery, [existing.linked_event_id]);
+                    await this.cancelAdministrationEvent(tenantId, existing.id, 'Superseded by slider update');
                 }
             }
             
@@ -636,7 +663,7 @@ export class PrescriptionService {
                 SELECT id, occurred_at
                 FROM administration_events
                 WHERE prescription_event_id = $1
-                  AND action_type = 'PERFUSION_END'
+                  AND action_type = 'ended'
                   AND status = 'ACTIVE'
                 ORDER BY occurred_at DESC
                 LIMIT 1
@@ -648,12 +675,7 @@ export class PrescriptionService {
                 if (Math.abs(existing.occurred_at.getTime() - finalOccurredAt.getTime()) < 60000) {
                     return this.getEventById(tenantId, existing.id);
                 } else {
-                    const cancelEndQuery = `
-                        UPDATE administration_events
-                        SET status = 'CANCELLED', cancellation_reason = 'Superseded by slider update'
-                        WHERE id = $1
-                    `;
-                    await tenantQuery(tenantId, cancelEndQuery, [existing.id]);
+                    await this.cancelAdministrationEvent(tenantId, existing.id, 'Superseded by slider update');
                 }
             }
 
@@ -694,8 +716,9 @@ export class PrescriptionService {
             INSERT INTO administration_events (
                 tenant_id, prescription_event_id, action_type, occurred_at,
                 actual_start_at, actual_end_at, performed_by_user_id, note,
-                status, linked_event_id, performed_by_first_name, performed_by_last_name
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'ACTIVE', $9, $10, $11)
+                status, linked_event_id, performed_by_first_name, performed_by_last_name,
+                volume_administered_ml
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'ACTIVE', $9, $10, $11, $12)
             RETURNING *
         `;
 
@@ -714,7 +737,8 @@ export class PrescriptionService {
                 payload?.note || null,
                 linkedEventId,
                 firstName,
-                lastName
+                lastName,
+                payload?.transfusion ? null : (payload?.volume_administered_ml || null)
             ]);
             row = res.rows[0];
 
@@ -802,7 +826,7 @@ export class PrescriptionService {
                 }
             }
 
-            // PERFUSION_END: Transition IN_USE bags to USED
+            // ended: Transition IN_USE bags to USED
             if (internalActionType === 'ended') {
                 const adminEventId = row.id;
                 
@@ -819,6 +843,20 @@ export class PrescriptionService {
                             )
                         )
                     `, [linkedEventId]);
+
+                    // Update final administered volumes for the blood bags logged during START
+                    if (payload?.administered_bags && Array.isArray(payload.administered_bags)) {
+                        for (const bag of payload.administered_bags) {
+                            await client.query(`
+                                UPDATE public.administration_event_blood_bags
+                                SET volume_administered_ml = $1
+                                WHERE blood_bag_id = $2 
+                                  AND administration_event_id = (
+                                      SELECT id FROM administration_events WHERE linked_event_id = $3 AND action_type = 'started'
+                                  )
+                            `, [bag.volume_ml, bag.id, linkedEventId]);
+                        }
+                    }
                 }
 
                 if (payload?.transfusion?.reaction && payload.transfusion.reaction.reaction_present) {
@@ -828,14 +866,19 @@ export class PrescriptionService {
                             reaction_type, severity, description, actions_taken
                         ) VALUES ($1, $2, $3, $4, $5, $6, $7)
                     `, [
-                        tenantId, adminEventId, payload.performedByUserId,
-                        payload.transfusion.reaction.reaction_type,
-                        payload.transfusion.reaction.severity || null,
-                        payload.transfusion.reaction.description || null,
-                        payload.transfusion.reaction.actions_taken || null
+                        tenantId, adminEventId, payload?.performedByUserId,
+                        payload?.transfusion?.reaction?.reaction_type,
+                        payload?.transfusion?.reaction?.severity || null,
+                        payload?.transfusion?.reaction?.description || null,
+                        payload?.transfusion?.reaction?.actions_taken || null
                     ]);
                 }
             }
+
+            if (checkSafetyRes[0].requires_fluid_info) {
+                await hydricEngineService.rebuildHydricBucketsForPatient(tenantId, checkSafetyRes[0].tenant_patient_id, client);
+            }
+
             await client.query('COMMIT');
         } catch (e) {
             await client.query('ROLLBACK');
@@ -902,8 +945,14 @@ export class PrescriptionService {
     ): Promise<void> {
         
         // 1. Fetch the target event
-        const getQuery = `SELECT status, action_type, linked_event_id FROM administration_events WHERE id = $1`;
-        const getRes = await tenantQuery<{status: string, action_type: string, linked_event_id: string | null}>(tenantId, getQuery, [adminEventId]);
+        const getQuery = `
+            SELECT p.tenant_patient_id, pe.id as prescription_event_id, pe.requires_fluid_info, ae.status, ae.action_type, ae.linked_event_id, p.prescription_type 
+            FROM administration_events ae
+            JOIN prescription_events pe ON ae.prescription_event_id = pe.id
+            JOIN prescriptions p ON pe.prescription_id = p.id
+            WHERE ae.id = $1
+        `;
+        const getRes = await tenantQuery<{tenant_patient_id: string, prescription_event_id: string, requires_fluid_info: boolean, status: string, action_type: string, linked_event_id: string | null, prescription_type: string}>(tenantId, getQuery, [adminEventId]);
         
         if (getRes.length === 0) throw new Error("Event not found");
         const event = getRes[0];
@@ -912,27 +961,30 @@ export class PrescriptionService {
             throw new Error("Event is already cancelled.");
         }
 
-        // 2. Perform Flat Atomic Cancellation
         let cancelQuery = "";
-        let params: any[] = [];
+        let params: any[] = [cancellationReason || null, adminEventId];
 
-        if (event.action_type === 'PERFUSION_START' && event.linked_event_id) {
-            // Cancel the START and its associated END in one atomic sweep using the flat group ID
-            cancelQuery = `
-                UPDATE administration_events 
-                SET status = 'CANCELLED', cancellation_reason = $1
-                WHERE linked_event_id = $2 AND status = 'ACTIVE'
-            `;
-            params = [cancellationReason || null, event.linked_event_id];
-        } else {
-            // Cancel a normal event OR an isolated END event
-            cancelQuery = `
-                UPDATE administration_events 
-                SET status = 'CANCELLED', cancellation_reason = $1
-                WHERE id = $2 AND status = 'ACTIVE'
-            `;
-            params = [cancellationReason || null, adminEventId];
+        let cancelCondition = "id = $2"; 
+        
+        if (event.action_type === 'started' || event.action_type === 'in_progress' || event.action_type === 'PERFUSION_START') {
+            if (event.linked_event_id && event.linked_event_id !== event.prescription_event_id) {
+                // Modern flat UUID group sweep
+                cancelCondition = "(id = $2 OR linked_event_id = $3)";
+                params.push(event.linked_event_id);
+            } else {
+                // Legacy group sweep
+                cancelCondition = "(id = $2 OR (prescription_event_id = $3 AND action_type IN ('ended', 'done', 'PERFUSION_END')))";
+                params.push(event.prescription_event_id);
+            }
         }
+        // If action_type is 'ended', the sweep remains exactly "id = $2", perfectly preserving the running 'started' event.
+
+        cancelQuery = `
+            UPDATE administration_events 
+            SET status = 'CANCELLED', cancellation_reason = $1
+            WHERE ${cancelCondition}
+              AND status != 'CANCELLED'
+        `;
 
         const client = await getTenantClient(tenantId);
         try {
@@ -947,12 +999,18 @@ export class PrescriptionService {
                     SELECT blood_bag_id FROM public.administration_event_blood_bags
                     WHERE administration_event_id IN (
                         SELECT id FROM public.administration_events
-                        WHERE ${event.action_type === 'PERFUSION_START' && event.linked_event_id ? `linked_event_id = $1` : `id = $1`}
+                        WHERE ${event.action_type === 'started' && event.linked_event_id ? `linked_event_id = $1` : `id = $1`}
                     ) AND tenant_id = $2
                 ) AND tenant_id = $2
             `;
-            const revertTarget = (event.action_type === 'PERFUSION_START' && event.linked_event_id) ? event.linked_event_id : adminEventId;
+            const revertTarget = (event.action_type === 'started' && event.linked_event_id) ? event.linked_event_id : adminEventId;
             await client.query(revertBagsQuery, [revertTarget, tenantId]);
+
+            // 4. Systematically insert a negative delta into the Surveillance Event Stream
+            // This triggers 'update_surveillance_hour_bucket()' instantly and mathematically cancels the event in the UI cache natively.
+            if (event.requires_fluid_info || event.prescription_type === 'transfusion') {
+                await hydricEngineService.rebuildHydricBucketsForPatient(tenantId, event.tenant_patient_id, client);
+            }
 
             await client.query('COMMIT');
         } catch (e) {

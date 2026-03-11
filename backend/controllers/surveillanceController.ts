@@ -11,7 +11,7 @@ const getContext = (req: Request) => {
 export const getSurveillanceTimeline = async (req: AuthRequest, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const { admission_id, from, to, flowsheet_id } = req.query;
+        const { from, to, flowsheet_id } = req.query;
         const tenant_patient_id = req.params.patientId;
 
         if (!tenant_patient_id || !from || !to) {
@@ -21,7 +21,6 @@ export const getSurveillanceTimeline = async (req: AuthRequest, res: Response) =
         const data = await surveillanceService.getTimeline(
             tenantId, 
             tenant_patient_id as string, 
-            admission_id ? String(admission_id) : null, 
             from as string, 
             to as string, 
             flowsheet_id as string | undefined
@@ -38,7 +37,6 @@ export const updateSurveillanceCell = async (req: AuthRequest, res: Response) =>
         const { tenantId, user } = getContext(req);
         console.log("updateSurveillanceCell incoming payload:", req.body);
         const { 
-            admissionId, 
             tenantPatientId, 
             parameterId, 
             parameterCode,
@@ -55,7 +53,6 @@ export const updateSurveillanceCell = async (req: AuthRequest, res: Response) =>
         const result = await surveillanceService.updateCell(
             tenantId,
             tenantPatientId,
-            admissionId || null,
             recordedAt,
             parameterId,
             parameterCode,
@@ -77,3 +74,4 @@ export const updateSurveillanceCell = async (req: AuthRequest, res: Response) =>
         res.status(500).json({ message: error.message });
     }
 };
+// Trigger nodemon reload Sun Mar  8 01:17:18 +00 2026

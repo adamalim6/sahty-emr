@@ -16,12 +16,13 @@ export const FlowsheetManager: React.FC = () => {
     const [isCreatingParam, setIsCreatingParam] = useState(false);
     const [editingParamId, setEditingParamId] = useState<string | null>(null);
     const [paramForm, setParamForm] = useState({
-        code: '', label: '', unit: '', unitId: '', valueType: 'number',
+        code: '', label: '', unit: '', unitId: '', valueType: 'numeric',
         normalMin: '', normalMax: '', warningMin: '', warningMax: '', hardMin: '', hardMax: '',
-        isHydricInput: false, isHydricOutput: false
+        isHydricInput: false, isHydricOutput: false, source: 'manual'
     });
 
     const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+    const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
     const [groupForm, setGroupForm] = useState({ code: '', label: '', sortOrder: 0, parameterIds: [] as string[] });
     const [groupSortError, setGroupSortError] = useState('');
 
@@ -56,13 +57,14 @@ export const FlowsheetManager: React.FC = () => {
 
     const handleSaveParameter = async () => {
         try {
-            const payload = { ...paramForm };
-            if (!payload.normalMin) delete (payload as any).normalMin;
-            if (!payload.normalMax) delete (payload as any).normalMax;
-            if (!payload.warningMin) delete (payload as any).warningMin;
-            if (!payload.warningMax) delete (payload as any).warningMax;
-            if (!payload.hardMin) delete (payload as any).hardMin;
-            if (!payload.hardMax) delete (payload as any).hardMax;
+            const payload: any = { ...paramForm };
+            if (payload.unitId === '') payload.unitId = null;
+            if (payload.normalMin === '') payload.normalMin = null; else payload.normalMin = Number(payload.normalMin);
+            if (payload.normalMax === '') payload.normalMax = null; else payload.normalMax = Number(payload.normalMax);
+            if (payload.warningMin === '') payload.warningMin = null; else payload.warningMin = Number(payload.warningMin);
+            if (payload.warningMax === '') payload.warningMax = null; else payload.warningMax = Number(payload.warningMax);
+            if (payload.hardMin === '') payload.hardMin = null; else payload.hardMin = Number(payload.hardMin);
+            if (payload.hardMax === '') payload.hardMax = null; else payload.hardMax = Number(payload.hardMax);
             
             if (editingParamId) {
                 await api.updateGlobalObservationParameter(editingParamId, payload);
@@ -71,10 +73,11 @@ export const FlowsheetManager: React.FC = () => {
             }
             setIsCreatingParam(false);
             setEditingParamId(null);
-            setParamForm({ code: '', label: '', unit: '', unitId: '', valueType: 'number', normalMin: '', normalMax: '', warningMin: '', warningMax: '', hardMin: '', hardMax: '', isHydricInput: false, isHydricOutput: false });
+            setParamForm({ code: '', label: '', unit: '', unitId: '', valueType: 'numeric', normalMin: '', normalMax: '', warningMin: '', warningMax: '', hardMin: '', hardMax: '', isHydricInput: false, isHydricOutput: false, source: 'manual' });
             loadData();
-        } catch (e) {
-            alert('Error saving parameter');
+        } catch (e: any) {
+            console.error('Error saving parameter:', e);
+            alert(e.message || 'Error saving parameter');
         }
     };
 
@@ -92,7 +95,8 @@ export const FlowsheetManager: React.FC = () => {
             hardMin: p.hardMin || '',
             hardMax: p.hardMax || '',
             isHydricInput: p.isHydricInput || false,
-            isHydricOutput: p.isHydricOutput || false
+            isHydricOutput: p.isHydricOutput || false,
+            source: p.source || 'manual'
         });
         setEditingParamId(p.id);
         setIsCreatingParam(true);
@@ -102,23 +106,40 @@ export const FlowsheetManager: React.FC = () => {
     const handleCancelParam = () => {
         setIsCreatingParam(false);
         setEditingParamId(null);
-        setParamForm({ code: '', label: '', unit: '', unitId: '', valueType: 'number', normalMin: '', normalMax: '', warningMin: '', warningMax: '', hardMin: '', hardMax: '', isHydricInput: false, isHydricOutput: false });
+        setParamForm({ code: '', label: '', unit: '', unitId: '', valueType: 'numeric', normalMin: '', normalMax: '', warningMin: '', warningMax: '', hardMin: '', hardMax: '', isHydricInput: false, isHydricOutput: false, source: 'manual' });
     };
 
     const handleCreateGroup = async () => {
         try {
             setGroupSortError('');
-            await api.createGlobalObservationGroup({ group: { code: groupForm.code, label: groupForm.label, sortOrder: groupForm.sortOrder }, parameterIds: groupForm.parameterIds });
+            if (editingGroupId) {
+                await api.updateGlobalObservationGroup(editingGroupId, { group: { code: groupForm.code, label: groupForm.label, sortOrder: groupForm.sortOrder }, parameterIds: groupForm.parameterIds });
+            } else {
+                await api.createGlobalObservationGroup({ group: { code: groupForm.code, label: groupForm.label, sortOrder: groupForm.sortOrder }, parameterIds: groupForm.parameterIds });
+            }
             setIsCreatingGroup(false);
+            setEditingGroupId(null);
             setGroupForm({ code: '', label: '', sortOrder: 0, parameterIds: [] });
             loadData();
         } catch (e: any) {
             if (e.message?.includes("déja attribué")) {
                 setGroupSortError(e.message);
             } else {
-                alert(e.message || 'Error creating group');
+                alert(e.message || 'Error saving group');
             }
         }
+    };
+
+    const handleEditGroup = (g: any) => {
+        setGroupForm({
+            code: g.code,
+            label: g.label,
+            sortOrder: g.sortOrder || 0,
+            parameterIds: g.parameters ? g.parameters.map((p: any) => p.id) : []
+        });
+        setEditingGroupId(g.id);
+        setIsCreatingGroup(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleEditFlowsheet = (fs: any) => {
@@ -187,7 +208,7 @@ export const FlowsheetManager: React.FC = () => {
                     <div className="space-y-6">
                         <div className="flex justify-between items-center">
                             <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-700 to-indigo-600">Référentiel des Paramètres</h2>
-                            <button onClick={() => { setIsCreatingParam(true); setEditingParamId(null); setParamForm({ code: '', label: '', unit: '', unitId: '', valueType: 'number', normalMin: '', normalMax: '', warningMin: '', warningMax: '', hardMin: '', hardMax: '', isHydricInput: false, isHydricOutput: false }); }} className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm transition-colors">
+                            <button onClick={() => { setIsCreatingParam(true); setEditingParamId(null); setParamForm({ code: '', label: '', unit: '', unitId: '', valueType: 'numeric', normalMin: '', normalMax: '', warningMin: '', warningMax: '', hardMin: '', hardMax: '', isHydricInput: false, isHydricOutput: false, source: 'manual' }); }} className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm transition-colors">
                                 <Plus size={18} />
                                 <span>Nouveau Paramètre</span>
                             </button>
@@ -201,7 +222,7 @@ export const FlowsheetManager: React.FC = () => {
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     <div>
                                         <label className="block text-xs font-semibold text-slate-700 mb-1">Code</label>
-                                        <input className="w-full border border-slate-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-100 outline-none" placeholder="Code (ex: HR)" value={paramForm.code} onChange={e => setParamForm({...paramForm, code: e.target.value})} disabled={!!editingParamId} />
+                                        <input className="w-full border border-slate-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-100 outline-none" placeholder="Code (ex: HR)" value={paramForm.code} onChange={e => setParamForm({...paramForm, code: e.target.value})} />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-semibold text-slate-700 mb-1">Label</label>
@@ -223,10 +244,11 @@ export const FlowsheetManager: React.FC = () => {
                                     </div>
                                     <div>
                                         <label className="block text-xs font-semibold text-slate-700 mb-1">Type</label>
-                                        <select className="w-full border border-slate-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-100 outline-none" value={paramForm.valueType} onChange={e => setParamForm({...paramForm, valueType: e.target.value})} disabled={!!editingParamId}>
-                                            <option value="number">Numérique</option>
-                                            <option value="text">Texte List</option>
-                                            <option value="boolean">Oui/Non</option>
+                                        <select className="w-full border border-slate-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-100 outline-none" value={paramForm.valueType} onChange={e => setParamForm({...paramForm, valueType: e.target.value})}>
+                                            <option value="numeric">Numérique</option>
+                                            <option value="text">Texte</option>
+                                            <option value="boolean">Booléen</option>
+                                            <option value="text_list">Liste de texte</option>
                                         </select>
                                     </div>
                                 </div>
@@ -261,6 +283,18 @@ export const FlowsheetManager: React.FC = () => {
                                 <div className="flex space-x-4 items-center">
                                     <label className="flex items-center space-x-2 text-sm text-slate-700"><input type="checkbox" checked={paramForm.isHydricInput} onChange={e => setParamForm({...paramForm, isHydricInput: e.target.checked})} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" /><span>Entrée Hydrique</span></label>
                                     <label className="flex items-center space-x-2 text-sm text-slate-700"><input type="checkbox" checked={paramForm.isHydricOutput} onChange={e => setParamForm({...paramForm, isHydricOutput: e.target.checked})} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" /><span>Sortie Hydrique</span></label>
+                                    
+                                    <label className="flex items-center space-x-2 text-sm text-slate-700 ml-4 border-l border-slate-200 pl-4">
+                                        <span className="font-medium mr-2">Source:</span>
+                                        <select 
+                                            className="border border-slate-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-100 outline-none w-32"
+                                            value={paramForm.source}
+                                            onChange={e => setParamForm({...paramForm, source: e.target.value})}
+                                        >
+                                            <option value="manual">Manuelle</option>
+                                            <option value="calculated">Calculée</option>
+                                        </select>
+                                    </label>
                                 </div>
                                 <div className="flex justify-end space-x-3 pt-2">
                                     <button onClick={handleCancelParam} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Annuler</button>
@@ -279,6 +313,7 @@ export const FlowsheetManager: React.FC = () => {
                                         <th className="p-4 font-semibold">Unité</th>
                                         <th className="p-4 font-semibold">Limites</th>
                                         <th className="p-4 font-semibold text-center">Bilan H.</th>
+                                        <th className="p-4 font-semibold text-center">Source</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -289,7 +324,12 @@ export const FlowsheetManager: React.FC = () => {
                                                 <span>{p.code}</span>
                                             </td>
                                             <td className="p-4 font-medium text-slate-800">{p.label}</td>
-                                            <td className="p-4 text-slate-600">{p.valueType === 'number' ? 'Numérique' : p.valueType}</td>
+                                            <td className="p-4 text-slate-600">
+                                                {p.valueType === 'numeric' ? 'Numérique' : 
+                                                 p.valueType === 'text' ? 'Texte' : 
+                                                 p.valueType === 'boolean' ? 'Booléen' :
+                                                 p.valueType === 'text_list' ? 'Liste de texte' : p.valueType}
+                                            </td>
                                             <td className="p-4 text-slate-600">{p.unit || '-'}</td>
                                             <td className="p-4 text-slate-600">
                                                 <div className="flex flex-col space-y-1">
@@ -303,6 +343,9 @@ export const FlowsheetManager: React.FC = () => {
                                                 {p.isHydricInput ? <span className="inline-block px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-bold mr-1">IN</span> : null}
                                                 {p.isHydricOutput ? <span className="inline-block px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-bold">OUT</span> : null}
                                             </td>
+                                            <td className="p-4 text-center">
+                                                {p.source === 'calculated' ? <span className="inline-block px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">Calculée</span> : <span className="inline-block px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs font-medium">Manuelle</span>}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -315,7 +358,7 @@ export const FlowsheetManager: React.FC = () => {
                     <div className="space-y-6">
                         <div className="flex justify-between items-center">
                             <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-700 to-indigo-600">Groupes d'Observation</h2>
-                            <button onClick={() => setIsCreatingGroup(true)} className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm transition-colors">
+                            <button onClick={() => { setIsCreatingGroup(true); setEditingGroupId(null); setGroupForm({ code: '', label: '', sortOrder: 0, parameterIds: [] }); }} className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm transition-colors">
                                 <Plus size={18} />
                                 <span>Nouveau Groupe</span>
                             </button>
@@ -323,6 +366,9 @@ export const FlowsheetManager: React.FC = () => {
                         
                         {isCreatingGroup && (
                             <div className="bg-white p-6 rounded-xl shadow-md border border-slate-100 flex flex-col space-y-4 animate-in fade-in slide-in-from-top-4">
+                                <div className="flex justify-between items-center mb-2">
+                                    <h3 className="text-lg font-bold text-slate-800">{editingGroupId ? "Modifier le Groupe" : "Nouveau Groupe"}</h3>
+                                </div>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
                                         <label className="block text-xs font-semibold text-slate-700 mb-1">Code</label>
@@ -365,8 +411,8 @@ export const FlowsheetManager: React.FC = () => {
                                     </div>
                                 </div>
                                 <div className="flex justify-end space-x-3 pt-2">
-                                    <button onClick={() => { setIsCreatingGroup(false); setGroupSortError(''); }} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Annuler</button>
-                                    <button onClick={handleCreateGroup} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm transition-colors">Enregistrer</button>
+                                    <button onClick={() => { setIsCreatingGroup(false); setEditingGroupId(null); setGroupSortError(''); }} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Annuler</button>
+                                    <button onClick={handleCreateGroup} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm transition-colors">{editingGroupId ? 'Mettre à jour' : 'Enregistrer'}</button>
                                 </div>
                             </div>
                         )}
@@ -385,6 +431,13 @@ export const FlowsheetManager: React.FC = () => {
                                                 <h3 className="font-bold text-slate-800 text-lg">{g.label}</h3>
                                                 <p className="font-mono text-xs text-indigo-600 font-semibold">{g.code}</p>
                                             </div>
+                                            <button 
+                                                onClick={() => handleEditGroup(g)} 
+                                                className="text-slate-400 hover:text-indigo-600 transition-colors p-2 rounded-lg hover:bg-slate-50"
+                                                title="Modifier le groupe"
+                                            >
+                                                <Edit2 size={18} />
+                                            </button>
                                         </div>
                                     </div>
                                 );

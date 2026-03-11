@@ -20,6 +20,8 @@ import devRoutes from './routes/devRoutes';
 import stockTransferRoutes from './routes/stockTransferRoutes';
 import stockReservationRoutes from './routes/stockReservationRoutes';
 import escarresRoutes from './routes/escarresRoutes';
+import observationsRoutes from './routes/observationsRoutes';
+import addictionsRoutes from './routes/addictionsRoutes';
 import { authenticateToken, authenticateAnyToken } from './middleware/authMiddleware';
 import { requireModule } from './middleware/moduleMiddleware';
 import { startIdentitySyncWorker } from './workers/identitySyncWorker';
@@ -72,16 +74,25 @@ app.use('/api/reference', referenceRoutes);
 app.use('/api/reference/atc', authenticateToken, globalATCRoutes);
 app.use('/api/reference/emdn', authenticateToken, globalEMDNRoutes);
 
+import allergiesRoutes from './routes/allergiesRoutes';
+
+// Health check
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date() });
+});
+
 app.use('/api/emr', authenticateToken, requireModule('EMR'), emrRoutes);
 app.use('/api/pharmacy', authenticateToken, requireModule('PHARMACY'), pharmacyRoutes);
 app.use('/api/pharmacy', authenticateToken, requireModule('PHARMACY'), serializedPackRoutes);
 app.use('/api/pharmacy', authenticateToken, requireModule('PHARMACY'), dispensationRoutes);
-// app.use('/api/pharmacy/stock-reservations', authenticateToken, requireModule('PHARMACY'), stockReservationRoutes); // MOVED below
-app.use('/api/prescriptions', authenticateToken, prescriptionRoutes); 
-app.use('/api/stock-transfers', authenticateToken, stockTransferRoutes); 
-app.use('/api/stock-reservations', authenticateToken, stockReservationRoutes); // Shared API
+app.use('/api/prescriptions', authenticateToken, prescriptionRoutes);
+app.use('/api/stock-transfers', authenticateToken, stockTransferRoutes);
+app.use('/api/stock-reservations', authenticateToken, stockReservationRoutes);
 app.use('/api', authenticateToken, dispensationRoutes);
 app.use('/api/escarres', authenticateToken, escarresRoutes);
+app.use('/api/allergies', authenticateToken, allergiesRoutes);
+app.use('/api/observations', authenticateToken, observationsRoutes);
+app.use('/api/addictions', authenticateToken, addictionsRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -123,3 +134,4 @@ app.listen(PORT, () => {
     // startIdentitySyncWorker();
     // startAuthSyncWorker();
 });
+// Trigger nodemon reload Sun Mar  8 01:17:19 +00 2026

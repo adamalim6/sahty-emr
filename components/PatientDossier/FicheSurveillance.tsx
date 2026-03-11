@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Save,
@@ -304,6 +304,7 @@ interface RowConfig {
   warningMax?: number;
   hardMin?: number;
   hardMax?: number;
+  source?: 'manual' | 'calculated';
 }
 
 interface FicheSurveillanceProps {
@@ -313,7 +314,7 @@ interface FicheSurveillanceProps {
 interface SectionConfig {
   id: string;
   title: string;
-  icon: React.ElementType;
+  icon: any;
   color: string;
   rows: RowConfig[];
 }
@@ -457,6 +458,16 @@ const GridCell = ({
     }
   }
 
+  if (config.source === 'calculated') {
+    return (
+      <div 
+        className="w-full h-full flex items-center justify-center text-sm font-medium text-slate-700 bg-slate-100 cursor-not-allowed select-none"
+      >
+        {localVal}
+      </div>
+    );
+  }
+
   return (
     <input
       type={isNumberType ? 'number' : 'text'}
@@ -523,13 +534,15 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
     prescriptionName: string,
     slotTime: string,
     duration: number, // 0 for bolus, >0 for perfusion
+    requiresEndEvent: boolean, // Native boolean from DB flag
+    requiresFluidInfo: boolean,
     activePerfusionEvent: any | null, // The 'started' event if it's currently running
     historyEvents: any[], // The local chunk of administration actions previously recorded
     isTransfusion?: boolean
-  }>({ isOpen: false, prescriptionId: '', eventId: '', prescriptionName: '', slotTime: '', duration: 0, activePerfusionEvent: null, historyEvents: [], isTransfusion: false });
+  }>({ isOpen: false, prescriptionId: '', eventId: '', prescriptionName: '', slotTime: '', duration: 0, requiresEndEvent: false, requiresFluidInfo: false, activePerfusionEvent: null, historyEvents: [], isTransfusion: false });
 
   const closeAdminModal = () => {
-    setAdminModal({ isOpen: false, prescriptionId: '', eventId: '', prescriptionName: '', slotTime: '', duration: 0, activePerfusionEvent: null, historyEvents: [], isTransfusion: false });
+    setAdminModal({ isOpen: false, prescriptionId: '', eventId: '', prescriptionName: '', slotTime: '', duration: 0, requiresEndEvent: false, requiresFluidInfo: false, activePerfusionEvent: null, historyEvents: [], isTransfusion: false });
   };
 
   const handleCancelAdminEvent = async (adminEventId: string, reason?: string) => {
@@ -546,6 +559,8 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
             toDate: survEnd.toISOString()
         });
         if (res.timelineEvents) setTimelineEvents(res.timelineEvents);
+        
+        fetchWindowData(); // Synchronize the cached hydric values immediately
         
         // Modal must close or trigger a refetch of its own history. 
         // For simplicity and clinical safety, closing the modal forces them to re-click if they want to see the updated crossed-out state
@@ -635,57 +650,58 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
     fetchGlobalData();
   }, [patientId]);
 
-  // Fetch Surveillance Grid (72h window)
+  // Expose the Window Data Fetching logic outside the useEffect so we can forcefully hit it upon commit updates
+  const fetchWindowData = useCallback(async () => {
+    if (!patientId || !activeFlowsheetId || timeSlots.length === 0) return;
+    try {
+      const survStart = new Date(timeSlots[0].iso);
+      const survEnd = new Date(timeSlots[timeSlots.length - 1].iso);
+      survEnd.setHours(survEnd.getHours() + 1); // +1h to include the full last hour bucket
+
+      const res = await api.getSurveillanceTimeline(patientId, {
+        flowsheetId: activeFlowsheetId,
+        fromDate: survStart.toISOString(),
+        toDate: survEnd.toISOString()
+      });
+
+      const newGridData: DailyGridData = {};
+      
+      if (res.buckets) {
+        res.buckets.forEach((b: any) => {
+            const iso = new Date(b.bucketStart).toISOString();
+            Object.entries(b.values || {}).forEach(([rowId, cellObj]: [string, any]) => {
+                if (!newGridData[rowId]) newGridData[rowId] = {};
+                newGridData[rowId][iso] = (cellObj && typeof cellObj === 'object' && cellObj.v !== undefined) ? cellObj.v : cellObj; 
+            });
+        });
+      }
+
+      setAllData(prev => ({ ...prev, [dateKey]: newGridData }));
+      if (res.timelineEvents) {
+          setTimelineEvents(res.timelineEvents);
+      }
+      
+      if (res.flowsheet) {
+          setOpenSections(prev => {
+              const np = { ...prev };
+              res.flowsheet.groups.forEach((g: any) => np[g.id] = np[g.id] ?? true);
+              return np;
+          });
+      }
+
+    } catch (error) {
+      console.error("Failed to fetch 72h window buckets", error);
+    }
+  }, [patientId, activeFlowsheetId, timeSlots, dateKey]);
+
+  // Fetch Surveillance Grid (72h window) polling
   useEffect(() => {
     if (patientId && activeFlowsheetId) {
-      const fetchWindowData = async () => {
-        try {
-          const survStart = new Date(timeSlots[0].iso);
-          const survEnd = new Date(timeSlots[timeSlots.length - 1].iso);
-          survEnd.setHours(survEnd.getHours() + 1); // +1h to include the full last hour bucket
-
-          const res = await api.getSurveillanceTimeline(patientId, {
-            flowsheetId: activeFlowsheetId,
-            fromDate: survStart.toISOString(),
-            toDate: survEnd.toISOString()
-          });
-
-          const newGridData: DailyGridData = {};
-          
-          if (res.buckets) {
-            res.buckets.forEach((b: any) => {
-                const iso = new Date(b.bucketStart).toISOString();
-                Object.entries(b.values || {}).forEach(([rowId, cellObj]: [string, any]) => {
-                    if (!newGridData[rowId]) newGridData[rowId] = {};
-                    newGridData[rowId][iso] = (cellObj && typeof cellObj === 'object' && cellObj.v !== undefined) ? cellObj.v : cellObj; 
-                });
-            });
-          }
-
-          setAllData(prev => ({ ...prev, [dateKey]: newGridData }));
-          if (res.timelineEvents) {
-              setTimelineEvents(res.timelineEvents);
-          }
-          
-          // Optionally, sync server flowsheets if it returns full structure
-          if (res.flowsheet) {
-              setOpenSections(prev => {
-                  const np = { ...prev };
-                  res.flowsheet.groups.forEach((g: any) => np[g.id] = np[g.id] ?? true);
-                  return np;
-              });
-          }
-
-        } catch (error) {
-          console.error("Failed to fetch 72h window buckets", error);
-        }
-      };
-      
       fetchWindowData();
       const interval = setInterval(fetchWindowData, 30000); // 30s refresh
       return () => clearInterval(interval);
     }
-  }, [patientId, selectedDate, dateKey, timeSlots, activeFlowsheetId]);
+  }, [patientId, activeFlowsheetId, fetchWindowData]);
 
   // Chart Modal State
   const [showChart, setShowChart] = useState(false);
@@ -1006,27 +1022,46 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
         title: g.label || g.name,
         icon: Activity, // Provide a default icon
         color: 'text-slate-700',
-        rows: (g.parameters || []).map((p: any) => ({
-          parameterId: p.id,
-          id: p.code,
-          label: p.label || p.name,
-          epicHeader: (
-            <div className="flex w-full items-center justify-between font-bold text-gray-700 text-[11px] px-2 py-1 leading-tight">
-              <span className="truncate">{p.label || p.name}</span>
-              {p.unit && <span className="text-[9px] text-gray-400 font-normal ml-2">{p.unit}</span>}
-            </div>
-          ),
-          epicSubtext: <span className="w-0 h-0 block" />, 
-          unit: p.unit, // unit is a flat field on the parameter
-          type: p.valueType?.toLowerCase() === 'boolean' ? 'checkbox' : p.options ? 'select' : ['number', 'numeric'].includes(p.valueType?.toLowerCase()) ? 'number' : 'text',
-          options: p.options,
-          normalMin: p.normalMin,
-          normalMax: p.normalMax,
-          warningMin: p.warningMin,
-          warningMax: p.warningMax,
-          hardMin: p.hardMin,
-          hardMax: p.hardMax
-        }) as RowConfig)
+        rows: (g.parameters || []).map((p: any) => {
+          
+          let rowType = p.valueType?.toLowerCase() === 'boolean' ? 'checkbox' : p.options ? 'select' : ['number', 'numeric'].includes(p.valueType?.toLowerCase()) ? 'number' : 'text';
+          let computeSource = undefined;
+
+          if (p.code === 'HYDRIC_INPUT_CUM') {
+              rowType = 'computed';
+              computeSource = 'HYDRIC_INPUT';
+          } else if (p.code === 'HYDRIC_OUTPUT_CUM') {
+              rowType = 'computed';
+              computeSource = 'HYDRIC_OUTPUT';
+          } else if (p.code === 'HYDRIC_BALANCE_CUM') {
+              rowType = 'computed';
+              computeSource = 'HYDRIC_BALANCE';
+          }
+
+          return {
+              parameterId: p.id,
+              id: p.code,
+              label: p.label || p.name,
+              epicHeader: (
+                <div className="flex w-full items-center justify-between font-bold text-gray-700 text-[11px] px-2 py-1 leading-tight">
+                  <span className="truncate">{p.label || p.name}</span>
+                  {p.unit && <span className="text-[9px] text-gray-400 font-normal ml-2">{p.unit}</span>}
+                </div>
+              ),
+              epicSubtext: <span className="w-0 h-0 block" />, 
+              unit: p.unit, 
+              type: rowType as any,
+              computeSource,
+              options: p.options,
+              normalMin: p.normalMin,
+              normalMax: p.normalMax,
+              warningMin: p.warningMin,
+              warningMax: p.warningMax,
+              hardMin: p.hardMin,
+              hardMax: p.hardMax,
+              source: p.source
+          } as RowConfig;
+        })
       }));
     }
 
@@ -1112,6 +1147,7 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
         recordedAt: slotIso,
         value: value === '' ? null : value
       });
+      fetchWindowData(); // Instantly visually refresh the UI to display Hydric calculations mathematically aggregated
     } catch (e: any) {
       console.error("Failed to commit cell", e);
       // Rollback local state ideally here if we had pristine tracking
@@ -1204,7 +1240,8 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
            justification: p.justification,
            transfusion: p.transfusion,
            administered_bags: p.administered_bags,
-           linked_event_id: p.linked_event_id
+           linked_event_id: p.linked_event_id,
+           volume_administered_ml: p.volume_administered_ml
         });
       }
 
@@ -1222,6 +1259,10 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
           setTimelineEvents(res.timelineEvents);
       }
       
+      // Explicitly trigger a fresh poll of the JSON buckets 
+      // otherwise mathematically aggregated admin volumes remain hidden graphically until 30s timeout
+      fetchWindowData();
+      
       // We close the modal to let the user see the updated timeline grid cell
       setAdminModal(prev => ({ ...prev, isOpen: false }));
     } catch (err: any) {
@@ -1230,9 +1271,10 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
     }
   };
 
-  const timeToPct = (timeTs: number, timelineStartTs: number, totalDuration: number) => {
-      if (totalDuration === 0) return 0;
-      return ((timeTs - timelineStartTs) / totalDuration) * 100;
+  const timeToPx = (timeTs: number, timelineStartTs: number) => {
+      const minutesFromStart = (timeTs - timelineStartTs) / 60000;
+      const pixelsPerMinute = 80 / 60; // 80px column width exactly
+      return minutesFromStart * pixelsPerMinute;
   };
 
   const getDurationMinsLocal = (duration: any): number => {
@@ -1318,7 +1360,7 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
 
       const processedInstantsBase = uniqueInstants.map((te) => {
           const pStartTs = new Date(te.plannedDate).getTime();
-          const pLeft = timeToPct(pStartTs, timelineStartTs, totalDuration);
+          const pLeft = timeToPx(pStartTs, timelineStartTs);
           scheduledXs.push(pLeft);
 
           const sortedAEvs = [...(te.administrationEvents || [])].sort((a, b) => 
@@ -1333,7 +1375,7 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
 
           const actualTs = terminalEv.actual_start_at ? new Date(terminalEv.actual_start_at).getTime() : new Date(terminalEv.occurred_at).getTime();
           const deltaMin = (actualTs - pStartTs) / 60000;
-          const aLeft = timeToPct(actualTs, timelineStartTs, totalDuration);
+          const aLeft = timeToPx(actualTs, timelineStartTs);
 
           if (Math.abs(deltaMin) <= 30) {
               return { te, type: 'on-time', terminalEv, pStartTs, pLeft, actualTs, aLeft, deltaMin };
@@ -1366,7 +1408,8 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
 
       // Increase spacing as requested by the user
       const VERTICAL_STEP = 34;
-      const BASE_HEIGHT = 72;
+      const baseTracksHeight = maxTrack * 38 + (maxTrack - 1) * 6 + 16;
+      const BASE_HEIGHT = Math.max(72, baseTracksHeight);
       
       const maxLateLane = lateWithLanes.length > 0 ? Math.max(...lateWithLanes.map(i => i.lane)) + 1 : 0;
       const maxEarlyLane = earlyWithLanes.length > 0 ? Math.max(...earlyWithLanes.map(i => i.lane)) + 1 : 0;
@@ -1417,7 +1460,7 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
                      {timeSlots.map((slot) => {
                          const isExtraBorder = slot.isMidnight || slot.isStartOfDay;
                          return (
-                             <div key={`grid-${slot.iso}`} className={`flex-1 border-r border-gray-200 h-full ${slot.iso === currentHourLabel ? 'bg-emerald-50/40 ring-1 ring-inset ring-emerald-100' : ''} ${isExtraBorder ? 'border-r-2 border-r-gray-400' : ''}`} />
+                             <div key={`grid-${slot.iso}`} className={`w-[80px] min-w-[80px] shrink-0 border-r border-gray-200 h-full ${slot.iso === currentHourLabel ? 'bg-emerald-50/40 ring-1 ring-inset ring-emerald-100' : ''} ${isExtraBorder ? 'border-r-2 border-r-gray-400' : ''}`} />
                          );
                      })}
                  </div>
@@ -1427,7 +1470,7 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
                     {/* Render Tracks */}
                     {Array.from({length: maxTrack}).map((_, trackIdx) => {
                         return (
-                            <div key={`track-${trackIdx}`} className="relative w-full h-[20px]">
+                            <div key={`track-${trackIdx}`} className="relative w-full h-[38px]">
                                 {infusions.filter(te => (eventTracks.get(te.eventId || `evt-${infusions.indexOf(te)}`) || 0) === trackIdx).map((te) => {
                                     const durationMins = getDurationMinsLocal(te.adminDuration);
                                     const evtId = te.eventId || `evt-${infusions.indexOf(te)}`;
@@ -1439,8 +1482,8 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
                                     const endedEv = te.administrationEvents?.find((e: any) => e.action_type === 'ended' && e.status === 'ACTIVE');
                                     const refusedEv = te.administrationEvents?.find((e: any) => e.action_type === 'refused' && e.status === 'ACTIVE');
                                     
-                                    const pLeft = timeToPct(pStartTs, timelineStartTs, totalDuration);
-                                    const pWidth = timeToPct(pEndTs, timelineStartTs, totalDuration) - pLeft;
+                                    const pLeft = timeToPx(pStartTs, timelineStartTs);
+                                    const pWidth = timeToPx(pEndTs, timelineStartTs) - pLeft;
 
                                     const isOngoing = startedEv && !endedEv;
                                     let aBar = null;
@@ -1450,8 +1493,8 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
                                             <div key={`${evtId}-refused`}
                                                 className="absolute cursor-pointer transition-colors shadow-sm border border-red-500 rounded-[1px]"
                                                 style={{ 
-                                                    left: `${pLeft}%`, 
-                                                    width: `${pWidth}%`,
+                                                    left: `${pLeft}px`, 
+                                                    width: `${pWidth}px`,
                                                     height: '14px',
                                                     top: '50%',
                                                     transform: 'translateY(-50%)',
@@ -1470,6 +1513,8 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
                                                             prescriptionName: row.prescriptionData?.commercialName || '',
                                                             slotTime: te.plannedDate,
                                                             duration: durationMins,
+                                                            requiresEndEvent: te.requires_end_event || false,
+                                                            requiresFluidInfo: te.requires_fluid_info || false,
                                                             activePerfusionEvent: null,
                                                             historyEvents: te.administrationEvents || [],
                                                             isTransfusion: row.prescriptionData?.prescriptionType === 'transfusion'
@@ -1482,43 +1527,76 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
                                         const aStartExact = new Date(startedEv.actual_start_at || startedEv.occurred_at).getTime();
                                         const aEndExact = endedEv && (endedEv.actual_end_at || endedEv.occurred_at) ? new Date(endedEv.actual_end_at || endedEv.occurred_at).getTime() : Date.now();
 
-                                        const aLeft = timeToPct(aStartExact, timelineStartTs, totalDuration);
-                                        const aWidth = Math.max(0.1, timeToPct(aEndExact, timelineStartTs, totalDuration) - aLeft);
+                                        const aLeft = timeToPx(aStartExact, timelineStartTs);
+                                        const aWidth = Math.max(1, timeToPx(aEndExact, timelineStartTs) - aLeft);
+                                        
+                                        const pRight = pLeft + pWidth;
+                                        const aRight = aLeft + aWidth;
 
                                         aBar = (
-                                            <div key={`${evtId}-actual`}
-                                                className={`absolute cursor-pointer transition-colors shadow-sm ${isOngoing ? 'animate-shimmer-sweep outline outline-violet-500' : 'bg-violet-600'} rounded-[1px]`}
-                                                style={{ 
-                                                    left: `${aLeft}%`, 
-                                                    width: `${aWidth}%`,
-                                                    height: '14px',
-                                                    top: '50%',
-                                                    transform: 'translateY(-50%)',
-                                                    zIndex: 20
-                                                }}
-                                                title={isOngoing ? `Perfusion en cours depuis ${new Date(aStartExact).toLocaleTimeString()}` : `Perfusion: ${new Date(aStartExact).toLocaleTimeString()} - ${new Date(aEndExact).toLocaleTimeString()}`}
-                                                onClick={(e) => { 
-                                                    e.stopPropagation(); 
-                                                    console.log("Clicked prescription event:", te.eventId || te.id);
-                                                    if (row.prescriptionData?.status !== 'PAUSED' && row.prescriptionData?.status !== 'STOPPED') {
-                                                        setAdminModal({
-                                                            isOpen: true,
-                                                            prescriptionId: row.prescriptionId!,
-                                                            eventId: te.eventId || te.id,
-                                                            prescriptionName: row.prescriptionData?.commercialName || '',
-                                                            slotTime: te.plannedDate,
-                                                            duration: durationMins,
-                                                            activePerfusionEvent: isOngoing ? startedEv : null,
-                                                            historyEvents: te.administrationEvents || [],
-                                                            isTransfusion: row.prescriptionData?.prescriptionType === 'transfusion'
-                                                        });
-                                                    }
-                                                }}
-                                            >
-                                                <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-violet-800 rounded-full shadow-[1px_0_2px_rgba(0,0,0,0.3)]" />
-                                                {!isOngoing && (
-                                                     <div className="absolute right-0 top-0 bottom-0 w-[2px] bg-violet-800 rounded-full shadow-[1px_0_2px_rgba(0,0,0,0.3)]" />
+                                            <div key={`${evtId}-actual-container`} className="absolute" style={{ left: 0, top: '50%', width: '100%', height: 0, zIndex: 20 }}>
+                                                {/* Left Dashed Connector */}
+                                                {aLeft < pLeft && (
+                                                    <div className="absolute" style={{ left: 0, top: 0, height: '36px', transform: 'translateY(-50%)' }}>
+                                                        {/* Top Dashed line */}
+                                                        <div className="absolute border-t-2 border-dashed border-violet-500" 
+                                                             style={{ left: `${aLeft}px`, width: `${pLeft - aLeft}px`, top: 0 }} />
+                                                        {/* Bottom Dashed line */}
+                                                        <div className="absolute border-b-2 border-dashed border-violet-500" 
+                                                             style={{ left: `${aLeft}px`, width: `${pLeft - aLeft}px`, bottom: 0 }} />
+                                                    </div>
                                                 )}
+                                                
+                                                {/* Right Dashed Connector */}
+                                                {!isOngoing && aRight > pRight && (
+                                                    <div className="absolute" style={{ left: 0, top: 0, height: '36px', transform: 'translateY(-50%)' }}>
+                                                        {/* Top Dashed line */}
+                                                        <div className="absolute border-t-2 border-dashed border-violet-500" 
+                                                             style={{ left: `${pRight}px`, width: `${aRight - pRight}px`, top: 0 }} />
+                                                        {/* Bottom Dashed line */}
+                                                        <div className="absolute border-b-2 border-dashed border-violet-500" 
+                                                             style={{ left: `${pRight}px`, width: `${aRight - pRight}px`, bottom: 0 }} />
+                                                    </div>
+                                                )}
+                                                
+                                                {/* The Actual Administration Bar (Body) */}
+                                                <div key={`${evtId}-actual`}
+                                                    className={`absolute cursor-pointer transition-colors shadow-sm ${isOngoing ? 'animate-shimmer-sweep outline outline-violet-500' : 'bg-violet-600'} rounded-sm`}
+                                                    style={{ 
+                                                        left: `${aLeft}px`, 
+                                                        width: `${aWidth}px`,
+                                                        height: '20px',
+                                                        top: '-10px',
+                                                    }}
+                                                    title={isOngoing ? `Perfusion en cours depuis ${new Date(aStartExact).toLocaleTimeString()}` : `Perfusion: ${new Date(aStartExact).toLocaleTimeString()} - ${new Date(aEndExact).toLocaleTimeString()}`}
+                                                    onClick={(e) => { 
+                                                        e.stopPropagation(); 
+                                                        console.log("Clicked prescription event:", te.eventId || te.id);
+                                                        if (row.prescriptionData?.status !== 'PAUSED' && row.prescriptionData?.status !== 'STOPPED') {
+                                                            setAdminModal({
+                                                                isOpen: true,
+                                                                prescriptionId: row.prescriptionId!,
+                                                                eventId: te.eventId || te.id,
+                                                                prescriptionName: row.prescriptionData?.commercialName || '',
+                                                                slotTime: te.plannedDate,
+                                                                duration: durationMins,
+                                                                requiresEndEvent: te.requires_end_event || false,
+                                                                requiresFluidInfo: te.requires_fluid_info || false,
+                                                                activePerfusionEvent: isOngoing ? startedEv : null,
+                                                                historyEvents: te.administrationEvents || [],
+                                                                isTransfusion: row.prescriptionData?.prescriptionType === 'transfusion'
+                                                            });
+                                                        }
+                                                    }}
+                                                >
+                                                    {/* Tall Tick at aLeft (Start of Admin) */}
+                                                    <div className="absolute top-1/2 left-0 w-[2px] bg-violet-600 transform -translate-y-1/2" style={{ height: '36px' }} />
+                                                    
+                                                    {/* Tall Tick at aRight (End of Admin) */}
+                                                    {!isOngoing && (
+                                                        <div className="absolute top-1/2 right-0 w-[2px] bg-violet-600 transform -translate-y-1/2" style={{ height: '36px' }} />
+                                                    )}
+                                                </div>
                                             </div>
                                         );
                                     }
@@ -1528,9 +1606,9 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
                                             <div key={`${evtId}-planned`}
                                                 className="absolute bg-gray-200 cursor-pointer hover:brightness-95 transition-all rounded-[2px]"
                                                 style={{ 
-                                                    left: `${pLeft}%`, 
-                                                    width: `${pWidth}%`,
-                                                    height: '24px', 
+                                                    left: `${pLeft}px`, 
+                                                    width: `${pWidth}px`,
+                                                    height: '36px', 
                                                     top: '50%',
                                                     transform: 'translateY(-50%)',
                                                     zIndex: 10
@@ -1555,6 +1633,8 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
                                                         prescriptionName: row.prescriptionData?.commercialName || '',
                                                         slotTime: te.plannedDate,
                                                         duration: durationMins,
+                                                        requiresEndEvent: te.requires_end_event || false,
+                                                        requiresFluidInfo: te.requires_fluid_info || false,
                                                         activePerfusionEvent: isOngoing ? startedEv : null,
                                                         historyEvents: te.administrationEvents || [],
                                                         isTransfusion: row.prescriptionData?.prescriptionType === 'transfusion'
@@ -1591,6 +1671,8 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
                                         prescriptionName: row.prescriptionData?.commercialName || '',
                                         slotTime: item.te.plannedDate,
                                         duration: 0,
+                                        requiresEndEvent: item.te.requires_end_event || false,
+                                        requiresFluidInfo: item.te.requires_fluid_info || false,
                                         activePerfusionEvent: null,
                                         historyEvents: item.te.administrationEvents || [],
                                         isTransfusion: row.prescriptionData?.prescriptionType === 'transfusion'
@@ -1606,7 +1688,7 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
                                     const isDimmed = row.status === 'PAUSED' && isFuture;
                                     
                                     return (
-                                        <div key={`inst-pending-${idx}`} className={`absolute -translate-y-1/2 -translate-x-1/2 ${isDimmed ? 'opacity-30' : ''}`} style={{ left: `${item.pLeft}%`, top: '50%'}}>
+                                        <div key={`inst-pending-${idx}`} className={`absolute -translate-y-1/2 -translate-x-1/2 ${isDimmed ? 'opacity-30' : ''}`} style={{ left: `${item.pLeft}px`, top: '50%'}}>
                                             <div onClick={openModal} className={`pointer-events-auto ${row.status === 'STOPPED' || isDimmed ? 'cursor-not-allowed' : 'cursor-pointer'}`}>{icon}</div>
                                         </div>
                                     );
@@ -1614,7 +1696,7 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
 
                                 if (item.type === 'on-time') {
                                     return (
-                                        <div key={`inst-ontime-${idx}`} className="absolute -translate-y-1/2 -translate-x-1/2" style={{ left: `${item.pLeft}%`, top: '50%'}}>
+                                        <div key={`inst-ontime-${idx}`} className="absolute -translate-y-1/2 -translate-x-1/2" style={{ left: `${item.pLeft}px`, top: '50%'}}>
                                              <div onClick={openModal} className="pointer-events-auto cursor-pointer">
                                                  {getIconInst(item.terminalEv, false)}
                                              </div>
@@ -1638,15 +1720,15 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
                                     return (
                                         <React.Fragment key={`inst-dev-${idx}`}>
                                             {/* Scheduled Grey Dot - Always on the centerline */}
-                                            <div className="absolute -translate-y-1/2 -translate-x-1/2 z-0" style={{ left: `${item.pLeft}%`, top: '50%'}}>
+                                            <div className="absolute -translate-y-1/2 -translate-x-1/2 z-0" style={{ left: `${item.pLeft}px`, top: '50%'}}>
                                                  <div className="w-6 h-6 rounded-full bg-gray-200 border border-gray-300"></div>
                                             </div>
 
                                             {/* Dashed Connector - Runs strictly from scheduledX to actualX horizontally, at the final yOffsetPx */}
                                             <div className="absolute flex items-center justify-center pointer-events-none z-0"
                                                  style={{ 
-                                                     left: `${leftPct}%`, 
-                                                     width: `${widthPct}%`, 
+                                                     left: `${leftPct}px`, 
+                                                     width: `${widthPct}px`, 
                                                      height: '0px',
                                                      top: `calc(50% + ${yOffsetPx}px)` 
                                                  }}>
@@ -1673,7 +1755,7 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
                                             {lane > 0 && (
                                                 <div className="absolute w-[1px] border-l border-dashed border-gray-400"
                                                      style={{ 
-                                                         left: `${item.pLeft}%`, 
+                                                         left: `${item.pLeft}px`, 
                                                          top: isLate ? `calc(50% + ${yOffsetPx}px)` : '50%',
                                                          height: `${Math.abs(yOffsetPx)}px` 
                                                      }}></div>
@@ -1682,7 +1764,7 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
                                             {/* Finally, the Actual Event Icon - Rides the connector height precisely */}
                                             <div className="absolute -translate-x-1/2 -translate-y-1/2 z-10" 
                                                  style={{ 
-                                                     left: `${item.aLeft}%`, 
+                                                     left: `${item.aLeft}px`, 
                                                      top: `calc(50% + ${yOffsetPx}px)`
                                                  }}>
                                                  <div onClick={openModal} className="pointer-events-auto cursor-pointer">
@@ -1780,7 +1862,7 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
   };
 
   return (
-    <div className="w-full flex-1 flex flex-col min-h-0 bg-white shadow-sm overflow-hidden mb-8 relative">
+    <div className="w-full flex-1 flex flex-col min-h-0 bg-white shadow-sm overflow-hidden relative">
        <style dangerouslySetInnerHTML={{__html: `
         @keyframes shimmer-sweep {
           0% { background-position: 200% 0; }
@@ -1808,6 +1890,25 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
         </div>
 
         <div className="flex items-center space-x-4">
+            <div className="flex z-10 p-2 gap-4 items-center">
+                {/* Global Active Only Toggle */}
+                <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-slate-700">Actifs Uniquement</span>
+                    <button 
+                        onClick={() => setActiveOnly(!activeOnly)}
+                        className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out flex items-center shadow-inner ${activeOnly ? 'bg-emerald-500' : 'bg-gray-300'}`}
+                    >
+                        <div className={`w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform duration-200 ease-in-out ${activeOnly ? 'translate-x-6' : 'translate-x-0'}`} />
+                    </button>
+                </div>
+                <button
+                  onClick={() => setShowChart(true)}
+                  className="flex items-center px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 shadow-sm transition-colors"
+                >
+                  <LineChart size={14} className="mr-2" /> Voir Courbes
+                </button>
+            </div>
+
             {/* Date Nav */}
             <div className="flex items-center bg-white border border-gray-300 rounded-lg shadow-sm p-0.5">
               <button onClick={() => setSelectedDate(d => new Date(d.setDate(d.getDate() - 1)))} className="p-1 hover:bg-gray-100 text-gray-600"><ChevronLeft size={20} /></button>
@@ -1817,30 +1918,12 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
               </div>
               <button onClick={() => setSelectedDate(d => new Date(d.setDate(d.getDate() + 1)))} className="p-1 hover:bg-gray-100 text-gray-600"><ChevronRight size={20} /></button>
             </div>
-
-            <div className="flex z-10 p-2 gap-4 items-center">
-        {/* Global Active Only Toggle */}
-        <div className="flex items-center gap-2 ml-4">
-            <span className="text-sm font-semibold text-slate-700">Active Only</span>
-            <button 
-                onClick={() => setActiveOnly(!activeOnly)}
-                className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out flex items-center shadow-inner ${activeOnly ? 'bg-emerald-500' : 'bg-gray-300'}`}
-            >
-                <div className={`w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform duration-200 ease-in-out ${activeOnly ? 'translate-x-6' : 'translate-x-0'}`} />
-            </button>
-        </div>
-      </div>          <button
-            onClick={() => setShowChart(true)}
-            className="flex items-center px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 shadow-sm transition-colors"
-          >
-            <LineChart size={14} className="mr-2" /> Voir Courbes
-          </button>
         </div>
       </div>
 
       {/* --- Grid --- */}
       <div ref={scrollContainerRef} className="flex-1 w-full overflow-auto scroll-smooth hide-scrollbar relative">
-        <table className="border-separate border-spacing-0 w-full min-w-max">
+        <table className="border-separate border-spacing-0 table-fixed" style={{ width: `${300 + timeSlots.length * 80}px` }}>
           {/* Header */}
           <thead className="shadow-md relative z-50">
             <tr className="bg-slate-800 text-white">
@@ -1853,7 +1936,7 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
                 if (slot.isStartOfDay && slot.iso !== currentHourLabel) bgClass = 'bg-slate-600';
 
                 return (
-                    <th key={slot.iso} id={`col-${slot.iso.replace(/[:.]/g, '-')}`} className={`w-20 min-w-[80px] text-center text-xs font-mono py-2.5 border-r border-b border-slate-700 sticky top-0 z-40 ${bgClass} shadow-[0_1px_0_0_#334155]`}>
+                    <th key={slot.iso} id={`col-${slot.iso.replace(/[:.]/g, '-')}`} className={`w-[80px] min-w-[80px] max-w-[80px] text-center text-xs font-mono py-2.5 border-r border-b border-slate-700 sticky top-0 z-40 ${bgClass} shadow-[0_1px_0_0_#334155]`}>
                         {slot.label}
                         {slot.isMidnight && <div className="text-[9px] text-gray-400 mt-1 uppercase font-sans">Minuit</div>}
                     </th>
@@ -1867,9 +1950,9 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
               <React.Fragment key={section.id}>
                 {/* Section Header Row */}
                 <tr className="bg-slate-200">
-                  {/* Sticky Title Overlay (Spans entire grid) */}
-                  <td colSpan={timeSlots.length + 1} className="p-0 border-b border-gray-400 bg-slate-200 relative">
-                    <div className="sticky left-0 z-30 flex items-center justify-between px-2 py-1.5 w-[300px] min-w-[300px] bg-slate-200 border-r border-gray-400 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                  {/* Sticky Title Overlay (Left column ONLY) */}
+                  <td className="p-0 border-b border-gray-400 bg-slate-200 sticky left-0 z-30">
+                    <div className="flex items-center justify-between px-2 py-1.5 w-[300px] min-w-[300px] bg-slate-200 border-r border-gray-400 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
                       <button
                         onClick={() => setOpenSections(p => ({ ...p, [section.id]: !p[section.id] }))}
                         className="flex items-center font-bold text-sm text-gray-800 uppercase truncate"
@@ -1900,6 +1983,8 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
                       )}
                     </div>
                   </td>
+                  {/* Empty Background Overlay (Grid columns) */}
+                  <td colSpan={timeSlots.length} className="bg-slate-200 border-b border-gray-400"></td>
                 </tr>
 
                 {/* Data Rows */}
@@ -1907,11 +1992,12 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
                   if (row.isSubheader) {
                     return (
                         <tr key={row.id} className="bg-slate-100 group">
-                            <td colSpan={timeSlots.length + 1} className="p-0 border-b border-gray-300">
-                                <div className="sticky left-0 z-30 flex items-center px-4 py-1.5 w-[300px] min-w-[300px] bg-slate-100 border-r border-gray-300 text-[11px] font-bold text-slate-500 tracking-wider uppercase">
+                            <td className="p-0 border-b border-gray-300 sticky left-0 z-30">
+                                <div className="flex items-center px-4 py-1.5 w-[300px] min-w-[300px] bg-slate-100 border-r border-gray-300 text-[11px] font-bold text-slate-500 tracking-wider uppercase">
                                     {row.label}
                                 </div>
                             </td>
+                            <td colSpan={timeSlots.length} className="bg-slate-100 border-b border-gray-300"></td>
                         </tr>
                     );
                   }
@@ -1936,7 +2022,7 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
                                   <td
                                     key={`${row.id}-${slot.iso}`}
                                     className={`
-                                        border-r border-b border-gray-200 p-0 relative transition-colors ${row.epicHeader ? 'h-[72px]' : 'h-10'}
+                                        w-[80px] min-w-[80px] max-w-[80px] border-r border-b border-gray-200 p-0 relative transition-colors ${row.epicHeader ? 'h-[72px]' : 'h-10'}
                                         ${slot.iso === currentHourLabel ? 'bg-emerald-50/40 ring-1 ring-inset ring-emerald-100' : ''}
                                         ${isExtraBorder ? 'border-r-2 border-r-gray-400' : ''}
                                         ${row.textColor || ''}
@@ -2075,6 +2161,8 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
         prescriptionName={adminModal.prescriptionName}
         slotTime={adminModal.slotTime}
         duration={adminModal.duration}
+        requiresEndEvent={adminModal.requiresEndEvent}
+        requiresFluidInfo={adminModal.requiresFluidInfo}
         activePerfusionEvent={adminModal.activePerfusionEvent}
         historyEvents={adminModal.historyEvents}
         isTransfusion={adminModal.isTransfusion}

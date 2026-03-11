@@ -303,6 +303,7 @@ CREATE TABLE IF NOT EXISTS reference.units (
     display TEXT NOT NULL,
     is_ucum BOOLEAN DEFAULT false,
     is_active BOOLEAN DEFAULT true,
+    requires_fluid_info BOOLEAN NOT NULL DEFAULT FALSE,
     sort_order INT DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -314,6 +315,7 @@ CREATE TABLE IF NOT EXISTS reference.routes (
     code TEXT UNIQUE NOT NULL,
     label TEXT NOT NULL,
     is_active BOOLEAN DEFAULT true,
+    requires_fluid_info BOOLEAN NOT NULL DEFAULT FALSE,
     sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
@@ -1080,7 +1082,8 @@ CREATE TABLE IF NOT EXISTS prescriptions (
     data              JSONB,
     created_at        TIMESTAMPTZ DEFAULT now(),
     created_by        TEXT,
-    tenant_patient_id UUID REFERENCES patients_tenant(tenant_patient_id)
+    tenant_patient_id UUID REFERENCES patients_tenant(tenant_patient_id),
+    requires_fluid_info BOOLEAN NOT NULL DEFAULT FALSE
 );
 CREATE INDEX IF NOT EXISTS idx_rx_tenant ON prescriptions (tenant_id);
 CREATE INDEX IF NOT EXISTS idx_rx_patient ON prescriptions (patient_id);
@@ -1374,6 +1377,9 @@ CREATE TABLE IF NOT EXISTS prescription_events (
     scheduled_at TIMESTAMPTZ NOT NULL,
     duration INTEGER,
     status TEXT NOT NULL DEFAULT 'scheduled',
+    requires_fluid_info BOOLEAN NOT NULL DEFAULT FALSE,
+    requires_end_event BOOLEAN NOT NULL DEFAULT FALSE,
+    tenant_patient_id UUID NULL,
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -1393,6 +1399,8 @@ CREATE TABLE IF NOT EXISTS administration_events (
     performed_by TEXT,
     performed_by_user_id UUID,
     note TEXT,
+    volume_administered_ml NUMERIC(10,2) NULL,
+    tenant_patient_id UUID NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

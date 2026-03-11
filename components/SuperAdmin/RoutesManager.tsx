@@ -10,7 +10,7 @@ export const RoutesManager: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [isCreatingRoute, setIsCreatingRoute] = useState(false);
     const [editingRouteId, setEditingRouteId] = useState<string | null>(null);
-    const [routeForm, setRouteForm] = useState({ code: '', label: '', isActive: true, sortOrder: 0 });
+    const [routeForm, setRouteForm] = useState({ code: '', label: '', isActive: true, sortOrder: 0, requiresFluidInfo: false });
 
     useEffect(() => {
         loadData();
@@ -37,7 +37,7 @@ export const RoutesManager: React.FC = () => {
             }
             setIsCreatingRoute(false);
             setEditingRouteId(null);
-            setRouteForm({ code: '', label: '', isActive: true, sortOrder: 0 });
+            setRouteForm({ code: '', label: '', isActive: true, sortOrder: 0, requiresFluidInfo: false });
             loadData();
         } catch (e: any) {
             alert(e.response?.data?.message || 'Erreur lors de la sauvegarde de la voie d\'administration. Vérifiez que l\'ordre de tri est unique.');
@@ -49,6 +49,7 @@ export const RoutesManager: React.FC = () => {
             code: r.code,
             label: r.label,
             isActive: r.isActive,
+            requiresFluidInfo: r.requiresFluidInfo || false,
             sortOrder: r.sortOrder || 0
         });
         setEditingRouteId(r.id);
@@ -66,7 +67,7 @@ export const RoutesManager: React.FC = () => {
                         <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-700 to-indigo-600">Voies d'administration</h2>
                         <p className="text-sm text-slate-500 mt-1">Catalogue global partagé par tous les locataires pour les prescriptions médicales.</p>
                     </div>
-                    <button onClick={() => { setIsCreatingRoute(true); setEditingRouteId(null); setRouteForm({ code: '', label: '', isActive: true, sortOrder: 0 }); }} className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm transition-colors">
+                    <button onClick={() => { setIsCreatingRoute(true); setEditingRouteId(null); setRouteForm({ code: '', label: '', isActive: true, sortOrder: 0, requiresFluidInfo: false }); }} className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm transition-colors">
                         <Plus size={18} />
                         <span>Nouvelle Voie</span>
                     </button>
@@ -94,6 +95,7 @@ export const RoutesManager: React.FC = () => {
                             </div>
                         </div>
                         <div className="flex space-x-6 items-center">
+                            <label className="flex items-center space-x-2 text-sm text-slate-700"><input type="checkbox" checked={routeForm.requiresFluidInfo} onChange={e => setRouteForm({...routeForm, requiresFluidInfo: e.target.checked})} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" /><span>Info hydrique requise</span></label>
                             <label className="flex items-center space-x-2 text-sm text-slate-700"><input type="checkbox" checked={routeForm.isActive} onChange={e => setRouteForm({...routeForm, isActive: e.target.checked})} className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" /><span>Statut Actif</span></label>
                         </div>
                         <div className="flex justify-end space-x-3 pt-2">
@@ -109,6 +111,7 @@ export const RoutesManager: React.FC = () => {
                             <tr>
                                 <th className="p-4 font-semibold">Code</th>
                                 <th className="p-4 font-semibold">Libellé</th>
+                                <th className="p-4 font-semibold text-center">Bilan Hydrique</th>
                                 <th className="p-4 font-semibold text-center">Statut</th>
                                 <th className="p-4 font-semibold text-right">Ordre d'affichage</th>
                             </tr>
@@ -121,6 +124,9 @@ export const RoutesManager: React.FC = () => {
                                         <span>{r.code}</span>
                                     </td>
                                     <td className="p-4 font-medium text-slate-800">{r.label}</td>
+                                    <td className="p-4 text-center">
+                                        {r.requiresFluidInfo ? <span className="inline-block px-2 py-1 bg-sky-100 text-sky-700 rounded text-xs font-bold">Oui</span> : <span className="inline-block px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs font-medium">Non</span>}
+                                    </td>
                                     <td className="p-4 text-center">
                                         {r.isActive ? <span className="inline-block px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-xs font-bold">Actif</span> : <span className="inline-block px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-bold">Inactif</span>}
                                     </td>

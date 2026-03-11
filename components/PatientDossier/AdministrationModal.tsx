@@ -28,6 +28,7 @@ export interface AdministrationSavePayload {
     };
     administered_bags?: { id: string, volume_ml: number }[];
     linked_event_id?: string;
+    volume_administered_ml?: number | null;
 }
 
 interface AdministrationModalProps {
@@ -38,21 +39,24 @@ interface AdministrationModalProps {
     prescriptionName: string;
     slotTime: string; // ISO string of the scheduled_at anchor
     duration: number; // 0 = instant, >0 = perfusion
+    requiresEndEvent: boolean; // TRUE = shows the second slider for end time
     activePerfusionEvent: any | null; // If a perfusion is currently running
     historyEvents: any[]; // The events for this specific slot
     isTransfusion?: boolean;
     availableBags?: any[];
     eventId?: string;
+    requiresFluidInfo?: boolean;
 }
 
 export const AdministrationModal: React.FC<AdministrationModalProps> = ({
-    isOpen, onClose, onSave, onCancelEvent, prescriptionName, slotTime, duration, activePerfusionEvent, historyEvents, isTransfusion = false, availableBags = [], eventId
+    isOpen, onClose, onSave, onCancelEvent, prescriptionName, slotTime, duration, requiresEndEvent, activePerfusionEvent, historyEvents, isTransfusion = false, availableBags = [], eventId, requiresFluidInfo = false
 }) => {
-    const isPerfusion = duration > 0;
+    const isPerfusion = requiresEndEvent;
     const isPerfusionStarted = !!activePerfusionEvent;
 
     const [tacheEffectuee, setTacheEffectuee] = useState<'OUI' | 'NON'>('OUI');
     const [motif, setMotif] = useState('');
+    const [administeredVolume, setAdministeredVolume] = useState<number | ''>('');
     
     // Transfusion States
     const [selectedBags, setSelectedBags] = useState<string[]>([]);
@@ -83,6 +87,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         if (isOpen) {
             setTacheEffectuee('OUI');
             setMotif('');
+            setAdministeredVolume('');
             setLogEndSimultaneously(false);
             setSelectedBags([]);
             setBagVolumes({});
@@ -92,8 +97,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
             const schedTs = new Date(slotTime).getTime();
             const expectedEndTs = schedTs + (duration * 60000);
             
-            const dynamicMaxStartOffset = Math.floor((nowTs - schedTs) / 60000);
-            const dynamicMaxEndOffset = Math.floor((nowTs - expectedEndTs) / 60000);
+            let dynamicMaxStartOffset = Math.floor((nowTs - schedTs) / 60000);
+            let dynamicMaxEndOffset = Math.floor((nowTs - expectedEndTs) / 60000);
+            if (isNaN(dynamicMaxStartOffset)) dynamicMaxStartOffset = 0;
+            if (isNaN(dynamicMaxEndOffset)) dynamicMaxEndOffset = 0;
             
             // Default start offset: 0 (scheduled_at), bounded by now and -48h
             let defaultStartOffset = 0;
@@ -110,6 +117,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 if (activeAdmin || activeRefused) {
                     const activeTs = new Date((activeAdmin || activeRefused)?.actual_start_at || (activeAdmin || activeRefused)?.occurred_at || nowTs).getTime();
                     let actualOffset = Math.round((activeTs - schedTs) / 60000);
+                    if (isNaN(actualOffset)) actualOffset = 0;
                     if (actualOffset < -2880) actualOffset = -2880;
                     if (actualOffset > dynamicMaxStartOffset) actualOffset = dynamicMaxStartOffset;
                     setSliderOffsetMin(actualOffset);
@@ -121,6 +129,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     // Start offset is whatever the actual start was relative to schedTs
                     const activeStartTs = new Date(activeStart.actual_start_at || activeStart.occurred_at).getTime();
                     let actualStartOffset = Math.round((activeStartTs - schedTs) / 60000);
+                    if (isNaN(actualStartOffset)) actualStartOffset = 0;
                     if (actualStartOffset < -2880) actualStartOffset = -2880;
                     if (actualStartOffset > dynamicMaxStartOffset) actualStartOffset = dynamicMaxStartOffset;
                     setSliderOffsetMin(actualStartOffset); // lock start visually
@@ -128,6 +137,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     if (activeEnd) {
                         const activeEndTs = new Date(activeEnd.actual_end_at || activeEnd.occurred_at).getTime();
                         let actualEndOffset = Math.round((activeEndTs - expectedEndTs) / 60000);
+                        if (isNaN(actualEndOffset)) actualEndOffset = 0;
                         if (actualEndOffset < -2880) actualEndOffset = -2880;
                         if (actualEndOffset > dynamicMaxEndOffset) actualEndOffset = dynamicMaxEndOffset;
                         setSliderEndOffsetMin(actualEndOffset);
@@ -147,6 +157,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 } else if (activeRefused) {
                     const activeTs = new Date(activeRefused.occurred_at || nowTs).getTime();
                     let actualOffset = Math.round((activeTs - schedTs) / 60000);
+                    if (isNaN(actualOffset)) actualOffset = 0;
                     if (actualOffset < -2880) actualOffset = -2880;
                     if (actualOffset > dynamicMaxStartOffset) actualOffset = dynamicMaxStartOffset;
                     setSliderOffsetMin(actualOffset);
@@ -163,21 +174,67 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                 }
             }
         }
-    }, [isOpen, slotTime, duration, isPerfusionStarted, activePerfusionEvent, isPerfusion]);
+    }, [isOpen, slotTime, duration, requiresEndEvent, isPerfusionStarted, activePerfusionEvent, isPerfusion]);
+
+    // --- History Grouping Logic ---
+    const blocksArray = useMemo(() => {
+        const filtered = (historyEvents || []).filter(ev => showCancelled || ev.status !== 'CANCELLED');
+        const sorted = [...filtered].sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime());
+        
+        type HistoryBlock = {
+            type: 'standalone';
+            event: any;
+            latestTs: number;
+        } | {
+            type: 'group';
+            id: string;
+            start?: any;
+            end?: any;
+            latestTs: number;
+        };
+
+        const groupedMap = new Map<string, HistoryBlock>();
+
+        sorted.forEach(ev => {
+            const ts = new Date(ev.occurred_at).getTime();
+            if (ev.linked_event_id) {
+                if (!groupedMap.has(ev.linked_event_id)) {
+                    groupedMap.set(ev.linked_event_id, { type: 'group', id: ev.linked_event_id, latestTs: ts });
+                }
+                const group = groupedMap.get(ev.linked_event_id)! as any;
+                if (ev.action_type === 'started') group.start = ev;
+                if (ev.action_type === 'ended') group.end = ev;
+                if (ts > group.latestTs) group.latestTs = ts;
+            } else {
+                groupedMap.set(ev.id, { type: 'standalone', event: ev, latestTs: ts });
+            }
+        });
+
+        return Array.from(groupedMap.values()).sort((a, b) => b.latestTs - a.latestTs);
+    }, [historyEvents, showCancelled]);
 
     if (!isOpen) return null;
 
     // Formatting for Header
     const schedDateObj = new Date(slotTime);
-    const schedDateStr = schedDateObj.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const schedTimeStr = schedDateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const isValidDate = (d: Date) => !isNaN(d.getTime());
+
+    let schedDateStr = '';
+    let schedTimeStr = '';
+    if (isValidDate(schedDateObj)) {
+        schedDateStr = schedDateObj.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        schedTimeStr = schedDateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    }
     
     let headerText = '';
     if (!isPerfusion) {
         headerText = `à administrer le ${schedDateStr} à ${schedTimeStr}`;
     } else {
         const expectedEndObj = new Date(schedDateObj.getTime() + duration * 60000);
-        const expectedEndTimeStr = expectedEndObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        let expectedEndTimeStr = '';
+        if (isValidDate(expectedEndObj)) {
+            expectedEndTimeStr = expectedEndObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        }
         const h = Math.floor(duration / 60);
         const m = duration % 60;
         const durStr = `+${h.toString().padStart(2, '0')}h${m.toString().padStart(2, '0')}`;
@@ -191,8 +248,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     const MIN_OFFSET = -2880; // -48 hours (fixed visual bounds)
     const MAX_OFFSET = 2880;  // +48 hours (fixed visual bounds)
     
-    const dynamicMaxStartOffset = Math.floor((nowTs - schedDateObj.getTime()) / 60000);
-    const dynamicMaxEndOffset = Math.floor((nowTs - expectedEndDateObj.getTime()) / 60000);
+    let dynamicMaxStartOffset = Math.floor((nowTs - schedDateObj.getTime()) / 60000);
+    let dynamicMaxEndOffset = Math.floor((nowTs - expectedEndDateObj.getTime()) / 60000);
+    if (isNaN(dynamicMaxStartOffset)) dynamicMaxStartOffset = 0;
+    if (isNaN(dynamicMaxEndOffset)) dynamicMaxEndOffset = 0;
     
     // Derived Date logic
     const getStartSliderDate = (offsetMins: number) => new Date(schedDateObj.getTime() + offsetMins * 60000);
@@ -201,6 +260,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     const selectedEndObj = getEndSliderDate(sliderEndOffsetMin);
 
     const toDatetimeLocal = (d: Date) => {
+        if (!d || isNaN(d.getTime())) return '';
         const tzOffsetMs = d.getTimezoneOffset() * 60000;
         return new Date(d.getTime() - tzOffsetMs).toISOString().slice(0, 16);
     };
@@ -254,18 +314,23 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
             if (selectedEndObj.getTime() < selectedStartObj.getTime()) return "La fin ne peut pas précéder le début.";
         }
         if (tacheEffectuee === 'NON' && !motif.trim()) return "Un motif de refus est obligatoire.";
+        
+        if (tacheEffectuee === 'OUI' && requiresFluidInfo && !isTransfusion) {
+            const isEnding = !isPerfusion || (isPerfusion && (isPerfusionStarted || logEndSimultaneously));
+            if (isEnding && (administeredVolume === '' || administeredVolume <= 0)) {
+                return "Le volume administré est requis pour cette prescription.";
+            }
+        }
+
         if (tacheEffectuee === 'OUI' && isTransfusion) {
             if (!isPerfusionStarted) {
                 if (selectedBags.length === 0) return "Veuillez sélectionner au moins une poche de sang à administrer.";
                 
-                const isEnding = logEndSimultaneously;
-                if (isEnding) {
-                    for (const bagId of selectedBags) {
-                         const bag = availableBags.find(b => b.id === bagId);
-                         const v = bagVolumes[bagId] || 0;
-                         if (v <= 0) return `Le volume administré pour la poche ${bag?.bag_number} doit être supérieur à 0.`;
-                         if (bag?.volume_ml && v > bag.volume_ml) return `Le volume administré (${v} ml) pour la poche ${bag?.bag_number} dépasse le volume total de la poche (${bag.volume_ml} ml). Modifiez le volume de la poche dans l'onglet Réception si nécessaire.`;
-                    }
+                for (const bagId of selectedBags) {
+                     const bag = availableBags.find(b => b.id === bagId);
+                     const v = bagVolumes[bagId] || 0;
+                     if (v <= 0) return `Le volume administré pour la poche ${bag?.bag_number} doit être supérieur à 0.`;
+                     if (bag?.volume_ml && v > bag.volume_ml) return `Le volume administré (${v} ml) pour la poche ${bag?.bag_number} dépasse le volume total de la poche (${bag.volume_ml} ml). Modifiez le volume de la poche dans l'onglet Réception si nécessaire.`;
                 }
 
                 if (!checks.identity || !checks.compatibility || !checks.bedside || !checks.vitals) {
@@ -303,12 +368,38 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
         if (!isPerfusion) {
             // Bolus
-            const payload: AdministrationSavePayload = {
+            let transfusionPayload: any = undefined;
+            let adminBags: { id: string; volume_ml: number; }[] = [];
+
+            if (tacheEffectuee === 'OUI' && isTransfusion) {
+                adminBags = selectedBags.map(id => ({ id, volume_ml: bagVolumes[id] || 0 }));
+                transfusionPayload = {
+                    bloodBagIds: selectedBags,
+                    checks: {
+                        identity_check_done: checks.identity,
+                        compatibility_check_done: checks.compatibility,
+                        bedside_double_check_done: checks.bedside,
+                        vitals_baseline_done: checks.vitals,
+                        notes: ''
+                    },
+                    reaction: {
+                        reaction_present: reaction.present,
+                        reaction_type: reaction.type,
+                        description: reaction.notes || undefined,
+                        actions_taken: undefined
+                    }
+                };
+            }
+
+            const payload: AdministrationSavePayload & { volume_administered_ml?: number | null } = {
                 action_type: tacheEffectuee === 'OUI' ? 'administered' : 'refused',
                 occurred_at: new Date().toISOString(),
                 actual_start_at: selectedStartObj.toISOString(),
                 actual_end_at: null,
-                justification: tacheEffectuee === 'NON' ? motif : undefined
+                justification: tacheEffectuee === 'NON' ? motif : undefined,
+                volume_administered_ml: tacheEffectuee === 'OUI' && requiresFluidInfo && !isTransfusion ? Number(administeredVolume) : undefined,
+                transfusion: transfusionPayload,
+                administered_bags: (tacheEffectuee === 'OUI' && isTransfusion && adminBags.length > 0) ? adminBags : undefined
             };
             onSave(payload);
         } else {
@@ -341,8 +432,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             notes: ''
                         }
                     };
+                    adminBags = selectedBags.map(id => ({ id, volume_ml: bagVolumes[id] || 0 }));
                     if (logEndSimultaneously) {
-                        adminBags = selectedBags.map(id => ({ id, volume_ml: bagVolumes[id] || 0 }));
                         transfusionPayload.reaction = {
                             reaction_present: reaction.present,
                             reaction_type: reaction.type,
@@ -371,6 +462,41 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         }
                     };
                 }
+            } else if (tacheEffectuee === 'OUI' && !isTransfusion) {
+                // Perfusion Meds
+                if (!isPerfusionStarted && logEndSimultaneously) {
+                    const payloads: AdministrationSavePayload[] = [
+                        {
+                            action_type: 'started',
+                            occurred_at: new Date().toISOString(),
+                            actual_start_at: selectedStartObj.toISOString(),
+                            actual_end_at: undefined,
+                            linked_event_id: undefined,
+                            volume_administered_ml: undefined,
+                        },
+                        {
+                            action_type: 'ended',
+                            occurred_at: new Date().toISOString(),
+                            actual_start_at: selectedStartObj.toISOString(),
+                            actual_end_at: selectedEndObj.toISOString(),
+                            linked_event_id: undefined,
+                            volume_administered_ml: Number(administeredVolume),
+                        }
+                    ];
+                    onSave(payloads);
+                    return;
+                }
+
+                const payload: AdministrationSavePayload = {
+                    action_type: isPerfusionStarted ? 'ended' : 'started',
+                    occurred_at: new Date().toISOString(),
+                    actual_start_at: isPerfusionStarted ? undefined : selectedStartObj.toISOString(),
+                    actual_end_at: isPerfusionStarted ? selectedEndObj.toISOString() : undefined,
+                    linked_event_id: isPerfusionStarted && activePerfusionEvent ? activePerfusionEvent.linked_event_id : undefined,
+                    volume_administered_ml: isPerfusionStarted ? Number(administeredVolume) : undefined,
+                };
+                onSave(payload);
+                return;
             }
 
             if (!isPerfusionStarted) {
@@ -390,26 +516,21 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         actual_start_at: selectedStartObj.toISOString(),
                         actual_end_at: selectedEndObj.toISOString(),
                         transfusion: transfusionPayload, // Pass reaction info if ending simultaneously
-                        administered_bags: adminBags
+                        administered_bags: adminBags,
+                        volume_administered_ml: requiresFluidInfo && !isTransfusion ? Number(administeredVolume) : undefined
                     });
                 }
                 onSave(payloads);
             } else {
                 // Already started, ending now
-                const payload: AdministrationSavePayload = {
+                const payload: AdministrationSavePayload & { volume_administered_ml?: number | null } = {
                     action_type: 'ended',
                     occurred_at: new Date().toISOString(),
                     actual_start_at: selectedStartObj.toISOString(), // the mapped locked start
                     actual_end_at: selectedEndObj.toISOString(),
-                    transfusion: isTransfusion ? {
-                        bloodBagIds: [], // handled on start
-                        checks: { identity_check_done: true, compatibility_check_done: true, bedside_double_check_done: true, vitals_baseline_done: true }, // dummy 
-                        reaction: {
-                            reaction_present: reaction.present,
-                            reaction_type: reaction.type,
-                            description: reaction.notes
-                        }
-                    } : undefined
+                    volume_administered_ml: requiresFluidInfo && !isTransfusion ? Number(administeredVolume) : undefined,
+                    administered_bags: isTransfusion ? adminBags : undefined,
+                    transfusion: isTransfusion ? transfusionPayload : undefined
                 };
                 onSave(payload);
             }
@@ -423,40 +544,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         }
     };
 
-    // --- History Grouping Logic ---
-    const filteredHistory = (historyEvents || []).filter(ev => showCancelled || ev.status !== 'CANCELLED');
-    const sortedHistory = [...filteredHistory].sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime());
-    
-    type HistoryBlock = {
-        type: 'standalone';
-        event: any;
-        latestTs: number;
-    } | {
-        type: 'group';
-        id: string;
-        start?: any;
-        end?: any;
-        latestTs: number;
-    };
-
-    const groupedBlocksMap = new Map<string, HistoryBlock>();
-
-    sortedHistory.forEach(ev => {
-        const ts = new Date(ev.occurred_at).getTime();
-        if (ev.linked_event_id) {
-            if (!groupedBlocksMap.has(ev.linked_event_id)) {
-                groupedBlocksMap.set(ev.linked_event_id, { type: 'group', id: ev.linked_event_id, latestTs: ts });
-            }
-            const group = groupedBlocksMap.get(ev.linked_event_id)! as any;
-            if (ev.action_type === 'started') group.start = ev;
-            if (ev.action_type === 'ended') group.end = ev;
-            if (ts > group.latestTs) group.latestTs = ts;
-        } else {
-            groupedBlocksMap.set(ev.id, { type: 'standalone', event: ev, latestTs: ts });
-        }
-    });
-
-    const blocksArray = Array.from(groupedBlocksMap.values()).sort((a, b) => b.latestTs - a.latestTs);
+    // The blocksArray memoization moved to the top level Hooks section
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 shadow-lg backdrop-blur-[2px] animate-in fade-in duration-200">
@@ -613,6 +701,29 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                 </div>
                             )}
 
+                            {/* VOLUME ADMINISTRÉ INPUT */}
+                            {tacheEffectuee === 'OUI' && requiresFluidInfo && !isTransfusion && (
+                                (!isPerfusion || (isPerfusion && (isPerfusionStarted || logEndSimultaneously))) && (
+                                    <div className="mt-6 p-4 bg-teal-50 border border-teal-200 rounded-lg shadow-inner">
+                                        <label className="block text-sm font-bold text-teal-800 mb-2">Volume administré (ml) *</label>
+                                        <div className="relative">
+                                            <input 
+                                                type="number" 
+                                                min="0.1"
+                                                step="0.1"
+                                                value={administeredVolume}
+                                                onChange={e => setAdministeredVolume(e.target.value === '' ? '' : Number(e.target.value))}
+                                                className="w-full pl-3 pr-10 py-2 border border-teal-300 rounded-md shadow-sm focus:ring-teal-500 focus:border-teal-500 font-bold text-teal-900"
+                                                placeholder="Ex: 250"
+                                            />
+                                            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                                <span className="text-teal-500 font-semibold text-sm">ml</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )
+                            )}
+
                             {/* TRANSFUSION SPECIFIC UI */}
                             {tacheEffectuee === 'OUI' && isTransfusion && !isPerfusionStarted && (
                                 <div className="space-y-6 mt-6 p-5 bg-red-50 border border-red-200 rounded-lg shadow-inner">
@@ -632,8 +743,13 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                                             className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500 mr-3"
                                                             checked={selectedBags.includes(bag.id)}
                                                             onChange={(e) => {
-                                                                if (e.target.checked) setSelectedBags(p => [...p, bag.id]);
-                                                                else setSelectedBags(p => p.filter(id => id !== bag.id));
+                                                                if (e.target.checked) {
+                                                                    setSelectedBags(p => [...p, bag.id]);
+                                                                    if (bag.volume_ml) setBagVolumes(prev => ({ ...prev, [bag.id]: bag.volume_ml }));
+                                                                } else {
+                                                                    setSelectedBags(p => p.filter(id => id !== bag.id));
+                                                                    setBagVolumes(prev => { const n = {...prev}; delete n[bag.id]; return n; });
+                                                                }
                                                             }}
                                                         />
                                                         <div className="flex-1">
@@ -642,7 +758,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                                         </div>
                                                     </label>
                                                     
-                                                    {selectedBags.includes(bag.id) && logEndSimultaneously && (
+                                                    {selectedBags.includes(bag.id) && (
                                                         <div className="ml-7 mt-3 flex items-center bg-white p-2 rounded shadow-sm border border-red-200">
                                                             <span className="text-xs font-bold text-red-700 mr-3 w-[150px]">Volume administré (ml) * :</span>
                                                             <input 
@@ -846,7 +962,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             </label>
                         </div>
                         <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
-                            {sortedHistory.length === 0 ? (
+                            {blocksArray.length === 0 ? (
                                 <div className="h-full flex items-center justify-center text-gray-400 italic">
                                     Aucun événement enregistré.
                                 </div>
@@ -959,6 +1075,12 @@ const HistoryItem = ({ ev, onCancel, hideReaction = false }: { ev: any, onCancel
             {(ev.justification || ev.note || ev.cancellation_reason) && (
                 <div className={`text-xs p-1.5 rounded mt-1 shadow-inner ${isCancelled ? 'bg-gray-300/50 text-gray-600 line-through' : 'bg-orange-50 text-orange-800 border-l-2 border-orange-300'}`}>
                     {ev.cancellation_reason ? `Motif annulation: ${ev.cancellation_reason}` : (ev.note || ev.justification)}
+                </div>
+            )}
+
+            {ev.volume_administered_ml !== undefined && ev.volume_administered_ml !== null && !isCancelled && (
+                <div className={`text-xs p-1.5 rounded mt-1 shadow-inner bg-teal-50 text-teal-800 border-l-2 border-teal-300`}>
+                    <span className="font-bold">Volume administré:</span> {ev.volume_administered_ml} ml
                 </div>
             )}
 

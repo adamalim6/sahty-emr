@@ -59,6 +59,14 @@ class TenantObservationCatalogService {
         return mapped;
     }
 
+    // Invalidate cache for a specific tenant (e.g., after SuperAdmin syncs reference data)
+    invalidateCache(tenantId: string): void {
+        if (this.flowsheetCache.has(tenantId)) {
+            console.log(`[TenantObservationCatalog] Invalidating flowsheet cache for tenant: ${tenantId}`);
+            this.flowsheetCache.delete(tenantId);
+        }
+    }
+
     async getGroups(tenantId: string): Promise<ObservationGroup[]> {
         const pool = getTenantPool(tenantId);
         const result = await pool.query(
@@ -113,6 +121,7 @@ class TenantObservationCatalogService {
             hardMin: row.hard_min !== null ? Number(row.hard_min) : undefined,
             hardMax: row.hard_max !== null ? Number(row.hard_max) : undefined,
             isHydricInput: row.is_hydric_input, isHydricOutput: row.is_hydric_output,
+            source: row.source || 'manual',
             sortOrder: row.sort_order, isActive: row.is_active,
             createdAt: row.created_at, updatedAt: row.updated_at
         };

@@ -87,6 +87,20 @@ export const createGroup = async (req: Request, res: Response) => {
     }
 };
 
+export const updateGroup = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { group, parameterIds } = req.body;
+        const updated = await globalObservationCatalogService.updateGroup(id, group, parameterIds);
+        res.json(updated);
+    } catch (error: any) {
+        if (error.code === '23505' && error.constraint === 'uq_groups_sort_order') {
+            return res.status(400).json({ message: "Le numéro d'ordre choisi est déja attribué." });
+        }
+        res.status(400).json({ message: error.message });
+    }
+};
+
 export const getParameters = async (req: Request, res: Response) => {
     try {
         const parameters = await globalObservationCatalogService.getParameters();

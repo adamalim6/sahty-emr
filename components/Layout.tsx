@@ -30,6 +30,7 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const { logout, user } = useAuth();
   const navigate = useNavigate();
@@ -84,11 +85,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
       {/* Sidebar */}
       <aside className={`
-        fixed inset-y-0 left-0 z-30 w-64 bg-slate-900 text-white transform transition-transform duration-300 ease-in-out
-        lg:relative lg:translate-x-0
+        fixed inset-y-0 left-0 z-30 w-64 bg-slate-900 text-white transform transition-all duration-300 ease-in-out shrink-0 flex flex-col
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-`}>
-        <div className="flex items-center justify-between p-6 border-b border-slate-700">
+        ${isDesktopSidebarCollapsed ? 'lg:-translate-x-full lg:-ml-64 lg:relative' : 'lg:relative lg:translate-x-0 lg:ml-0'}
+      `}>
+        <div className="flex items-center justify-between p-6 border-b border-slate-700 shrink-0">
           <div className="flex items-center space-x-2">
             <Activity className="h-8 w-8 text-emerald-400" />
             <span className="text-xl font-bold tracking-tight">Sahty EMR</span>
@@ -98,7 +99,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           </button>
         </div>
 
-        <nav className="mt-6 px-4 space-y-2">
+        <nav className="mt-6 px-4 space-y-2 overflow-y-auto flex-1 custom-scrollbar">
           {filteredNavItems.map((item) => (
             <NavLink
               key={item.id}
@@ -118,10 +119,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           ))}
         </nav>
 
-        <div className="absolute bottom-6 left-0 right-0 px-4">
+        <div className="p-4 shrink-0 border-t border-slate-800">
           <div className="bg-slate-800 rounded-xl p-4 flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="h-10 w-10 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold">
+              <div className="h-10 w-10 shrink-0 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold">
                 {user?.prenom?.charAt(0) || 'U'}
               </div>
               <div className="overflow-hidden">
@@ -131,7 +132,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             </div>
             <button
               onClick={() => logout()}
-              className="text-slate-400 hover:text-white p-2"
+              className="text-slate-400 hover:text-white p-2 shrink-0"
               title="Se déconnecter"
             >
               <LogOut size={20} />
@@ -141,19 +142,31 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden relative">
+      <main className="flex-1 flex flex-col h-full overflow-hidden relative bg-white">
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 lg:px-10 shrink-0">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-md"
-          >
-            <Menu size={24} />
-          </button>
+        <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 lg:px-6 shrink-0 transition-all duration-300">
+          <div className="flex items-center gap-4">
+            {/* Mobile Toggle */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-md"
+            >
+              <Menu size={24} />
+            </button>
+            
+            {/* Desktop Toggle */}
+            <button
+              onClick={() => setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed)}
+              className="hidden lg:block p-2 text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+              title="Basculer le menu"
+            >
+              <Menu size={24} />
+            </button>
 
-          <h1 className="text-xl font-semibold text-gray-800 hidden lg:block">
-            Système de Gestion Hospitalière
-          </h1>
+            <h1 className="text-xl font-semibold text-gray-800 hidden lg:block">
+              Système de Gestion Hospitalière
+            </h1>
+          </div>
 
           <div className="flex items-center space-x-4">
             <button

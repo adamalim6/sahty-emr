@@ -19,7 +19,7 @@ import {
     getFlowsheets, createFlowsheet, updateFlowsheet,
     getUnits, createUnit, updateUnit,
     getRoutes, createRoute, updateRoute,
-    getGroups as getObsGroups, createGroup as createObsGroup,
+    getGroups as getObsGroups, createGroup as createObsGroup, updateGroup as updateObsGroup,
     getParameters, createParameter, updateParameter
 } from '../controllers/superadminObservationCatalogController';
 import {
@@ -97,6 +97,7 @@ router.post('/observation/flowsheets', authenticateGlobalAdmin, createFlowsheet)
 router.put('/observation/flowsheets/:id', authenticateGlobalAdmin, updateFlowsheet);
 router.get('/observation/groups', authenticateGlobalAdmin, getObsGroups);
 router.post('/observation/groups', authenticateGlobalAdmin, createObsGroup);
+router.put('/observation/groups/:id', authenticateGlobalAdmin, updateObsGroup);
 router.get('/observation/parameters', authenticateGlobalAdmin, getParameters);
 router.post('/observation/parameters', authenticateGlobalAdmin, createParameter);
 router.put('/observation/parameters/:id', authenticateGlobalAdmin, updateParameter);

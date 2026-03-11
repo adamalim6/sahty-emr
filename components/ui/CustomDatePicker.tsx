@@ -7,6 +7,7 @@ interface CustomDatePickerProps {
   label?: string;
   error?: boolean;
   disabled?: boolean;
+  disableFuture?: boolean;
 }
 
 const MONTHS = [
@@ -14,7 +15,7 @@ const MONTHS = [
   'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
 ];
 
-export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onChange, label, error, disabled }) => {
+export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onChange, label, error, disabled, disableFuture }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState<'DAYS' | 'MONTHS' | 'YEARS'>('DAYS');
   
@@ -65,20 +66,27 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onCha
         const isSelected = value === dateStr;
         const isToday = new Date().toISOString().split('T')[0] === dateStr;
 
+        const dateObj = new Date(year, month, d);
+        const isFuture = disableFuture && dateObj > new Date();
+
         days.push(
             <button
                 key={d}
                 onClick={() => {
+                    if (isFuture) return;
                     onChange(dateStr);
                     setIsOpen(false);
                 }}
+                disabled={isFuture}
                 className={`
                     h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold transition-all
-                    ${isSelected 
-                        ? 'bg-emerald-600 text-white shadow-md' 
-                        : isToday 
-                            ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
-                            : 'hover:bg-slate-100 text-slate-700'
+                    ${isFuture 
+                        ? 'opacity-30 cursor-not-allowed text-slate-400 bg-transparent'
+                        : isSelected 
+                            ? 'bg-emerald-600 text-white shadow-md' 
+                            : isToday 
+                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                                : 'hover:bg-slate-100 text-slate-700'
                     }
                 `}
             >
@@ -92,16 +100,20 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onCha
   const generateYears = () => {
       const currentYear = new Date().getFullYear();
       const years = [];
-      for (let y = currentYear; y >= 1900; y--) {
+      for (let y = currentYear + (disableFuture ? 0 : 5); y >= 1900; y--) {
+          const isFutureYear = disableFuture && y > currentYear;
           years.push(
               <button
                   key={y}
+                  disabled={isFutureYear}
                   onClick={() => {
+                      if (isFutureYear) return;
                       setCurrentDate(new Date(y, currentDate.getMonth(), 1));
                       setView('MONTHS');
                   }}
                   className={`
-                      py-2 px-4 rounded-lg text-sm font-bold hover:bg-slate-100
+                      py-2 px-4 rounded-lg text-sm font-bold transition-colors
+                      ${isFutureYear ? 'opacity-30 cursor-not-allowed text-slate-400' : 'hover:bg-slate-100'}
                       ${currentDate.getFullYear() === y ? 'bg-emerald-50 text-emerald-600' : 'text-slate-600'}
                   `}
               >
@@ -178,21 +190,27 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onCha
 
                     {view === 'MONTHS' && (
                         <div className="grid grid-cols-3 gap-2">
-                             {MONTHS.map((m, idx) => (
-                                 <button
-                                    key={m}
-                                    onClick={() => {
-                                        setCurrentDate(new Date(currentDate.getFullYear(), idx, 1));
-                                        setView('DAYS');
-                                    }}
-                                    className={`
-                                        p-3 rounded-xl text-xs font-bold transition-all
-                                        ${currentDate.getMonth() === idx ? 'bg-emerald-50 text-emerald-600' : 'hover:bg-slate-50 text-slate-700'}
-                                    `}
-                                 >
-                                     {m}
-                                 </button>
-                             ))}
+                             {MONTHS.map((m, idx) => {
+                                 const isFutureMonth = disableFuture && currentDate.getFullYear() === new Date().getFullYear() && idx > new Date().getMonth();
+                                 return (
+                                     <button
+                                        key={m}
+                                        disabled={isFutureMonth}
+                                        onClick={() => {
+                                            if (isFutureMonth) return;
+                                            setCurrentDate(new Date(currentDate.getFullYear(), idx, 1));
+                                            setView('DAYS');
+                                        }}
+                                        className={`
+                                            p-3 rounded-xl text-xs font-bold transition-all
+                                            ${isFutureMonth ? 'opacity-30 cursor-not-allowed text-slate-400' : 'hover:bg-slate-50 text-slate-700'}
+                                            ${currentDate.getMonth() === idx ? 'bg-emerald-50 text-emerald-600' : ''}
+                                        `}
+                                     >
+                                         {m}
+                                     </button>
+                                 );
+                             })}
                              <button onClick={() => setView('YEARS')} className="col-span-3 mt-2 py-2 text-xs font-bold text-indigo-600 hover:bg-indigo-50 rounded-xl">
                                  Changer l'année ({currentDate.getFullYear()})
                              </button>

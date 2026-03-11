@@ -10,7 +10,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key-change-in-prod';
 
 export interface AuthContext {
     userId: string;
+    firstName?: string;
+    lastName?: string;
     tenantId?: string;
+    role?: string;
     realm: 'global' | 'tenant';
     permissions: string[];
     modules: string[];
@@ -68,7 +71,10 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
 
         req.auth = {
             userId: decoded.userId,
+            firstName: decoded.prenom,
+            lastName: decoded.nom,
             tenantId: decoded.tenantId || decoded.client_id,
+            role: decoded.role,
             realm: decoded.realm || 'tenant',
             permissions,
             modules,
@@ -117,7 +123,10 @@ export const authenticateAnyToken = (req: AuthRequest, res: Response, next: Next
 
         req.auth = {
             userId: decoded.userId,
+            firstName: decoded.prenom,
+            lastName: decoded.nom,
             tenantId: decoded.tenantId || decoded.client_id,
+            role: decoded.role,
             realm: decoded.realm || 'tenant', // Could be 'global' here
             permissions,
             modules,

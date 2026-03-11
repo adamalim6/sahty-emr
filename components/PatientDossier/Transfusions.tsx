@@ -59,6 +59,7 @@ export const Transfusions: React.FC = () => {
       prescriptionName: '',
       slotTime: '',
       duration: 0,
+      requiresEndEvent: false,
       activePerfusionEvent: null as any,
       historyEvents: [] as any[],
       isTransfusion: false
@@ -151,7 +152,8 @@ export const Transfusions: React.FC = () => {
            justification: p.justification,
            transfusion: p.transfusion,
            administered_bags: p.administered_bags,
-           linked_event_id: p.linked_event_id
+           linked_event_id: p.linked_event_id,
+           volume_administered_ml: p.volume_administered_ml
         });
       }
       setAdminModal(prev => ({ ...prev, isOpen: false }));
@@ -309,6 +311,7 @@ export const Transfusions: React.FC = () => {
                               prescriptionName: productType,
                               slotTime: ev.scheduled_at,
                               duration: p.details?.adminDuration ? (parseInt(p.details.adminDuration.split(':')[0] || '0') * 60 + parseInt(p.details.adminDuration.split(':')[1] || '0')) : 0,
+                              requiresEndEvent: true,
                               activePerfusionEvent: ev.administrations?.find((a: any) => a.action_type === 'started' && ev.administrations?.every((e: any) => e.action_type !== 'ended')),
                               historyEvents: ev.administrations || [],
                               isTransfusion: true
@@ -598,6 +601,7 @@ export const Transfusions: React.FC = () => {
         prescriptionName={adminModal.prescriptionName}
         slotTime={adminModal.slotTime}
         duration={adminModal.duration}
+        requiresEndEvent={true}
         activePerfusionEvent={adminModal.activePerfusionEvent}
         historyEvents={adminModal.historyEvents}
         isTransfusion={adminModal.isTransfusion}

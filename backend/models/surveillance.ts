@@ -4,7 +4,7 @@ export interface ObservationParameter {
     label: string;
     unit?: string;
     unitId?: string;
-    valueType: 'number' | 'text' | 'boolean';
+    valueType: 'number' | 'numeric' | 'text' | 'boolean' | 'text_list';
     normalMin?: number;
     normalMax?: number;
     warningMin?: number;
@@ -13,6 +13,7 @@ export interface ObservationParameter {
     hardMax?: number;
     isHydricInput: boolean;
     isHydricOutput: boolean;
+    source: 'manual' | 'calculated';
     sortOrder: number;
     isActive: boolean;
     createdAt?: string;

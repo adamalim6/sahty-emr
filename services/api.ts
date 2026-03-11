@@ -764,6 +764,11 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }),
+    updateGlobalObservationGroup: (id: string, data: any) => fetchJson<any>(`/super-admin/observation/groups/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
     
     getGlobalObservationFlowsheets: () => fetchJson<any[]>('/super-admin/observation/flowsheets'),
     createGlobalObservationFlowsheet: (data: { flowsheet: any, groupIds: string[] }) => fetchJson<any>('/super-admin/observation/flowsheets', {
@@ -815,14 +820,13 @@ export const api = {
     // ==========================================
     // EMR SURVEILLANCE / MAR
     // ==========================================
-    getSurveillanceTimeline: (patientId: string, params: { admissionId?: string, flowsheetId?: string, fromDate: string, toDate: string }) => {
+    getSurveillanceTimeline: (patientId: string, params: { flowsheetId?: string, fromDate: string, toDate: string }) => {
         let qs = `?from=${encodeURIComponent(params.fromDate)}&to=${encodeURIComponent(params.toDate)}`;
-        if (params.admissionId) qs += `&admission_id=${encodeURIComponent(params.admissionId)}`;
         if (params.flowsheetId) qs += `&flowsheet_id=${encodeURIComponent(params.flowsheetId)}`;
         return fetchJson<any>(`/emr/patients/${patientId}/surveillance/timeline${qs}`);
     },
 
-    updateSurveillanceCell: (patientId: string, data: { admissionId?: string, bucketStart: string, parameterCode: string, value: any, expectedRevision: number }) => fetchJson<any>(`/patients/${patientId}/surveillance/cell`, {
+    updateSurveillanceCell: (patientId: string, data: { tenantPatientId: string, parameterId: string, parameterCode: string, recordedAt: string, value: any }) => fetchJson<any>(`/emr/patients/${patientId}/surveillance/cell`, {
         method: 'POST',
         body: JSON.stringify(data)
     }),
@@ -844,7 +848,8 @@ export const api = {
                 transfusion: payload.transfusion,
                 administered_bags: payload.administered_bags,
                 assigned_prescription_event_id: payload.assigned_prescription_event_id,
-                linked_event_id: payload.linked_event_id
+                linked_event_id: payload.linked_event_id,
+                volume_administered_ml: payload.volume_administered_ml
             })
         });
     },
@@ -852,6 +857,108 @@ export const api = {
     cancelAdministrationEvent: (prescriptionId: string, prescriptionEventId: string, adminEventId: string, cancellationReason?: string) => fetchJson<any>(`/prescriptions/${prescriptionId}/events/${prescriptionEventId}/admin/${adminEventId}/cancel`, {
         method: 'POST',
         body: JSON.stringify({ cancellationReason })
+    }),
+
+    // ==========================================
+    // ESCARRES (BEDSORES)
+    // ==========================================
+    getEscarres: (tenantPatientId: string) => fetchJson<any[]>(`/escarres/tenant_patients/${tenantPatientId}`),
+    
+    getEscarreDetails: (id: string) => fetchJson<any>(`/escarres/${id}`),
+    
+    createEscarre: (payload: any) => fetchJson<any>('/escarres', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    }),
+    
+    addEscarreSnapshot: (id: string, payload: any) => fetchJson<any>(`/escarres/${id}/snapshots`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    }),
+    
+    deactivateEscarre: (id: string) => fetchJson<any>(`/escarres/${id}/deactivate`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' }
+    }),
+
+    // ==========================================
+    // ALLERGIES
+    // ==========================================
+    getPatientAllergies: (tenantPatientId: string, filter: 'active' | 'all' = 'active') => 
+        fetchJson<any[]>(`/allergies/patient/${tenantPatientId}?filter=${filter}`),
+    
+    createAllergy: (tenantPatientId: string, payload: any) => fetchJson<any>(`/allergies/patient/${tenantPatientId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    }),
+    
+    updateAllergyDetails: (id: string, payload: any) => fetchJson<any>(`/allergies/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    }),
+    
+    changeAllergyStatus: (id: string, status: 'ACTIVE' | 'RESOLVED' | 'ENTERED_IN_ERROR') => fetchJson<any>(`/allergies/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+    }),
+    
+    getAllergyHistory: (id: string) => fetchJson<any[]>(`/allergies/${id}/history`),
+
+    // ==========================================
+    // OBSERVATIONS (Medical & Nursing)
+    // ==========================================
+    getPatientObservations: (tenantPatientId: string) => fetchJson<any[]>(`/observations/patient/${tenantPatientId}`),
+    
+    createObservation: (payload: any) => fetchJson<any>('/observations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    }),
+    
+    updateDraftObservation: (id: string, payload: any) => fetchJson<any>(`/observations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    }),
+
+    signObservation: (id: string) => fetchJson<any>(`/observations/${id}/sign`, {
+        method: 'POST'
+    }),
+
+    createObservationAddendum: (parentId: string, payload: any) => fetchJson<any>(`/observations/${parentId}/addendum`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    }),
+
+    // ==========================================
+    // ADDICTOLOGIE
+    // ==========================================
+    getPatientAddictions: (tenantPatientId: string) => fetchJson<any[]>(`/addictions/patient/${tenantPatientId}`),
+    
+    createAddiction: (payload: any) => fetchJson<any>('/addictions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    }),
+    
+    updateAddiction: (id: string, payload: any) => fetchJson<any>(`/addictions/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    }),
+    
+    getAddictionHistory: (id: string) => fetchJson<any[]>(`/addictions/${id}/history`),
+
+    createAddictionObservation: (addictionId: string, payload: any) => fetchJson<any>(`/addictions/${addictionId}/observations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
     })
 };
 

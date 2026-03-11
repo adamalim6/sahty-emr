@@ -65,13 +65,12 @@ import { Prescriptions } from './Prescriptions';
 import { FicheSurveillance } from './FicheSurveillance';
 import { ConduiteATenir } from './ConduiteATenir';
 import { Evolution } from './Evolution';
-import { ObservationsMedicales } from './ObservationsMedicales';
 import { RisquesCardio } from './RisquesCardio';
 import { ElectroEcho } from './ElectroEcho';
 import { Transfusions } from './Transfusions';
 import { Interventions } from './Interventions';
-import { ObservationsInfirmieres } from './ObservationsInfirmieres';
 import { AvisSpecialises } from './AvisSpecialises';
+import { Observations } from './Observations';
 import { Admissions } from './Admissions';
 import { PrescriptionSortie } from './PrescriptionSortie';
 import { Allergies } from './Allergies';
@@ -256,7 +255,7 @@ export const PatientDossier: React.FC = () => {
     { id: 'Antecedants', label: 'Antécédants', icon: Archive, component: <Antecedants /> },
     { id: 'Examen', label: 'Examen Clinique', icon: Stethoscope, component: <ExamenClinique patient={patient} /> },
     { id: 'Traitement', label: 'Traitement en cours', icon: Pill, component: <TraitementEnCours /> },
-    { id: 'Allergies', label: 'Allergies', icon: ShieldAlert, component: <Allergies /> },
+    { id: 'Allergies', label: 'Allergies', icon: ShieldAlert, component: <Allergies patientId={patient.id} /> },
     { id: 'Addictologie', label: 'Addictologie', icon: Cigarette, component: <Addictologie /> },
     { id: 'Biologie', label: 'Biologie', icon: FlaskConical, component: <Biologie /> },
     { id: 'Imagerie', label: 'Imagerie', icon: ScanLine, component: <Imagerie /> },
@@ -267,12 +266,11 @@ export const PatientDossier: React.FC = () => {
     { id: 'PrescriptionSortie', label: 'Prescription Externe', icon: LogOut, component: <PrescriptionSortie /> },
     { id: 'CAT', label: 'Conduite à tenir', icon: Compass, component: <ConduiteATenir /> },
     { id: 'Evolution', label: 'Évolution', icon: TrendingUp, component: <Evolution /> },
-    { id: 'ObservationsMed', label: 'Observations Médicales', icon: FilePenLine, component: <ObservationsMedicales /> },
+    { id: 'Observations', label: 'Observations', icon: FilePenLine, component: <Observations patientId={patient.id} /> },
     { id: 'Risques', label: 'Risques Cardio', icon: HeartPulse, component: <RisquesCardio /> },
     { id: 'Electro', label: 'Electro & Echo', icon: Activity, component: <ElectroEcho /> },
     { id: 'Transfusions', label: 'Transfusions', icon: Droplet, component: <Transfusions /> },
     { id: 'Interventions', label: 'Interventions', icon: Scissors, component: <Interventions /> },
-    { id: 'ObservationsInf', label: 'Obs. Infirmières', icon: Syringe, component: <ObservationsInfirmieres /> },
     { id: 'Avis', label: 'Avis Spécialisés', icon: MessageSquare, component: <AvisSpecialises /> },
     { id: 'Admissions', label: 'Admissions', icon: Bed, component: <Admissions /> },
   ];
@@ -356,14 +354,24 @@ export const PatientDossier: React.FC = () => {
       </div>
 
       {/* Scrollable Tab Content */}
-      {/* This is the ONLY area that scrolls vertically. */}
-      <div className="flex-1 overflow-y-auto w-full">
-        <div className="w-full px-6 lg:px-10 pb-6 lg:pb-10">
-          <div className="max-w-7xl mx-auto py-6">
-            {tabs.find(t => t.id === activeTab)?.component}
+      {/* Conditional layout: FicheSurveillance and Observations require internal flex bounds to govern their own scrolling */}
+      {activeTab === 'Surveillance' || activeTab === 'Observations' ? (
+        <div className="flex-1 flex flex-col min-h-0 w-full overflow-hidden bg-gray-50">
+          <div className="flex-1 flex flex-col min-h-0 w-full px-6 lg:px-10 pb-6 lg:pb-10 pt-6">
+            <div className="flex-1 flex flex-col min-h-0 max-w-7xl mx-auto w-full relative">
+              {tabs.find(t => t.id === activeTab)?.component}
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto w-full">
+          <div className="w-full px-6 lg:px-10 pb-6 lg:pb-10">
+            <div className="max-w-7xl mx-auto py-6">
+              {tabs.find(t => t.id === activeTab)?.component}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* --- EDIT PATIENT MODAL --- */}
       {isEditModalOpen && (

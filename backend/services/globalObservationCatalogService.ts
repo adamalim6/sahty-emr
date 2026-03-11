@@ -23,11 +23,11 @@ class GlobalObservationCatalogService {
         const id = uuidv4();
         const result = await getGlobalPool().query(`
             INSERT INTO units (
-                id, code, display, is_ucum, is_active, sort_order
-            ) VALUES ($1, $2, $3, $4, $5, $6)
+                id, code, display, is_ucum, is_active, sort_order, requires_fluid_info
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING *
         `, [
-            id, unit.code, unit.display, unit.isUcum || false, unit.isActive !== false, unit.sortOrder || 0
+            id, unit.code, unit.display, unit.isUcum || false, unit.isActive !== false, unit.sortOrder || 0, unit.requiresFluidInfo || false
         ]);
         return this.mapUnit(result.rows[0]);
     }
@@ -69,11 +69,11 @@ class GlobalObservationCatalogService {
         const id = uuidv4();
         const result = await getGlobalPool().query(`
             INSERT INTO public.routes (
-                id, code, label, is_active, sort_order
-            ) VALUES ($1, $2, $3, $4, $5)
+                id, code, label, is_active, sort_order, requires_fluid_info
+            ) VALUES ($1, $2, $3, $4, $5, $6)
             RETURNING *
         `, [
-            id, route.code, route.label, route.isActive !== false, route.sortOrder || 0
+            id, route.code, route.label, route.isActive !== false, route.sortOrder || 0, route.requiresFluidInfo || false
         ]);
         return this.mapRoute(result.rows[0]);
     }
@@ -117,14 +117,16 @@ class GlobalObservationCatalogService {
             INSERT INTO observation_parameters (
                 id, code, label, unit, unit_id, value_type,
                 normal_min, normal_max, warning_min, warning_max,
-                hard_min, hard_max, is_hydric_input, is_hydric_output, sort_order, is_active
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+                hard_min, hard_max, is_hydric_input, is_hydric_output, source, sort_order, is_active
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
             RETURNING *
         `, [
             id, param.code, param.label, param.unit, param.unitId || null, param.valueType,
-            param.normalMin, param.normalMax, param.warningMin, param.warningMax,
-            param.hardMin, param.hardMax, param.isHydricInput || false, param.isHydricOutput || false,
-            param.sortOrder || 0, param.isActive !== false
+            param.normalMin !== undefined ? param.normalMin : null, param.normalMax !== undefined ? param.normalMax : null,
+            param.warningMin !== undefined ? param.warningMin : null, param.warningMax !== undefined ? param.warningMax : null,
+            param.hardMin !== undefined ? param.hardMin : null, param.hardMax !== undefined ? param.hardMax : null,
+            param.isHydricInput || false, param.isHydricOutput || false,
+            param.source || 'manual', param.sortOrder || 0, param.isActive !== false
         ]);
         this.clearCache();
         return this.mapParameter(result.rows[0]);
@@ -160,9 +162,26 @@ class GlobalObservationCatalogService {
     // --- GROUPS ---
     async getGroups(): Promise<ObservationGroup[]> {
         const result = await getGlobalPool().query(
-            `SELECT * FROM observation_groups ORDER BY sort_order`
+            `SELECT g.*, COALESCE(
+                json_agg(
+                    json_build_object(
+                        'id', p.id,
+                        'code', p.code,
+                        'label', p.label
+                    )
+                ) FILTER (WHERE p.id IS NOT NULL), '[]'
+            ) as parameters
+            FROM observation_groups g
+            LEFT JOIN group_parameters gp ON gp.group_id = g.id
+            LEFT JOIN observation_parameters p ON gp.parameter_id = p.id
+            GROUP BY g.id
+            ORDER BY g.sort_order`
         );
-        return result.rows.map(this.mapGroup);
+        return result.rows.map(row => {
+            const grp = this.mapGroup(row);
+            grp.parameters = row.parameters;
+            return grp;
+        });
     }
 
     async createGroup(group: Partial<ObservationGroup>, parameterIds: string[] = []): Promise<ObservationGroup> {
@@ -180,6 +199,55 @@ class GlobalObservationCatalogService {
                 // Insert group parameters
                 const values = parameterIds.map((pId, i) => `('${id}', '${pId}', ${i})`).join(', ');
                 await client.query(`INSERT INTO group_parameters (group_id, parameter_id, sort_order) VALUES ${values}`);
+            }
+
+            await client.query('COMMIT');
+            this.clearCache();
+            return this.mapGroup(grp.rows[0]);
+        } catch (e) {
+            await client.query('ROLLBACK');
+            throw e;
+        } finally {
+            client.release();
+        }
+    }
+
+    async updateGroup(id: string, group: Partial<ObservationGroup>, parameterIds: string[] = []): Promise<ObservationGroup> {
+        const pool = getGlobalPool();
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            
+            const updates = [];
+            const values = [];
+            let index = 1;
+
+            if (group.code !== undefined) { updates.push(`code = $${index++}`); values.push(group.code); }
+            if (group.label !== undefined) { updates.push(`label = $${index++}`); values.push(group.label); }
+            if (group.sortOrder !== undefined) { updates.push(`sort_order = $${index++}`); values.push(group.sortOrder); }
+
+            let grp: any;
+            if (updates.length > 0) {
+                values.push(id);
+                grp = await client.query(`
+                    UPDATE observation_groups SET ${updates.join(', ')}
+                    WHERE id = $${index}
+                    RETURNING *
+                `, values);
+            } else {
+                grp = await client.query(`SELECT * FROM observation_groups WHERE id = $1`, [id]);
+            }
+
+            if (!grp || grp.rows.length === 0) {
+                throw new Error("Group not found");
+            }
+
+            // Sync group parameters
+            await client.query(`DELETE FROM group_parameters WHERE group_id = $1`, [id]);
+            
+            if (parameterIds.length > 0) {
+                const paramValues = parameterIds.map((pId, i) => `('${id}', '${pId}', ${i})`).join(', ');
+                await client.query(`INSERT INTO group_parameters (group_id, parameter_id, sort_order) VALUES ${paramValues}`);
             }
 
             await client.query('COMMIT');
@@ -331,6 +399,7 @@ class GlobalObservationCatalogService {
         return {
             id: row.id, code: row.code, display: row.display,
             isUcum: row.is_ucum, isActive: row.is_active, sortOrder: row.sort_order,
+            requiresFluidInfo: row.requires_fluid_info,
             createdAt: row.created_at, updatedAt: row.updated_at
         };
     }
@@ -339,23 +408,32 @@ class GlobalObservationCatalogService {
         return {
             id: row.id, code: row.code, label: row.label,
             isActive: row.is_active, sortOrder: row.sort_order,
+            requiresFluidInfo: row.requires_fluid_info,
             createdAt: row.created_at, updatedAt: row.updated_at
         };
     }
 
     private mapParameter(row: any): ObservationParameter {
         return {
-            id: row.id, code: row.code, label: row.label,
-            unit: row.unit, unitId: row.unit_id, valueType: row.value_type,
-            normalMin: row.normal_min !== null ? Number(row.normal_min) : undefined,
-            normalMax: row.normal_max !== null ? Number(row.normal_max) : undefined,
-            warningMin: row.warning_min !== null ? Number(row.warning_min) : undefined,
-            warningMax: row.warning_max !== null ? Number(row.warning_max) : undefined,
-            hardMin: row.hard_min !== null ? Number(row.hard_min) : undefined,
-            hardMax: row.hard_max !== null ? Number(row.hard_max) : undefined,
-            isHydricInput: row.is_hydric_input, isHydricOutput: row.is_hydric_output,
-            sortOrder: row.sort_order, isActive: row.is_active,
-            createdAt: row.created_at, updatedAt: row.updated_at
+            id: row.id,
+            code: row.code,
+            label: row.label,
+            unit: row.unit,
+            unitId: row.unit_id,
+            valueType: row.value_type,
+            normalMin: row.normal_min !== null ? parseFloat(row.normal_min) : undefined,
+            normalMax: row.normal_max !== null ? parseFloat(row.normal_max) : undefined,
+            warningMin: row.warning_min !== null ? parseFloat(row.warning_min) : undefined,
+            warningMax: row.warning_max !== null ? parseFloat(row.warning_max) : undefined,
+            hardMin: row.hard_min !== null ? parseFloat(row.hard_min) : undefined,
+            hardMax: row.hard_max !== null ? parseFloat(row.hard_max) : undefined,
+            isHydricInput: !!row.is_hydric_input,
+            isHydricOutput: !!row.is_hydric_output,
+            source: row.source || 'manual',
+            sortOrder: row.sort_order,
+            isActive: !!row.is_active,
+            createdAt: row.created_at,
+            updatedAt: row.updated_at
         };
     }
 

@@ -305,8 +305,21 @@ export const Body3DViewer: React.FC<Body3DViewerProps> = ({ sex, markers, onAddE
         modelFilename = 'male+A+grey+texture.glb';
     }
 
-    const handleBodyClick = (worldPoint: THREE.Vector3, worldNormal: THREE.Vector3, localPoint: THREE.Vector3, localNormal: THREE.Vector3) => {
-        onAddEscarreRequest({ x: localPoint.x, y: localPoint.y, z: localPoint.z }, { x: localNormal.x, y: localNormal.y, z: localNormal.z });
+    const handleBodyClick = (worldPoint: THREE.Vector3, worldNormal: THREE.Vector3) => {
+        if (!modelRef.current) return;
+        
+        // The markers are rendered natively inside `<group ref={modelRef}>`.
+        // To guarantee they attach to the skin, we MUST save their coordinates relative to THIS group,
+        // rather than the deep GLTF mesh which has arbitrary scaling/centering offsets applied.
+        const groupLocalPoint = modelRef.current.worldToLocal(worldPoint.clone());
+        
+        const normalMatrix = new THREE.Matrix3().getNormalMatrix(modelRef.current.matrixWorld).invert();
+        const groupLocalNormal = worldNormal.clone().applyMatrix3(normalMatrix).normalize();
+
+        onAddEscarreRequest(
+            { x: groupLocalPoint.x, y: groupLocalPoint.y, z: groupLocalPoint.z }, 
+            { x: groupLocalNormal.x, y: groupLocalNormal.y, z: groupLocalNormal.z }
+        );
     };
 
     const handleTarget = (angleDeg: number) => {

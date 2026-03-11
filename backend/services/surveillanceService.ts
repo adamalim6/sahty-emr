@@ -1,9 +1,10 @@
 import { getTenantPool } from '../db/tenantPg';
 import { SurveillanceHourBucket } from '../models/surveillance';
 import { tenantObservationCatalogService } from './tenantObservationCatalogService';
+import { hydricEngineService } from './hydricEngineService';
 
 class SurveillanceService {
-    async getTimeline(tenantId: string, tenantPatientId: string, admissionId: string | null, fromDate: string, toDate: string, flowsheetId?: string) {
+    async getTimeline(tenantId: string, tenantPatientId: string, fromDate: string, toDate: string, flowsheetId?: string) {
         const pool = getTenantPool(tenantId);
 
         // 1. Fetch Flowsheet Structure (if requested)
@@ -28,6 +29,8 @@ class SurveillanceService {
                 pe.prescription_id,
                 pe.scheduled_at as planned_date,
                 pe.duration as admin_duration,
+                pe.requires_end_event,
+                pe.requires_fluid_info,
                 p.prescription_type,
                 (p.details->>'productId') as product_id,
                 ae.events as admin_events
@@ -41,6 +44,7 @@ class SurveillanceService {
                         'occurred_at', ae_inner.occurred_at,
                         'actual_start_at', ae_inner.actual_start_at,
                         'actual_end_at', ae_inner.actual_end_at,
+                        'volume_administered_ml', ae_inner.volume_administered_ml,
                         'performed_by', ae_inner.performed_by_user_id,
                         'performed_by_first_name', ae_inner.performed_by_first_name,
                         'performed_by_last_name', ae_inner.performed_by_last_name,
@@ -71,7 +75,7 @@ class SurveillanceService {
         };
     }
 
-    async updateCell(tenantId: string, tenantPatientId: string, admissionId: string | null, recordedAt: string, parameterId: string, parameterCode: string, value: any, userId: string): Promise<SurveillanceHourBucket> {
+    async updateCell(tenantId: string, tenantPatientId: string, recordedAt: string, parameterId: string, parameterCode: string, value: any, userId: string): Promise<SurveillanceHourBucket> {
         const recordDate = new Date(recordedAt);
         recordDate.setMinutes(0, 0, 0);
         const bucketStart = recordDate.toISOString();
@@ -80,6 +84,10 @@ class SurveillanceService {
         const parameter = await tenantObservationCatalogService.getParameterByCode(tenantId, parameterCode);
         if (!parameter) {
             throw new Error(`Parameter '${parameterCode}' not found or inactive`);
+        }
+        
+        if (parameter.source === 'calculated') {
+            throw new Error(`Le paramètre '${parameter.label}' est calculé automatiquement et ne peut pas être saisi manuellement.`);
         }
         
         if (value !== null && parameter.valueType === 'number' && typeof value === 'number') {
@@ -97,48 +105,32 @@ class SurveillanceService {
         try {
             await client.query('BEGIN');
 
-            // 1. EAV Audit Log Insertion (Only if value is not null, due to EXACTLY ONE constraint)
+            // 1. Unconditionally insert EAV event. Postgres Trigger handles bucket aggregation.
+            let vNum = null, vTxt = null, vBool = null;
             if (value !== null) {
-                let vNum = null, vTxt = null, vBool = null;
-                if (parameter.valueType === 'number') vNum = Number(value);
+                if (parameter.valueType === 'number' || parameter.valueType === 'numeric') vNum = Number(value);
                 else if (parameter.valueType === 'boolean') vBool = Boolean(value);
                 else vTxt = String(value);
-
-                await client.query(`
-                    INSERT INTO surveillance_values_events (
-                        tenant_id, admission_id, tenant_patient_id, parameter_id, parameter_code, 
-                        bucket_start, value_numeric, value_text, value_boolean, recorded_by, recorded_at
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
-                `, [tenantId, admissionId, tenantPatientId, parameterId, parameterCode, bucketStart, vNum, vTxt, vBool, userId]);
             }
 
-            // 2. JSONB Snapshot Cache Upsert (Pure values only, no metadata)
-            const jsonValue = value !== null ? JSON.stringify(value) : null;
-            
-            const upsertQuery = `
-                INSERT INTO surveillance_hour_buckets (
-                    tenant_id, admission_id, tenant_patient_id, bucket_start, values
-                ) VALUES (
-                    $1, $2, $3, $4, 
-                    CASE WHEN $6::jsonb IS NULL THEN '{}'::jsonb ELSE jsonb_build_object($5::text, $6::jsonb) END
-                )
-                ON CONFLICT (tenant_id, tenant_patient_id, bucket_start) 
-                DO UPDATE SET 
-                    values = CASE 
-                        WHEN $6::jsonb IS NULL THEN surveillance_hour_buckets.values - $5::text
-                        ELSE jsonb_set(surveillance_hour_buckets.values, ARRAY[$5::text], $6::jsonb)
-                    END
-                RETURNING *;
-            `;
+    
+            await client.query(`
+                INSERT INTO surveillance_values_events (
+                    tenant_id, tenant_patient_id, parameter_id, parameter_code, 
+                    bucket_start, value_numeric, value_text, value_boolean, recorded_by, recorded_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+            `, [tenantId, tenantPatientId, parameterId, parameterCode, bucketStart, vNum, vTxt, vBool, userId]);
 
-            const result = await client.query(upsertQuery, [
-                tenantId,
-                admissionId,
-                tenantPatientId,
-                bucketStart,
-                parameterCode,
-                jsonValue
-            ]);
+            // Trigger Hydric Engine if this was a manual hydric parameter update
+            if (parameter.source === 'manual' && (parameter.isHydricInput || parameter.isHydricOutput)) {
+                await hydricEngineService.recalculateBuckets(tenantId, tenantPatientId, bucketStart, bucketStart, client);
+            }
+
+            // 2. Read the derived bucket state
+            const result = await client.query(`
+                SELECT * FROM surveillance_hour_buckets 
+                WHERE tenant_patient_id = $1 AND bucket_start = $2
+            `, [tenantPatientId, bucketStart]);
 
             await client.query('COMMIT');
             return this.mapBucket(result.rows[0]);
@@ -155,7 +147,6 @@ class SurveillanceService {
         return {
             id: row.id,
             tenantId: row.tenant_id,
-            admissionId: row.admission_id,
             tenantPatientId: row.tenant_patient_id,
             bucketStart: row.bucket_start,
             values: typeof row.values === 'string' ? JSON.parse(row.values) : row.values,
@@ -173,6 +164,8 @@ class SurveillanceService {
             prescriptionId: row.prescription_id,
             plannedDate: row.planned_date,
             adminDuration: row.admin_duration,
+            requires_end_event: !!row.requires_end_event,
+            requires_fluid_info: !!row.requires_fluid_info,
             prescriptionData: {
                 prescriptionType: row.prescription_type,
                 productId: row.product_id,

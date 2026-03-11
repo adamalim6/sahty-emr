@@ -9,6 +9,7 @@ import { tenantProvisioningService } from '../services/tenantProvisioningService
 import { tenantUpdateService } from '../services/tenantUpdateService';
 import { getTenantPool } from '../db/tenantPg';
 import { syncTenantReference } from '../scripts/referenceSync';
+import { tenantObservationCatalogService } from '../services/tenantObservationCatalogService';
 
 // Legacy: Clients store? 'clients.json' might still be used if we didn't migrate clients to SQL.
 // Did we migrate Clients? NO. Only Global Data (Products, DCI, Suppliers, Roles, Acts).
@@ -229,6 +230,7 @@ export const updateTenantReferenceSchema = async (req: Request, res: Response) =
             const client = await pool.connect();
             try {
                 await syncTenantReference(client, id);
+                tenantObservationCatalogService.invalidateCache(id);
                 result.dataSyncStatus = 'success';
             } finally {
                 client.release();
@@ -260,6 +262,7 @@ export const updateAllReferenceSchemas = async (req: Request, res: Response) => 
                     const client = await pool.connect();
                     try {
                         await syncTenantReference(client, tenant.id);
+                        tenantObservationCatalogService.invalidateCache(tenant.id);
                         result.dataSyncStatus = 'success';
                     } finally {
                         client.release();

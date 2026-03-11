@@ -96,7 +96,7 @@ router.post('/:id/events/:eventId/admin', async (req: any, res) => {
         }
 
         const { eventId } = req.params;
-        const { actionType, occurredAt, actualStartAt, actualEndAt, note, transfusion, administered_bags, linked_event_id } = req.body;
+        const { actionType, occurredAt, actualStartAt, actualEndAt, note, transfusion, administered_bags, linked_event_id, volume_administered_ml } = req.body;
         const userId = req.user.userId;
 
         let tenantId;
@@ -118,8 +118,10 @@ router.post('/:id/events/:eventId/admin', async (req: any, res) => {
             note,
             transfusion,
             administered_bags,
-            linked_event_id
+            linked_event_id,
+            volume_administered_ml
         });
+        
         res.status(201).json(result);
     } catch (error) {
         console.error('Error logging administration action:', error);

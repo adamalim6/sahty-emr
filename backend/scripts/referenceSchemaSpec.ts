@@ -192,6 +192,7 @@ export const REFERENCE_SCHEMA_DDL: ReferenceTableSpec[] = [
                 display TEXT NOT NULL,
                 is_ucum BOOLEAN DEFAULT false,
                 is_active BOOLEAN DEFAULT true,
+                requires_fluid_info BOOLEAN NOT NULL DEFAULT FALSE,
                 sort_order INT DEFAULT 0,
                 created_at TIMESTAMPTZ DEFAULT NOW(),
                 updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -206,6 +207,7 @@ export const REFERENCE_SCHEMA_DDL: ReferenceTableSpec[] = [
                 code TEXT UNIQUE NOT NULL,
                 label TEXT NOT NULL,
                 is_active BOOLEAN DEFAULT true,
+                requires_fluid_info BOOLEAN NOT NULL DEFAULT FALSE,
                 sort_order INTEGER DEFAULT 0,
                 created_at TIMESTAMPTZ DEFAULT NOW(),
                 updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -277,6 +279,7 @@ export const REFERENCE_SCHEMA_DDL: ReferenceTableSpec[] = [
                 warning_max NUMERIC,
                 hard_min NUMERIC,
                 hard_max NUMERIC,
+                source TEXT NOT NULL DEFAULT 'manual' CHECK (source IN ('manual', 'calculated')),
                 is_hydric_input BOOLEAN DEFAULT false,
                 is_hydric_output BOOLEAN DEFAULT false,
                 sort_order INT DEFAULT 0,

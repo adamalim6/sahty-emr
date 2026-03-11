@@ -4,6 +4,7 @@ export interface ReferenceUnit {
     display: string;
     isUcum: boolean;
     isActive: boolean;
+    requiresFluidInfo?: boolean;
     sortOrder: number;
     createdAt?: string;
     updatedAt?: string;
@@ -14,6 +15,7 @@ export interface ReferenceRoute {
     code: string;
     label: string;
     isActive: boolean;
+    requiresFluidInfo?: boolean;
     sortOrder: number;
     createdAt?: string;
     updatedAt?: string;
