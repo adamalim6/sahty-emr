@@ -262,7 +262,7 @@ export const PatientDossier: React.FC = () => {
     { id: 'Diagnostic', label: 'Diagnostic', icon: Microscope, component: <Diagnostic patientId={patient.id} /> },
     { id: 'Prescriptions', label: 'Prescriptions', icon: FileText, component: <Prescriptions patientId={patient.id} /> },
     { id: 'Surveillance', label: 'Fiche de Surveillance', icon: ClipboardCheck, component: <FicheSurveillance patientId={patient.id} /> },
-    { id: 'Escarres', label: 'Escarres', icon: Activity, component: <Escarres patientId={patient.id} sex={patient.sex} /> },
+    { id: 'Escarres', label: 'Escarres', icon: Activity, component: <Escarres patientId={patient.id} sex={patient.gender} /> },
     { id: 'PrescriptionSortie', label: 'Prescription Externe', icon: LogOut, component: <PrescriptionSortie /> },
     { id: 'CAT', label: 'Conduite à tenir', icon: Compass, component: <ConduiteATenir /> },
     { id: 'Evolution', label: 'Évolution', icon: TrendingUp, component: <Evolution /> },
@@ -282,7 +282,7 @@ export const PatientDossier: React.FC = () => {
         
         {/* Header (Patient Info) */}
         <div className="pt-2 lg:pt-4 px-6 lg:px-10 pb-4 w-full">
-          <div className="max-w-7xl mx-auto">
+          <div className="w-full">
             <div className="bg-white p-4 lg:p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-6">
               {/* Back Button */}
               <button 
@@ -325,7 +325,7 @@ export const PatientDossier: React.FC = () => {
         {/* Full bleed background */}
         <div className="bg-white border-b border-gray-200 shadow-sm w-full">
           {/* Constrain the inner content, but padding is preserved naturally */}
-          <div className="max-w-7xl mx-auto w-full">
+          <div className="w-full">
             <div className="flex overflow-x-auto pb-px scrollbar-none">
               <div className="flex w-max px-6 lg:px-10 space-x-8">
                 {tabs.map(tab => {
@@ -358,7 +358,7 @@ export const PatientDossier: React.FC = () => {
       {activeTab === 'Surveillance' || activeTab === 'Observations' ? (
         <div className="flex-1 flex flex-col min-h-0 w-full overflow-hidden bg-gray-50">
           <div className="flex-1 flex flex-col min-h-0 w-full px-6 lg:px-10 pb-6 lg:pb-10 pt-6">
-            <div className="flex-1 flex flex-col min-h-0 max-w-7xl mx-auto w-full relative">
+            <div className="flex-1 flex flex-col min-h-0 w-full relative">
               {tabs.find(t => t.id === activeTab)?.component}
             </div>
           </div>
@@ -366,7 +366,7 @@ export const PatientDossier: React.FC = () => {
       ) : (
         <div className="flex-1 overflow-y-auto w-full">
           <div className="w-full px-6 lg:px-10 pb-6 lg:pb-10">
-            <div className="max-w-7xl mx-auto py-6">
+            <div className="w-full py-6">
               {tabs.find(t => t.id === activeTab)?.component}
             </div>
           </div>

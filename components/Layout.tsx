@@ -28,9 +28,11 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
+export type SidebarState = 'expanded' | 'collapsed';
+
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
+  const [sidebarState, setSidebarState] = useState<SidebarState>('expanded');
   const [aiOpen, setAiOpen] = useState(false);
   const { logout, user } = useAuth();
   const navigate = useNavigate();
@@ -85,54 +87,58 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
       {/* Sidebar */}
       <aside className={`
-        fixed inset-y-0 left-0 z-30 w-64 bg-slate-900 text-white transform transition-all duration-300 ease-in-out shrink-0 flex flex-col
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-        ${isDesktopSidebarCollapsed ? 'lg:-translate-x-full lg:-ml-64 lg:relative' : 'lg:relative lg:translate-x-0 lg:ml-0'}
+        fixed inset-y-0 left-0 z-30 bg-slate-900 text-white transform transition-[width,transform] duration-300 ease-in-out shrink-0 flex flex-col
+        ${sidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full w-64'}
+        lg:relative lg:translate-x-0
+        ${sidebarState === 'collapsed' ? 'lg:w-16' : 'lg:w-64'}
       `}>
-        <div className="flex items-center justify-between p-6 border-b border-slate-700 shrink-0">
-          <div className="flex items-center space-x-2">
-            <Activity className="h-8 w-8 text-emerald-400" />
-            <span className="text-xl font-bold tracking-tight">Sahty EMR</span>
+        <div className={`flex items-center p-6 border-b border-slate-700 shrink-0 h-16 transition-all duration-300 ${sidebarState === 'collapsed' ? 'justify-center px-0' : 'justify-between'}`}>
+          <div className="flex items-center space-x-2 overflow-hidden">
+            <Activity className="h-8 w-8 text-emerald-400 shrink-0" />
+            <span className={`text-xl font-bold tracking-tight whitespace-nowrap transition-all duration-300 ${sidebarState === 'collapsed' ? 'opacity-0 w-0 hidden' : 'opacity-100 w-auto'}`}>Sahty EMR</span>
           </div>
-          <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-slate-400 hover:text-white">
+          <button onClick={() => setSidebarOpen(false)} className={`lg:hidden text-slate-400 hover:text-white shrink-0 ${sidebarState === 'collapsed' ? 'hidden' : ''}`}>
             <X size={24} />
           </button>
         </div>
 
-        <nav className="mt-6 px-4 space-y-2 overflow-y-auto flex-1 custom-scrollbar">
+        <nav className="mt-6 space-y-2 overflow-y-auto flex-1 custom-scrollbar px-2">
           {filteredNavItems.map((item) => (
             <NavLink
               key={item.id}
               to={item.to}
               onClick={() => setSidebarOpen(false)}
               className={({ isActive }) => `
-                flex items-center px-4 py-3 rounded-lg transition-colors
+                flex items-center py-3 rounded-lg transition-colors
+                ${sidebarState === 'collapsed' ? 'justify-center px-0' : 'justify-start px-4'}
                 ${isActive
                   ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20'
                   : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                 }
-`}
+              `}
             >
-              <item.icon className="h-5 w-5 mr-3" />
-              <span className="font-medium">{item.label}</span>
+              <item.icon className={`h-5 w-5 shrink-0 ${sidebarState === 'collapsed' ? 'mr-0' : 'mr-3'}`} />
+              <span className={`font-medium whitespace-nowrap overflow-hidden transition-all duration-300 ${sidebarState === 'collapsed' ? 'opacity-0 w-0 h-0 hidden' : 'opacity-100 w-auto'}`}>
+                {item.label}
+              </span>
             </NavLink>
           ))}
         </nav>
 
         <div className="p-4 shrink-0 border-t border-slate-800">
-          <div className="bg-slate-800 rounded-xl p-4 flex items-center justify-between">
-            <div className="flex items-center space-x-3">
+          <div className={`bg-slate-800 rounded-xl flex items-center transition-all duration-300 ${sidebarState === 'collapsed' ? 'p-2 flex-col space-y-4 justify-center' : 'p-4 justify-between'}`}>
+            <div className={`flex items-center ${sidebarState === 'collapsed' ? 'space-x-0' : 'space-x-3'}`}>
               <div className="h-10 w-10 shrink-0 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold">
                 {user?.prenom?.charAt(0) || 'U'}
               </div>
-              <div className="overflow-hidden">
+              <div className={`overflow-hidden transition-all duration-300 ${sidebarState === 'collapsed' ? 'opacity-0 w-0 hidden' : 'opacity-100 w-auto'}`}>
                 <p className="text-sm font-semibold truncate">{user?.nom} {user?.prenom}</p>
                 <p className="text-xs text-slate-400 truncate">{user?.username}</p>
               </div>
             </div>
             <button
               onClick={() => logout()}
-              className="text-slate-400 hover:text-white p-2 shrink-0"
+              className="text-slate-400 hover:text-white p-2 shrink-0 transition-colors"
               title="Se déconnecter"
             >
               <LogOut size={20} />
@@ -142,7 +148,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden relative bg-white">
+      <main className="flex-1 flex flex-col h-full overflow-hidden relative bg-white min-w-0">
         {/* Header */}
         <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 lg:px-6 shrink-0 transition-all duration-300">
           <div className="flex items-center gap-4">
@@ -156,7 +162,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             
             {/* Desktop Toggle */}
             <button
-              onClick={() => setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed)}
+              onClick={() => setSidebarState(sidebarState === 'expanded' ? 'collapsed' : 'expanded')}
               className="hidden lg:block p-2 text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
               title="Basculer le menu"
             >
@@ -180,8 +186,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </header>
 
         {/* Scrollable Page Content */}
-        <div className="flex-1 overflow-auto p-6 lg:p-10">
-          <div className="max-w-7xl mx-auto">
+        <div className="flex-1 overflow-auto p-6 lg:p-8">
+          <div className="w-full">
             {children}
           </div>
         </div>
