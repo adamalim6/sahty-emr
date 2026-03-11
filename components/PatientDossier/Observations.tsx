@@ -280,7 +280,13 @@ const TipTapEditor = ({ content, onChange, editable = true }: { content: string,
     );
 };
 
-export const Observations: React.FC<{ patientId: string }> = ({ patientId }) => {
+interface ObservationsProps {
+    patientId: string;
+    isActiveWorkspace?: boolean;
+    isActiveTab?: boolean;
+}
+
+export const Observations: React.FC<ObservationsProps> = ({ patientId, isActiveWorkspace = true, isActiveTab = true }) => {
     const [observations, setObservations] = useState<ObservationRecord[]>([]);
     const [loading, setLoading] = useState(true);
     

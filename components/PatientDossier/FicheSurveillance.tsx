@@ -309,6 +309,8 @@ interface RowConfig {
 
 interface FicheSurveillanceProps {
   patientId?: string;
+  isActiveWorkspace?: boolean;
+  isActiveTab?: boolean;
 }
 
 interface SectionConfig {
@@ -339,7 +341,7 @@ const ExpandableNameBadge = ({ name, molecule }: { name: string, molecule?: stri
   };
 
   return (
-    <div className="relative flex flex-col min-w-0 w-full" ref={containerRef} onMouseLeave={() => setIsOpen(false)}>
+    <div className="relative inline-block min-w-0 w-full" ref={containerRef} onMouseLeave={() => setIsOpen(false)}>
       {isOpen && isLong && createPortal(
          <div 
            className="fixed z-[99999] bg-white shadow-2xl border border-slate-300 ring-1 ring-slate-200/50 rounded-lg p-3 w-[340px] cursor-pointer animate-in fade-in zoom-in-95 duration-100" 
@@ -504,8 +506,8 @@ const GridCell = ({
   );
 };
 
-export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId }) => {
-  const { user, loading, isAuthenticated } = useAuth();
+export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId, isActiveWorkspace = true, isActiveTab = true }) => {
+  const { user } = useAuth();
 
   // --- State ---
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -695,13 +697,14 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId 
   }, [patientId, activeFlowsheetId, timeSlots, dateKey]);
 
   // Fetch Surveillance Grid (72h window) polling
+  // Fetch Surveillance Grid (72h window) polling
   useEffect(() => {
-    if (patientId && activeFlowsheetId) {
+    if (patientId && activeFlowsheetId && isActiveWorkspace && isActiveTab) {
       fetchWindowData();
       const interval = setInterval(fetchWindowData, 30000); // 30s refresh
       return () => clearInterval(interval);
     }
-  }, [patientId, activeFlowsheetId, fetchWindowData]);
+  }, [patientId, activeFlowsheetId, fetchWindowData, isActiveWorkspace, isActiveTab]);
 
   // Chart Modal State
   const [showChart, setShowChart] = useState(false);

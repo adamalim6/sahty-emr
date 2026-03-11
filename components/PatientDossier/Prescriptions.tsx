@@ -14,9 +14,11 @@ import { Search, Filter, CalendarCheck, Activity } from 'lucide-react';
 
 interface PrescriptionsProps {
   patientId: string;
+  isActiveWorkspace?: boolean;
+  isActiveTab?: boolean;
 }
 
-export const Prescriptions: React.FC<PrescriptionsProps> = ({ patientId }) => {
+export const Prescriptions: React.FC<PrescriptionsProps> = ({ patientId, isActiveWorkspace = true, isActiveTab = true }) => {
   const [showModal, setShowModal] = useState(false);
   const [formMode, setFormMode] = useState<'medication' | 'biology' | 'imagery' | 'care' | 'transfusion'>('medication');
   const [prescriptions, setPrescriptions] = useState<any[]>([]);

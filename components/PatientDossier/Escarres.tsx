@@ -7,6 +7,8 @@ import { Activity, Plus, FileText, AlertCircle } from 'lucide-react';
 interface EscarresProps {
     patientId: string;
     sex?: string;
+    isActiveWorkspace?: boolean;
+    isActiveTab?: boolean;
 }
 
 export interface EscarreData {
@@ -23,7 +25,7 @@ export interface EscarreData {
     latestSnapshot: any;
 }
 
-export const Escarres: React.FC<EscarresProps> = ({ patientId, sex }) => {
+export const Escarres: React.FC<EscarresProps> = ({ patientId, sex, isActiveWorkspace = true, isActiveTab = true }) => {
     const [escarres, setEscarres] = useState<EscarreData[]>([]);
     const [loading, setLoading] = useState(true);
     

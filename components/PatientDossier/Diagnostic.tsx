@@ -6,6 +6,8 @@ import { useAuth } from '../../context/AuthContext';
 
 interface props {
     patientId: string;
+    isActiveWorkspace?: boolean;
+    isActiveTab?: boolean;
 }
 
 interface Diagnosis {
@@ -31,7 +33,7 @@ interface Diagnosis {
 
 type FilterType = 'ALL' | 'ACTIVE' | 'RESOLVED' | 'VOIDED' | 'MINE';
 
-export const Diagnostic: React.FC<props> = ({ patientId }) => {
+export const Diagnostic: React.FC<props> = ({ patientId, isActiveWorkspace = true, isActiveTab = true }) => {
     const { user } = useAuth();
     const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([]);
     const [loading, setLoading] = useState(true);

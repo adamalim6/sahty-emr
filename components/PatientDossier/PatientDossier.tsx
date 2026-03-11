@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MOCK_PATIENTS, calculateAge, generateIPP } from '../../constants';
+import { useWorkspace } from '../../context/WorkspaceContext';
 import { api } from '../../services/api';
 import { Gender, Patient } from '../../types';
 import {
@@ -135,9 +136,15 @@ const CardSection = ({ title, icon: Icon, children, colorClass = "text-emerald-6
   </div>
 );
 
-export const PatientDossier: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+interface PatientDossierProps {
+  patientId: string;
+  workspaceId: string;
+  isActiveWorkspace: boolean;
+}
+
+export const PatientDossier: React.FC<PatientDossierProps> = ({ patientId, workspaceId, isActiveWorkspace }) => {
   const navigate = useNavigate();
+  const id = patientId;
 
   const [patient, setPatient] = useState<Patient | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
@@ -146,6 +153,14 @@ export const PatientDossier: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('Parcours');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [formData, setFormData] = useState<Partial<Patient>>({});
+
+  const { updateWorkspaceLabel } = useWorkspace();
+
+  useEffect(() => {
+    if (patient) {
+      updateWorkspaceLabel(workspaceId, `${patient.lastName.toUpperCase()} ${patient.firstName}`);
+    }
+  }, [patient, workspaceId, updateWorkspaceLabel]);
 
   useEffect(() => {
     const fetchPatientData = async () => {
@@ -276,57 +291,47 @@ export const PatientDossier: React.FC = () => {
   ];
 
   return (
-    <div className="absolute inset-x-0 bottom-0 top-16 flex flex-col bg-gray-50 overflow-hidden">
+    <div className="absolute inset-x-0 bottom-0 top-0 flex flex-col bg-gray-50 overflow-hidden">
       {/* Fixed Top Section: Header + Tabs */}
-      <div className="flex flex-col shrink-0 w-full z-20 bg-gray-50">
+      <div className="flex flex-col shrink-0 w-full z-20 bg-white shadow-sm ring-1 ring-gray-200">
         
-        {/* Header (Patient Info) */}
-        <div className="pt-2 lg:pt-4 px-6 lg:px-10 pb-4 w-full">
-          <div className="w-full">
-            <div className="bg-white p-4 lg:p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-6">
-              {/* Back Button */}
-              <button 
-                onClick={() => navigate('/')} 
-                title="Retour"
-                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-xl transition-colors self-start md:self-auto shrink-0"
-              >
-                <ArrowLeft size={24} />
-              </button>
+        {/* Compact Patient Banner */}
+        <div className="px-6 lg:px-10 h-14 w-full flex items-center space-x-4 border-b border-gray-100">
+            
+            {/* Avatar Cliquable */}
+            <button
+              onClick={handleOpenEdit}
+              title="Modifier les informations patient"
+              className={`group relative h-10 w-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden border-2 transition-all active:scale-95 ${isFemale ? 'bg-pink-50 text-pink-600 border-pink-100 hover:border-pink-500' : 'bg-blue-50 text-blue-600 border-blue-100 hover:border-blue-500'}`}
+            >
+              <User size={20} className="group-hover:opacity-20 transition-opacity" />
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/5">
+                <Pencil size={14} className={isFemale ? 'text-pink-600' : 'text-blue-600'} />
+              </div>
+            </button>
 
-              {/* Avatar Cliquable */}
-              <button
-                onClick={handleOpenEdit}
-                title="Modifier les informations patient"
-                className={`group relative h-16 w-16 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden border-2 transition-all active:scale-95 ${isFemale ? 'bg-pink-50 text-pink-600 border-pink-100 hover:border-pink-500' : 'bg-blue-50 text-blue-600 border-blue-100 hover:border-blue-500'}`}
-              >
-                <User size={32} className="group-hover:opacity-20 transition-opacity" />
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/5">
-                  <Pencil size={20} className={isFemale ? 'text-pink-600' : 'text-blue-600'} />
+            <div className="flex-1 flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <h1 className="text-sm font-black text-gray-900 tracking-tight truncate max-w-[200px]">{patient.lastName.toUpperCase()} {patient.firstName}</h1>
+                  <button onClick={handleOpenEdit} className="p-1 text-gray-300 hover:text-indigo-600 transition-colors"><Pencil size={12} /></button>
                 </div>
-              </button>
+                
+                <div className="h-4 w-px bg-gray-300"></div>
 
-              <div className="flex-1 text-center md:text-left">
-                <div className="flex items-center justify-center md:justify-start space-x-3 mb-1">
-                  <h1 className="text-xl font-black text-gray-900 tracking-tight">{patient.lastName.toUpperCase()} {patient.firstName}</h1>
-                  <button onClick={handleOpenEdit} className="p-1.5 text-gray-300 hover:text-indigo-600 transition-colors"><Pencil size={14} /></button>
-                </div>
-                <div className="flex flex-wrap justify-center md:justify-start gap-4 mt-1 text-sm text-gray-600">
-                  <span className="bg-slate-100 px-3 py-0.5 rounded-lg font-mono text-[11px] font-black text-slate-500 uppercase border border-slate-200">IPP: {patient.ipp}</span>
-                  <span className="flex items-center"><Calendar size={14} className="mr-1.5 text-gray-400" />Né(e) le: <span className="font-bold text-gray-900 ml-1">{new Date(patient.dateOfBirth).toLocaleDateString()}</span> ({calculateAge(patient.dateOfBirth)} ans)</span>
-                  <span className="flex items-center"><Activity size={14} className="mr-1.5 text-gray-400" />Sexe: <span className="font-bold text-gray-900 ml-1">{patient.gender}</span></span>
-                  {patient.cin && <span className="flex items-center"><IdCard size={14} className="mr-1.5 text-gray-400" />CIN: <span className="font-bold text-gray-900 ml-1">{patient.cin}</span></span>}
+                <div className="flex items-center space-x-4 text-[12px] text-gray-600 font-medium whitespace-nowrap overflow-hidden">
+                  <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 border border-slate-200">IPP: {patient.ipp}</span>
+                  <span className="flex items-center"><Calendar size={14} className="mr-1 text-gray-400" />{calculateAge(patient.dateOfBirth)} ans</span>
+                  <span className="flex items-center"><Activity size={14} className="mr-1 text-gray-400" />{patient.gender}</span>
+                  {patient.cin && <span className="flex items-center"><IdCard size={14} className="mr-1 text-gray-400" />{patient.cin}</span>}
                 </div>
               </div>
             </div>
-          </div>
         </div>
 
         {/* Navigation Tabs */}
-        {/* Full bleed background */}
-        <div className="bg-white border-b border-gray-200 shadow-sm w-full">
-          {/* Constrain the inner content, but padding is preserved naturally */}
-          <div className="w-full">
-            <div className="flex overflow-x-auto pb-px scrollbar-none">
+        <div className="w-full">
+          <div className="flex overflow-x-auto pb-px scrollbar-none">
               <div className="flex w-max px-6 lg:px-10 space-x-8">
                 {tabs.map(tab => {
                   const Icon = tab.icon;
@@ -350,28 +355,31 @@ export const PatientDossier: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
       </div>
 
-      {/* Scrollable Tab Content */}
-      {/* Conditional layout: FicheSurveillance and Observations require internal flex bounds to govern their own scrolling */}
-      {activeTab === 'Surveillance' || activeTab === 'Observations' ? (
-        <div className="flex-1 flex flex-col min-h-0 w-full overflow-hidden bg-gray-50">
-          <div className="flex-1 flex flex-col min-h-0 w-full px-6 lg:px-10 pb-6 lg:pb-10 pt-6">
-            <div className="flex-1 flex flex-col min-h-0 w-full relative">
-              {tabs.find(t => t.id === activeTab)?.component}
+      {/* Scrollable Tab Content - Keep-Alive Rendering */}
+      <div className="flex-1 flex flex-col min-h-0 w-full overflow-hidden relative bg-gray-50">
+        {tabs.map(tab => {
+          const isHeavyFlex = tab.id === 'Surveillance' || tab.id === 'Observations';
+          const isCurrentTab = activeTab === tab.id;
+          return (
+            <div
+              key={tab.id}
+              className={`absolute inset-0 flex flex-col ${isHeavyFlex ? 'overflow-hidden' : 'overflow-y-auto'}`}
+              style={{ display: isCurrentTab ? 'flex' : 'none' }}
+            >
+              <div className={`w-full px-6 lg:px-10 pb-6 lg:pb-10 pt-6 ${isHeavyFlex ? 'flex-1 flex flex-col min-h-0' : 'py-6'}`}>
+                <div className={`w-full ${isHeavyFlex ? 'flex-1 flex flex-col min-h-0 relative' : ''}`}>
+                  {React.cloneElement(tab.component as React.ReactElement<any>, {
+                    isActiveWorkspace,
+                    isActiveTab: isCurrentTab
+                  })}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      ) : (
-        <div className="flex-1 overflow-y-auto w-full">
-          <div className="w-full px-6 lg:px-10 pb-6 lg:pb-10">
-            <div className="w-full py-6">
-              {tabs.find(t => t.id === activeTab)?.component}
-            </div>
-          </div>
-        </div>
-      )}
+          );
+        })}
+      </div>
 
       {/* --- EDIT PATIENT MODAL --- */}
       {isEditModalOpen && (

@@ -17,12 +17,15 @@ import {
   Pill,
   Package,
   FileText,
-  RotateCcw
+  RotateCcw,
+  Bell
 } from 'lucide-react';
 import { AIAssistant } from './AIAssistant';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { PAGE_REGISTRY } from '../constants/pageRegistry';
+import { useWorkspace } from '../context/WorkspaceContext';
+import { PatientDossier } from './PatientDossier/PatientDossier';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -36,6 +39,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [aiOpen, setAiOpen] = useState(false);
   const { logout, user } = useAuth();
   const navigate = useNavigate();
+  const { workspaceTabs, activeWorkspaceId, isPatientRoute, openWorkspace, closeWorkspace } = useWorkspace();
 
   // Helper to find page definition by ID
   const getPageInfo = (pageId: string) => {
@@ -148,47 +152,97 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden relative bg-white min-w-0">
-        {/* Header */}
-        <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 lg:px-6 shrink-0 transition-all duration-300">
-          <div className="flex items-center gap-4">
-            {/* Mobile Toggle */}
+      <main className="flex-1 flex flex-col h-full overflow-hidden relative bg-slate-50 min-w-0">
+        {/* Workspace Bar (48px) */}
+        <header className="bg-white border-b border-gray-200 h-12 flex items-end justify-between px-4 shrink-0 transition-all duration-300 z-20 relative pt-2">
+          
+          {/* LEFT ZONE: Burger Toggles */}
+          <div className="flex items-center gap-2 shrink-0 w-32 pb-1.5">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-md"
+              className="lg:hidden p-1.5 text-gray-600 hover:bg-gray-100 rounded-md"
             >
-              <Menu size={24} />
+              <Menu size={20} />
             </button>
-            
-            {/* Desktop Toggle */}
             <button
               onClick={() => setSidebarState(sidebarState === 'expanded' ? 'collapsed' : 'expanded')}
-              className="hidden lg:block p-2 text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+              className="hidden lg:flex p-1.5 text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
               title="Basculer le menu"
             >
-              <Menu size={24} />
+              <Menu size={20} />
             </button>
-
-            <h1 className="text-xl font-semibold text-gray-800 hidden lg:block">
-              Système de Gestion Hospitalière
-            </h1>
           </div>
 
-          <div className="flex items-center space-x-4">
+          {/* CENTER ZONE: Workspace Tabs */}
+          <div className="flex-1 flex items-end overflow-x-auto scrollbar-none px-2 space-x-1 h-full -mb-px">
+            {workspaceTabs.map(tab => (
+              <div 
+                key={tab.workspaceId}
+                onClick={() => openWorkspace(tab.patientId)}
+                title={tab.label}
+                className={`group flex items-center justify-between h-[36px] px-3 border border-b-0 rounded-t-md text-sm select-none cursor-pointer transition-colors shrink-0 min-w-[120px] max-w-[160px]
+                  ${activeWorkspaceId === tab.workspaceId 
+                    ? 'bg-white border-gray-200 text-gray-900 font-medium z-10' 
+                    : 'bg-slate-100 border-transparent text-gray-500 hover:bg-slate-200 hover:text-gray-700'
+                  }`}
+              >
+                <span className="truncate pr-2 pointer-events-none">{tab.label}</span>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); closeWorkspace(tab.workspaceId); }}
+                  className={`p-0.5 rounded-sm transition-colors shrink-0
+                    ${activeWorkspaceId === tab.workspaceId ? 'text-gray-400 hover:text-red-500 hover:bg-red-50' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-300'}
+                  `}
+                >
+                  <X size={14} strokeWidth={2.5} />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* RIGHT ZONE: Controls */}
+          <div className="flex items-center justify-end gap-2 shrink-0 w-32 pb-1.5">
             <button
               onClick={() => setAiOpen(true)}
-              className="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors shadow-sm"
+              className="flex items-center justify-center p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+              title="Assistant IA"
             >
-              <Bot size={18} />
-              <span className="hidden sm:inline">Assistant IA</span>
+              <Bot size={20} />
+            </button>
+            <button
+              className="flex items-center justify-center p-1.5 text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+              title="Notifications"
+            >
+              <Bell size={20} />
             </button>
           </div>
         </header>
 
-        {/* Scrollable Page Content */}
-        <div className="flex-1 overflow-auto p-6 lg:p-8">
-          <div className="w-full">
-            {children}
+        {/* Workspace & Routing Content */}
+        <div className="flex-1 overflow-hidden relative">
+          
+          {/* 1. The Keep-Alive Patient Workspaces Collection */}
+          <div className={`absolute inset-0 bg-white ${isPatientRoute ? 'block z-10' : 'hidden z-0'}`}>
+            {workspaceTabs.map(tab => (
+               <div 
+                 key={tab.workspaceId}
+                 className="absolute inset-0"
+                 // If active, block. Else entirely hidden (DOM maintained).
+                 style={{ display: activeWorkspaceId === tab.workspaceId ? 'block' : 'none' }}
+               >
+                 <PatientDossier 
+                   patientId={tab.patientId} 
+                   workspaceId={tab.workspaceId} 
+                   isActiveWorkspace={activeWorkspaceId === tab.workspaceId} 
+                 />
+               </div>
+            ))}
+          </div>
+
+          {/* 2. The Root Navigation Outlet (Admissions, Settings, etc.) */}
+          <div className={`absolute inset-0 overflow-auto bg-slate-50 ${!isPatientRoute ? 'block z-10' : 'hidden z-0'}`}>
+            <div className="w-full p-6 md:p-8">
+              {children}
+            </div>
           </div>
         </div>
       </main>

@@ -14,6 +14,7 @@ import { PatientDossier } from './components/PatientDossier/PatientDossier';
 import { AdmissionDossier } from './components/AdmissionDossier/AdmissionDossier';
 import { PharmacyModule } from './components/Pharmacy/PharmacyModule';
 import { AuthProvider, useAuth, UserType } from './context/AuthContext';
+import { WorkspaceProvider } from './context/WorkspaceContext';
 import { Login } from './components/Login';
 import { SuperAdminLayout } from './components/SuperAdmin/SuperAdminLayout';
 import { ActesPage } from './components/SuperAdmin/ActesPage';
@@ -75,13 +76,16 @@ const ProtectedRoute = ({ role, permission, children }: { role?: string | UserTy
   return <>{children}</>;
 };
 
+const PatientViewProxy = () => null;
+
 const App: React.FC = () => {
   return (
     <AuthProvider>
       <Toaster position="top-center" />
       <HashRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
+        <WorkspaceProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
 
           {/* Doctor / EMR Routes - PROTECTED BY PERMISSION */}
           <Route path="/" element={
@@ -92,7 +96,8 @@ const App: React.FC = () => {
             </ProtectedRoute>
           }>
             <Route index element={<PatientList />} />
-            <Route path="patient/:id" element={<PatientDossier />} />
+            <Route path="patients" element={<PatientList />} />
+            <Route path="patient/:id" element={<PatientViewProxy />} />
             <Route path="admissions" element={<AdmissionList />} />
             <Route path="admission/:id" element={<AdmissionDossier />} />
             <Route path="calendar" element={<CalendarView />} />
@@ -183,7 +188,8 @@ const App: React.FC = () => {
           } />
 
           <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
+          </Routes>
+        </WorkspaceProvider>
       </HashRouter>
     </AuthProvider>
   );
