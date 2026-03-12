@@ -204,7 +204,7 @@ export const Allergies: React.FC<{ patientId: string }> = ({ patientId }) => {
   const [dciResults, setDciResults] = useState<any[]>([]);
   const [searchingDci, setSearchingDci] = useState(false);
   const [showDciDropdown, setShowDciDropdown] = useState(false);
-  const dciTimeoutRef = useRef<NodeJS.Timeout>();
+  const dciTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const loadAllergies = async () => {
     try {

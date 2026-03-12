@@ -143,6 +143,10 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }),
+    
+    // Smart Phrases
+    getSmartPhrases: () => fetchJson<any[]>('/smart-phrases'),
+
     // Hospital Config
     getHospitalServices: () => fetchJson<any[]>('/emr/hospital/services'),
     getHospitalDoctors: () => fetchJson<any[]>('/emr/hospital/doctors'),

@@ -71,7 +71,7 @@ import { ElectroEcho } from './ElectroEcho';
 import { Transfusions } from './Transfusions';
 import { Interventions } from './Interventions';
 import { AvisSpecialises } from './AvisSpecialises';
-import { Observations } from './Observations';
+import { Observations, ObservationRecord } from './Observations';
 import { Admissions } from './Admissions';
 import { PrescriptionSortie } from './PrescriptionSortie';
 import { Allergies } from './Allergies';
@@ -79,6 +79,7 @@ import { Addictologie } from './Addictologie';
 import { Biologie } from './Biologie';
 import { Imagerie } from './Imagerie';
 import { Escarres } from './Escarres';
+import { RightChartPanel, RightPanelTab } from './RightChartPanel';
 
 // --- Reusable UI Components (Redefined for the dossier) ---
 
@@ -154,7 +155,84 @@ export const PatientDossier: React.FC<PatientDossierProps> = ({ patientId, works
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [formData, setFormData] = useState<Partial<Patient>>({});
 
-  const { updateWorkspaceLabel } = useWorkspace();
+  const { updateWorkspaceLabel, sidebarState, setSidebarState } = useWorkspace();
+
+  const DEFAULT_PANEL_WIDTH = 420;
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
+  const [activeRightPanelTab, setActiveRightPanelTab] = useState<RightPanelTab | null>(null);
+  const [rightPanelWidth, setRightPanelWidth] = useState(DEFAULT_PANEL_WIDTH);
+  const [panelDraftState, setPanelDraftState] = useState<any>({});
+
+  // Hosted Observation Editor State
+  const [obsEditorMode, setObsEditorMode] = useState<'CREATE' | 'EDIT' | 'VIEW' | 'ADDENDUM'>('CREATE');
+  const [activeObsNote, setActiveObsNote] = useState<Partial<ObservationRecord> | null>(null);
+  const [obsParentNote, setObsParentNote] = useState<ObservationRecord | null>(null);
+  const [isSavingObs, setIsSavingObs] = useState(false);
+  const [refreshObsTrigger, setRefreshObsTrigger] = useState(0);
+
+  const openObservationEditor = (config: {
+    mode: 'CREATE' | 'EDIT' | 'VIEW' | 'ADDENDUM';
+    note?: Partial<ObservationRecord>;
+    parentNote?: ObservationRecord;
+  }) => {
+    setActiveRightPanelTab('obs');
+    setIsRightPanelOpen(true);
+    setSidebarState('collapsed');
+
+    // Phase 4.1: If there is an active draft (CREATE/EDIT/ADDENDUM)
+    const hasActiveDraft = activeObsNote && obsEditorMode !== 'VIEW';
+
+    if (config.mode === 'CREATE') {
+      if (hasActiveDraft) {
+        // If an observation draft already exists -> reopen the editor with the existing draft
+        return;
+      }
+      
+      setObsEditorMode('CREATE');
+      setActiveObsNote({
+        note_type: 'GENERAL',
+        privacy_level: 'NORMAL',
+        status: 'DRAFT',
+        body_html: '<p></p>',
+        declared_time: new Date().toISOString(),
+      });
+      setObsParentNote(null);
+    } else if (config.mode === 'ADDENDUM' && config.parentNote) {
+      if (hasActiveDraft) {
+         if (!window.confirm("Vous avez un brouillon en cours. Remplacer par un addendum ? Ce brouillon sera perdu.")) return;
+      }
+      setObsEditorMode(config.mode);
+      setObsParentNote(config.parentNote);
+      setActiveObsNote({
+        note_type: config.parentNote.note_type,
+        privacy_level: config.parentNote.privacy_level,
+        body_html: '<p></p>',
+        declared_time: new Date().toISOString(),
+      });
+    } else if (config.note) {
+      if (config.mode !== 'VIEW' && hasActiveDraft) {
+         if (!window.confirm("Vous avez un brouillon en cours. Ouvrir ce brouillon à la place ? Le brouillon actuel sera défaussé.")) return;
+      }
+      if (config.mode === 'VIEW' && hasActiveDraft) {
+         if (!window.confirm("Vous avez une observation en cours de rédaction. Quitter pour visualiser cette note ? Le texte tapé non sauvegardé sera perdu.")) return;
+      }
+      setObsEditorMode(config.mode);
+      setActiveObsNote({ ...config.note });
+      setObsParentNote(null);
+    }
+  };
+
+  const handleDiscardObsDraft = () => {
+    setActiveObsNote(null);
+    setObsParentNote(null);
+    setIsRightPanelOpen(false);
+  };
+
+  useEffect(() => {
+    if (sidebarState === 'expanded' && isRightPanelOpen) {
+      setIsRightPanelOpen(false);
+    }
+  }, [sidebarState, isRightPanelOpen]);
 
   useEffect(() => {
     if (patient) {
@@ -330,9 +408,9 @@ export const PatientDossier: React.FC<PatientDossierProps> = ({ patientId, works
         </div>
 
         {/* Navigation Tabs */}
-        <div className="w-full">
-          <div className="flex overflow-x-auto pb-px scrollbar-none">
-              <div className="flex w-max px-6 lg:px-10 space-x-8">
+        <div className="w-full flex items-center border-b border-gray-200 bg-white">
+          <div className="flex-1 overflow-x-auto whitespace-nowrap scrollbar-none">
+              <div className="flex w-max pl-6 lg:pl-10 pr-4 space-x-8">
                 {tabs.map(tab => {
                   const Icon = tab.icon;
                   const isActive = activeTab === tab.id;
@@ -354,31 +432,128 @@ export const PatientDossier: React.FC<PatientDossierProps> = ({ patientId, works
                 })}
               </div>
             </div>
+
+            {/* Separator */}
+            <div className="w-px bg-slate-200 h-6 mx-2 shrink-0"></div>
+
+            {/* Right Panel Selectors */}
+            <div className="shrink-0 flex items-center pr-6 lg:pr-10 pl-2 gap-1">
+               <button
+                  onClick={() => {
+                    if (isRightPanelOpen && activeRightPanelTab === 'obs') {
+                      setIsRightPanelOpen(false);
+                    } else {
+                      setIsRightPanelOpen(true);
+                      setActiveRightPanelTab('obs');
+                      setSidebarState('collapsed');
+
+                      const hasActiveDraft = activeObsNote && obsEditorMode !== 'VIEW';
+                      if (!hasActiveDraft) {
+                        setObsEditorMode('CREATE');
+                        setActiveObsNote({
+                          note_type: 'GENERAL',
+                          privacy_level: 'NORMAL',
+                          status: 'DRAFT',
+                          body_html: '<p></p>',
+                          declared_time: new Date().toISOString(),
+                        });
+                        setObsParentNote(null);
+                      }
+                    }
+                  }}
+                  className={`px-3 py-1 text-[11px] font-black uppercase tracking-widest rounded-md transition-colors ${isRightPanelOpen && activeRightPanelTab === 'obs' ? 'bg-indigo-100 text-indigo-700' : 'text-slate-500 hover:bg-slate-100 border border-slate-200 hover:border-slate-300'}`}
+                >
+                  OBS
+                </button>
+               <button
+                  onClick={() => {
+                    if (isRightPanelOpen && activeRightPanelTab === 'presc') {
+                      setIsRightPanelOpen(false);
+                    } else {
+                      setIsRightPanelOpen(true);
+                      setActiveRightPanelTab('presc');
+                      setSidebarState('collapsed');
+                    }
+                  }}
+                  className={`px-3 py-1 text-[11px] font-black uppercase tracking-widest rounded-md transition-colors ${isRightPanelOpen && activeRightPanelTab === 'presc' ? 'bg-indigo-100 text-indigo-700' : 'text-slate-500 hover:bg-slate-100 border border-slate-200 hover:border-slate-300'}`}
+                >
+                  PRESC
+                </button>
+               <button
+                  onClick={() => {
+                    if (isRightPanelOpen && activeRightPanelTab === 'diag') {
+                      setIsRightPanelOpen(false);
+                    } else {
+                      setIsRightPanelOpen(true);
+                      setActiveRightPanelTab('diag');
+                      setSidebarState('collapsed');
+                    }
+                  }}
+                  className={`px-3 py-1 text-[11px] font-black uppercase tracking-widest rounded-md transition-colors ${isRightPanelOpen && activeRightPanelTab === 'diag' ? 'bg-indigo-100 text-indigo-700' : 'text-slate-500 hover:bg-slate-100 border border-slate-200 hover:border-slate-300'}`}
+                >
+                  DIAG
+                </button>
+            </div>
           </div>
       </div>
 
-      {/* Scrollable Tab Content - Keep-Alive Rendering */}
-      <div className="flex-1 flex flex-col min-h-0 w-full overflow-hidden relative bg-gray-50">
-        {tabs.map(tab => {
-          const isHeavyFlex = tab.id === 'Surveillance' || tab.id === 'Observations';
-          const isCurrentTab = activeTab === tab.id;
-          return (
-            <div
-              key={tab.id}
-              className={`absolute inset-0 flex flex-col ${isHeavyFlex ? 'overflow-hidden' : 'overflow-y-auto'}`}
-              style={{ display: isCurrentTab ? 'flex' : 'none' }}
-            >
-              <div className={`w-full px-6 lg:px-10 pb-6 lg:pb-10 pt-6 ${isHeavyFlex ? 'flex-1 flex flex-col min-h-0' : 'py-6'}`}>
-                <div className={`w-full ${isHeavyFlex ? 'flex-1 flex flex-col min-h-0 relative' : ''}`}>
-                  {React.cloneElement(tab.component as React.ReactElement<any>, {
-                    isActiveWorkspace,
-                    isActiveTab: isCurrentTab
-                  })}
+      {/* Scrollable Tab Content & Right Panel - Keep-Alive Rendering */}
+      <div className="flex-1 flex flex-row min-h-0 min-w-0 w-full overflow-hidden relative bg-gray-50">
+        
+        {/* Main Chart Content */}
+        <div className="flex-1 flex flex-col min-h-0 min-w-0 relative overflow-hidden transition-all duration-300">
+          {tabs.map(tab => {
+            const isHeavyFlex = tab.id === 'Surveillance' || tab.id === 'Observations';
+            const isCurrentTab = activeTab === tab.id;
+            
+            // Pass the editor helpers to the Observations component specifically
+            const childProps: any = {
+              isActiveWorkspace,
+              isActiveTab: isCurrentTab
+            };
+            if (tab.id === 'Observations') {
+              childProps.openObservationEditor = openObservationEditor;
+              childProps.refreshTrigger = refreshObsTrigger;
+            }
+
+            return (
+              <div
+                key={tab.id}
+                className={`absolute inset-0 flex flex-col ${isHeavyFlex ? 'overflow-hidden' : 'overflow-y-auto'}`}
+                style={{ display: isCurrentTab ? 'flex' : 'none' }}
+              >
+                <div className={`w-full px-6 lg:px-10 pb-6 lg:pb-10 pt-6 ${isHeavyFlex ? 'flex-1 flex flex-col min-h-0' : 'py-6'}`}>
+                  <div className={`w-full ${isHeavyFlex ? 'flex-1 flex flex-col min-h-0 relative' : ''}`}>
+                    {React.cloneElement(tab.component as React.ReactElement<any>, childProps)}
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
+
+        {/* Sticky Right Chart Panel */}
+        <RightChartPanel 
+          isOpen={isRightPanelOpen}
+          width={rightPanelWidth}
+          activeTab={activeRightPanelTab}
+          onClose={() => setIsRightPanelOpen(false)}
+          setWidth={setRightPanelWidth}
+          patientId={patient?.id || ''}
+          obsEditorMode={obsEditorMode}
+          activeObsNote={activeObsNote}
+          obsParentNote={obsParentNote}
+          isSavingObs={isSavingObs}
+          setActiveObsNote={setActiveObsNote}
+          setIsSavingObs={setIsSavingObs}
+          onObsDiscard={handleDiscardObsDraft}
+          onObsSaveSuccess={() => {
+             setIsSavingObs(false);
+             setIsRightPanelOpen(false);
+             setRefreshObsTrigger(prev => prev + 1);
+             setActiveObsNote(null);
+          }}
+        />
       </div>
 
       {/* --- EDIT PATIENT MODAL --- */}

@@ -35,11 +35,10 @@ export type SidebarState = 'expanded' | 'collapsed';
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarState, setSidebarState] = useState<SidebarState>('expanded');
   const [aiOpen, setAiOpen] = useState(false);
   const { logout, user } = useAuth();
   const navigate = useNavigate();
-  const { workspaceTabs, activeWorkspaceId, isPatientRoute, openWorkspace, closeWorkspace } = useWorkspace();
+  const { workspaceTabs, activeWorkspaceId, isPatientRoute, openWorkspace, closeWorkspace, sidebarState, setSidebarState } = useWorkspace();
 
   // Helper to find page definition by ID
   const getPageInfo = (pageId: string) => {

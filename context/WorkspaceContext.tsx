@@ -18,6 +18,8 @@ interface WorkspaceContextType {
   updateWorkspaceLabel: (workspaceId: string, label: string) => void;
   updateActiveDossierTab: (workspaceId: string, dossierTabId: string) => void;
   isPatientRoute: boolean;
+  sidebarState: 'expanded' | 'collapsed';
+  setSidebarState: React.Dispatch<React.SetStateAction<'expanded' | 'collapsed'>>;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
@@ -25,6 +27,7 @@ const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefin
 export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [workspaceTabs, setWorkspaceTabs] = useState<WorkspaceTab[]>([]);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
+  const [sidebarState, setSidebarState] = useState<'expanded' | 'collapsed'>('expanded');
   
   const location = useLocation();
   const navigate = useNavigate();
@@ -147,7 +150,9 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       closeWorkspace,
       updateWorkspaceLabel,
       updateActiveDossierTab,
-      isPatientRoute
+      isPatientRoute,
+      sidebarState,
+      setSidebarState
     }}>
       {children}
     </WorkspaceContext.Provider>

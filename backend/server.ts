@@ -22,6 +22,7 @@ import stockReservationRoutes from './routes/stockReservationRoutes';
 import escarresRoutes from './routes/escarresRoutes';
 import observationsRoutes from './routes/observationsRoutes';
 import addictionsRoutes from './routes/addictionsRoutes';
+import smartPhrasesRoutes from './routes/smartPhrasesRoutes';
 import { authenticateToken, authenticateAnyToken } from './middleware/authMiddleware';
 import { requireModule } from './middleware/moduleMiddleware';
 import { startIdentitySyncWorker } from './workers/identitySyncWorker';
@@ -93,6 +94,7 @@ app.use('/api/escarres', authenticateToken, escarresRoutes);
 app.use('/api/allergies', authenticateToken, allergiesRoutes);
 app.use('/api/observations', authenticateToken, observationsRoutes);
 app.use('/api/addictions', authenticateToken, addictionsRoutes);
+app.use('/api/smart-phrases', authenticateToken, smartPhrasesRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
