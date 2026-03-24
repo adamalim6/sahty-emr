@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Check, Edit2, Info, X, Save, Bold, Italic, Underline as UnderlineIcon, Highlighter, AlignLeft, AlignCenter, AlignRight, List as ListIcon, ListOrdered, ChevronDown, Table as TableIcon, Trash2, ArrowLeftToLine, ArrowRightToLine, ArrowUpToLine, ArrowDownToLine } from 'lucide-react';
+import { Plus, Check, Edit2, Info, X, Save, Bold, Italic, Underline as UnderlineIcon, Highlighter, AlignLeft, AlignCenter, AlignRight, List as ListIcon, ListOrdered, ChevronDown, Table as TableIcon, Trash2, ArrowLeftToLine, ArrowRightToLine, ArrowUpToLine, ArrowDownToLine, Compass, FilePlus } from 'lucide-react';
 import { api } from '../../services/api';
 
 import { useEditor, EditorContent } from '@tiptap/react';
@@ -23,7 +23,7 @@ import { Extension } from '@tiptap/core';
 import { CustomDateAndTimePicker } from '../ui/CustomDateAndTimePicker';
 import { ObservationRecord } from '../PatientDossier/Observations'; // Adjust if type is moved later
 import { SmartPhrasesExtension, SmartPhraseCursor } from './SmartPhrasesExtension';
-import { useSmartPhrases, SmartPhrase } from '../../hooks/useSmartPhrases';
+import { useSmartPhrases, useSmartValues, SmartPhrase } from '../../hooks/useSmartPhrases';
 
 export const FontSize = Extension.create({
   name: 'fontSize',
@@ -156,13 +156,18 @@ function cleanPasteHTML(html: string) {
     return doc.body.innerHTML;
 }
 
-const TipTapEditor = ({ content, onChange, phrases, editable = true }: { content: string, onChange?: (html: string) => void, phrases?: SmartPhrase[], editable?: boolean }) => {
+const TipTapEditor = ({ content, onChange, phrases, values, patientId, editable = true, onOpenSmartPhrases }: { content: string, onChange?: (html: string) => void, phrases?: SmartPhrase[], values?: SmartPhrase[], patientId: string, editable?: boolean, onOpenSmartPhrases?: (payload?: any) => void }) => {
     const editorRef = useRef<any>(null);
     const phrasesRef = useRef<SmartPhrase[]>(phrases || []);
+    const valuesRef = useRef<SmartPhrase[]>(values || []);
 
     useEffect(() => {
         phrasesRef.current = phrases || [];
     }, [phrases]);
+
+    useEffect(() => {
+        valuesRef.current = values || [];
+    }, [values]);
 
     const editor = useEditor({
         extensions: [
@@ -198,7 +203,9 @@ const TipTapEditor = ({ content, onChange, phrases, editable = true }: { content
             TableCell,
             SmartPhraseCursor,
             SmartPhrasesExtension.configure({
-                getPhrases: () => phrasesRef.current
+                getPhrases: () => phrasesRef.current,
+                getValues: () => valuesRef.current,
+                tenantPatientId: patientId
             })
         ],
         content: content,
@@ -280,6 +287,42 @@ const TipTapEditor = ({ content, onChange, phrases, editable = true }: { content
                     <button type="button" title="Aligner à droite" onClick={() => editor.chain().focus().setTextAlign('right').run()} className={`p-1.5 rounded hover:bg-gray-200 ${editor.isActive({ textAlign: 'right' }) ? 'bg-gray-200 text-black' : ''}`}><AlignRight size={16} /></button>
                     <div className="w-px h-4 bg-gray-300 mx-1"></div>
                     <button type="button" title="Insérer un tableau" onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} className="p-1.5 rounded hover:bg-gray-200 text-gray-600"><TableIcon size={16} /></button>
+                    
+                    <div className="flex-1"></div>
+                    
+                    {onOpenSmartPhrases && (
+                        <button 
+                            type="button" 
+                            title="Créer un modèle à partir du texte" 
+                            aria-label="Créer un modèle à partir du texte"
+                            onClick={() => {
+                                const textContent = editor.getText().trim();
+                                if (!textContent) {
+                                    onOpenSmartPhrases();
+                                    return;
+                                }
+
+                                const html = editor.getHTML();
+                                const tempDiv = document.createElement('div');
+                                tempDiv.innerHTML = html;
+
+                                // Strip transient semantic markers completely
+                                tempDiv.querySelectorAll('span[data-smartphrase-cursor]').forEach(node => node.remove());
+
+                                // Flatten any lingering visual node structures into purely textual inner content
+                                tempDiv.querySelectorAll('span[data-smart-token]').forEach(node => {
+                                    const textNode = document.createTextNode(node.textContent || '');
+                                    node.replaceWith(textNode);
+                                });
+
+                                const staticImportSnapshot = tempDiv.innerHTML;
+                                onOpenSmartPhrases({ staticImportSnapshot, source: 'clinical_editor' });
+                            }} 
+                            className="p-1.5 rounded hover:bg-gray-200 text-indigo-700 font-bold flex items-center transition-colors"
+                        >
+                            <FilePlus size={16} />
+                        </button>
+                    )}
                 </div>
             )}
             <div className={`flex-1 overflow-y-auto w-full`}>
@@ -379,16 +422,18 @@ interface ObservationEditorPanelProps {
     onClose: () => void;
     onDiscard: () => void;
     onSaveSuccess: () => void;
+    onOpenSmartPhrases?: () => void;
 }
 
 export const ObservationEditorPanel: React.FC<ObservationEditorPanelProps> = ({ 
     patientId, mode, activeNote, parentNoteForAddendum, isSaving, 
-    setActiveNote, setIsSaving, onClose, onDiscard, onSaveSuccess 
+    setActiveNote, setIsSaving, onClose, onDiscard, onSaveSuccess, onOpenSmartPhrases 
 }) => {
 
     if (!activeNote) return null;
 
     const { phrases } = useSmartPhrases();
+    const { values } = useSmartValues();
 
     const handleSave = async (intent: 'DRAFT' | 'SIGNED') => {
         if (!activeNote.body_html || activeNote.body_html === '<p></p>') {
@@ -495,7 +540,10 @@ export const ObservationEditorPanel: React.FC<ObservationEditorPanelProps> = ({
                     content={activeNote.body_html || ''} 
                     onChange={(html) => setActiveNote({...activeNote, body_html: html})} 
                     phrases={phrases}
+                    values={values}
+                    patientId={patientId}
                     editable={mode !== 'VIEW'}
+                    onOpenSmartPhrases={onOpenSmartPhrases}
                 />
             </div>
 

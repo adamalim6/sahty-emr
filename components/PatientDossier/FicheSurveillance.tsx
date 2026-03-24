@@ -1283,6 +1283,12 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId,
   const getDurationMinsLocal = (duration: any): number => {
       if (!duration) return 0;
       if (typeof duration === 'number') return duration;
+      if (typeof duration === 'object') {
+          // PostgreSQL INTERVAL parsing handles { hours: 2, minutes: 30 }
+          const h = typeof duration.hours === 'number' ? duration.hours : 0;
+          const m = typeof duration.minutes === 'number' ? duration.minutes : 0;
+          return (h * 60) + m;
+      }
       if (typeof duration === 'string') {
           if (duration === '0' || duration === '00:00:00') return 0;
           if (duration.includes(':')) {
@@ -1457,9 +1463,10 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId,
                     {row.epicHeader}
                  </div>
              </td>
-             <td colSpan={timeSlots.length} className={`p-0 border-b border-gray-200 relative align-middle overflow-hidden transition-colors ${row.hoverBg !== undefined ? row.hoverBg : 'group-hover:bg-blue-50'}`} style={{ height: computedHeight }}>
-                 {/* Background Grid Underlay */}
-                 <div className="absolute inset-0 flex pointer-events-none z-0">
+             <td colSpan={timeSlots.length} className={`p-0 border-b border-gray-200 align-middle overflow-hidden transition-colors ${row.hoverBg !== undefined ? row.hoverBg : 'group-hover:bg-blue-50'}`}>
+                 <div className="relative w-full h-full overflow-hidden" style={{ height: computedHeight }}>
+                     {/* Background Grid Underlay */}
+                     <div className="absolute inset-0 flex pointer-events-none z-0">
                      {timeSlots.map((slot) => {
                          const isExtraBorder = slot.isMidnight || slot.isStartOfDay;
                          return (
@@ -1779,14 +1786,15 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId,
                                 }
                                 
                                 return null;
-                            })}
-                        </div>
-                    )}
+                             })}
+                         </div>
+                     )}
+                 </div>
                  </div>
              </td>
-        </tr>
-      );
-  };
+         </tr>
+     );
+ };
 
   // --- Render Cell Helper ---
   const renderCell = (row: RowConfig, slotIso: string) => {

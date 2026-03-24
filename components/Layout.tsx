@@ -177,7 +177,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             {workspaceTabs.map(tab => (
               <div 
                 key={tab.workspaceId}
-                onClick={() => openWorkspace(tab.patientId)}
+                onClick={() => tab.type === 'utility' && tab.route ? navigate(tab.route) : openWorkspace(tab.patientId as string)}
                 title={tab.label}
                 className={`group flex items-center justify-between h-[36px] px-3 border border-b-0 rounded-t-md text-sm select-none cursor-pointer transition-colors shrink-0 min-w-[120px] max-w-[160px]
                   ${activeWorkspaceId === tab.workspaceId 
@@ -220,25 +220,39 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         <div className="flex-1 overflow-hidden relative">
           
           {/* 1. The Keep-Alive Patient Workspaces Collection */}
-          <div className={`absolute inset-0 bg-white ${isPatientRoute ? 'block z-10' : 'hidden z-0'}`}>
-            {workspaceTabs.map(tab => (
-               <div 
-                 key={tab.workspaceId}
-                 className="absolute inset-0"
-                 // If active, block. Else entirely hidden (DOM maintained).
-                 style={{ display: activeWorkspaceId === tab.workspaceId ? 'block' : 'none' }}
-               >
-                 <PatientDossier 
-                   patientId={tab.patientId} 
-                   workspaceId={tab.workspaceId} 
-                   isActiveWorkspace={activeWorkspaceId === tab.workspaceId} 
-                 />
-               </div>
-            ))}
+          <div className={`absolute inset-0 bg-white ${isPatientRoute || location.pathname === '/templates' ? 'block z-10' : 'hidden z-0'}`}>
+            {workspaceTabs.map(tab => {
+               if (tab.type === 'utility') {
+                 return (
+                   <div 
+                     key={tab.workspaceId}
+                     className="absolute inset-0 overflow-auto bg-slate-50"
+                     style={{ display: activeWorkspaceId === tab.workspaceId ? 'block' : 'none' }}
+                   >
+                     <div className="w-full h-full p-6 md:p-8">
+                        {children}
+                     </div>
+                   </div>
+                 );
+               }
+               return (
+                 <div 
+                   key={tab.workspaceId}
+                   className="absolute inset-0"
+                   style={{ display: activeWorkspaceId === tab.workspaceId ? 'block' : 'none' }}
+                 >
+                   <PatientDossier 
+                     patientId={tab.patientId as string} 
+                     workspaceId={tab.workspaceId} 
+                     isActiveWorkspace={activeWorkspaceId === tab.workspaceId} 
+                   />
+                 </div>
+               );
+            })}
           </div>
 
           {/* 2. The Root Navigation Outlet (Admissions, Settings, etc.) */}
-          <div className={`absolute inset-0 overflow-auto bg-slate-50 ${!isPatientRoute ? 'block z-10' : 'hidden z-0'}`}>
+          <div className={`absolute inset-0 overflow-auto bg-slate-50 ${!isPatientRoute && location.pathname !== '/templates' ? 'block z-10' : 'hidden z-0'}`}>
             <div className="w-full p-6 md:p-8">
               {children}
             </div>

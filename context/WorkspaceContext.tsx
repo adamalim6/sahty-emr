@@ -4,25 +4,30 @@ import toast from 'react-hot-toast';
 
 export interface WorkspaceTab {
   workspaceId: string;
-  patientId: string;
+  patientId?: string;
   label: string;
-  activeDossierTab: string;
+  activeDossierTab?: string;
   lastVisitedAt: number;
+  type?: 'patient' | 'utility';
+  route?: string;
+  initialPayload?: any;
 }
 
 interface WorkspaceContextType {
   workspaceTabs: WorkspaceTab[];
   activeWorkspaceId: string | null;
   openWorkspace: (patientId: string) => void;
+  openUtilityTab: (utilityId: string, label: string, route: string, initialPayload?: any) => void;
   closeWorkspace: (workspaceId: string) => void;
   updateWorkspaceLabel: (workspaceId: string, label: string) => void;
   updateActiveDossierTab: (workspaceId: string, dossierTabId: string) => void;
+  clearTabPayload: (workspaceId: string) => void;
   isPatientRoute: boolean;
   sidebarState: 'expanded' | 'collapsed';
   setSidebarState: React.Dispatch<React.SetStateAction<'expanded' | 'collapsed'>>;
 }
 
-const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
+export const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefined);
 
 export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [workspaceTabs, setWorkspaceTabs] = useState<WorkspaceTab[]>([]);
@@ -100,11 +105,76 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           }
         }
       }
+    } else if (location.pathname === '/templates') {
+      const currentTabs = workspaceTabsRef.current;
+      const currentActiveId = activeWorkspaceIdRef.current;
+      const utilityId = 'ws-utility-templates';
+      const existingTab = currentTabs.find(t => t.workspaceId === utilityId);
+      
+      if (existingTab) {
+        if (currentActiveId !== existingTab.workspaceId) {
+          setActiveWorkspaceId(existingTab.workspaceId);
+          activeWorkspaceIdRef.current = existingTab.workspaceId;
+        }
+        setWorkspaceTabs(prev => 
+          prev.map(t => t.workspaceId === existingTab.workspaceId 
+            ? { ...t, lastVisitedAt: Date.now() } 
+            : t
+          )
+        );
+      } else {
+        if (currentTabs.length < 5) {
+          const newTab: WorkspaceTab = {
+            workspaceId: utilityId,
+            label: 'Mes Modèles',
+            type: 'utility',
+            route: '/templates',
+            lastVisitedAt: Date.now(),
+            // Only set payload on initial open if provided here (though usually opens via openUtilityTab)
+          };
+          workspaceTabsRef.current = [...currentTabs, newTab];
+          activeWorkspaceIdRef.current = utilityId;
+          setWorkspaceTabs(prev => [...prev, newTab]);
+          setActiveWorkspaceId(utilityId);
+        } else {
+          toast.error("Maximum de 5 onglets ouverts atteint.");
+          navigate('/patients', { replace: true });
+        }
+      }
     }
   }, [location.pathname, navigate]);
 
   const openWorkspace = useCallback((patientId: string) => {
     navigate(`/patient/${patientId}`);
+  }, [navigate]);
+
+  const openUtilityTab = useCallback((utilityId: string, label: string, route: string, initialPayload?: any) => {
+    // If the tab is already open, we might want to update its payload if a new one is passed and we want to force an update.
+    // However, the cleanest way is to just let navigate trigger the route and inject the payload into the tab state here.
+    const currentTabs = workspaceTabsRef.current;
+    const existingTab = currentTabs.find(t => t.workspaceId === utilityId);
+    
+    if (existingTab) {
+        if (initialPayload) {
+            setWorkspaceTabs(prev => prev.map(t => t.workspaceId === utilityId ? { ...t, initialPayload, lastVisitedAt: Date.now() } : t));
+        }
+    } else {
+        if (currentTabs.length < 5) {
+            const newTab: WorkspaceTab = {
+                workspaceId: utilityId,
+                label,
+                type: 'utility',
+                route,
+                lastVisitedAt: Date.now(),
+                initialPayload
+            };
+            workspaceTabsRef.current = [...currentTabs, newTab];
+            setActiveWorkspaceId(utilityId);
+            activeWorkspaceIdRef.current = utilityId;
+            setWorkspaceTabs(prev => [...prev, newTab]);
+        }
+    }
+    navigate(route);
   }, [navigate]);
 
   const closeWorkspace = useCallback((workspaceId: string) => {
@@ -121,7 +191,11 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         const nextTab = newTabs.reduce((latest, current) => 
           current.lastVisitedAt > latest.lastVisitedAt ? current : latest
         , newTabs[0]);
-        navigate(`/patient/${nextTab.patientId}`);
+        if (nextTab.type === 'utility' && nextTab.route) {
+          navigate(nextTab.route);
+        } else {
+          navigate(`/patient/${nextTab.patientId}`);
+        }
       } else {
         // Last tab closed
         setActiveWorkspaceId(null);
@@ -142,14 +216,26 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     );
   }, []);
 
+  const clearTabPayload = useCallback((workspaceId: string) => {
+    setWorkspaceTabs(prev => prev.map(t => {
+      if (t.workspaceId === workspaceId && t.initialPayload) {
+        const { initialPayload, ...rest } = t;
+        return rest;
+      }
+      return t;
+    }));
+  }, []);
+
   return (
     <WorkspaceContext.Provider value={{
       workspaceTabs,
       activeWorkspaceId,
       openWorkspace,
+      openUtilityTab,
       closeWorkspace,
       updateWorkspaceLabel,
       updateActiveDossierTab,
+      clearTabPayload,
       isPatientRoute,
       sidebarState,
       setSidebarState

@@ -75,7 +75,7 @@ class SurveillanceService {
         };
     }
 
-    async updateCell(tenantId: string, tenantPatientId: string, recordedAt: string, parameterId: string, parameterCode: string, value: any, userId: string): Promise<SurveillanceHourBucket> {
+    async updateCell(tenantId: string, tenantPatientId: string, recordedAt: string, parameterId: string, parameterCode: string, value: any, userId: string, userFirstName: string | null = null, userLastName: string | null = null): Promise<SurveillanceHourBucket> {
         const recordDate = new Date(recordedAt);
         recordDate.setMinutes(0, 0, 0);
         const bucketStart = recordDate.toISOString();
@@ -117,9 +117,11 @@ class SurveillanceService {
             await client.query(`
                 INSERT INTO surveillance_values_events (
                     tenant_id, tenant_patient_id, parameter_id, parameter_code, 
-                    bucket_start, value_numeric, value_text, value_boolean, recorded_by, recorded_at
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
-            `, [tenantId, tenantPatientId, parameterId, parameterCode, bucketStart, vNum, vTxt, vBool, userId]);
+                    bucket_start, value_numeric, value_text, value_boolean, 
+                    recorded_by, recorded_at, recorded_by_first_name, recorded_by_last_name,
+                    source_context, observed_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), $10, $11, 'flowsheet', $5)
+            `, [tenantId, tenantPatientId, parameterId, parameterCode, bucketStart, vNum, vTxt, vBool, userId, userFirstName, userLastName]);
 
             // Trigger Hydric Engine if this was a manual hydric parameter update
             if (parameter.source === 'manual' && (parameter.isHydricInput || parameter.isHydricOutput)) {

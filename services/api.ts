@@ -12,15 +12,20 @@ export interface CareCategory {
     updatedAt?: string;
 }
 
-const API_BASE_URL = 'http://localhost:3001/api';
+export const API_BASE_URL = 'http://localhost:3001/api';
 
 async function fetchJson<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const token = localStorage.getItem('token');
-    const headers = {
-        'Content-Type': 'application/json',
+    const headers: Record<string, string> = {
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-        ...options?.headers
+        ...((options?.headers as Record<string, string>) || {})
     };
+
+    if (options?.body && options.body.constructor.name === 'FormData') {
+        delete headers['Content-Type'];
+    } else if (!headers['Content-Type']) {
+        headers['Content-Type'] = 'application/json';
+    }
 
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         ...options,
@@ -146,6 +151,33 @@ export const api = {
     
     // Smart Phrases
     getSmartPhrases: () => fetchJson<any[]>('/smart-phrases'),
+    createSmartPhrase: (data: any) => fetchJson<any>('/smart-phrases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    updateSmartPhrase: (id: string, data: any) => fetchJson<any>(`/smart-phrases/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    getGlobalSmartPhrases: () => fetchJson<any[]>('/super-admin/smart-phrases'),
+    createGlobalSmartPhrase: (data: any) => fetchJson<any>('/super-admin/smart-phrases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    updateGlobalSmartPhrase: (id: string, data: any) => fetchJson<any>(`/super-admin/smart-phrases/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    compileSmartPhrase: (payload: { phraseId: string, tenantPatientId: string }) => fetchJson<{html: string}>('/smart-phrases/compile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    }),
+    resolveSmartValue: (trigger: string, tenantPatientId: string) => fetchJson<{html: string}>(`/smart-values/${trigger}?tenantPatientId=${tenantPatientId}`),
 
     // Hospital Config
     getHospitalServices: () => fetchJson<any[]>('/emr/hospital/services'),
@@ -187,6 +219,33 @@ export const api = {
     getTenantCountries: () => fetchJson<any[]>('/emr/reference/countries'),
     getTenantIdentityDocumentTypes: () => fetchJson<any[]>('/emr/reference/identity-document-types'),
     
+    // ===========================================
+    // CLINICAL EXAMS
+    // ===========================================
+    getClinicalExams: (patientId: string, includeError = false) => 
+        fetchJson<any[]>(`/patients/${patientId}/clinical-exams?includeError=${includeError}`),
+        
+    createClinicalExam: (patientId: string, data: any) => 
+        fetchJson<any>(`/patients/${patientId}/clinical-exams`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        }),
+        
+    updateClinicalExam: (patientId: string, examId: string, data: any) => 
+        fetchJson<any>(`/patients/${patientId}/clinical-exams/${examId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        }),
+        
+    invalidateClinicalExam: (patientId: string, examId: string, reason: string) => 
+        fetchJson<any>(`/patients/${patientId}/clinical-exams/${examId}/error`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason })
+        }),
+    
     // Reference Data (Prescriptions)
     getReferenceDCIs: (query: string) => fetchJson<{ data: any[] }>(`/global/dci?q=${encodeURIComponent(query)}&limit=50`),
     getReferenceProducts: (query: string, dciId?: string) => {
@@ -196,6 +255,8 @@ export const api = {
         }
         return fetchJson<{ data: any[] }>(url);
     },
+
+    searchLabReference: (query: string) => fetchJson<any[]>(`/reference/lab-search?q=${encodeURIComponent(query)}`),
 
     // Coverage Search
     searchCoverages: (organismeId: string, policyNumber: string) => 
@@ -963,7 +1024,52 @@ export const api = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
-    })
+    }),
+
+    // ==========================================
+    // PATIENT LAB REPORTS (BIOLOGY)
+    // ==========================================
+    getPatientLabReports: (patientId: string) => fetchJson<any[]>(`/patient-lab-reports/patient/${patientId}`),
+    
+    getPatientLabReportDetails: (id: string) => fetchJson<any>(`/patient-lab-reports/${id}`),
+
+    createPatientLabReport: (payload: any) => fetchJson<any>('/patient-lab-reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    }),
+
+    addLabReportTest: (reportId: string, payload: any) => fetchJson<any>(`/patient-lab-reports/${reportId}/tests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    }),
+
+    addLabReportResult: (testId: string, payload: any) => fetchJson<any>(`/patient-lab-reports/tests/${testId}/results`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    }),
+
+    // ==========================================
+    // LAB REFERENCE DATA (BIOLOGY)
+    // ==========================================
+    searchLabAnalyteContexts: (query: string) => fetchJson<any[]>(`/reference/lab-analyte-contexts/search?q=${encodeURIComponent(query)}`),
+
+    getLabAnalyteContextsByActs: (globalActIds: string[]) => fetchJson<any[]>('/reference/lab-analyte-contexts/by-acts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ globalActIds })
+    }),
+
+    // Documents Upload
+    uploadPatientDocument: (formData: globalThis.FormData) => fetchJson<any>('/documents/upload', {
+        method: 'POST',
+        headers: {}, // Do NOT set Content-Type so browser sets boundary for multipart
+        body: formData as any
+    }),
+    
+    getPatientDocumentUrl: (id: string) => fetchJson<{url: string}>(`/documents/${id}/url`)
 };
 
 // Type for patient with prescription data

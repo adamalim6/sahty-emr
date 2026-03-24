@@ -49,6 +49,8 @@ export const updateSurveillanceCell = async (req: AuthRequest, res: Response) =>
         }
 
         const userId = user?.userId || (req as any).auth?.userId;
+        const firstName = (req as any).auth?.firstName || user?.firstName || null;
+        const lastName = (req as any).auth?.lastName || user?.lastName || null;
 
         const result = await surveillanceService.updateCell(
             tenantId,
@@ -57,7 +59,9 @@ export const updateSurveillanceCell = async (req: AuthRequest, res: Response) =>
             parameterId,
             parameterCode,
             value,
-            userId
+            userId,
+            firstName,
+            lastName
         );
 
         res.json(result);

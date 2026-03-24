@@ -25,8 +25,18 @@ import {
 import {
     getCareCategories, createCareCategory, updateCareCategory
 } from '../controllers/superadminCareCategoryController';
+import * as smartPhrasesController from '../controllers/smartPhrasesController';
 
 const router = express.Router();
+
+// --- SMART PHRASES MODULE (SYSTEM TEMPLATES) ---
+
+// --- SMART PHRASES MODULE (SYSTEM TEMPLATES) ---
+router.get('/smart-phrases', authenticateGlobalAdmin, smartPhrasesController.getSystemPhrases);
+router.post('/smart-phrases', authenticateGlobalAdmin, smartPhrasesController.createSystemPhrase);
+router.put('/smart-phrases/:id', authenticateGlobalAdmin, smartPhrasesController.updateSystemPhrase);
+
+// --- OBSERVATION CATALOG (GLOBAL CRUD) ---
 
 // Global Login
 router.post('/login', loginGlobalAdmin);

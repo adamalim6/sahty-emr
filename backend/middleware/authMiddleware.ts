@@ -32,6 +32,7 @@ export interface AuthRequest extends Request {
         role: string;            // role_code from JWT
         role_id?: string;
         tenantId?: string;
+        tenant_id?: string;
         client_id?: string;      // legacy alias for tenantId
         realm?: 'global' | 'tenant';
         permissions?: string[];
@@ -63,6 +64,7 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
 
         // 1. Preserve legacy req.user (backward compat for existing controllers)
         req.user = decoded;
+        req.user!.tenant_id = decoded.tenant_id || decoded.tenantId || decoded.client_id;
 
         // 2. Build structured req.auth for new code
         const permissions: string[] = decoded.permissions || [];
@@ -116,6 +118,7 @@ export const authenticateAnyToken = (req: AuthRequest, res: Response, next: Next
         }
 
         req.user = decoded;
+        req.user!.tenant_id = decoded.tenant_id || decoded.tenantId || decoded.client_id;
 
         const permissions: string[] = decoded.permissions || [];
         const modules: string[] = decoded.modules || [];

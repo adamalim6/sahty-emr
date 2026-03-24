@@ -26,36 +26,129 @@ export const SmartPhraseCursor = Node.create({
   },
 })
 
+const getSuggestionRender = () => {
+  let reactRenderer: ReactRenderer<any>;
+  let popup: TippyInstance[];
+
+  return {
+    onStart: (props: any) => {
+      reactRenderer = new ReactRenderer(SuggestionList, {
+        props,
+        editor: props.editor,
+      });
+
+      if (!props.clientRect) {
+          return;
+      }
+
+      popup = tippy('body', {
+        getReferenceClientRect: props.clientRect as GetReferenceClientRect,
+        appendTo: () => document.body,
+        content: reactRenderer.element,
+        showOnCreate: true,
+        interactive: true,
+        trigger: 'manual',
+        placement: 'bottom-start',
+      });
+    },
+
+    onUpdate(props: any) {
+      if (!reactRenderer || !popup?.[0]) return;
+      reactRenderer.updateProps(props);
+      if (!props.clientRect) return;
+      popup[0].setProps({
+          getReferenceClientRect: props.clientRect as GetReferenceClientRect,
+      });
+    },
+
+    onKeyDown(props: any) {
+      if (props.event.key === 'Escape') {
+        popup?.[0]?.hide();
+        return true;
+      }
+      return reactRenderer?.ref?.onKeyDown(props) || false;
+    },
+
+    onExit() {
+      if (popup?.[0]) popup[0].destroy();
+      if (reactRenderer) reactRenderer.destroy();
+    },
+  };
+};
+
 export const SmartPhrasesExtension = Extension.create({
   name: 'smartPhrases',
 
   addOptions() {
     return {
-      suggestion: {
+      getPhrases: () => [] as SmartPhrase[],
+      getValues: () => [] as SmartPhrase[],
+      tenantPatientId: '' as string,
+    };
+  },
+
+  addProseMirrorPlugins() {
+    return [
+      Suggestion({
+        editor: this.editor,
         char: '/',
         startOfLine: false,
-        pluginKey: new PluginKey('smartPhrases'),
-        command: ({ editor, range, props }: any) => {
+        pluginKey: new PluginKey('slashSuggestion'),
+        allow: ({ range }) => (range.to - range.from) > 1,
+        command: async ({ editor, range, props }: any) => {
           const phrase = props as SmartPhrase;
           
-          // 1. Replace the marker in the payload
-          const html = phrase.body_html.replace('{{cursor}}', '<span data-smartphrase-cursor="true"></span>');
+          // Smart Phrase execution (Hybrid)
+          let finalHtml = phrase.body_html;
+          const hasDynamicTokens = /{{(?!cursor).*?}}/.test(phrase.body_html);
 
-          // 2. Insert the HTML, replacing the trigger command
+          if (hasDynamicTokens) {
+              const tenantPatientId = this.options.tenantPatientId;
+              if (!tenantPatientId) {
+                  import('react-hot-toast').then(({ default: toast }) => toast.error("ID patient manquant."));
+                  return;
+              }
+
+              try {
+                  const { api } = await import('../../services/api');
+                  
+                  const fetchPromise = api.compileSmartPhrase({
+                      phraseId: phrase.id,
+                      tenantPatientId
+                  });
+                  const timeoutPromise = new Promise<{html: string}>((_, reject) => 
+                      setTimeout(() => reject(new Error('TIMEOUT')), 3000)
+                  );
+
+                  const response = await Promise.race([fetchPromise, timeoutPromise]);
+                  finalHtml = response.html;
+              } catch (err: any) {
+                  const { default: toast } = await import('react-hot-toast');
+                  if (err.message === 'TIMEOUT') {
+                      toast.error(`Délai d'attente dépassé pour la compilation de /${phrase.trigger}`);
+                  } else {
+                      toast.error(`Impossible de compiler /${phrase.trigger}`);
+                  }
+                  return; // Abort insertion on compiler failure
+              }
+          }
+
+          // Replace cursor token and insert fully compiled text
+          finalHtml = finalHtml.replace('{{cursor}}', '<span data-smartphrase-cursor="true"></span>');
+
           editor.chain()
             .focus()
             .deleteRange(range)
-            .insertContent(html)
+            .insertContent(finalHtml)
             .run();
 
-          // 3. Locate the cursor marker node and fix the selection natively
           let cursorPosition = -1;
           const { state } = editor;
 
           state.doc.descendants((node, pos) => {
             if (node.type.name === 'smartPhraseCursor') {
               cursorPosition = pos;
-              return false; // Stop traversing
+              return false;
             }
             return true;
           });
@@ -68,97 +161,67 @@ export const SmartPhrasesExtension = Extension.create({
                 .run();
           }
         },
-      },
-      getPhrases: () => [] as SmartPhrase[],
-    };
-  },
-
-  addProseMirrorPlugins() {
-    return [
-      Suggestion({
-        editor: this.editor,
-        ...this.options.suggestion,
         items: ({ query }) => {
             const currentPhrases = this.options.getPhrases();
-            console.log('Slash query:', query, 'Available phrases:', currentPhrases.length);
-            
-            // Require at least one character typed after the slash
-            if (!query || query.length === 0) {
-                return [];
-            }
-            
-            // Normalize exactly as requested
+            if (!query || query.length === 0) return [];
             const normalizedInput = query.toLowerCase().replace(/[^a-z0-9]/g, '');
-            
-            // Filter phrases natively
             const matched = currentPhrases.filter(phrase => 
                 phrase.trigger_search.startsWith(normalizedInput)
             );
-
-            // Limit suggestion results to a maximum of 20 items
             return matched.slice(0, 20);
         },
-        render: () => {
-          let reactRenderer: ReactRenderer<any>;
-          let popup: TippyInstance[];
+        render: getSuggestionRender,
+      }),
 
-          return {
-            onStart: (props) => {
-              reactRenderer = new ReactRenderer(SuggestionList, {
-                props,
-                editor: props.editor,
-              });
+      Suggestion({
+        editor: this.editor,
+        char: '@',
+        startOfLine: false,
+        pluginKey: new PluginKey('atSuggestion'),
+        allow: ({ range }) => (range.to - range.from) > 1,
+        command: async ({ editor, range, props }: any) => {
+            const phrase = props as SmartPhrase;
+            const tenantPatientId = this.options.tenantPatientId;
 
-              if (!props.clientRect) {
-                  return;
-              }
+            if (!tenantPatientId) {
+                import('react-hot-toast').then(({ default: toast }) => toast.error("ID patient manquant."));
+                return;
+            }
 
-              popup = tippy('body', {
-                getReferenceClientRect: props.clientRect as GetReferenceClientRect,
-                appendTo: () => document.body,
-                content: reactRenderer.element,
-                showOnCreate: true,
-                interactive: true,
-                trigger: 'manual',
-                placement: 'bottom-start',
-              });
-            },
+            // Eagerly delete trigger text before async fetch
+            editor.chain().focus().deleteRange(range).run();
 
-            onUpdate(props) {
-              if (!reactRenderer || !popup?.[0]) {
-                  return;
-              }
+            try {
+                const { api } = await import('../../services/api');
+                
+                const fetchPromise = api.resolveSmartValue(phrase.trigger, tenantPatientId);
+                const timeoutPromise = new Promise<{html: string}>((_, reject) => 
+                    setTimeout(() => reject(new Error('TIMEOUT')), 3000)
+                );
 
-              reactRenderer.updateProps(props);
+                const { html } = await Promise.race([fetchPromise, timeoutPromise]);
+                
+                editor.chain().focus().insertContent(html).run();
 
-              if (!props.clientRect) {
-                  return;
-              }
-
-              popup[0].setProps({
-                  getReferenceClientRect: props.clientRect as GetReferenceClientRect,
-              });
-            },
-
-            onKeyDown(props) {
-              if (props.event.key === 'Escape') {
-                popup?.[0]?.hide();
-                return true;
-              }
-
-              return reactRenderer?.ref?.onKeyDown(props) || false;
-            },
-
-            onExit() {
-              if (popup?.[0]) {
-                  popup[0].destroy();
-              }
-              if (reactRenderer) {
-                  reactRenderer.destroy();
-              }
-            },
-          };
+            } catch (err: any) {
+                const { default: toast } = await import('react-hot-toast');
+                if (err.message === 'TIMEOUT') {
+                    toast.error(`Délai d'attente dépassé pour @${phrase.trigger}`);
+                } else {
+                    toast.error(`Impossible de charger les données pour @${phrase.trigger}`);
+                }
+            }
         },
+        items: ({ query }) => {
+            const currentValues = this.options.getValues();
+            if (!query || query.length === 0) return [];
+            const normalizedInput = query.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const matched = currentValues.filter(val => 
+                val.trigger_search.startsWith(normalizedInput)
+            );
+            return matched.slice(0, 20);
+        },
+        render: getSuggestionRender,
       }),
     ];
   },

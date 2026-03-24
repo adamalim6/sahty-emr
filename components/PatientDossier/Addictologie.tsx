@@ -26,6 +26,16 @@ const FIELD_TRANSLATIONS: Record<string, string> = {
     'start_date': 'Date de début',
 };
 
+const ADDICTION_TYPE_LABELS: Record<string, string> = {
+    'TOBACCO': 'Tabac',
+    'ALCOHOL': 'Alcool',
+    'CANNABIS': 'Cannabis',
+    'OPIOIDS': 'Opioïdes',
+    'STIMULANTS': 'Stimulants',
+    'BEHAVIORAL': 'Comportementale',
+    'OTHER': 'Autre'
+};
+
 const formatHistoryValue = (field: string, valStr?: string, valNum?: number) => {
     if (valNum !== null && valNum !== undefined) return valNum;
     if (!valStr) return 'Vide';
@@ -279,12 +289,12 @@ export const Addictologie: React.FC = () => {
                             </div>
                             <div className="flex-1">
                                 <div className="flex items-center space-x-3 mb-1">
-                                    <h4 className="font-bold text-gray-900 text-lg leading-none">{record.substance_label || record.addiction_type}</h4>
+                                    <h4 className="font-bold text-gray-900 text-lg leading-none">{record.substance_label || ADDICTION_TYPE_LABELS[record.addiction_type] || record.addiction_type}</h4>
                                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide border shadow-sm ${getStatusColor(record.status)}`}>
                                         {getStatusLabel(record.status)}
                                     </span>
                                     <span className="text-[10px] text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded uppercase tracking-wider">
-                                        {record.addiction_type}
+                                        {ADDICTION_TYPE_LABELS[record.addiction_type] || record.addiction_type}
                                     </span>
                                 </div>
                                 <div className="flex flex-wrap items-center text-sm gap-y-2 gap-x-6 text-gray-600">

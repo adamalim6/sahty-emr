@@ -80,6 +80,7 @@ import { Biologie } from './Biologie';
 import { Imagerie } from './Imagerie';
 import { Escarres } from './Escarres';
 import { RightChartPanel, RightPanelTab } from './RightChartPanel';
+// Removed UserTemplatesTab import
 
 // --- Reusable UI Components (Redefined for the dossier) ---
 
@@ -155,7 +156,7 @@ export const PatientDossier: React.FC<PatientDossierProps> = ({ patientId, works
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [formData, setFormData] = useState<Partial<Patient>>({});
 
-  const { updateWorkspaceLabel, sidebarState, setSidebarState } = useWorkspace();
+  const { updateWorkspaceLabel, sidebarState, setSidebarState, openUtilityTab } = useWorkspace();
 
   const DEFAULT_PANEL_WIDTH = 420;
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
@@ -350,7 +351,7 @@ export const PatientDossier: React.FC<PatientDossierProps> = ({ patientId, works
     { id: 'Traitement', label: 'Traitement en cours', icon: Pill, component: <TraitementEnCours /> },
     { id: 'Allergies', label: 'Allergies', icon: ShieldAlert, component: <Allergies patientId={patient.id} /> },
     { id: 'Addictologie', label: 'Addictologie', icon: Cigarette, component: <Addictologie /> },
-    { id: 'Biologie', label: 'Biologie', icon: FlaskConical, component: <Biologie /> },
+    { id: 'Biologie', label: 'Biologie', icon: FlaskConical, component: <Biologie tenantPatientId={patient.id} /> },
     { id: 'Imagerie', label: 'Imagerie', icon: ScanLine, component: <Imagerie /> },
     { id: 'Diagnostic', label: 'Diagnostic', icon: Microscope, component: <Diagnostic patientId={patient.id} /> },
     { id: 'Prescriptions', label: 'Prescriptions', icon: FileText, component: <Prescriptions patientId={patient.id} /> },
@@ -552,6 +553,10 @@ export const PatientDossier: React.FC<PatientDossierProps> = ({ patientId, works
              setIsRightPanelOpen(false);
              setRefreshObsTrigger(prev => prev + 1);
              setActiveObsNote(null);
+          }}
+          onOpenSmartPhrases={(payload?: any) => {
+             setIsRightPanelOpen(false);
+             openUtilityTab('ws-utility-templates', 'Mes Modèles', '/templates', payload);
           }}
         />
       </div>

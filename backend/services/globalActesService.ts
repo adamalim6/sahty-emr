@@ -31,9 +31,9 @@ export interface Acte {
     bio_instructions_prelevement?: string;
     bio_commentaire?: string;
     bio_commentaire_prescription?: string;
-    default_specimen_type?: string;
+    lab_section_id?: string;
+    lab_sub_section_id?: string;
     is_lims_enabled?: boolean;
-    lims_template_code?: string;
 }
 
 export interface Famille {
@@ -93,9 +93,9 @@ export class GlobalActesService {
             bio_instructions_prelevement: row.bio_instructions_prelevement,
             bio_commentaire: row.bio_commentaire,
             bio_commentaire_prescription: row.bio_commentaire_prescription,
-            default_specimen_type: row.default_specimen_type,
-            is_lims_enabled: row.is_lims_enabled,
-            lims_template_code: row.lims_template_code
+            lab_section_id: row.lab_section_id,
+            lab_sub_section_id: row.lab_sub_section_id,
+            is_lims_enabled: row.is_lims_enabled
         };
     }
 
@@ -184,9 +184,9 @@ export class GlobalActesService {
         addParam('bio_instructions_prelevement', acte.bio_instructions_prelevement || null);
         addParam('bio_commentaire', acte.bio_commentaire || null);
         addParam('bio_commentaire_prescription', acte.bio_commentaire_prescription || null);
-        addParam('default_specimen_type', acte.default_specimen_type || null);
+        addParam('lab_section_id', acte.lab_section_id || null);
+        addParam('lab_sub_section_id', acte.lab_sub_section_id || null);
         addParam('is_lims_enabled', acte.is_lims_enabled || false);
-        addParam('lims_template_code', acte.lims_template_code || null);
         addParam('catalog_version', 1);
 
         const sql = `
@@ -245,9 +245,9 @@ export class GlobalActesService {
         addParam('bio_instructions_prelevement', acte.bio_instructions_prelevement);
         addParam('bio_commentaire', acte.bio_commentaire);
         addParam('bio_commentaire_prescription', acte.bio_commentaire_prescription);
-        addParam('default_specimen_type', acte.default_specimen_type);
+        addParam('lab_section_id', acte.lab_section_id);
+        addParam('lab_sub_section_id', acte.lab_sub_section_id);
         addParam('is_lims_enabled', acte.is_lims_enabled);
-        addParam('lims_template_code', acte.lims_template_code);
         addParam('catalog_version', (acte.catalog_version || 1) + 1);
 
         if (updates.length > 0) {

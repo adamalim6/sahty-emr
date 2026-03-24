@@ -143,6 +143,78 @@ export class TenantProvisioningService {
             console.log(`[TenantProvisioning] Phase 3 (Reference Sync) complete.`);
 
             // ================================================================
+            // PHASE 3.1: Seed System Smart Phrases
+            // ================================================================
+            try {
+                console.log(`[TenantProvisioning] Phase 3.1: Seeding System Smart Phrases...`);
+                const { getGlobalPool } = require('../db/globalPg');
+                const globalPool = getGlobalPool();
+                const globalRes = await globalPool.query(`
+                    SELECT id, trigger, trigger_search, label, description, body_html, is_active 
+                    FROM smart_phrases 
+                    WHERE scope = 'system' AND is_active = TRUE
+                `);
+                
+                if (globalRes.rows.length > 0) {
+                    for (const row of globalRes.rows) {
+                        await pool.query(`
+                            INSERT INTO smart_phrases (id, trigger, trigger_search, label, description, body_html, scope, tenant_id, user_id, is_active, created_at, updated_at)
+                            VALUES ($1, $2, $3, $4, $5, $6, 'system', $7, NULL, $8, NOW(), NOW())
+                            ON CONFLICT DO NOTHING
+                        `, [row.id, row.trigger, row.trigger_search, row.label, row.description, row.body_html, tenantId, row.is_active]);
+                    }
+                    console.log(`[TenantProvisioning] Phase 3.1 (Smart Phrases) injected ${globalRes.rows.length} rows.`);
+                }
+            } catch (err: any) {
+                console.warn(`[TenantProvisioning] Failed to seed smart phrases: ${err.message}`);
+                throw err;
+            }
+
+            // ================================================================
+            // PHASE 3.2: Structural Validation
+            // ================================================================
+            try {
+                console.log(`[TenantProvisioning] Phase 3.2: Structural Validation against ced91ced...`);
+                const refDbName = 'tenant_ced91ced-fe46-45d1-8ead-b5d51bad5895';
+                
+                // Get columns from reference DB
+                const refPool = new Pool({
+                    host: process.env.PG_HOST || 'localhost',
+                    port: parseInt(process.env.PG_PORT || '5432'),
+                    user: process.env.PG_USER || 'sahty',
+                    password: process.env.PG_PASSWORD || 'sahty_dev_2026',
+                    database: refDbName
+                });
+                
+                const refColsRes = await refPool.query(`
+                    SELECT column_name, data_type 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'smart_phrases'
+                    ORDER BY column_name
+                `);
+                await refPool.end();
+                
+                const currColsRes = await pool.query(`
+                    SELECT column_name, data_type 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'smart_phrases'
+                    ORDER BY column_name
+                `);
+                
+                const refCols = JSON.stringify(refColsRes.rows);
+                const currCols = JSON.stringify(currColsRes.rows);
+                
+                if (refCols !== currCols || refColsRes.rows.length === 0) {
+                    throw new Error(`CRITICAL: Smart phrases table structure does not match reference DB! Validation Failed.`);
+                }
+                console.log(`[TenantProvisioning] Phase 3.2 Structural Validation Passed.`);
+            } catch (err: any) {
+                console.error(`[TenantProvisioning] Validation Failed: ${err.message}`);
+                throw err;
+            }
+
+
+            // ================================================================
             // PHASE 4: Register Identity Sync Cursor
             // New tenants start at current max outbox_seq
             // ================================================================

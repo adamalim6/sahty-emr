@@ -75,6 +75,10 @@ export const SuperAdminLayout: React.FC = () => {
                         <Package size={20} />
                         <span>Produits</span>
                     </NavLink>
+                    <NavLink to="/super-admin/smart-phrases" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+                        <FileText size={20} />
+                        <span>Smart Phrases</span>
+                    </NavLink>
                     <NavLink to="/super-admin/dci" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
                         <div className="w-5 h-5 flex items-center justify-center">
                             {/* Using flask icon or similar */}

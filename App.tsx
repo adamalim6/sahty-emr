@@ -31,7 +31,8 @@ import { RoomsPage } from './components/Settings/RoomsPage';
 import { PricingPage } from './components/Settings/PricingPage';
 import { RolesPage } from './components/Settings/RolesPage'; 
 import { ReadOnlyRoleDetailPage } from './components/Settings/ReadOnlyRoleDetailPage'; 
-// Correct import for Super Admin
+import { TenantTemplatesManager } from './components/Settings/Templates';
+import { UserTemplatesTab } from './components/EMR/Templates/UserTemplatesTab';
 import { RolesPage as SuperAdminRolesPage } from './components/SuperAdmin/RolesPage';
 import { SuppliersPage } from './components/SuperAdmin/SuppliersPage';
 import { GroupsPage } from './components/SuperAdmin/GroupsPage';
@@ -48,6 +49,7 @@ import { EmrLocationManager } from './components/EmrLocationManager';
 import TransferManager from './components/StockTransfer/TransferManager';
 import ReturnsManager from './components/Returns/ReturnsManager';
 import { CareCategoriesManager } from './components/SuperAdmin/CareCategoriesManager';
+import { TemplatesManager } from './components/SuperAdmin/Templates';
 
 const ProtectedRoute = ({ role, permission, children }: { role?: string | UserType, permission?: string, children: React.ReactNode }) => {
   const { user, isAuthenticated, loading } = useAuth();
@@ -106,6 +108,7 @@ const App: React.FC = () => {
             <Route path="service-stock" element={<ServiceStockPage />} />
             <Route path="retours" element={<ReturnsManager />} />
             <Route path="replenishment" element={<ServiceStockManager />} />
+            <Route path="templates" element={<UserTemplatesTab />} />
 
           </Route>
           
@@ -131,6 +134,7 @@ const App: React.FC = () => {
              <Route path="pricing" element={<PricingPage />} />
              <Route path="roles" element={<RolesPage />} />
              <Route path="roles/:id" element={<ReadOnlyRoleDetailPage />} />
+             <Route path="smart-phrases" element={<TenantTemplatesManager />} />
           </Route>
 
           {/* Super Admin Routes */}
@@ -157,6 +161,7 @@ const App: React.FC = () => {
              <Route path="units" element={<UnitsManager />} />
              <Route path="routes" element={<RoutesManager />} />
              <Route path="care-categories" element={<CareCategoriesManager />} />
+             <Route path="smart-phrases" element={<TemplatesManager />} />
              <Route index element={<Navigate to="clients" replace />} />
           </Route>
 

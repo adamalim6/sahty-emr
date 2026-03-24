@@ -97,5 +97,71 @@ export async function syncTenantReference(tenantClient: PoolClient, tenantId: st
         }
     }
 
-    console.log(`[ReferenceSync] Sync complete for tenant ${tenantId}.`);
+    console.log(`[ReferenceSync] Sync complete for standard reference tables.`);
+
+    // 5. Specialized Sync: Smart Phrases
+    // Bypass the generic TRUNCATE CASCADE to protect tenant/user overrides.
+    try {
+        console.log(`[ReferenceSync] Syncing System Smart Phrases...`);
+        await tenantClient.query('BEGIN;');
+        const globalPhrases = await globalQuery(`
+            SELECT id, trigger, trigger_search, label, description, body_html, is_active 
+            FROM smart_phrases 
+            WHERE scope = 'system'
+        `);
+        
+        let inserted = 0;
+        let updated = 0;
+        let skipped = 0;
+        
+        for (const row of globalPhrases) {
+            // Match globally scoped phrases by ID
+            const existingRes = await tenantClient.query(`
+                SELECT id, scope FROM smart_phrases WHERE id = $1
+            `, [row.id]);
+            
+            if (existingRes.rows.length > 0) {
+                const existing = existingRes.rows[0];
+                if (existing.scope === 'system') {
+                    // Update only if still scoped as system. Catch potential unique trigger violations.
+                    try {
+                        await tenantClient.query('SAVEPOINT sp_sp_update');
+                        await tenantClient.query(`
+                            UPDATE smart_phrases 
+                            SET trigger = $2, trigger_search = $3, label = $4, description = $5, body_html = $6, is_active = $7, updated_at = NOW()
+                            WHERE id = $1
+                        `, [row.id, row.trigger, row.trigger_search, row.label, row.description, row.body_html, row.is_active]);
+                        updated++;
+                    } catch (updateErr) {
+                        await tenantClient.query('ROLLBACK TO SAVEPOINT sp_sp_update');
+                        skipped++; // e.g. collision with another trigger
+                    }
+                } else {
+                    // Skip 'tenant' or 'user' scoped overrides
+                    skipped++;
+                }
+            } else {
+                // Not found by ID. Try to insert (but gracefully skip if trigger name collides with tenant phrase)
+                try {
+                    await tenantClient.query('SAVEPOINT sp_sp_insert');
+                    await tenantClient.query(`
+                        INSERT INTO smart_phrases (id, trigger, trigger_search, label, description, body_html, scope, tenant_id, user_id, is_active, created_at, updated_at)
+                        VALUES ($1, $2, $3, $4, $5, $6, 'system', $7, NULL, $8, NOW(), NOW())
+                    `, [row.id, row.trigger, row.trigger_search, row.label, row.description, row.body_html, tenantId, row.is_active]);
+                    inserted++;
+                } catch (insertErr) {
+                    await tenantClient.query('ROLLBACK TO SAVEPOINT sp_sp_insert');
+                    skipped++;
+                }
+            }
+        }
+        await tenantClient.query('COMMIT;');
+        console.log(`[ReferenceSync] Smart Phrases Sync: ${inserted} inserted, ${updated} updated, ${skipped} skipped.`);
+    } catch (e: any) {
+        await tenantClient.query('ROLLBACK;');
+        console.error(`[ReferenceSync] Failed to sync smart phrases:`, e);
+        throw e;
+    }
+
+    console.log(`[ReferenceSync] Sync fully complete for tenant ${tenantId}.`);
 }

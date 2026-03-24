@@ -254,10 +254,369 @@ CREATE TABLE IF NOT EXISTS reference.global_actes (
     bio_instructions_prelevement TEXT,
     bio_commentaire TEXT,
     bio_commentaire_prescription TEXT,
-    default_specimen_type TEXT,
+    lab_section_id UUID,
+    lab_sub_section_id UUID,
     is_lims_enabled BOOLEAN DEFAULT FALSE,
-    lims_template_code TEXT
+    is_panel BOOLEAN NOT NULL DEFAULT false,
+    billing_mode TEXT NOT NULL DEFAULT 'DECOMPOSED'
 );
+
+ALTER TABLE reference.global_actes ADD CONSTRAINT chk_ref_global_actes_lab_section_hierarchy 
+    CHECK (lab_sub_section_id IS NULL OR lab_section_id IS NOT NULL);
+
+ALTER TABLE reference.global_actes ADD CONSTRAINT chk_ref_global_actes_billing_mode 
+    CHECK (billing_mode IN ('PANEL', 'DECOMPOSED'));
+
+
+--------------------------------------------------------------------------------
+-- LAB SECTIONS (Fixed Classification Layer 1)
+--------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS reference.lab_sections (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sous_famille_id UUID NOT NULL REFERENCES reference.sih_sous_familles(id),
+    code TEXT NOT NULL,
+    libelle TEXT NOT NULL,
+    description TEXT,
+    actif BOOLEAN NOT NULL DEFAULT TRUE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT lab_sections_sous_famille_code_key UNIQUE (sous_famille_id, code)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ref_lab_sections_sous_famille_id ON reference.lab_sections(sous_famille_id);
+CREATE INDEX IF NOT EXISTS idx_ref_lab_sections_actif ON reference.lab_sections(actif);
+
+--------------------------------------------------------------------------------
+-- LAB SUB-SECTIONS (Fixed Classification Layer 2)
+--------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS reference.lab_sub_sections (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    section_id UUID NOT NULL REFERENCES reference.lab_sections(id),
+    code TEXT NOT NULL,
+    libelle TEXT NOT NULL,
+    description TEXT,
+    actif BOOLEAN NOT NULL DEFAULT TRUE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT lab_sub_sections_section_id_code_key UNIQUE (section_id, code)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ref_lab_sub_sections_section_id ON reference.lab_sub_sections(section_id);
+CREATE INDEX IF NOT EXISTS idx_ref_lab_sub_sections_actif ON reference.lab_sub_sections(actif);
+
+--------------------------------------------------------------------------------
+-- LAB PANELS (Recursive Prescribable/Grouping Entities)
+--------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS reference.lab_panels (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sous_famille_id UUID NOT NULL REFERENCES reference.sih_sous_familles(id),
+    section_id UUID REFERENCES reference.lab_sections(id),
+    sub_section_id UUID REFERENCES reference.lab_sub_sections(id),
+    code TEXT NOT NULL UNIQUE,
+    libelle TEXT NOT NULL,
+    description TEXT,
+    actif BOOLEAN NOT NULL DEFAULT TRUE,
+    is_prescribable BOOLEAN NOT NULL DEFAULT TRUE,
+    expand_to_child_tests BOOLEAN NOT NULL DEFAULT TRUE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    global_act_id UUID NOT NULL UNIQUE
+);
+
+ALTER TABLE reference.lab_panels ADD CONSTRAINT fk_ref_lab_panels_global_act 
+    FOREIGN KEY (global_act_id) REFERENCES reference.global_actes(id) ON DELETE RESTRICT;
+
+CREATE INDEX IF NOT EXISTS idx_ref_lab_panels_sous_famille_id ON reference.lab_panels(sous_famille_id);
+CREATE INDEX IF NOT EXISTS idx_ref_lab_panels_section_id ON reference.lab_panels(section_id);
+CREATE INDEX IF NOT EXISTS idx_ref_lab_panels_sub_section_id ON reference.lab_panels(sub_section_id);
+CREATE INDEX IF NOT EXISTS idx_ref_lab_panels_actif ON reference.lab_panels(actif);
+
+--------------------------------------------------------------------------------
+-- LAB PANEL ITEMS (Recursive Composition)
+--------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS reference.lab_panel_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    panel_id UUID NOT NULL REFERENCES reference.lab_panels(id),
+    item_type TEXT NOT NULL CHECK (item_type IN ('PANEL', 'ACT')),
+    child_panel_id UUID REFERENCES reference.lab_panels(id),
+    child_global_act_id UUID REFERENCES reference.global_actes(id),
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_required BOOLEAN NOT NULL DEFAULT TRUE,
+    quantity NUMERIC(12,3),
+    notes TEXT,
+    actif BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT chk_ref_lab_panel_items_type CHECK (item_type IN ('ACT', 'PANEL')),
+    CONSTRAINT chk_lab_panel_child_exclusive CHECK (
+        (item_type = 'ACT' AND child_global_act_id IS NOT NULL AND child_panel_id IS NULL) OR
+        (item_type = 'PANEL' AND child_panel_id IS NOT NULL AND child_global_act_id IS NULL)
+    ),
+    CONSTRAINT chk_lab_panel_no_self_ref CHECK (panel_id != child_panel_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ref_lab_panel_items_panel_id ON reference.lab_panel_items(panel_id);
+CREATE INDEX IF NOT EXISTS idx_ref_lab_panel_items_child_panel_id ON reference.lab_panel_items(child_panel_id);
+CREATE INDEX IF NOT EXISTS idx_ref_lab_panel_items_child_act_id ON reference.lab_panel_items(child_global_act_id);
+
+--------------------------------------------------------------------------------
+-- LAB SPECIMEN TYPES
+--------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS reference.lab_specimen_types (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code TEXT NOT NULL UNIQUE,
+    libelle TEXT NOT NULL,
+    description TEXT,
+    base_specimen TEXT NOT NULL,
+    matrix_type TEXT NOT NULL,
+    actif BOOLEAN NOT NULL DEFAULT TRUE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_specimen_base_tenant ON reference.lab_specimen_types(base_specimen);
+
+CREATE TABLE IF NOT EXISTS reference.lab_container_types (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code TEXT NOT NULL UNIQUE,
+    libelle TEXT NOT NULL,
+    description TEXT NULL,
+    additive_type TEXT NULL,
+    tube_color TEXT NULL,
+    actif BOOLEAN NOT NULL DEFAULT true,
+    sort_order INTEGER NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS reference.lab_specimen_container_types (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    specimen_type_id UUID NOT NULL,
+    container_type_id UUID NOT NULL,
+    is_default BOOLEAN NOT NULL DEFAULT false,
+    actif BOOLEAN NOT NULL DEFAULT true,
+    sort_order INTEGER NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+    CONSTRAINT fk_specimen
+        FOREIGN KEY (specimen_type_id)
+        REFERENCES reference.lab_specimen_types(id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_container
+        FOREIGN KEY (container_type_id)
+        REFERENCES reference.lab_container_types(id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT unique_specimen_container
+        UNIQUE (specimen_type_id, container_type_id)
+);
+
+CREATE UNIQUE INDEX uniq_default_container_per_specimen_tenant
+ON reference.lab_specimen_container_types(specimen_type_id)
+WHERE is_default = true;
+
+--------------------------------------------------------------------------------
+-- LAB ANALYTES (Atomic Structured Result Semantics)
+--------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS reference.lab_analytes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sous_famille_id UUID NOT NULL REFERENCES reference.sih_sous_familles(id),
+    section_id UUID REFERENCES reference.lab_sections(id),
+    sub_section_id UUID REFERENCES reference.lab_sub_sections(id),
+    code TEXT NOT NULL UNIQUE,
+    libelle TEXT NOT NULL,
+    short_label TEXT,
+    description TEXT,
+    value_type TEXT NOT NULL CHECK (value_type IN ('NUMERIC', 'TEXT', 'BOOLEAN', 'CHOICE')),
+    default_unit_id UUID REFERENCES reference.units(id),
+    canonical_unit_id UUID REFERENCES reference.units(id),
+    decimal_precision INTEGER,
+    is_calculated BOOLEAN NOT NULL DEFAULT FALSE,
+    actif BOOLEAN NOT NULL DEFAULT TRUE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ref_lab_analytes_sous_famille_id ON reference.lab_analytes(sous_famille_id);
+CREATE INDEX IF NOT EXISTS idx_ref_lab_analytes_section_id ON reference.lab_analytes(section_id);
+CREATE INDEX IF NOT EXISTS idx_ref_lab_analytes_sub_section_id ON reference.lab_analytes(sub_section_id);
+CREATE INDEX IF NOT EXISTS idx_ref_lab_analytes_value_type ON reference.lab_analytes(value_type);
+CREATE INDEX IF NOT EXISTS idx_ref_lab_analytes_actif ON reference.lab_analytes(actif);
+
+--------------------------------------------------------------------------------
+-- LAB ACT ANALYTES (Mapping executable biology acts to analytes)
+--------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS reference.lab_act_analytes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    global_act_id UUID NOT NULL REFERENCES reference.global_actes(id),
+    analyte_id UUID NOT NULL REFERENCES reference.lab_analytes(id),
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_primary BOOLEAN NOT NULL DEFAULT FALSE,
+    is_required BOOLEAN NOT NULL DEFAULT TRUE,
+    notes TEXT,
+    display_group TEXT,
+    actif BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT lab_act_analytes_act_analyte_key UNIQUE (global_act_id, analyte_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ref_lab_act_analytes_global_act_id ON reference.lab_act_analytes(global_act_id);
+CREATE INDEX IF NOT EXISTS idx_ref_lab_act_analytes_analyte_id ON reference.lab_act_analytes(analyte_id);
+
+--------------------------------------------------------------------------------
+-- LAB ANALYTE UNITS
+--------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS reference.lab_analyte_units (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    analyte_id UUID NOT NULL REFERENCES reference.lab_analytes(id),
+    unit_id UUID NOT NULL REFERENCES reference.units(id),
+    is_default BOOLEAN NOT NULL DEFAULT FALSE,
+    is_canonical BOOLEAN NOT NULL DEFAULT FALSE,
+    conversion_factor NUMERIC NOT NULL DEFAULT 1,
+    conversion_offset NUMERIC NOT NULL DEFAULT 0,
+    actif BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT lab_analyte_units_analyte_unit_key UNIQUE (analyte_id, unit_id)
+);
+
+-- Ensure only one default and one canonical unit per analyte
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ref_lab_analyte_units_default ON reference.lab_analyte_units(analyte_id) WHERE is_default = TRUE AND actif = TRUE;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ref_lab_analyte_units_canonical ON reference.lab_analyte_units(analyte_id) WHERE is_canonical = TRUE AND actif = TRUE;
+
+--------------------------------------------------------------------------------
+-- LAB ANALYTE ALIASES
+--------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS reference.lab_analyte_aliases (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    analyte_id UUID NOT NULL REFERENCES reference.lab_analytes(id),
+    alias_text TEXT NOT NULL,
+    alias_type TEXT NOT NULL DEFAULT 'DISPLAY' CHECK (alias_type IN ('DISPLAY', 'OCR', 'EXTERNAL', 'SHORT', 'ABBREVIATION')),
+    language_code TEXT,
+    source_system TEXT,
+    is_preferred BOOLEAN NOT NULL DEFAULT FALSE,
+    actif BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT lab_analyte_aliases_analyte_alias_type_key UNIQUE (analyte_id, alias_text, alias_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ref_lab_analyte_aliases_analyte_id ON reference.lab_analyte_aliases(analyte_id);
+CREATE INDEX IF NOT EXISTS idx_ref_lab_analyte_aliases_alias_text_lower ON reference.lab_analyte_aliases(LOWER(alias_text));
+
+--------------------------------------------------------------------------------
+-- LAB METHODS
+--------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS reference.lab_methods (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code TEXT NOT NULL UNIQUE,
+    libelle TEXT NOT NULL,
+    description TEXT,
+    actif BOOLEAN NOT NULL DEFAULT TRUE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+--------------------------------------------------------------------------------
+-- LAB ACT METHODS (Biology Scope Only)
+--------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS reference.lab_act_methods (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    global_act_id UUID NOT NULL REFERENCES reference.global_actes(id),
+    method_id UUID NOT NULL REFERENCES reference.lab_methods(id),
+    is_default BOOLEAN NOT NULL DEFAULT FALSE,
+    actif BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT lab_act_methods_act_method_key UNIQUE (global_act_id, method_id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ref_lab_act_methods_default ON reference.lab_act_methods(global_act_id) WHERE is_default = TRUE AND actif = TRUE;
+
+--------------------------------------------------------------------------------
+-- LAB ACT SPECIMEN TYPES (Biology Scope Only)
+--------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS reference.lab_act_specimen_types (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    global_act_id UUID NOT NULL REFERENCES reference.global_actes(id),
+    specimen_type_id UUID NOT NULL REFERENCES reference.lab_specimen_types(id),
+    is_default BOOLEAN NOT NULL DEFAULT FALSE,
+    is_required BOOLEAN NOT NULL DEFAULT TRUE,
+    collection_instructions TEXT,
+    min_volume NUMERIC(12,3),
+    volume_unit_id UUID REFERENCES reference.units(id) ON DELETE RESTRICT,
+    volume_unit_label TEXT,
+    transport_conditions TEXT,
+    stability_notes TEXT,
+    actif BOOLEAN NOT NULL DEFAULT TRUE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT lab_act_specimen_types_act_specimen_key UNIQUE (global_act_id, specimen_type_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ref_lab_act_specimen_types_global_act_id ON reference.lab_act_specimen_types(global_act_id);
+CREATE INDEX IF NOT EXISTS idx_ref_lab_act_specimen_types_specimen_type_id ON reference.lab_act_specimen_types(specimen_type_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ref_lab_act_specimen_types_default ON reference.lab_act_specimen_types(global_act_id) WHERE is_default = TRUE AND actif = TRUE;
+
+--------------------------------------------------------------------------------
+-- LAB ANALYTE REFERENCE RANGES
+--------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS reference.lab_analyte_reference_ranges (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    analyte_id UUID NOT NULL REFERENCES reference.lab_analytes(id),
+    unit_id UUID NOT NULL REFERENCES reference.units(id),
+    method_id UUID REFERENCES reference.lab_methods(id),
+    specimen_type_id UUID REFERENCES reference.lab_specimen_types(id),
+    sex TEXT CHECK (sex IN ('MALE', 'FEMALE', 'OTHER', 'UNKNOWN', 'ANY')),
+    age_min_days INTEGER,
+    age_max_days INTEGER,
+    lower_numeric NUMERIC(18,6),
+    upper_numeric NUMERIC(18,6),
+    lower_text TEXT,
+    upper_text TEXT,
+    reference_text TEXT,
+    critical_low_numeric NUMERIC(18,6),
+    critical_high_numeric NUMERIC(18,6),
+    actif BOOLEAN NOT NULL DEFAULT TRUE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ref_lab_analyte_ref_ranges_analyte_id ON reference.lab_analyte_reference_ranges(analyte_id);
+CREATE INDEX IF NOT EXISTS idx_ref_lab_analyte_ref_ranges_unit_id ON reference.lab_analyte_reference_ranges(unit_id);
+CREATE INDEX IF NOT EXISTS idx_ref_lab_analyte_ref_ranges_method_id ON reference.lab_analyte_reference_ranges(method_id);
+CREATE INDEX IF NOT EXISTS idx_ref_lab_analyte_ref_ranges_specimen_id ON reference.lab_analyte_reference_ranges(specimen_type_id);
+
+--------------------------------------------------------------------------------
+-- LAB ANALYTE EXTERNAL CODES
+--------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS reference.lab_analyte_external_codes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    analyte_id UUID NOT NULL REFERENCES reference.lab_analytes(id),
+    coding_system TEXT NOT NULL,
+    code TEXT NOT NULL,
+    display_text TEXT,
+    is_primary BOOLEAN NOT NULL DEFAULT FALSE,
+    actif BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT lab_analyte_ext_codes_analyte_sys_code_key UNIQUE (analyte_id, coding_system, code)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ref_lab_analyte_ext_codes_analyte_id ON reference.lab_analyte_external_codes(analyte_id);
+CREATE INDEX IF NOT EXISTS idx_ref_lab_analyte_ext_codes_sys_code ON reference.lab_analyte_external_codes(coding_system, code);
+
 
 CREATE TABLE IF NOT EXISTS reference.global_atc (
     code     TEXT PRIMARY KEY,
@@ -1444,7 +1803,222 @@ CREATE TRIGGER trg_surv_hour_buckets_upd
     EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================================================
--- 23. REFERENCE SCHEMA VERSION TRACKER
+-- 23. PATIENT LABORATORY RESULTS PERSISTENCE LAYER
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS public.patient_lab_reports (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_patient_id UUID NOT NULL REFERENCES public.patients_tenant(tenant_patient_id),
+    admission_id UUID NULL REFERENCES public.admissions(id),
+
+    source_type TEXT NOT NULL CHECK (source_type IN ('EXTERNAL_REPORT', 'INTERNAL_LIMS', 'EXTERNAL_INTERFACE', 'LEGACY_MIGRATION')),
+    status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'ENTERED_IN_ERROR')),
+    structuring_status TEXT NOT NULL DEFAULT 'DOCUMENT_ONLY' CHECK (structuring_status IN ('DOCUMENT_ONLY', 'STRUCTURED')),
+
+    report_title TEXT NULL,
+    source_lab_name TEXT NULL,
+    source_lab_report_number TEXT NULL,
+
+    report_date DATE NULL,
+    collected_at TIMESTAMPTZ NULL,
+    received_at TIMESTAMPTZ NULL,
+
+    used_ai_assistance BOOLEAN NOT NULL DEFAULT FALSE,
+
+    uploaded_by_user_id UUID NOT NULL REFERENCES auth.users(user_id),
+    uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    structured_by_user_id UUID NULL REFERENCES auth.users(user_id),
+    structured_at TIMESTAMPTZ NULL,
+
+    entered_in_error_by_user_id UUID NULL REFERENCES auth.users(user_id),
+    entered_in_error_at TIMESTAMPTZ NULL,
+    entered_in_error_reason TEXT NULL,
+
+    interpretation_text TEXT NULL,
+
+    notes TEXT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_patient_lab_reports_patient ON public.patient_lab_reports(tenant_patient_id);
+CREATE INDEX IF NOT EXISTS idx_patient_lab_reports_admission ON public.patient_lab_reports(admission_id);
+CREATE INDEX IF NOT EXISTS idx_patient_lab_reports_source_type ON public.patient_lab_reports(source_type);
+CREATE INDEX IF NOT EXISTS idx_patient_lab_reports_status ON public.patient_lab_reports(status);
+CREATE INDEX IF NOT EXISTS idx_patient_lab_reports_report_date ON public.patient_lab_reports(report_date);
+CREATE INDEX IF NOT EXISTS idx_patient_lab_reports_uploaded_at ON public.patient_lab_reports(uploaded_at);
+
+CREATE TABLE IF NOT EXISTS public.patient_documents (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    tenant_id uuid NOT NULL,
+    tenant_patient_id uuid NOT NULL,
+
+    document_type TEXT NOT NULL,
+    original_filename TEXT,
+    stored_filename TEXT,
+    storage_path TEXT,
+
+    mime_type TEXT,
+    file_extension TEXT,
+    file_size_bytes BIGINT,
+
+    checksum TEXT,
+
+    source_type TEXT,
+    source_system TEXT,
+
+    extracted_text TEXT,
+    ai_processed BOOLEAN NOT NULL DEFAULT false,
+
+    uploaded_by_user_id uuid NULL,
+    uploaded_at timestamptz NULL,
+
+    actif BOOLEAN NOT NULL DEFAULT true,
+
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_patient_documents_patient ON public.patient_documents (tenant_patient_id);
+CREATE INDEX IF NOT EXISTS idx_patient_documents_tenant ON public.patient_documents (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_patient_documents_type ON public.patient_documents (document_type);
+CREATE INDEX IF NOT EXISTS idx_patient_documents_checksum ON public.patient_documents (checksum);
+
+CREATE TABLE IF NOT EXISTS public.patient_lab_report_documents (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+
+    patient_lab_report_id uuid NOT NULL,
+    document_id uuid NOT NULL,
+
+    role TEXT NOT NULL DEFAULT 'PRIMARY',
+    sort_order INTEGER NULL,
+
+    actif BOOLEAN NOT NULL DEFAULT true,
+
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+
+    CONSTRAINT fk_lab_doc_report
+        FOREIGN KEY (patient_lab_report_id)
+        REFERENCES public.patient_lab_reports(id),
+
+    CONSTRAINT fk_lab_doc_document
+        FOREIGN KEY (document_id)
+        REFERENCES public.patient_documents(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_lab_doc_report ON public.patient_lab_report_documents (patient_lab_report_id);
+CREATE INDEX IF NOT EXISTS idx_lab_doc_document ON public.patient_lab_report_documents (document_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_lab_report_document_link ON public.patient_lab_report_documents (patient_lab_report_id, document_id);
+
+CREATE TABLE IF NOT EXISTS public.patient_lab_report_tests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_lab_report_id UUID NOT NULL REFERENCES public.patient_lab_reports(id) ON DELETE CASCADE,
+
+    global_act_id UUID NULL REFERENCES reference.global_actes(id),
+    panel_id UUID NULL REFERENCES reference.lab_panels(id),
+
+    raw_test_label TEXT NULL,
+    display_order INTEGER NOT NULL DEFAULT 0,
+    notes TEXT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_patient_lab_report_tests_report ON public.patient_lab_report_tests(patient_lab_report_id);
+CREATE INDEX IF NOT EXISTS idx_patient_lab_report_tests_global_act ON public.patient_lab_report_tests(global_act_id);
+CREATE INDEX IF NOT EXISTS idx_patient_lab_report_tests_panel ON public.patient_lab_report_tests(panel_id);
+
+CREATE TABLE IF NOT EXISTS public.patient_lab_results (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_lab_report_id UUID NOT NULL REFERENCES public.patient_lab_reports(id) ON DELETE CASCADE,
+    patient_lab_report_test_id UUID NULL REFERENCES public.patient_lab_report_tests(id) ON DELETE SET NULL,
+
+    analyte_id UUID NULL REFERENCES reference.lab_analytes(id),
+    analyte_context_id UUID NULL,
+    result_value_id UUID NULL REFERENCES reference.lab_canonical_allowed_values(id),
+    raw_analyte_label TEXT NULL,
+
+    value_type TEXT NOT NULL CHECK (value_type IN ('NUMERIC', 'TEXT', 'BOOLEAN', 'CHOICE')),
+    numeric_value NUMERIC(18,6) NULL,
+    text_value TEXT NULL,
+    boolean_value BOOLEAN NULL,
+    choice_value TEXT NULL,
+
+    unit_id UUID NULL REFERENCES reference.units(id),
+    raw_unit_text TEXT NULL,
+
+    reference_range_text TEXT NULL,
+    reference_low_numeric NUMERIC(18,6) NULL,
+    reference_high_numeric NUMERIC(18,6) NULL,
+    reference_profile_id UUID NULL,
+    reference_rule_id UUID NULL,
+
+    raw_abnormal_flag_text TEXT NULL,
+    interpretation TEXT NULL CHECK (interpretation IN ('NORMAL', 'LOW', 'HIGH', 'CRITICAL_LOW', 'CRITICAL_HIGH', 'BORDERLINE', 'ABNORMAL')),
+
+    observed_at TIMESTAMPTZ NULL,
+    method_id UUID NULL REFERENCES reference.lab_methods(id),
+    specimen_type_id UUID NULL REFERENCES reference.lab_specimen_types(id),
+
+    source_line_reference TEXT NULL,
+
+    status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'ENTERED_IN_ERROR')),
+    entered_in_error_by_user_id UUID NULL REFERENCES auth.users(user_id),
+    entered_in_error_at TIMESTAMPTZ NULL,
+    entered_in_error_reason TEXT NULL,
+
+    notes TEXT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT chk_value_type_consistency CHECK (
+        (value_type = 'NUMERIC' AND numeric_value IS NOT NULL)
+     OR (value_type = 'TEXT' AND text_value IS NOT NULL)
+     OR (value_type = 'BOOLEAN' AND boolean_value IS NOT NULL)
+     OR (value_type = 'CHOICE' AND choice_value IS NOT NULL)
+    )
+);
+
+CREATE INDEX IF NOT EXISTS idx_patient_lab_results_report ON public.patient_lab_results(patient_lab_report_id);
+CREATE INDEX IF NOT EXISTS idx_patient_lab_results_test ON public.patient_lab_results(patient_lab_report_test_id);
+CREATE INDEX IF NOT EXISTS idx_patient_lab_results_analyte ON public.patient_lab_results(analyte_id);
+CREATE INDEX IF NOT EXISTS idx_patient_lab_results_unit ON public.patient_lab_results(unit_id);
+CREATE INDEX IF NOT EXISTS idx_patient_lab_results_observed ON public.patient_lab_results(observed_at);
+CREATE INDEX IF NOT EXISTS idx_patient_lab_results_status ON public.patient_lab_results(status);
+
+CREATE TABLE IF NOT EXISTS public.patient_lab_extraction_sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_lab_report_id UUID NOT NULL REFERENCES public.patient_lab_reports(id) ON DELETE CASCADE,
+    source_document_id UUID NULL REFERENCES public.patient_documents(id) ON DELETE CASCADE,
+
+    engine_name TEXT NULL,
+    engine_version TEXT NULL,
+
+    status TEXT NOT NULL CHECK (status IN ('PENDING', 'SUCCEEDED', 'FAILED', 'ABANDONED')),
+
+    started_at TIMESTAMPTZ NULL,
+    completed_at TIMESTAMPTZ NULL,
+
+    raw_output_json JSONB NULL,
+    notes TEXT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_patient_lab_extraction_report ON public.patient_lab_extraction_sessions(patient_lab_report_id);
+CREATE INDEX IF NOT EXISTS idx_patient_lab_extraction_doc ON public.patient_lab_extraction_sessions(source_document_id);
+CREATE INDEX IF NOT EXISTS idx_patient_lab_extraction_status ON public.patient_lab_extraction_sessions(status);
+CREATE INDEX IF NOT EXISTS idx_patient_lab_extraction_started ON public.patient_lab_extraction_sessions(started_at);
+
+-- ============================================================================
+-- 24. REFERENCE SCHEMA VERSION TRACKER
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS public.reference_schema_version (

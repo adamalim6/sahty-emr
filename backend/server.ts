@@ -22,7 +22,13 @@ import stockReservationRoutes from './routes/stockReservationRoutes';
 import escarresRoutes from './routes/escarresRoutes';
 import observationsRoutes from './routes/observationsRoutes';
 import addictionsRoutes from './routes/addictionsRoutes';
+import patientDocumentRoutes from './routes/patientDocumentRoutes';
+import labDocumentLinkRoutes from './routes/labDocumentLinkRoutes';
+import patientLabReportRoutes from './routes/patientLabReportRoutes';
+import labReferenceRoutes from './routes/labReferenceRoutes';
 import smartPhrasesRoutes from './routes/smartPhrasesRoutes';
+import smartValuesRoutes from './routes/smartValuesRoutes';
+import clinicalExamsRoutes from './routes/clinicalExamsRoutes';
 import { authenticateToken, authenticateAnyToken } from './middleware/authMiddleware';
 import { requireModule } from './middleware/moduleMiddleware';
 import { startIdentitySyncWorker } from './workers/identitySyncWorker';
@@ -42,7 +48,8 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'API-Version', 'Accept-Language']
 }));
-app.use(express.json());
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ limit: '20mb', extended: true }));
 
 app.use((req, res, next) => {
     console.log(`${req.method} ${req.url}`);
@@ -94,7 +101,13 @@ app.use('/api/escarres', authenticateToken, escarresRoutes);
 app.use('/api/allergies', authenticateToken, allergiesRoutes);
 app.use('/api/observations', authenticateToken, observationsRoutes);
 app.use('/api/addictions', authenticateToken, addictionsRoutes);
+app.use('/api/documents', authenticateToken, patientDocumentRoutes);
+app.use('/api/lab-reports', authenticateToken, labDocumentLinkRoutes);
+app.use('/api/patient-lab-reports', authenticateToken, patientLabReportRoutes);
+app.use('/api/reference', authenticateToken, labReferenceRoutes);
 app.use('/api/smart-phrases', authenticateToken, smartPhrasesRoutes);
+app.use('/api/smart-values', authenticateToken, smartValuesRoutes);
+app.use('/api/patients/:patientId/clinical-exams', authenticateToken, clinicalExamsRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

@@ -1,0 +1,1862 @@
+[
+  {
+    "id": "76190c4f-c0f6-4505-b787-d73a4473fea8",
+    "analyte_label": "17-OH progestérone",
+    "unit_label": "ng/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "17a99e9a-3550-46d9-96e4-8b90baf2658d",
+    "analyte_label": "Ac anti-cardiolipine IgG",
+    "unit_label": "UA/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "926723ca-c2d1-4fe9-a5de-96d23378aa8c",
+    "analyte_label": "Ac anti-cardiolipine IgM",
+    "unit_label": "UA/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "8c85de84-01d6-4aae-a1d7-2fdf16a12b33",
+    "analyte_label": "Ac anti-CCP",
+    "unit_label": "U/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "496a87d4-649e-47b5-a848-4f34328f0be0",
+    "analyte_label": "Ac anti-HBc IgM",
+    "unit_label": "Sans unité",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "73eb485c-23e4-48c6-8d35-dea2c088c1bd",
+    "analyte_label": "Ac anti-HBc totaux",
+    "unit_label": "Sans unité",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "e47ef27d-4117-4cee-9cec-1220eea99313",
+    "analyte_label": "Ac anti-HBe",
+    "unit_label": "Sans unité",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "80869f6d-969f-432a-8589-b46041399b55",
+    "analyte_label": "Ac anti-HBs",
+    "unit_label": "IU/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "a0b2f502-e9dd-4618-ad3b-4baaf0e5d95e",
+    "analyte_label": "Ac anti-MPO",
+    "unit_label": "UA/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "c35462af-b518-4960-abc0-0313a2cee292",
+    "analyte_label": "Ac anti-nucléaires",
+    "unit_label": "titre",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "0990805a-70c1-43d3-9872-239380622e94",
+    "analyte_label": "Ac anti-PR3",
+    "unit_label": "UA/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "af0b4558-d05e-4a4c-b10e-013377e43402",
+    "analyte_label": "Ac anti-SSA",
+    "unit_label": "index",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "015689f0-2cf8-4dc7-b498-63f915f90cc4",
+    "analyte_label": "Ac anti-SSB",
+    "unit_label": "index",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "8ed4494f-8134-4bf3-ad6c-2e927b05dc67",
+    "analyte_label": "Ac anti-thyroglobuline",
+    "unit_label": "IU/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "f9d10ed0-b219-4d74-a906-f7d8bfc16398",
+    "analyte_label": "Ac anti-TPO",
+    "unit_label": "IU/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "9cb8893b-8087-4706-81c6-cbfe77a7205b",
+    "analyte_label": "ACE/CEA",
+    "unit_label": "ng/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "455f6fae-e35f-456e-8973-431bee143f71",
+    "analyte_label": "Acide folique",
+    "unit_label": "ng/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "9d88949b-e0d3-44fc-ba8f-b6b81305421c",
+    "analyte_label": "Acide folique",
+    "unit_label": "ng/mL",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "035e38c3-1b6f-4b76-b237-a7ed30cf8c0c",
+    "analyte_label": "Acide urique",
+    "unit_label": "µmol/L",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "e2dd8f3d-02dc-4d39-b319-7e1ad42b2128",
+    "analyte_label": "Acide urique",
+    "unit_label": "µmol/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "ef0c6c5b-8372-4b1c-b4c3-d4c9c192588a",
+    "analyte_label": "Acide urique urinaire",
+    "unit_label": "mmol/24h",
+    "specimen_label": "Urines 24h"
+  },
+  {
+    "id": "cf9df14c-9590-4969-9808-b4fdee4c8fe4",
+    "analyte_label": "Acide urique urinaire",
+    "unit_label": "mmol/24h",
+    "specimen_label": "Urine ponctuelle"
+  },
+  {
+    "id": "5f309577-c142-411e-8946-e7e8697b87cf",
+    "analyte_label": "ACTH",
+    "unit_label": "pg/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "5b8d1c4a-affc-4f6e-b3dd-cd9249f55025",
+    "analyte_label": "Adenovirus DNA",
+    "unit_label": "mg",
+    "specimen_label": "Selles"
+  },
+  {
+    "id": "67687742-b1a7-48f1-8f8f-637d2bed9d58",
+    "analyte_label": "Adenovirus DNA",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "423afa61-224a-43d6-8525-50e0795891e7",
+    "analyte_label": "Adenovirus DNA",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "86196f47-901a-4542-920a-8c01aa70198b",
+    "analyte_label": "ADN CMV",
+    "unit_label": "copies/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "66baabe7-2a84-40ea-be72-82c847da6400",
+    "analyte_label": "ADN CMV",
+    "unit_label": "copies/mL",
+    "specimen_label": "Plasma EDTA"
+  },
+  {
+    "id": "ad116c1e-28c1-46da-9851-30d7f84c5ed9",
+    "analyte_label": "ADN CMV",
+    "unit_label": "copies/mL",
+    "specimen_label": "Plasma EDTA"
+  },
+  {
+    "id": "b43372d8-925b-4610-8a13-77dafbe60b6b",
+    "analyte_label": "ADN CMV",
+    "unit_label": "copies/mL",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "0a759739-1d99-4b0d-b89c-89181a0f7ef1",
+    "analyte_label": "ADN CMV",
+    "unit_label": "copies/mL",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "a49d7beb-9d19-4756-949c-216972193207",
+    "analyte_label": "ADN CMV",
+    "unit_label": "copies/mL",
+    "specimen_label": "Écouvillon nasopharyngé"
+  },
+  {
+    "id": "56ae09da-0907-4f16-90ed-742c77e91135",
+    "analyte_label": "ADN CMV",
+    "unit_label": "copies/mL",
+    "specimen_label": "Écouvillon nasopharyngé"
+  },
+  {
+    "id": "bb178520-203a-40c7-8c5c-50cfd573f985",
+    "analyte_label": "ADN CMV",
+    "unit_label": "copies/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "32f71980-ec26-414c-92b9-a429a8dc4a1f",
+    "analyte_label": "AFP",
+    "unit_label": "ng/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "90158132-0aa2-4dd5-89c7-b68575af7e25",
+    "analyte_label": "Albumine",
+    "unit_label": "g/L",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "819e0226-de2d-48a9-a95f-615ec53e1f15",
+    "analyte_label": "Albumine",
+    "unit_label": "g/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "fe0d07e5-ed18-413f-a650-2d4910dc5479",
+    "analyte_label": "Aldolase",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "3e66c2cc-cb34-47cd-a9d9-b3511efec3b0",
+    "analyte_label": "Aldostérone",
+    "unit_label": "pg/mL",
+    "specimen_label": "Urine ponctuelle"
+  },
+  {
+    "id": "fd9aa58f-d670-46da-9c5f-881f45518c9e",
+    "analyte_label": "Aldostérone",
+    "unit_label": "pg/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "5359aab9-28fb-40ec-a133-da0ddd198116",
+    "analyte_label": "Alpha-1-antitrypsine",
+    "unit_label": "g/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "7d9647e2-f3db-4058-86a3-745e1fb8cb10",
+    "analyte_label": "Ammoniémie",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "19fa8725-54f3-4098-bfc0-c1cf05d9c273",
+    "analyte_label": "Amylase",
+    "unit_label": "mg",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "f5a90586-b85a-4231-9ebb-55e17f9b1273",
+    "analyte_label": "Amylase",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "26eba255-3bde-42a0-aa5a-0a62ee0d0a77",
+    "analyte_label": "ANCA",
+    "unit_label": "titre",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "9be6c574-0be0-4b6f-ae2e-a24675fdf1d0",
+    "analyte_label": "Androstènedione",
+    "unit_label": "ng/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "e73a6988-3f97-4253-9069-b581fc045eca",
+    "analyte_label": "Anti-cellules pariétales",
+    "unit_label": "U/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "f6e3c1be-93b1-4590-bb91-fa0547da1faf",
+    "analyte_label": "Anticoagulant lupique",
+    "unit_label": "Sans unité",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "3d344ac8-6c96-4662-85a3-d50b86e62191",
+    "analyte_label": "Anti-endomysium IgA",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "ffe87441-45b9-4b09-8f10-dc49d7c7e764",
+    "analyte_label": "Anti-facteur intrinsèque",
+    "unit_label": "U/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "cdf4de5e-01f7-4695-92fa-7003ed569d81",
+    "analyte_label": "Anti-GAD65",
+    "unit_label": "U/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "0ab493a7-ae38-4dbe-ad89-9ef8188f0d56",
+    "analyte_label": "Antigène HBs",
+    "unit_label": "Sans unité",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "5debaf66-04dc-48a4-b3f5-85f4126602d1",
+    "analyte_label": "Anti-IA2",
+    "unit_label": "U/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "0ea3e252-a0c4-4eb0-8c97-c14a7e41572c",
+    "analyte_label": "Anti-LC1",
+    "unit_label": "U/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "502071c3-c7e2-487f-a06b-c537f4791e9b",
+    "analyte_label": "Anti-LKM1",
+    "unit_label": "U/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "94fc1c21-c2d4-4366-a775-ee1a99367050",
+    "analyte_label": "Anti-mitochondries",
+    "unit_label": "U/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "66a6a38e-3ee5-4836-aa09-c6312af64703",
+    "analyte_label": "Anti-muscle lisse",
+    "unit_label": "U/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "063ed5b7-e083-41ec-b307-ab7f1fd18823",
+    "analyte_label": "Antithrombine",
+    "unit_label": "%",
+    "specimen_label": "Plasma citraté"
+  },
+  {
+    "id": "4ab0f1aa-babb-49f2-af39-ecb0285a7177",
+    "analyte_label": "Anti-transglutaminase IgA",
+    "unit_label": "U/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "461b0235-9976-46f9-b1be-bdc88b54aa38",
+    "analyte_label": "Anti-transglutaminase IgG",
+    "unit_label": "U/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "b2c405ff-0319-4aa5-b5ce-adcf53efc803",
+    "analyte_label": "Anti-Xa",
+    "unit_label": "IU/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "6223b1f3-610c-4f8c-aaa5-551d52a79dfc",
+    "analyte_label": "ARN SARS-CoV-2",
+    "unit_label": "Sans unité",
+    "specimen_label": "Écouvillon nasopharyngé"
+  },
+  {
+    "id": "05e762a7-289b-441c-9e93-b138f6dfbf45",
+    "analyte_label": "ASAT",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "cc9da905-62b9-4891-bb30-125bb0dca7de",
+    "analyte_label": "ASAT",
+    "unit_label": "mg",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "d31bd844-03b0-4d9a-b506-270dd354eb6f",
+    "analyte_label": "Basophiles",
+    "unit_label": "G/L",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "63ea595b-5712-4477-9f05-edbc77ec40c2",
+    "analyte_label": "Basophiles",
+    "unit_label": "G/L",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "14b6ac50-b8d1-4a2f-b93b-c47fe0cb210f",
+    "analyte_label": "Bêta-2 microglobuline",
+    "unit_label": "mg",
+    "specimen_label": "Urine ponctuelle"
+  },
+  {
+    "id": "a982218a-2226-49b3-a8ef-5f92db74c4d9",
+    "analyte_label": "Bêta-2 microglobuline",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "9828ea4a-8d1c-4a5f-9b6f-7dc701c847e3",
+    "analyte_label": "BNP",
+    "unit_label": "pg/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "9865255a-309e-463b-b28f-6808cd65d7a6",
+    "analyte_label": "BNP",
+    "unit_label": "pg/mL",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "310f79a6-815f-4093-a750-481f581c3185",
+    "analyte_label": "Brucella IgG",
+    "unit_label": "index",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "ab0154a4-acdd-4868-815c-57ae727f93a4",
+    "analyte_label": "Brucella IgM",
+    "unit_label": "index",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "d341f95c-028e-4f9e-82d4-785f1bace812",
+    "analyte_label": "CA 125",
+    "unit_label": "U/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "cd7e6d11-1d08-484f-a7f1-5b779fed40ad",
+    "analyte_label": "CA 15-3",
+    "unit_label": "U/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "faea1c55-fa77-40a2-ad96-d4067d82af6a",
+    "analyte_label": "CA 19-9",
+    "unit_label": "U/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "f39ad7af-2355-4d93-9c55-7c6d24cfe0f2",
+    "analyte_label": "Calcitonine",
+    "unit_label": "pg/mL",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "934a6113-05a1-4322-b2b0-6f0a948e0784",
+    "analyte_label": "Calcitonine",
+    "unit_label": "pg/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "7446adcb-4ac2-4860-a0e1-019ca0d4cfa5",
+    "analyte_label": "Calcium ionisé",
+    "unit_label": "mmol/L",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "aace32ed-573c-4ad0-8215-6e46879f57d7",
+    "analyte_label": "Calcium ionisé",
+    "unit_label": "mmol/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "1d5d2396-9d54-4065-b756-98abd3f1e2ab",
+    "analyte_label": "Calcium total",
+    "unit_label": "mmol/L",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "1a101d54-be4c-4211-b4b3-14a6d6c449eb",
+    "analyte_label": "Calcium total",
+    "unit_label": "mmol/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "5902b3f6-7602-4662-8d0b-838001ddbc80",
+    "analyte_label": "Calcium urinaire",
+    "unit_label": "mmol/24h",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "72b1b10d-4443-4b0f-9b57-c8c24a25e13f",
+    "analyte_label": "Carbamazépine",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "a125bc0e-bab9-4dbc-8fc4-7fb66a271263",
+    "analyte_label": "Cellules CD34",
+    "unit_label": "/µL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "1ab35de8-b0de-45cf-9794-a3dd4ca0b543",
+    "analyte_label": "Céruloplasmine",
+    "unit_label": "g/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "54c07c1c-3250-4248-a4e8-0969af180284",
+    "analyte_label": "CH50",
+    "unit_label": "U/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "d00fd74c-e732-4802-8758-37a4bcdcd637",
+    "analyte_label": "Chaînes légères libres kappa",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "d83cf857-773c-4cdc-90d8-2f7ec1ec0370",
+    "analyte_label": "Chaînes légères libres kappa",
+    "unit_label": "mg",
+    "specimen_label": "Urines 24h"
+  },
+  {
+    "id": "d9833340-d5b2-431b-9f80-e9824959ab67",
+    "analyte_label": "Chaînes légères libres lambda",
+    "unit_label": "mg",
+    "specimen_label": "Urines 24h"
+  },
+  {
+    "id": "29a16069-7c23-4ded-a1c3-dd7a9707fd8a",
+    "analyte_label": "Chaînes légères libres lambda",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "c5442542-0386-4409-8c78-edd4909f3ac9",
+    "analyte_label": "Chimérisme",
+    "unit_label": "%",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "52ee9ff5-e41d-461b-ab7a-0a9536936a4a",
+    "analyte_label": "Chlorure",
+    "unit_label": "mmol/L",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "bebd9863-0a81-4f38-8b46-cd5156b56d51",
+    "analyte_label": "Chlorure",
+    "unit_label": "mmol/L",
+    "specimen_label": "Urine ponctuelle"
+  },
+  {
+    "id": "83c02b14-68e9-4a4c-8fb7-76d0238dbeda",
+    "analyte_label": "Chlorure",
+    "unit_label": "mmol/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "f5230f4d-fdeb-4907-8b22-cc19174efdae",
+    "analyte_label": "Cholestérol total",
+    "unit_label": "mmol/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "9eeb4175-cc45-47d7-9c66-984f64a56076",
+    "analyte_label": "Cholestérol total",
+    "unit_label": "mmol/L",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "1a95bbbf-786e-4a88-9534-09cc3bf3bb56",
+    "analyte_label": "Cholinestérase",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "264627ee-e4b2-480c-b5ad-c348858297cf",
+    "analyte_label": "Ciclosporine",
+    "unit_label": "ng/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "ea3b71a3-de77-48c1-8ffa-d99eaf840571",
+    "analyte_label": "CMV IgG",
+    "unit_label": "AU/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "95c2984b-0fb6-4e9b-8f11-26eee0ef0986",
+    "analyte_label": "CMV IgM",
+    "unit_label": "Sans unité",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "fe7ff014-9403-4308-ac9c-2edf3fc14e99",
+    "analyte_label": "Complément C3",
+    "unit_label": "g/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "f81f7f9b-5366-4142-87a1-649fcdea2603",
+    "analyte_label": "Complément C4",
+    "unit_label": "g/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "7a1f1ba5-7980-493d-b103-ded2c2ba2d64",
+    "analyte_label": "Concentration corpusculaire moyenne en Hb",
+    "unit_label": "g/dL",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "4c2f86ad-481b-4460-8b3a-e2dd60b2ee87",
+    "analyte_label": "Concentration corpusculaire moyenne en Hb",
+    "unit_label": "g/dL",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "7d23ee69-e26f-4275-955f-b190e7683f2a",
+    "analyte_label": "Cortisol",
+    "unit_label": "nmol/L",
+    "specimen_label": "Urines 24h"
+  },
+  {
+    "id": "8b2ddbce-5665-4dd5-9c64-f6982fe0c31a",
+    "analyte_label": "Cortisol",
+    "unit_label": "nmol/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "37905879-cf8b-45a4-a10e-ea0a96c5dd1f",
+    "analyte_label": "Créatine kinase",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "2c206f61-7342-45ed-afd8-8bea455a91f5",
+    "analyte_label": "Créatine kinase",
+    "unit_label": "mg",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "510dab7e-10c9-44b9-a648-08b790753cef",
+    "analyte_label": "Créatinine",
+    "unit_label": "µmol/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "ee7c2225-35ca-4868-961a-658b8b8703f7",
+    "analyte_label": "Créatinine",
+    "unit_label": "µmol/L",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "e2b708c5-7e25-4f46-8769-06f8bb71a257",
+    "analyte_label": "Créatininurie",
+    "unit_label": "mmol/L",
+    "specimen_label": "Urine ponctuelle"
+  },
+  {
+    "id": "6fa89795-75a5-42bb-98e6-5d02f6c442a1",
+    "analyte_label": "Créatininurie",
+    "unit_label": "mmol/L",
+    "specimen_label": "Urines 24h"
+  },
+  {
+    "id": "5247ae94-2edf-4fa5-afbd-df1a5c15e59f",
+    "analyte_label": "CRP",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "70503b89-3041-4317-9927-13e5d48ccadb",
+    "analyte_label": "CRP",
+    "unit_label": "mg",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "07d86b67-d028-481b-9db9-f0f507f233fe",
+    "analyte_label": "Cryoglobulines",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "1d99e186-a27d-4176-b432-75283f593961",
+    "analyte_label": "Cuivre",
+    "unit_label": "µmol/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "3f41bd61-6657-4b12-9ed8-73d0fc381c6c",
+    "analyte_label": "Cuivre",
+    "unit_label": "µmol/L",
+    "specimen_label": "Urine ponctuelle"
+  },
+  {
+    "id": "8a953dd8-ebb4-419c-a3a0-3553e835b219",
+    "analyte_label": "DFGe",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "14ad55b4-0dd7-4f84-9074-27c48785db0b",
+    "analyte_label": "DHEA-S",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "934c8ca8-646d-48aa-8ff3-68047b615315",
+    "analyte_label": "Digoxine",
+    "unit_label": "ng/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "f80033f1-87bc-4cc2-83a2-23d1f6195899",
+    "analyte_label": "EBNA IgG",
+    "unit_label": "Sans unité",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "d9b62868-5d21-40c8-bfaf-e5951b2dbf3a",
+    "analyte_label": "EBV VCA IgG",
+    "unit_label": "Sans unité",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "2f3e8b4b-39e0-4363-a99b-5f8d6f4512c1",
+    "analyte_label": "EBV VCA IgM",
+    "unit_label": "Sans unité",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "1255649d-4f54-4d4d-8e96-63093aade2bc",
+    "analyte_label": "Echinococcus IgG",
+    "unit_label": "index",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "c4b1a1ce-37aa-495c-9ea5-2a570e9fd072",
+    "analyte_label": "Éosinophiles",
+    "unit_label": "G/L",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "bac715b9-c547-4ea6-a6e0-aabadb2495d5",
+    "analyte_label": "Éosinophiles",
+    "unit_label": "G/L",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "c48ecc1f-b8aa-4b43-927c-078a4fcd1508",
+    "analyte_label": "Estradiol",
+    "unit_label": "pg/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "68fb2de8-37a1-4271-beb2-8390cff3f390",
+    "analyte_label": "Éthanol",
+    "unit_label": "g/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "eeaa169a-d4e5-43c4-a17b-d2a6d6bf494a",
+    "analyte_label": "Everolimus",
+    "unit_label": "ng/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "1518918a-6533-455d-8674-b6abaef9cebb",
+    "analyte_label": "Facteur II",
+    "unit_label": "%",
+    "specimen_label": "Plasma citraté"
+  },
+  {
+    "id": "13b13e2c-8879-4b96-93bd-fdc208cb35a3",
+    "analyte_label": "Facteur II",
+    "unit_label": "%",
+    "specimen_label": "Plasma citraté"
+  },
+  {
+    "id": "c80738c4-ccc5-43c7-8076-52a538c55619",
+    "analyte_label": "Facteur II",
+    "unit_label": "%",
+    "specimen_label": "Plasma citraté"
+  },
+  {
+    "id": "8f0a2a05-70a1-4db3-a594-16fa17bd9f3e",
+    "analyte_label": "Facteur IX",
+    "unit_label": "%",
+    "specimen_label": "Plasma citraté"
+  },
+  {
+    "id": "ee0ff0ca-f96a-469b-9521-d1f8f68ce31b",
+    "analyte_label": "Facteur V",
+    "unit_label": "%",
+    "specimen_label": "Plasma citraté"
+  },
+  {
+    "id": "b9299370-8431-4d8f-a7c7-d17251f3b897",
+    "analyte_label": "Facteur VII",
+    "unit_label": "%",
+    "specimen_label": "Plasma citraté"
+  },
+  {
+    "id": "4e237847-1bf2-4f6f-9a75-291aaa7ac4f6",
+    "analyte_label": "Facteur VIII",
+    "unit_label": "%",
+    "specimen_label": "Plasma citraté"
+  },
+  {
+    "id": "6b3d8c6d-38c8-4317-ac9e-3e36090904f1",
+    "analyte_label": "Facteur X",
+    "unit_label": "%",
+    "specimen_label": "Plasma citraté"
+  },
+  {
+    "id": "4494f15d-313a-4018-9a3d-4f0c68390d7c",
+    "analyte_label": "Facteur XI",
+    "unit_label": "%",
+    "specimen_label": "Plasma citraté"
+  },
+  {
+    "id": "176fc235-ea68-482a-8356-7d9473a4ed09",
+    "analyte_label": "Facteur XII",
+    "unit_label": "%",
+    "specimen_label": "Plasma citraté"
+  },
+  {
+    "id": "88f34f11-143e-48e0-bd9e-bdadd3dbedea",
+    "analyte_label": "Facteur XIII",
+    "unit_label": "%",
+    "specimen_label": "Plasma citraté"
+  },
+  {
+    "id": "8ded8738-89ff-4a96-a705-e7b02dc42d5d",
+    "analyte_label": "Fer sérique",
+    "unit_label": "µmol/L",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "b85c1845-6e4a-4464-b081-212ab9ac2247",
+    "analyte_label": "Fer sérique",
+    "unit_label": "µmol/L",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "018ad17b-ea90-4e5b-a609-464f84d1c269",
+    "analyte_label": "Fer sérique",
+    "unit_label": "µmol/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "fab143c9-91b0-40b2-9797-954f3984f399",
+    "analyte_label": "Fer sérique",
+    "unit_label": "µmol/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "6f202960-5dca-4f3a-aaf4-79a35d02cc08",
+    "analyte_label": "Fer sérique",
+    "unit_label": "µmol/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "b8ce268c-a07a-45ce-bcc9-385d0cbb062d",
+    "analyte_label": "Fer sérique",
+    "unit_label": "µmol/L",
+    "specimen_label": "Urine ponctuelle"
+  },
+  {
+    "id": "3f5edb01-d20c-4e9b-8a3b-c4d99ccc7eef",
+    "analyte_label": "Fer sérique",
+    "unit_label": "µmol/L",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "87e0215f-1657-4ae3-a9e7-e599bb930bcf",
+    "analyte_label": "Fibrinogène",
+    "unit_label": "g/L",
+    "specimen_label": "Plasma citraté"
+  },
+  {
+    "id": "e804dfcf-22a0-474a-8610-dd7ec7b3cfa3",
+    "analyte_label": "Fructosamine",
+    "unit_label": "µmol/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "a63950c1-b1fb-48c3-85fe-bfc1532dc7fd",
+    "analyte_label": "FSH",
+    "unit_label": "IU/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "de353ba1-fd77-4664-b48a-52abf9635cf0",
+    "analyte_label": "Gamma GT",
+    "unit_label": "mg",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "1ff1f571-a329-4b85-8e6e-1f143e5d4a0c",
+    "analyte_label": "Gamma GT",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "37b18622-0ead-48fb-b604-ff043ef83c21",
+    "analyte_label": "Génotypage VHC",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "9ce4a11a-1c9d-4d75-bfe2-96f78803fd27",
+    "analyte_label": "Génotype DPYD",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "d6468fa8-f72d-4caf-a43f-0851fb47bf87",
+    "analyte_label": "Gentamicine",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "2ac3709f-b0f3-4a64-82fe-8f0f7a605165",
+    "analyte_label": "Glucose",
+    "unit_label": "mmol/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "56ad3a45-5300-4c65-b90b-99f914528449",
+    "analyte_label": "Glucose",
+    "unit_label": "mmol/L",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "7828443c-3af8-49e1-9d11-496b23ec23c2",
+    "analyte_label": "Haptoglobine",
+    "unit_label": "g/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "14d3f72b-76f0-4373-856b-741a98d6c0e8",
+    "analyte_label": "Haptoglobine",
+    "unit_label": "g/L",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "7672a311-af2d-4a40-aa57-51278e6c218f",
+    "analyte_label": "HDL cholestérol",
+    "unit_label": "mmol/L",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "ecc80af7-87a4-44e2-a694-7d27538d7c52",
+    "analyte_label": "HDL cholestérol",
+    "unit_label": "mmol/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "eae06d34-33f4-4aa4-9bfc-9ffc93ba4813",
+    "analyte_label": "Hématies",
+    "unit_label": "T/L",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "15868d5d-1ccc-49f2-81c8-94a74a147373",
+    "analyte_label": "Hématies",
+    "unit_label": "T/L",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "671e3b57-5800-4a57-a7ff-ff960fc97cc5",
+    "analyte_label": "Hématocrite",
+    "unit_label": "%",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "ee6eb3f4-dfed-4b97-9463-0ac7a5f007ed",
+    "analyte_label": "Hématocrite",
+    "unit_label": "%",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "694871d8-00a5-4d16-b242-51401e8b437e",
+    "analyte_label": "Hémoglobine",
+    "unit_label": "g/dL",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "b5641551-254e-4188-bc30-eee7012f354e",
+    "analyte_label": "Hémoglobine",
+    "unit_label": "g/dL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "62776668-cfb5-455d-8835-4465d08ec313",
+    "analyte_label": "Hémoglobine",
+    "unit_label": "g/dL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "1336b5ec-a093-49d0-8839-ff8fcd5088fa",
+    "analyte_label": "Hémoglobine",
+    "unit_label": "g/dL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "f3ee9f6c-eb55-4050-a34c-549e3d24fa9a",
+    "analyte_label": "Hémoglobine",
+    "unit_label": "g/dL",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "4c1f42d1-79b3-459a-9718-35202c8bda64",
+    "analyte_label": "Hémoglobine glyquée",
+    "unit_label": "%",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "50a574bf-68c9-4d9a-8033-8d39ce14c818",
+    "analyte_label": "Hémoglobine glyquée",
+    "unit_label": "%",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "64012ad1-ecdf-4ea8-9a94-69f7fc4b2f0f",
+    "analyte_label": "Homocystéine",
+    "unit_label": "µmol/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "e3ed38be-751a-4961-8caf-b04fd6e10837",
+    "analyte_label": "Hormone anti-müllérienne",
+    "unit_label": "ng/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "160c5e24-e076-48f7-868b-1ec06d4c4608",
+    "analyte_label": "Hormone anti-müllérienne",
+    "unit_label": "ng/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "f1e6a748-9141-4454-abf2-0f57a829fc71",
+    "analyte_label": "Hormone de croissance",
+    "unit_label": "ng/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "6d2f2400-0398-4f85-b876-c484eba6aa21",
+    "analyte_label": "Hormone de croissance",
+    "unit_label": "ng/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "dff736dc-ad22-4c83-8ab6-119efab0cb2b",
+    "analyte_label": "HTLV 1/2 Ac",
+    "unit_label": "index",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "bcd33d87-3d0b-4dcd-85b2-43b712b0ef1b",
+    "analyte_label": "IgE totales",
+    "unit_label": "IU/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "07a52d83-c4c4-40ce-a020-2dcd5e0707c8",
+    "analyte_label": "IgE totales",
+    "unit_label": "IU/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "8337e9a1-6d17-4e44-a84e-d15a34d7cdd4",
+    "analyte_label": "IgE totales",
+    "unit_label": "IU/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "a28b948a-21b9-482f-874e-8d120848a453",
+    "analyte_label": "IgE totales",
+    "unit_label": "IU/mL",
+    "specimen_label": "Urine ponctuelle"
+  },
+  {
+    "id": "f98b0b7e-f689-41c7-9f11-4bbbcfcbdea9",
+    "analyte_label": "IgE totales",
+    "unit_label": "IU/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "5d206f90-d62f-4c62-96af-8188f2998e02",
+    "analyte_label": "IGF-1",
+    "unit_label": "ng/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "1936f4b6-f3d7-478f-843c-4ba3bc9da361",
+    "analyte_label": "Immunoglobuline A",
+    "unit_label": "g/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "cc866444-b6c8-4c80-9918-851f0ad3a673",
+    "analyte_label": "Immunoglobuline A",
+    "unit_label": "g/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "16854416-8205-48c5-ae1b-f772e4fb569f",
+    "analyte_label": "Immunoglobuline G",
+    "unit_label": "g/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "03adc8bd-740a-41f9-b261-fd6edb3371c5",
+    "analyte_label": "Immunoglobuline G",
+    "unit_label": "g/L",
+    "specimen_label": "Selles"
+  },
+  {
+    "id": "2269efdf-e996-44ee-b55e-0e9084b462bf",
+    "analyte_label": "Immunoglobuline G",
+    "unit_label": "g/L",
+    "specimen_label": "Liquide céphalo-rachidien"
+  },
+  {
+    "id": "daa0cb77-7fdf-46bb-9a06-dead6a30967a",
+    "analyte_label": "Immunoglobuline G",
+    "unit_label": "g/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "717c7d49-748d-46b6-88e2-62fcb3846d10",
+    "analyte_label": "Immunoglobuline G",
+    "unit_label": "g/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "5e79e798-da2d-4fcb-90c6-c46a84a6907d",
+    "analyte_label": "Immunoglobuline G",
+    "unit_label": "g/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "8e06d667-7007-41db-a634-e5ef505f5903",
+    "analyte_label": "Immunoglobuline G",
+    "unit_label": "g/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "084365d5-4a43-4722-ac5c-6f3403004bd0",
+    "analyte_label": "Immunoglobuline M",
+    "unit_label": "g/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "f1f3b79d-7072-4924-8c60-4866ff71840d",
+    "analyte_label": "Immunoglobuline M",
+    "unit_label": "g/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "7ab87454-f6e0-4423-b93c-c1b2be773211",
+    "analyte_label": "Immunoglobuline M",
+    "unit_label": "g/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "43f0ec2e-0376-4c3e-82d3-e7ee29ba34dc",
+    "analyte_label": "Immunoglobuline M",
+    "unit_label": "g/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "d2e86626-e05c-4bc6-b7ea-5528bf14436a",
+    "analyte_label": "Immunoglobuline M",
+    "unit_label": "g/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "d2fcee4c-b814-4f7b-8007-1ec319ae6f11",
+    "analyte_label": "Immunoglobuline M",
+    "unit_label": "g/L",
+    "specimen_label": "Selles"
+  },
+  {
+    "id": "6bdd9f74-e762-4804-838c-44dff84b8869",
+    "analyte_label": "INR",
+    "unit_label": "INR",
+    "specimen_label": "Plasma citraté"
+  },
+  {
+    "id": "464a62e2-abc0-43fb-8022-aeaa7e8ad9f6",
+    "analyte_label": "Insuline",
+    "unit_label": "mIU/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "eed547ab-ea30-44b2-ab33-27f81d0a4abf",
+    "analyte_label": "Lactate",
+    "unit_label": "mmol/L",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "a3c20ae2-8551-4213-90da-030dbd9832d3",
+    "analyte_label": "Lactate",
+    "unit_label": "mmol/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "870a455b-e108-40a5-9242-f0a199012004",
+    "analyte_label": "Lactate déshydrogénase",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "52e6bcb5-b9c1-488f-a61a-36835b5bf49b",
+    "analyte_label": "Lactate déshydrogénase",
+    "unit_label": "mg",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "14497e4b-2255-4bb6-b092-13d9a2f18775",
+    "analyte_label": "LDL cholestérol",
+    "unit_label": "mmol/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "41323da9-0a72-4be5-b08c-77f0391d87bb",
+    "analyte_label": "LDL cholestérol",
+    "unit_label": "mmol/L",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "70d04de3-de29-45d0-bc30-347d677f1be0",
+    "analyte_label": "Leishmania IgG",
+    "unit_label": "index",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "cbc74c1b-aa15-48a1-87e9-bec6480b9328",
+    "analyte_label": "Leucocytes",
+    "unit_label": "G/L",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "c3b37487-4715-4d65-be4c-db792d467608",
+    "analyte_label": "Leucocytes",
+    "unit_label": "G/L",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "488851aa-be76-4737-a3e4-c363ba07df4d",
+    "analyte_label": "LH",
+    "unit_label": "IU/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "544ba45c-6ce3-439d-ae8c-68aaa64c54ca",
+    "analyte_label": "Lipase",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "e92fcfba-85fa-4034-8041-a633ae26bbc5",
+    "analyte_label": "Lipase",
+    "unit_label": "mg",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "6289b5dc-b4e5-4c8e-99fe-75daa9423a2e",
+    "analyte_label": "Lipoprotéine(a)",
+    "unit_label": "mg/dL",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "9819b0a1-7080-4ba8-b8b8-27a1bb493c0e",
+    "analyte_label": "Lipoprotéine(a)",
+    "unit_label": "mg/dL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "195a97fe-c04e-4d94-a4a6-fcd1e564703c",
+    "analyte_label": "Lymphocytes",
+    "unit_label": "G/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "086b75b7-1f6d-4956-a1f0-aba866b511a1",
+    "analyte_label": "Lymphocytes",
+    "unit_label": "G/L",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "da5c20e1-005a-4541-a94b-f65cfeb6b193",
+    "analyte_label": "Lymphocytes",
+    "unit_label": "G/L",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "2f70cc2b-a1c2-4d30-bb17-8253d9bff7cf",
+    "analyte_label": "Magnésium",
+    "unit_label": "mmol/L",
+    "specimen_label": "Urines 24h"
+  },
+  {
+    "id": "34a9b0da-8a19-4254-8e29-18c200231ab8",
+    "analyte_label": "Magnésium",
+    "unit_label": "mmol/L",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "04494436-8134-4592-a736-b3db75dbf253",
+    "analyte_label": "Magnésium",
+    "unit_label": "mmol/L",
+    "specimen_label": "Urine ponctuelle"
+  },
+  {
+    "id": "878a3867-12f5-4486-b66b-deb1ea0c6ee9",
+    "analyte_label": "Magnésium",
+    "unit_label": "mmol/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "bb4051d3-227f-4665-8028-91c54bd0f7ea",
+    "analyte_label": "Mercure",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "70fcdfd9-37b2-41aa-b0fa-6d7ba7a05c2e",
+    "analyte_label": "Microalbuminurie",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "4ea078bf-c121-49cd-97c9-431c6fba2ac9",
+    "analyte_label": "Monocytes",
+    "unit_label": "G/L",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "eb330d73-7c38-4937-9d06-3412d9303a08",
+    "analyte_label": "Monocytes",
+    "unit_label": "G/L",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "ad755df3-01de-4293-838c-140a6a47eab6",
+    "analyte_label": "Mutation JAK2 V617F",
+    "unit_label": "Sans unité",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "92ba8dbe-8f65-4a60-9434-cd9a2273ab6e",
+    "analyte_label": "Mutation JAK2 V617F",
+    "unit_label": "Sans unité",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "6ac91cf9-f968-4c6c-8561-f2e1a9e94435",
+    "analyte_label": "Myoglobine",
+    "unit_label": "ng/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "d42ac6a7-6b18-4922-91e7-972a11b6dad6",
+    "analyte_label": "Myoglobine",
+    "unit_label": "ng/mL",
+    "specimen_label": "Urine ponctuelle"
+  },
+  {
+    "id": "a2500a2c-40ff-405d-80c1-b8165f1a9a97",
+    "analyte_label": "Neutrophiles",
+    "unit_label": "G/L",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "ac5076d5-8e72-4a55-987c-d2d49d3af551",
+    "analyte_label": "Neutrophiles",
+    "unit_label": "G/L",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "3e6c352f-7dbd-4936-88df-66a628d3228c",
+    "analyte_label": "Opiacés urinaires",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "9cfaacdd-f6b7-46da-bb84-e2285567f068",
+    "analyte_label": "Orosomucoïde",
+    "unit_label": "g/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "bd0566e2-1e37-4cd1-8930-5560ab32077f",
+    "analyte_label": "Paracétamol",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "9ea85a92-9e26-4f23-849a-d7c49b57126a",
+    "analyte_label": "pH",
+    "unit_label": "Sans unité",
+    "specimen_label": "Urine ponctuelle"
+  },
+  {
+    "id": "a50f75ab-5765-40a1-b5b2-02fbb4115747",
+    "analyte_label": "Phénobarbital",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "6c14f81c-73ab-412e-814e-b89a8341dadd",
+    "analyte_label": "Phosphatases alcalines",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "d8d61933-f321-4351-9bb6-40de1f8fc487",
+    "analyte_label": "Phosphore",
+    "unit_label": "mmol/L",
+    "specimen_label": "Urine ponctuelle"
+  },
+  {
+    "id": "87de44c9-3044-461a-b410-e6724a44440b",
+    "analyte_label": "Phosphore",
+    "unit_label": "mmol/L",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "203017fb-95e8-42a4-8e2d-c3c6439e2f68",
+    "analyte_label": "Phosphore",
+    "unit_label": "mmol/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "9be1e23b-9445-434d-a047-64539af1e448",
+    "analyte_label": "Plaquettes",
+    "unit_label": "G/L",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "da64dd7d-6587-4611-92f9-d8b2cb561436",
+    "analyte_label": "Plaquettes",
+    "unit_label": "G/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "5be3b1c2-e14c-4577-8789-1f4d381731a4",
+    "analyte_label": "Plaquettes",
+    "unit_label": "G/L",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "012dd479-62e2-4e25-aaa8-a693aba9578b",
+    "analyte_label": "Plaquettes",
+    "unit_label": "G/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "b9dd04d3-ea52-4692-8550-08151d441ed6",
+    "analyte_label": "Plasmodium DNA",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "fc2281f3-d43d-4912-afba-1781b6ad7fd3",
+    "analyte_label": "Plomb",
+    "unit_label": "mg",
+    "specimen_label": "Urine ponctuelle"
+  },
+  {
+    "id": "b223db27-0cbd-4326-a5ca-c47007e5c2b5",
+    "analyte_label": "Plomb",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "079b6800-1ad1-449f-9623-7ff9c360c6ce",
+    "analyte_label": "Potassium",
+    "unit_label": "mmol/L",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "a17694b9-8173-4736-a565-ca1e709e2c32",
+    "analyte_label": "Potassium",
+    "unit_label": "mmol/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "d6e5daf6-7782-4767-b981-265e51686889",
+    "analyte_label": "Potassium",
+    "unit_label": "mmol/L",
+    "specimen_label": "Urine ponctuelle"
+  },
+  {
+    "id": "a388363a-0e57-48f4-8810-6b610bd83a8c",
+    "analyte_label": "Potassium urinaire",
+    "unit_label": "mmol/L",
+    "specimen_label": "Urines 24h"
+  },
+  {
+    "id": "9edeb9b4-2732-475c-8b7d-3b3add3da457",
+    "analyte_label": "Potassium urinaire",
+    "unit_label": "mmol/L",
+    "specimen_label": "Urine ponctuelle"
+  },
+  {
+    "id": "c7060655-90ad-4f3e-ab26-fd09e4ea1a10",
+    "analyte_label": "Progestérone",
+    "unit_label": "ng/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "81bf7e92-9761-4df8-9061-5f552c12a05a",
+    "analyte_label": "Prolactine",
+    "unit_label": "ng/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "b6139a85-4318-487f-a934-2d33adcece44",
+    "analyte_label": "Protéine C",
+    "unit_label": "%",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "c6beffff-eb8e-4a2c-b545-931233c31dad",
+    "analyte_label": "Protéine C",
+    "unit_label": "%",
+    "specimen_label": "Plasma citraté"
+  },
+  {
+    "id": "f401eeb5-be8c-470d-b621-79750ec7b912",
+    "analyte_label": "Protéine S",
+    "unit_label": "%",
+    "specimen_label": "Plasma citraté"
+  },
+  {
+    "id": "771dba65-bf6e-4c97-a736-0f64b6fce7e5",
+    "analyte_label": "Protéines totales",
+    "unit_label": "g/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "3b161d35-c12b-439a-a003-d13a7a3e2961",
+    "analyte_label": "Protéines totales",
+    "unit_label": "g/L",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "fa4dbcbc-91cc-4980-8d16-b62a123a67a0",
+    "analyte_label": "Protéinurie",
+    "unit_label": "g/24h",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "340b7bfa-0a83-4ddb-b228-5ff99154d35b",
+    "analyte_label": "PTH",
+    "unit_label": "pg/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "6ce2efb8-7f68-4c9b-bd54-2076d02bc6e1",
+    "analyte_label": "PTH",
+    "unit_label": "pg/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "4fc048e4-79b5-42d2-a55e-c15631ce49da",
+    "analyte_label": "Red cell distribution width",
+    "unit_label": "%",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "369c0c19-3614-4892-8550-6bf49eaaeb50",
+    "analyte_label": "Red cell distribution width",
+    "unit_label": "%",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "6faa60e1-c33b-46f5-9521-d26dcdd762d6",
+    "analyte_label": "Réticulocytes",
+    "unit_label": "G/L",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "c3649e9e-1208-49d4-a6ad-f111c57f004c",
+    "analyte_label": "Réticulocytes",
+    "unit_label": "G/L",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "51069241-5ac4-466a-8ac6-e592a1b9f0d2",
+    "analyte_label": "Sélénium",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "006e8e13-7900-4682-9f66-31106ba01925",
+    "analyte_label": "Sérologie non tréponémique syphilis",
+    "unit_label": "titre",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "463a41cb-75da-4e32-9124-89d11954703b",
+    "analyte_label": "Sérologie tréponémique syphilis",
+    "unit_label": "Sans unité",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "1e3947fd-c04a-4f04-8642-495790967424",
+    "analyte_label": "Sodium",
+    "unit_label": "mmol/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "e93691bc-af68-4952-8c34-bff5dd10a829",
+    "analyte_label": "Sodium",
+    "unit_label": "mmol/L",
+    "specimen_label": "Urine ponctuelle"
+  },
+  {
+    "id": "024a0139-15e3-4f1d-9bf6-530ebf5f64ca",
+    "analyte_label": "Sodium",
+    "unit_label": "mmol/L",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "88ebe6c5-0483-4bc8-8c14-4b9fdb4bb39c",
+    "analyte_label": "Sodium urinaire",
+    "unit_label": "mmol/L",
+    "specimen_label": "Urines 24h"
+  },
+  {
+    "id": "83ebb5dc-bd14-450a-83bf-5d507a0cb242",
+    "analyte_label": "Sodium urinaire",
+    "unit_label": "mmol/L",
+    "specimen_label": "Urine ponctuelle"
+  },
+  {
+    "id": "c02606f3-4b97-42f3-a1ac-80e276aed6ba",
+    "analyte_label": "T3 libre",
+    "unit_label": "pmol/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "8c9abe67-0f96-4e56-8262-83d4bec64e18",
+    "analyte_label": "T3 libre",
+    "unit_label": "pmol/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "9afe675f-b456-4ee9-a123-e5d927810fd1",
+    "analyte_label": "Tacrolimus",
+    "unit_label": "ng/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "21ce9dc4-f732-4a58-96cb-9bca76dcc044",
+    "analyte_label": "Teneur corpusculaire moyenne en Hb",
+    "unit_label": "pg",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "b0a9ad11-a6c7-417a-9646-f4a6c8654fe8",
+    "analyte_label": "Teneur corpusculaire moyenne en Hb",
+    "unit_label": "pg",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "632fabbe-41a8-4397-b6e9-0400e8923e27",
+    "analyte_label": "Testostérone libre",
+    "unit_label": "pg/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "8317f3af-d632-4179-9fab-4e249ef5d7d4",
+    "analyte_label": "Testostérone totale",
+    "unit_label": "ng/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "edd19d3a-dcf0-406b-847e-f6b4956d7cde",
+    "analyte_label": "Transcrit BCR-ABL",
+    "unit_label": "%",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "b553ea3e-f29a-4bcf-8c2e-0d5938427a4e",
+    "analyte_label": "Triglycérides",
+    "unit_label": "mmol/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "f10322cc-e057-4b86-82e6-cb445cece9fe",
+    "analyte_label": "Triglycérides",
+    "unit_label": "mmol/L",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "4a6146e2-c8a5-470b-9572-07b1adac0af2",
+    "analyte_label": "Troponine",
+    "unit_label": "ng/L",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "fbfd3fcf-d953-4ef5-b899-f02d4a483645",
+    "analyte_label": "Troponine",
+    "unit_label": "ng/L",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "823a01cb-5708-4b56-922f-49aaec527ba1",
+    "analyte_label": "Troponine",
+    "unit_label": "ng/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "4f3c1aa2-9c74-4689-b34d-65f49506f47f",
+    "analyte_label": "Troponine",
+    "unit_label": "ng/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "6e2bdfe0-2a7f-4665-9fb0-2efd43f5352c",
+    "analyte_label": "Tryptase",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "c1f227d6-f0e1-478f-a773-408ca68be155",
+    "analyte_label": "TSH",
+    "unit_label": "mIU/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "a7f18a66-8815-462d-a869-c405c4738c08",
+    "analyte_label": "TSH",
+    "unit_label": "mIU/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "264e34de-2704-4086-b4ba-4cce1abfd632",
+    "analyte_label": "Urée",
+    "unit_label": "mmol/L",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "0d391deb-0775-46d5-9dee-8f49337b549e",
+    "analyte_label": "Urée",
+    "unit_label": "mmol/L",
+    "specimen_label": "Urines 24h"
+  },
+  {
+    "id": "ad218afd-9f3c-4f23-a558-c1386964fca0",
+    "analyte_label": "Urée",
+    "unit_label": "mmol/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "d93e7868-7d7a-45e0-9d3e-0094a6b9385c",
+    "analyte_label": "Urée",
+    "unit_label": "mmol/L",
+    "specimen_label": "Urine ponctuelle"
+  },
+  {
+    "id": "7ba9d6d8-aebe-436b-90dc-f34294bf0aae",
+    "analyte_label": "Valproate",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "d34ac774-5983-47bf-9e14-8156b916652c",
+    "analyte_label": "Vancomycine",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "36a4d57b-267d-4b92-84e3-49452c4d0ed2",
+    "analyte_label": "Vitamine A",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "0288eba9-d1e5-4bd8-84e3-83e8a8ca6a9a",
+    "analyte_label": "Vitamine B1",
+    "unit_label": "nmol/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "3b430bf6-5b16-4f7f-8cc3-859506f9fda7",
+    "analyte_label": "Vitamine D 25-OH",
+    "unit_label": "ng/mL",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "d0d0a0e7-a845-4c0d-b328-afd052277b1d",
+    "analyte_label": "Vitamine D 25-OH",
+    "unit_label": "ng/mL",
+    "specimen_label": "Plasma hépariné"
+  },
+  {
+    "id": "94c68b3a-9cf2-4a5d-b07d-83be13642398",
+    "analyte_label": "Vitamine E",
+    "unit_label": "mg",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "c1d11f79-cf54-4439-9965-928978201386",
+    "analyte_label": "Vitesse de sédimentation",
+    "unit_label": "mg",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "0aa52bd9-2225-4b87-b329-452e30637274",
+    "analyte_label": "Volume globulaire moyen",
+    "unit_label": "fL",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "ae27616c-65c6-497e-b859-526aeb64ea0a",
+    "analyte_label": "Volume globulaire moyen",
+    "unit_label": "fL",
+    "specimen_label": "Sang total EDTA"
+  },
+  {
+    "id": "40f66b5e-731c-48c7-a3ad-1b8d857e59d6",
+    "analyte_label": "Zinc",
+    "unit_label": "µmol/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "3331accf-0b16-4307-9748-ec6b5ceb209c",
+    "analyte_label": "Zinc",
+    "unit_label": "µmol/L",
+    "specimen_label": "Urines 24h"
+  },
+  {
+    "id": "583bcfda-4217-4723-a683-576962d519c7",
+    "analyte_label": "β-HCG",
+    "unit_label": "IU/L",
+    "specimen_label": "Sérum"
+  },
+  {
+    "id": "9b59b7b4-a2b7-40ae-9948-c86fbc605f95",
+    "analyte_label": "β-HCG",
+    "unit_label": "IU/L",
+    "specimen_label": "Liquide céphalo-rachidien"
+  }
+]

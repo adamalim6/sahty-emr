@@ -23,6 +23,7 @@ interface RightChartPanelProps {
   setIsSavingObs: (saving: boolean) => void;
   onObsSaveSuccess: () => void;
   onObsDiscard: () => void;
+  onOpenSmartPhrases?: (payload?: any) => void;
 }
 
 const MIN_PANEL_WIDTH = 320;
@@ -35,7 +36,7 @@ function clampWidth(w: number) {
 export const RightChartPanel: React.FC<RightChartPanelProps> = ({ 
   isOpen, width, activeTab, onClose, setWidth,
   patientId, obsEditorMode, activeObsNote, obsParentNote, isSavingObs,
-  setActiveObsNote, setIsSavingObs, onObsSaveSuccess, onObsDiscard
+  setActiveObsNote, setIsSavingObs, onObsSaveSuccess, onObsDiscard, onOpenSmartPhrases
 }) => {
   const [isDragging, setIsDragging] = useState(false);
 
@@ -92,6 +93,7 @@ export const RightChartPanel: React.FC<RightChartPanelProps> = ({
             onClose={onClose}
             onDiscard={onObsDiscard}
             onSaveSuccess={onObsSaveSuccess}
+            onOpenSmartPhrases={onOpenSmartPhrases}
           />
         )}
         {isOpen && activeTab === 'presc' && <PrescriptionPanelPlaceholder onClose={onClose} />}
