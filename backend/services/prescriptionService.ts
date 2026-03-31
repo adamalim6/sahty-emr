@@ -30,7 +30,7 @@ export class PrescriptionService {
             FROM public.prescriptions p
             LEFT JOIN reference.global_dci gd 
                 ON p.prescription_type = 'medication' 
-                AND gd.id::text = split_part(p.details->>'moleculeId', ',', 1)
+                AND gd.id = p.molecule_id
             LEFT JOIN reference.care_categories cc 
                 ON cc.id = gd.care_category_id
             WHERE p.tenant_id = $1
@@ -39,31 +39,108 @@ export class PrescriptionService {
         `;
         const res = await tenantQuery<any>(tenantId, query, [tenantId, patientId]);
         
-        return res.map(row => ({
-            id: row.id,
-            patientId: row.tenant_patient_id,
-            data: {
-                ...row.details,
-                careCategory: row.care_category_label || 'Z_Autre',
+        return res.map(row => {
+            // Reconstruct the nested schedule object
+            const scheduleData: any = {
+                mode: row.schedule_mode,
+                interval: row.interval ? row.interval.toString() : '',
+                simpleCount: row.simple_count ? row.simple_count.toString() : '',
+                durationUnit: row.duration_unit,
+                durationValue: row.duration_value ? row.duration_value.toString() : '',
+                simplePeriod: row.simple_period,
+                dailySchedule: row.daily_schedule,
+                selectedDays: row.selected_days || [],
+                specificTimes: row.specific_times || [],
+                startDateTime: row.start_datetime ? new Date(row.start_datetime).toISOString() : '',
+                intervalDuration: row.interval_duration ? row.interval_duration.toString() : '',
+                isCustomInterval: row.is_custom_interval || false,
+                skippedEvents: row.skipped_events || [],
+                manuallyAdjustedEvents: row.manually_adjusted_events || {}
+            };
+
+            // Format admin duration fallback: minutes -> "HH:MM"
+            let adminDur = '';
+            if (row.admin_duration_mins != null) {
+                const h = Math.floor(row.admin_duration_mins / 60);
+                const m = row.admin_duration_mins % 60;
+                adminDur = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+            }
+
+            // Reconstruct the data object the UI expects
+            const dataObj: any = {
+                molecule: row.molecule_name || '',
+                moleculeId: row.molecule_id,
+                commercialName: row.product_name || '',
+                productId: row.product_id,
+                qty: row.qty != null ? row.qty.toString() : '',
+                unit: row.unit_label || '',
+                unit_id: row.unit_id,
+                route: row.route_label || '',
+                adminMode: row.admin_mode,
+                adminDuration: adminDur,
+                schedule_type: row.schedule_type,
+                dilutionRequired: row.dilution_required || false,
+                substitutable: row.substitutable !== false,
+                prescriptionType: row.prescription_type,
                 conditionComment: row.condition_comment,
-                prescriptionType: row.prescription_type
-            } as any,
-            status: row.status,
-            derived_status: row.derived_status,
-            paused_at: row.paused_at,
-            paused_by: row.paused_by,
-            stopped_at: row.stopped_at,
-            stopped_by: row.stopped_by,
-            stopped_reason: row.stopped_reason,
-            createdAt: row.created_at,
-            createdBy: row.created_by,
-            createdByFirstName: row.created_by_first_name,
-            createdByLastName: row.created_by_last_name
-        }));
+                careCategory: row.care_category_label || 'Z_Autre',
+                databaseMode: row.database_mode || 'universal',
+                blood_product_type: row.blood_product_type,
+                libelle_sih: row.libelle_sih || undefined,
+                acte_id: row.acte_id || undefined,
+                schedule: scheduleData
+            };
+
+            // Optional nested objects
+            if (row.acte_id) {
+                if (row.prescription_type === 'biology') {
+                    dataObj.test = { catalog_test_id: row.acte_id, display_name: row.libelle_sih };
+                } else if (row.prescription_type === 'imagery') {
+                    dataObj.exam = { catalog_exam_id: row.acte_id, display_name: row.libelle_sih };
+                } else if (row.prescription_type === 'care') {
+                    dataObj.care_act = { catalog_care_id: row.acte_id, display_name: row.libelle_sih };
+                }
+            }
+
+            if (row.solvent_molecule_id || row.solvent_product_id) {
+                dataObj.solvent = {
+                    molecule: row.solvent_molecule_name || '',
+                    commercialName: row.solvent_product_name || '',
+                    qty: row.solvent_qty != null ? row.solvent_qty.toString() : '',
+                    unit: row.solvent_unit_label || ''
+                };
+            }
+
+            return {
+                id: row.id,
+                patientId: row.tenant_patient_id,
+                data: dataObj,
+                status: row.status,
+                derived_status: row.derived_status,
+                paused_at: row.paused_at,
+                paused_by: row.paused_by,
+                stopped_at: row.stopped_at,
+                stopped_by: row.stopped_by,
+                stopped_reason: row.stopped_reason,
+                createdAt: row.created_at,
+                createdBy: row.created_by,
+                createdByFirstName: row.created_by_first_name,
+                createdByLastName: row.created_by_last_name
+            };
+        });
     }
 
     async createPrescription(tenantId: string, patientId: string, admissionId: string, data: PrescriptionData, createdBy: string = 'system', createdByFirstName?: string, createdByLastName?: string, clientId?: string): Promise<Prescription> {
         
+        const isNonTemporal = [
+            "biology",
+            "imagery"
+        ].includes(data.prescriptionType as string);
+
+        if (isNonTemporal && data.schedule) {
+            delete (data.schedule as any).durationValue;
+        }
+
         // 1. Separate Header vs Details
         const pType = data.prescriptionType || 'medication';
         const comment = data.conditionComment || null;
@@ -75,26 +152,36 @@ export class PrescriptionService {
         const skippedEvents = data.schedule?.skippedEvents || [];
         const manuallyAdjustedEvents = data.schedule?.manuallyAdjustedEvents || {};
 
-        // 2. Sanitize JSONB for storage
-        const details = this.sanitizeDetailsForStorage(data, pType);
+        // 2. Map fields to new flat DB schema
+        let adminDurationMins: number | null = null;
+        if (adminMode === 'continuous' && adminDuration) {
+            const parts = adminDuration.split(':');
+            if (parts.length === 2) {
+                adminDurationMins = (parseInt(parts[0], 10) || 0) * 60 + (parseInt(parts[1], 10) || 0);
+            }
+        } else if (adminDuration) {
+             const val = parseInt(adminDuration, 10);
+             if (!isNaN(val)) adminDurationMins = val;
+        }
+
+        // Handle new direct mapping (Biology/Imagery) and legacy nested mapping
+        const acteId = (data as any).acte_id || data.test?.catalog_test_id || data.exam?.catalog_exam_id || data.care_act?.catalog_care_id || data.procedure_act?.catalog_procedure_id || null;
+        const libelleSih = (data as any).libelle_sih || data.test?.display_name || data.exam?.display_name || data.care_act?.display_name || data.procedure_act?.display_name || null;
 
         return await tenantTransaction(tenantId, async (client: any) => {
             // Refactor Transfusion Unit Normalization
+            let resolvedUnitId = data.unit_id || null;
+            let resolvedUnitLabel = data.unit || null;
+            let qty = data.qty && data.qty !== '--' ? Number(data.qty) : null;
+            if (Number.isNaN(qty)) qty = null;
+
             if (pType === 'transfusion') {
                 const getUnitQuery = `SELECT id FROM reference.units WHERE code = 'ml' LIMIT 1`;
                 const unitRes = await client.query(getUnitQuery);
                 if (unitRes.rows.length > 0) {
-                    details.unit_id = unitRes.rows[0].id;
+                    resolvedUnitId = unitRes.rows[0].id;
+                    resolvedUnitLabel = 'ml';
                 }
-                
-                // Convert qty strictly to number
-                if (details.qty !== undefined) {
-                    details.qty = Number(details.qty);
-                }
-                
-                // Keep the 'unit' key around for legacy code internally, or remove it entirely as instructed
-                // "Ne plus stocker label dans JSON."
-                delete details.unit;
             }
 
             let requiresFluidInfo = false;
@@ -124,19 +211,79 @@ export class PrescriptionService {
             const queryPrescription = `
                 INSERT INTO prescriptions (
                     tenant_id, tenant_patient_id, admission_id, 
-                    prescription_type, condition_comment, status, details, 
+                    prescription_type, condition_comment, status, 
                     created_by, created_by_first_name, created_by_last_name,
-                    requires_fluid_info
+                    requires_fluid_info,
+                    qty, molecule_id, molecule_name, product_id, product_name,
+                    acte_id, libelle_sih, blood_product_type,
+                    unit_id, unit_label, route_label,
+                    substitutable, dilution_required,
+                    solvent_qty, solvent_unit_label, solvent_molecule_name, solvent_product_name,
+                    schedule_mode, schedule_type, interval, simple_count, duration_unit, duration_value, simple_period, daily_schedule,
+                    selected_days, specific_times, start_datetime, interval_duration, is_custom_interval,
+                    admin_mode, admin_duration_mins, skipped_events, manually_adjusted_events, database_mode
                 ) 
-                VALUES ($1, $2, $3, $4, $5, 'ACTIVE', $6, $7, $8, $9, $10)
+                VALUES (
+                    $1, $2, $3, 
+                    $4, $5, 'ACTIVE', 
+                    $6, $7, $8, 
+                    $9,
+                    $10, $11, $12, $13, $14,
+                    $15, $16, $17,
+                    $18, $19, $20,
+                    $21, $22,
+                    $23, $24, $25, $26,
+                    $27, $28, $29, $30, $31, $32, $33, $34,
+                    $35, $36, $37, $38, $39,
+                    $40, $41, $42, $43, $44
+                )
                 RETURNING id, created_at
             `;
 
+            const safeParseInt = (val: any): number | null => {
+                if (val === null || val === undefined || val === "") return null;
+                if (val === "--") return null;
+
+                const num = Number(val);
+                return Number.isInteger(num) ? num : null;
+            };
+
             const pRes = await client.query(queryPrescription, [
                 tenantId, patientId, admissionId,
-                pType, comment, JSON.stringify(details),
+                pType, comment,
                 createdBy, createdByFirstName || null, createdByLastName || null,
-                requiresFluidInfo
+                requiresFluidInfo,
+                
+                qty, data.moleculeId ? data.moleculeId.split(',')[0] : null, data.molecule || null, data.productId || null, data.commercialName || null,
+                acteId, libelleSih, data.blood_product_type || null,
+                resolvedUnitId, resolvedUnitLabel, data.route || null,
+                data.substitutable !== false, data.dilutionRequired || false,
+                
+                data.solvent ? (Number(data.solvent.qty) || null) : null,
+                data.solvent?.unit || null,
+                data.solvent?.molecule || null,
+                data.solvent?.commercialName || null,
+
+                data.schedule?.mode || null,
+                scheduleType,
+                safeParseInt(data.schedule?.interval),
+                safeParseInt(data.schedule?.simpleCount),
+                data.schedule?.durationUnit || null,
+                safeParseInt(data.schedule?.durationValue),
+                data.schedule?.simplePeriod || null,
+                data.schedule?.dailySchedule || null,
+
+                JSON.stringify(data.schedule?.selectedDays || []),
+                JSON.stringify(data.schedule?.specificTimes || []),
+                data.schedule?.startDateTime ? new Date(data.schedule.startDateTime) : null,
+                safeParseInt(data.schedule?.intervalDuration),
+                data.schedule?.isCustomInterval || false,
+
+                adminMode,
+                adminDurationMins,
+                JSON.stringify(skippedEvents),
+                JSON.stringify(manuallyAdjustedEvents),
+                data.databaseMode || 'universal'
             ]);
 
             const newId = pRes.rows[0].id;
@@ -172,7 +319,7 @@ export class PrescriptionService {
                         `;
                         
                         const scheduledAt = new Date(dose.plannedDateTime);
-                        const status = dose.isSkipped ? 'cancelled' : 'scheduled';
+                        const status = dose.isSkipped ? 'SKIPPED' : 'ACTIVE';
                         
                         await client.query(eventQuery, [
                             tenantId, newId, admissionId,
@@ -1018,6 +1165,174 @@ export class PrescriptionService {
             throw e;
         } finally {
             client.release();
+        }
+    }
+
+    /**
+     * Identical logic to logAdministrationAction but orchestrated via an existing database transaction client.
+     * Essential for atomic Biology Collection bridging where lab_collections and lab_specimens must match administration_events exactly.
+     */
+    async logAdministrationActionTx(
+        tenantId: string,
+        client: any,
+        prescriptionEventId: string,
+        actionType: string,
+        payload?: {
+            occurredAt?: Date;
+            actualStartAt?: Date;
+            actualEndAt?: Date;
+            performedByUserId?: string;
+            note?: string;
+            transfusion?: any;
+            volume_administered_ml?: number | null;
+        }
+    ): Promise<AdministrationEvent> {
+        // Enforce safety rules via join back to prescriptions
+        const checkSafetyQuery = `
+            SELECT p.tenant_patient_id, p.paused_at, p.stopped_at, pe.scheduled_at, pe.requires_fluid_info 
+            FROM prescriptions p
+            JOIN prescription_events pe ON pe.prescription_id = p.id
+            WHERE pe.id = $1
+        `;
+        const checkSafetyRes = await client.query(checkSafetyQuery, [prescriptionEventId]);
+        
+        if (checkSafetyRes.rows.length > 0) {
+            if (checkSafetyRes.rows[0].stopped_at) throw new Error("Cannot log administration action: Prescription is STOPPED.");
+            if (checkSafetyRes.rows[0].paused_at) throw new Error("Cannot log administration action: Prescription is PAUSED.");
+            
+            const scheduledAt = new Date(checkSafetyRes.rows[0].scheduled_at).getTime();
+            const now = Date.now();
+            const targetTime = payload?.occurredAt ? new Date(payload.occurredAt).getTime() : now;
+            
+            if (targetTime > now) {
+                throw new Error("Administration time cannot be in the future.");
+            }
+            if (targetTime < scheduledAt - (48 * 60 * 60 * 1000) || targetTime > scheduledAt + (48 * 60 * 60 * 1000)) {
+                throw new Error("Administration time outside allowed window.");
+            }
+        }
+
+        let linkedEventId = null;
+        const finalOccurredAt = payload?.occurredAt ? new Date(payload.occurredAt) : new Date();
+        let internalActionType = actionType;
+
+        // ---------------------------------------------------------
+        // UNIVERSAL WIPE FOR REFUSALS AND BOLUS
+        // ---------------------------------------------------------
+        if (internalActionType === 'refused' || internalActionType === 'administered') {
+            const findExactQuery = `
+                SELECT id, occurred_at 
+                FROM administration_events
+                WHERE prescription_event_id = $1 
+                  AND action_type = $2 
+                  AND status = 'ACTIVE'
+                ORDER BY occurred_at DESC
+                LIMIT 1
+            `;
+            const exactRes = await client.query(findExactQuery, [prescriptionEventId, internalActionType]);
+            if (exactRes.rows.length > 0 && Math.abs(exactRes.rows[0].occurred_at.getTime() - finalOccurredAt.getTime()) < 60000) {
+                return exactRes.rows[0];
+            }
+
+            const wipeAllQuery = `
+                UPDATE administration_events
+                SET status = 'CANCELLED', cancellation_reason = 'Superseded by overriding state'
+                WHERE prescription_event_id = $1
+                  AND status = 'ACTIVE'
+            `;
+            await client.query(wipeAllQuery, [prescriptionEventId]);
+            linkedEventId = null;
+        }
+
+        // ---------------------------------------------------------
+        // PERFUSION START RULES
+        // ---------------------------------------------------------
+        else if (internalActionType === 'started') {
+            const wipeNonPerfusionQuery = `
+                UPDATE administration_events
+                SET status = 'CANCELLED', cancellation_reason = 'Superseded by perfusion start'
+                WHERE prescription_event_id = $1
+                  AND action_type IN ('refused', 'administered')
+                  AND status = 'ACTIVE'
+            `;
+            await client.query(wipeNonPerfusionQuery, [prescriptionEventId]);
+
+            const findStartQuery = `
+                SELECT id, linked_event_id, occurred_at 
+                FROM administration_events
+                WHERE prescription_event_id = $1 
+                  AND action_type = 'started' 
+                  AND status = 'ACTIVE'
+                ORDER BY occurred_at DESC
+                LIMIT 1
+            `;
+            const startRes = await client.query(findStartQuery, [prescriptionEventId]);
+
+            if (startRes.rows.length > 0) {
+                 // For Tx clone, skipping the self cancelAdministrationEvent block 
+                 // as we only need logical wiping (which we did above) for Biology.
+                 // We preserve this rule for pure symmetry though if transfusion hooks use it later.
+                 // But realistically, this internalActionType === 'started' path is never hit for Biology 
+                 // because Biology is ALWAYS 'administered'.
+            }
+            
+            linkedEventId = crypto.randomUUID();
+        }
+
+        let firstName = null;
+        let lastName = null;
+        if (payload?.performedByUserId) {
+            const userRes = await client.query(
+                'SELECT first_name, last_name FROM auth.users WHERE user_id = $1',
+                [payload.performedByUserId]
+            );
+            if (userRes.rows.length > 0) {
+                firstName = userRes.rows[0].first_name;
+                lastName = userRes.rows[0].last_name;
+            }
+        }
+
+        const query = `
+            INSERT INTO administration_events (
+                tenant_id, prescription_event_id, action_type, occurred_at,
+                actual_start_at, actual_end_at, performed_by_user_id, note,
+                status, linked_event_id, performed_by_first_name, performed_by_last_name,
+                volume_administered_ml
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'ACTIVE', $9, $10, $11, $12)
+            RETURNING *
+        `;
+
+        const finalResult = await client.query(query, [
+            tenantId,
+            prescriptionEventId,
+            internalActionType,
+            finalOccurredAt,
+            payload?.actualStartAt || null,
+            payload?.actualEndAt || null,
+            payload?.performedByUserId || null,
+            payload?.note || null,
+            linkedEventId,
+            firstName,
+            lastName,
+            payload?.transfusion ? null : (payload?.volume_administered_ml || null)
+        ]);
+
+        return finalResult.rows[0];
+    }
+
+    async skipPrescriptionEvent(tenantId: string, prescriptionEventId: string): Promise<boolean> {
+        try {
+            const res = await tenantQuery(tenantId, `
+                UPDATE prescription_events
+                SET status = 'SKIPPED'
+                WHERE id = $1 AND status = 'ACTIVE'
+                RETURNING id
+            `, [prescriptionEventId]);
+
+            return Array.isArray(res) && res.length > 0;
+        } catch (error) {
+            console.error("Failed to skip event:", error);
+            return false;
         }
     }
 }

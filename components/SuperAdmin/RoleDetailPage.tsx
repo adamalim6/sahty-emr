@@ -99,13 +99,14 @@ export const RoleDetailPage: React.FC = () => {
                     else if (module.module.startsWith('EMR')) moduleCode = 'EMR';
                     else if (module.module === 'Pharmacie') moduleCode = 'PHARMACY';
                     else if (module.module === 'Super Admin') moduleCode = 'SUPER_ADMIN';
+                    else if (module.module === 'LIMS (Laboratoire)') moduleCode = 'LIMS';
 
                     const currentModules = role.modules || [];
                     const isModuleActive = currentModules.includes(moduleCode);
 
                     // Mutual Exclusivity Logic: Single Module per Role
                     // We enforce that a Global Role can only target ONE functional area.
-                    const EXCLUSIVE_GROUP = ['EMR', 'PHARMACY', 'SETTINGS'];
+                    const EXCLUSIVE_GROUP = ['EMR', 'PHARMACY', 'SETTINGS', 'LIMS'];
                     const isExclusiveContext = EXCLUSIVE_GROUP.includes(moduleCode);
                     const otherExclusiveActive = isExclusiveContext 
                         ? currentModules.some((m: string) => EXCLUSIVE_GROUP.includes(m) && m !== moduleCode)

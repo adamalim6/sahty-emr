@@ -32,6 +32,9 @@ import { PricingPage } from './components/Settings/PricingPage';
 import { RolesPage } from './components/Settings/RolesPage'; 
 import { ReadOnlyRoleDetailPage } from './components/Settings/ReadOnlyRoleDetailPage'; 
 import { TenantTemplatesManager } from './components/Settings/Templates';
+import { LimsPatientListPage } from './components/LIMS/Navigation/LimsPatientListPage';
+import { LimsPatientPage } from './components/LIMS/Navigation/LimsPatientPage';
+import { LimsAdmissionPage } from './components/LIMS/Navigation/LimsAdmissionPage';
 import { UserTemplatesTab } from './components/EMR/Templates/UserTemplatesTab';
 import { RolesPage as SuperAdminRolesPage } from './components/SuperAdmin/RolesPage';
 import { SuppliersPage } from './components/SuperAdmin/SuppliersPage';
@@ -50,6 +53,19 @@ import TransferManager from './components/StockTransfer/TransferManager';
 import ReturnsManager from './components/Returns/ReturnsManager';
 import { CareCategoriesManager } from './components/SuperAdmin/CareCategoriesManager';
 import { TemplatesManager } from './components/SuperAdmin/Templates';
+import { LabAnalytesPage } from './components/SuperAdmin/LIMSCatalogs/LabAnalytesPage';
+import { LabMethodsPage } from './components/SuperAdmin/LIMSCatalogs/LabMethodsPage';
+import { SpecimenTypesPage } from './components/SuperAdmin/LIMSCatalogs/SpecimenTypesPage';
+import { ContainerTypesPage } from './components/SuperAdmin/LIMSCatalogs/ContainerTypesPage';
+import { LabSectionsPage } from './components/SuperAdmin/LIMSCatalogs/LabSectionsPage';
+import { LabSubSectionsPage } from './components/SuperAdmin/LIMSCatalogs/LabSubSectionsPage';
+import { LIMSLayout } from './components/LIMS/LIMSLayout';
+import { LimsRegistrationPage } from './components/LIMS/Registration/LimsRegistrationPage';
+import { LimsCollectionPage } from './components/LIMS/Collection/LimsCollectionPage';
+import { SectionTreePage } from './components/LIMS/SectionTreePage';
+import { SubSectionTreePage } from './components/LIMS/SubSectionTreePage';
+import { AnalyteContextsPage } from './components/LIMS/AnalyteContextsPage';
+import { BiologyActsPage } from './components/LIMS/BiologyActsPage';
 
 const ProtectedRoute = ({ role, permission, children }: { role?: string | UserType, permission?: string, children: React.ReactNode }) => {
   const { user, isAuthenticated, loading } = useAuth();
@@ -137,6 +153,23 @@ const App: React.FC = () => {
              <Route path="smart-phrases" element={<TenantTemplatesManager />} />
           </Route>
 
+          <Route path="/lims" element={
+            <ProtectedRoute permission="lims_parametres">
+               <LIMSLayout />
+            </ProtectedRoute>
+          }>
+             <Route index element={<Navigate to="registration" replace />} />
+             <Route path="registration" element={<LimsRegistrationPage />} />
+             <Route path="collection" element={<LimsCollectionPage />} />
+             <Route path="patients" element={<LimsPatientListPage />} />
+             <Route path="patients/:id" element={<LimsPatientPage />} />
+             <Route path="admissions/:id" element={<LimsAdmissionPage />} />
+             <Route path="parametres" element={<AnalyteContextsPage />} />
+             <Route path="chapitres" element={<SectionTreePage />} />
+             <Route path="sous-chapitres" element={<SubSectionTreePage />} />
+             <Route path="actes-biologiques" element={<BiologyActsPage />} />
+          </Route>
+
           {/* Super Admin Routes */}
           <Route path="/super-admin/*" element={
             <ProtectedRoute role={UserType.SUPER_ADMIN}>
@@ -162,6 +195,12 @@ const App: React.FC = () => {
              <Route path="routes" element={<RoutesManager />} />
              <Route path="care-categories" element={<CareCategoriesManager />} />
              <Route path="smart-phrases" element={<TemplatesManager />} />
+             <Route path="lims-analytes" element={<LabAnalytesPage />} />
+             <Route path="lims-methods" element={<LabMethodsPage />} />
+             <Route path="lims-specimens" element={<SpecimenTypesPage />} />
+             <Route path="lims-containers" element={<ContainerTypesPage />} />
+             <Route path="lims-sections" element={<LabSectionsPage />} />
+             <Route path="lims-sub-sections" element={<LabSubSectionsPage />} />
              <Route index element={<Navigate to="clients" replace />} />
           </Route>
 

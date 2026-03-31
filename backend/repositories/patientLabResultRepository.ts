@@ -44,9 +44,15 @@ export class PatientLabResultRepository {
 
     async getResultsByReportId(client: PoolClient, reportId: string): Promise<PatientLabResult[]> {
         const res = await client.query(
-            `SELECT * FROM public.patient_lab_results
-             WHERE patient_lab_report_id = $1 AND status = 'ACTIVE'
-             ORDER BY created_at ASC`,
+            `SELECT plr.*, 
+                    COALESCE(plr.raw_analyte_label, lac.analyte_label) AS joined_analyte_label,
+                    COALESCE(plr.raw_method_text, lac.method_label) AS joined_method_label,
+                    COALESCE(plr.raw_specimen_type_text, lac.specimen_label) AS joined_specimen_label,
+                    COALESCE(plr.raw_unit_text, lac.unit_label) AS joined_unit_label
+             FROM public.patient_lab_results plr
+             LEFT JOIN reference.lab_analyte_contexts lac ON plr.lab_analyte_context_id = lac.id
+             WHERE plr.patient_lab_report_id = $1 AND plr.status = 'ACTIVE'
+             ORDER BY plr.created_at ASC`,
             [reportId]
         );
         return res.rows;

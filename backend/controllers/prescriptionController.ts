@@ -51,8 +51,9 @@ export const prescriptionController = {
             );
 
             res.status(201).json(newPrescription);
-        } catch (error) {
-            res.status(500).json({ error: 'Failed to create prescription' });
+        } catch (error: any) {
+            console.error('getPrescriptionsByPatient Error:', error);
+            res.status(500).json({ error: 'Failed to create prescription', details: error.message, stack: error.stack });
         }
     },
 

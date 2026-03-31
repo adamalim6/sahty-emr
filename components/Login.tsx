@@ -46,7 +46,13 @@ export const Login: React.FC = () => {
                  return;
             }
 
-            // 5. Fallback
+            // 5. LIMS Users (Laboratory Configuration)
+            if (user.modules?.includes('LIMS') || user.permissions?.includes('lims_parametres')) {
+                 navigate('/lims/parametres');
+                 return;
+            }
+
+            // 6. Fallback
             navigate('/');
 
         } catch (err: any) {

@@ -168,17 +168,14 @@ export const REFERENCE_SCHEMA_DDL: ReferenceTableSpec[] = [
         ddl: `
             CREATE TABLE IF NOT EXISTS reference.lab_sections (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                sous_famille_id UUID NOT NULL REFERENCES reference.sih_sous_familles(id),
-                code TEXT NOT NULL,
+                code TEXT NOT NULL UNIQUE,
                 libelle TEXT NOT NULL,
                 description TEXT,
                 actif BOOLEAN NOT NULL DEFAULT TRUE,
                 sort_order INTEGER NOT NULL DEFAULT 0,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-                updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-                CONSTRAINT lab_sections_sous_famille_code_key UNIQUE (sous_famille_id, code)
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
             );
-            CREATE INDEX IF NOT EXISTS idx_ref_lab_sections_sous_famille_id ON reference.lab_sections(sous_famille_id);
             CREATE INDEX IF NOT EXISTS idx_ref_lab_sections_actif ON reference.lab_sections(actif);
         `
     },
@@ -187,17 +184,14 @@ export const REFERENCE_SCHEMA_DDL: ReferenceTableSpec[] = [
         ddl: `
             CREATE TABLE IF NOT EXISTS reference.lab_sub_sections (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                section_id UUID NOT NULL REFERENCES reference.lab_sections(id),
-                code TEXT NOT NULL,
+                code TEXT NOT NULL UNIQUE,
                 libelle TEXT NOT NULL,
                 description TEXT,
                 actif BOOLEAN NOT NULL DEFAULT TRUE,
                 sort_order INTEGER NOT NULL DEFAULT 0,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-                updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-                CONSTRAINT lab_sub_sections_section_id_code_key UNIQUE (section_id, code)
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
             );
-            CREATE INDEX IF NOT EXISTS idx_ref_lab_sub_sections_section_id ON reference.lab_sub_sections(section_id);
             CREATE INDEX IF NOT EXISTS idx_ref_lab_sub_sections_actif ON reference.lab_sub_sections(actif);
         `
     },
@@ -313,17 +307,11 @@ export const REFERENCE_SCHEMA_DDL: ReferenceTableSpec[] = [
         ddl: `
             CREATE TABLE IF NOT EXISTS reference.lab_analytes (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                sous_famille_id UUID NOT NULL REFERENCES reference.sih_sous_familles(id),
-                section_id UUID REFERENCES reference.lab_sections(id),
-                sub_section_id UUID REFERENCES reference.lab_sub_sections(id),
                 code TEXT NOT NULL UNIQUE,
                 libelle TEXT NOT NULL,
                 short_label TEXT,
                 description TEXT,
                 value_type TEXT NOT NULL CHECK (value_type IN ('NUMERIC', 'TEXT', 'BOOLEAN', 'CHOICE')),
-                default_unit_id UUID REFERENCES reference.units(id),
-                canonical_unit_id UUID REFERENCES reference.units(id),
-                decimal_precision INTEGER,
                 is_calculated BOOLEAN NOT NULL DEFAULT FALSE,
                 actif BOOLEAN NOT NULL DEFAULT TRUE,
                 sort_order INTEGER NOT NULL DEFAULT 0,

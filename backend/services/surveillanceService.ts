@@ -22,17 +22,34 @@ class SurveillanceService {
             ORDER BY bucket_start ASC
         `, [tenantId, tenantPatientId, fromDate, toDate]);
 
+        console.time("admin_modal_fetch");
         // 3. Fetch Prescription Timeline (joined with admin events and reference models for care_category)
         const timelineRes = await pool.query(`
             SELECT 
                 pe.id as event_id,
                 pe.prescription_id,
+                pe.status as plan_status,
                 pe.scheduled_at as planned_date,
                 pe.duration as admin_duration,
                 pe.requires_end_event,
                 pe.requires_fluid_info,
                 p.prescription_type,
-                (p.details->>'productId') as product_id,
+                p.product_id,
+                p.molecule_id,
+                p.molecule_name,
+                p.product_name as commercial_name,
+                p.qty,
+                p.unit_label,
+                p.route_label,
+                p.acte_id,
+                p.libelle_sih,
+                p.blood_product_type,
+                p.solvent_qty,
+                p.solvent_unit_label,
+                p.solvent_molecule_name,
+                p.solvent_product_name,
+                p.created_by_first_name,
+                p.created_by_last_name,
                 ae.events as admin_events
             FROM prescription_events pe
             JOIN prescriptions p ON p.id = pe.prescription_id
@@ -57,6 +74,29 @@ class SurveillanceService {
                                 'description', tr.description,
                                 'actions_taken', tr.actions_taken
                             ) FROM transfusion_reactions tr WHERE tr.administration_event_id = ae_inner.id
+                        ),
+                        'lab_collection', (
+                            SELECT jsonb_build_object(
+                                'collection_id', lc.id,
+                                'specimens', (
+                                    SELECT jsonb_agg(jsonb_build_object(
+                                        'specimen_id', ls.id,
+                                        'barcode', ls.barcode,
+                                        'container_type', ls.lab_specimen_container_type_id,
+                                        'container_color', ct.tube_color,
+                                        'container_name', ct.libelle
+                                    ))
+                                    FROM lab_collection_specimens lcs
+                                    JOIN lab_specimens ls ON ls.id = lcs.specimen_id
+                                    LEFT JOIN reference.lab_specimen_container_types sct ON sct.id = ls.lab_specimen_container_type_id
+                                    LEFT JOIN reference.lab_container_types ct ON ct.id = sct.container_type_id
+                                    WHERE lcs.lab_collection_id = lc.id
+                                )
+                            )
+                            FROM administration_event_lab_collections aelc
+                            JOIN lab_collections lc ON lc.id = aelc.lab_collection_id
+                            WHERE aelc.administration_event_id = ae_inner.id
+                            LIMIT 1
                         )
                     ) ORDER BY ae_inner.occurred_at ASC
                 ), '[]'::jsonb) as events
@@ -67,6 +107,15 @@ class SurveillanceService {
             AND pe.scheduled_at >= $2::timestamptz AND pe.scheduled_at <= $3::timestamptz
             ORDER BY pe.scheduled_at ASC
         `, [tenantPatientId, fromDate, toDate]);
+        console.timeEnd("admin_modal_fetch");
+
+        console.log("=== SURVEILLANCE TIMELINE DIAGNOSTICS ===");
+        console.log("Date bounds:", { fromDate, toDate });
+        console.log("Number of buckets:", bucketsRes.rows.length);
+        console.log("Number of timeline events returned by SQL:", timelineRes.rows.length);
+        if (timelineRes.rows.length > 0) {
+            console.log("Sample timeline events p_ids:", timelineRes.rows.map(r => r.prescription_id));
+        }
 
         return {
             flowsheet: flowsheetStructure,
@@ -164,6 +213,7 @@ class SurveillanceService {
         return {
             eventId: row.event_id,
             prescriptionId: row.prescription_id,
+            plan_status: row.plan_status,
             plannedDate: row.planned_date,
             adminDuration: row.admin_duration,
             requires_end_event: !!row.requires_end_event,
@@ -171,6 +221,21 @@ class SurveillanceService {
             prescriptionData: {
                 prescriptionType: row.prescription_type,
                 productId: row.product_id,
+                moleculeId: row.molecule_id,
+                molecule: row.molecule_name,
+                commercialName: row.commercial_name,
+                qty: row.qty,
+                unit: row.unit_label,
+                route: row.route_label,
+                acte_id: row.acte_id,
+                libelle_sih: row.libelle_sih,
+                blood_product_type: row.blood_product_type,
+                solvent: row.solvent_qty ? {
+                    qty: row.solvent_qty,
+                    unit: row.solvent_unit_label,
+                    molecule: row.solvent_molecule_name,
+                    commercialName: row.solvent_product_name
+                } : undefined,
                 prescriber: row.created_by_last_name ? `${row.created_by_first_name} ${row.created_by_last_name}` : 'Médecin'
             },
             administrationEvents: Array.isArray(row.admin_events) ? row.admin_events : []

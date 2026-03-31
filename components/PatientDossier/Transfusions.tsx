@@ -41,7 +41,11 @@ const getProductColor = (type: string) => {
   }
 };
 
-export const Transfusions: React.FC = () => {
+interface TransfusionsProps {
+  isActiveTab?: boolean;
+}
+
+export const Transfusions: React.FC<TransfusionsProps> = ({ isActiveTab }) => {
   const { id } = useParams<{ id: string }>();
   
   const [activeTab, setActiveTab] = useState<'bags' | 'admin'>('bags');
@@ -89,8 +93,10 @@ export const Transfusions: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchData();
-  }, [id]);
+    if (isActiveTab !== false) {
+      fetchData();
+    }
+  }, [id, isActiveTab]);
 
   const handleBagInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -269,7 +275,7 @@ export const Transfusions: React.FC = () => {
       ) : (
         <div className="space-y-6">
           {prescriptions.map(p => {
-            const productType = p.details?.blood_product_type || 'Transfusion Sanguine';
+            const productType = p.blood_product_type || p.details?.blood_product_type || 'Transfusion Sanguine';
             const colors = getProductColor(productType);
             
             return (
@@ -282,7 +288,7 @@ export const Transfusions: React.FC = () => {
                         {productType}
                       </span>
                       <span className="text-[15px] font-bold text-gray-900">
-                        {p.details?.qty} {p.unit_name || 'unité(s)'} - Voie {p.details?.route || 'IV'}
+                        {p.qty || p.details?.qty} {p.unit_name || 'unité(s)'} - Voie {p.route || p.details?.route || 'IV'}
                       </span>
                       {p.status === 'PAUSED' && <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-xs font-bold rounded shadow-sm border border-amber-200">EN PAUSE</span>}
                       {p.status === 'STOPPED' && <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs font-bold rounded shadow-sm border border-red-200">ARRÊTÉE</span>}
@@ -310,7 +316,7 @@ export const Transfusions: React.FC = () => {
                               eventId: ev.id,
                               prescriptionName: productType,
                               slotTime: ev.scheduled_at,
-                              duration: p.details?.adminDuration ? (parseInt(p.details.adminDuration.split(':')[0] || '0') * 60 + parseInt(p.details.adminDuration.split(':')[1] || '0')) : 0,
+                              duration: p.admin_duration_mins || (p.details?.adminDuration ? (parseInt(p.details.adminDuration.split(':')[0] || '0') * 60 + parseInt(p.details.adminDuration.split(':')[1] || '0')) : 0),
                               requiresEndEvent: true,
                               activePerfusionEvent: ev.administrations?.find((a: any) => a.action_type === 'started' && ev.administrations?.every((e: any) => e.action_type !== 'ended')),
                               historyEvents: ev.administrations || [],

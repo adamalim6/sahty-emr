@@ -16,6 +16,9 @@ interface PatientIdentityFormProps {
   onSubmit: (patientId: string) => void;
   onCancel: () => void;
   initialData?: any; // For editing mode if needed
+  hideRelationships?: boolean;
+  defaultStatus?: 'UNKNOWN' | 'PROVISIONAL' | 'VERIFIED';
+  apiOverride?: any;
 }
 
 // --- UI Components ---
@@ -94,9 +97,12 @@ const CardSection = ({ title, icon: Icon, children, rightElement }: any) => (
 
 // --- MAIN COMPONENT ---
 
-export const PatientIdentityForm: React.FC<PatientIdentityFormProps> = ({ onSubmit, onCancel, initialData }) => {
+export const PatientIdentityForm: React.FC<PatientIdentityFormProps> = ({ onSubmit, onCancel, initialData, hideRelationships, defaultStatus = 'PROVISIONAL', apiOverride }) => {
+  // Use overridden API if provided (e.g., LIMS Execution context)
+  const currentApi = apiOverride || api;
+  
   // State
-  const [status, setStatus] = useState<PatientStatus>('PROVISIONAL');
+  const [status, setStatus] = useState<PatientStatus>(defaultStatus);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -160,7 +166,7 @@ export const PatientIdentityForm: React.FC<PatientIdentityFormProps> = ({ onSubm
       const searchCov = async () => {
           if (formData.insuranceOrgId && formData.policyNumber.length > 2 && coverageSearchMode) {
               try {
-                  const res = await api.searchCoverages(formData.insuranceOrgId, formData.policyNumber);
+                  const res = await currentApi.searchCoverages(formData.insuranceOrgId, formData.policyNumber);
                   setFoundCoverages(res);
               } catch (e) {
                   console.error(e);
@@ -243,9 +249,9 @@ export const PatientIdentityForm: React.FC<PatientIdentityFormProps> = ({ onSubm
       const loadRefData = async () => {
           try {
               const [orgs, cntrs, dts] = await Promise.all([
-                  api.getTenantOrganismes(),
-                  api.getTenantCountries(),
-                  api.getTenantIdentityDocumentTypes()
+                  currentApi.getTenantOrganismes(),
+                  currentApi.getTenantCountries(),
+                  currentApi.getTenantIdentityDocumentTypes()
               ]);
               setOrganismes(orgs);
               setCountries(cntrs);
@@ -262,7 +268,7 @@ export const PatientIdentityForm: React.FC<PatientIdentityFormProps> = ({ onSubm
     if (searchQuery.length >= 2 && !isLocked) {
       setIsSearching(true);
       try {
-        const results = await api.searchUniversal(searchQuery);
+        const results = await currentApi.searchUniversalPatient ? await currentApi.searchUniversalPatient(searchQuery) : await currentApi.searchUniversal(searchQuery);
         setSearchResults(results);
       } catch (error) {
         console.error("Search failed:", error);
@@ -293,7 +299,7 @@ export const PatientIdentityForm: React.FC<PatientIdentityFormProps> = ({ onSubm
   const handleSelectPatient = async (patient: any) => {
     // Fetch full patient detail for editing
     try {
-      const detail: any = await api.getPatient(patient.id);
+      const detail: any = await currentApi.getPatient(patient.id);
 
       setFormData(prev => ({
         ...prev,
@@ -515,10 +521,10 @@ export const PatientIdentityForm: React.FC<PatientIdentityFormProps> = ({ onSubm
       // Submit
       let newPatientId: string;
       if (selectedExistingPatientId) {
-          const res = await api.updatePatient(selectedExistingPatientId, payload);
+          const res = await currentApi.updatePatient(selectedExistingPatientId, payload);
           newPatientId = res.tenantPatientId;
       } else {
-          const res = await api.createPatient(payload);
+          const res = await currentApi.createPatient(payload);
           newPatientId = res.tenantPatientId;
       }
 
@@ -827,7 +833,8 @@ export const PatientIdentityForm: React.FC<PatientIdentityFormProps> = ({ onSubm
               )}
 
               {/* CONTACTS & RELATIONSHIPS SECTION */}
-              <CardSection title="Liens et contacts du patient" icon={Users} rightElement={
+              {!hideRelationships && (
+                <CardSection title="Liens et contacts du patient" icon={Users} rightElement={
                 <button onClick={addRelationship} className="text-emerald-600 hover:text-emerald-700 p-1 hover:bg-emerald-50 rounded-lg transition-colors flex items-center gap-1 text-xs font-bold">
                   <Plus size={14} /> Ajouter
                 </button>
@@ -897,6 +904,7 @@ export const PatientIdentityForm: React.FC<PatientIdentityFormProps> = ({ onSubm
                   </div>
                 )}
               </CardSection>
+              )}
 
               <CardSection title="Couverture / Assurance" icon={CreditCard} rightElement={
                   <div className="flex items-center gap-2">
@@ -996,7 +1004,7 @@ export const PatientIdentityForm: React.FC<PatientIdentityFormProps> = ({ onSubm
                                                      if (q.length >= 2) {
                                                          setSubscriberSearching(true);
                                                          try {
-                                                             const results = await api.searchUniversal(q);
+                                                             const results = await currentApi.searchUniversalPatient ? await currentApi.searchUniversalPatient(q) : await currentApi.searchUniversal(q);
                                                              setSubscriberSearchResults(results);
                                                          } catch (err) { console.error(err); }
                                                          setSubscriberSearching(false);

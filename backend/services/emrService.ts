@@ -68,6 +68,40 @@ export class EmrService {
         }));
     }
 
+    async getAdmissionsByPatient(tenantId: string, patientId: string): Promise<Admission[]> {
+        const rows = await tenantQuery(tenantId, `
+            SELECT a.*,
+                   pt.first_name AS patient_first_name,
+                   pt.last_name AS patient_last_name
+            FROM admissions a
+            LEFT JOIN patients_tenant pt ON pt.tenant_patient_id = a.tenant_patient_id
+            WHERE a.tenant_patient_id = $1
+            ORDER BY a.admission_date DESC
+        `, [patientId]);
+        return rows.map(r => ({
+            id: r.id,
+            tenantId: r.tenant_id,
+            tenantPatientId: r.tenant_patient_id,
+            admissionNumber: r.admission_number,
+            reason: r.reason,
+            attendingPhysicianUserId: r.attending_physician_user_id,
+            admittingServiceId: r.admitting_service_id,
+            responsibleServiceId: r.responsible_service_id,
+            currentServiceId: r.current_service_id,
+            admissionDate: r.admission_date,
+            dischargeDate: r.discharge_date,
+            status: r.status,
+            currency: r.currency,
+            admissionType: r.admission_type,
+            arrivalMode: r.arrival_mode,
+            provenance: r.provenance,
+            type: r.admission_type,
+            nda: r.admission_number,
+            service: r.current_service_id,
+            patientId: r.tenant_patient_id,
+        }));
+    }
+
     async createAdmission(tenantId: string, data: Partial<Admission>): Promise<Admission> {
         return await tenantTransaction(tenantId, async (client) => {
             const id = data.id || require('uuid').v4();

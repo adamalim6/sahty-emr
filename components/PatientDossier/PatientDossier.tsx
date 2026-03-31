@@ -56,21 +56,15 @@ import {
 } from 'lucide-react';
 
 // Import Tabs
-import { Parcours } from './Parcours';
-import { HistoireMaladie } from './HistoireMaladie';
 import { Antecedants } from './Antecedants';
 import { ExamenClinique } from './ExamenClinique';
 import { TraitementEnCours } from './TraitementEnCours';
 import { Diagnostic } from './Diagnostic';
 import { Prescriptions } from './Prescriptions';
-import { FicheSurveillance } from './FicheSurveillance';
-import { ConduiteATenir } from './ConduiteATenir';
-import { Evolution } from './Evolution';
-import { RisquesCardio } from './RisquesCardio';
+import { FicheSurveillanceTab } from './FicheSurveillance';
 import { ElectroEcho } from './ElectroEcho';
 import { Transfusions } from './Transfusions';
 import { Interventions } from './Interventions';
-import { AvisSpecialises } from './AvisSpecialises';
 import { Observations, ObservationRecord } from './Observations';
 import { Admissions } from './Admissions';
 import { PrescriptionSortie } from './PrescriptionSortie';
@@ -152,7 +146,7 @@ export const PatientDossier: React.FC<PatientDossierProps> = ({ patientId, works
   const [isLoading, setIsLoading] = useState(true);
   const [allPatients, setAllPatients] = useState<Patient[]>([]);
 
-  const [activeTab, setActiveTab] = useState<string>('Parcours');
+  const [activeTab, setActiveTab] = useState<string>('Antecedants');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [formData, setFormData] = useState<Partial<Patient>>({});
 
@@ -344,8 +338,6 @@ export const PatientDossier: React.FC<PatientDossierProps> = ({ patientId, works
   const isMinor = formData.dateOfBirth ? calculateAge(formData.dateOfBirth) < 18 : false;
 
   const tabs = [
-    { id: 'Parcours', label: 'Parcours', icon: Route, component: <Parcours /> },
-    { id: 'Histoire', label: 'Histoire de la maladie', icon: History, component: <HistoireMaladie /> },
     { id: 'Antecedants', label: 'Antécédants', icon: Archive, component: <Antecedants /> },
     { id: 'Examen', label: 'Examen Clinique', icon: Stethoscope, component: <ExamenClinique patient={patient} /> },
     { id: 'Traitement', label: 'Traitement en cours', icon: Pill, component: <TraitementEnCours /> },
@@ -355,17 +347,13 @@ export const PatientDossier: React.FC<PatientDossierProps> = ({ patientId, works
     { id: 'Imagerie', label: 'Imagerie', icon: ScanLine, component: <Imagerie /> },
     { id: 'Diagnostic', label: 'Diagnostic', icon: Microscope, component: <Diagnostic patientId={patient.id} /> },
     { id: 'Prescriptions', label: 'Prescriptions', icon: FileText, component: <Prescriptions patientId={patient.id} /> },
-    { id: 'Surveillance', label: 'Fiche de Surveillance', icon: ClipboardCheck, component: <FicheSurveillance patientId={patient.id} /> },
+    { id: 'Surveillance', label: 'Fiche de Surveillance', icon: ClipboardCheck, component: <FicheSurveillanceTab patientId={patient.id} /> },
     { id: 'Escarres', label: 'Escarres', icon: Activity, component: <Escarres patientId={patient.id} sex={patient.gender} /> },
     { id: 'PrescriptionSortie', label: 'Prescription Externe', icon: LogOut, component: <PrescriptionSortie /> },
-    { id: 'CAT', label: 'Conduite à tenir', icon: Compass, component: <ConduiteATenir /> },
-    { id: 'Evolution', label: 'Évolution', icon: TrendingUp, component: <Evolution /> },
     { id: 'Observations', label: 'Observations', icon: FilePenLine, component: <Observations patientId={patient.id} /> },
-    { id: 'Risques', label: 'Risques Cardio', icon: HeartPulse, component: <RisquesCardio /> },
     { id: 'Electro', label: 'Electro & Echo', icon: Activity, component: <ElectroEcho /> },
     { id: 'Transfusions', label: 'Transfusions', icon: Droplet, component: <Transfusions /> },
     { id: 'Interventions', label: 'Interventions', icon: Scissors, component: <Interventions /> },
-    { id: 'Avis', label: 'Avis Spécialisés', icon: MessageSquare, component: <AvisSpecialises /> },
     { id: 'Admissions', label: 'Admissions', icon: Bed, component: <Admissions /> },
   ];
 

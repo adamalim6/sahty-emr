@@ -80,7 +80,10 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               navigate('/patients', { replace: true });
             }
           } else {
-            // Allocate new tab
+            // Allocate new tab ONLY if it doesn't already exist in the synchronous ref
+            if (currentTabs.some(t => t.patientId === patientId)) {
+                return; // Double-mount protection
+            }
             const newWsId = `ws-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
             const newTab: WorkspaceTab = {
               workspaceId: newWsId,
@@ -91,16 +94,11 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               lastVisitedAt: Date.now()
             };
             
-            // Fix: Synchronously update the refs to prevent React StrictMode from double-allocating tabs 
-            // before the first state update propagates to the effect dependencies.
+            // Synchronously update the refs to prevent React StrictMode from double-allocating tabs 
             workspaceTabsRef.current = [...currentTabs, newTab];
             activeWorkspaceIdRef.current = newWsId;
             
-            setWorkspaceTabs(prev => {
-              // Safety check: if somehow it's already queued, don't forcefully duplicate it
-              if (prev.some(t => t.patientId === patientId)) return prev;
-              return [...prev, newTab];
-            });
+            setWorkspaceTabs([...currentTabs, newTab]);
             setActiveWorkspaceId(newWsId);
           }
         }
@@ -134,7 +132,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           };
           workspaceTabsRef.current = [...currentTabs, newTab];
           activeWorkspaceIdRef.current = utilityId;
-          setWorkspaceTabs(prev => [...prev, newTab]);
+          setWorkspaceTabs([...currentTabs, newTab]);
           setActiveWorkspaceId(utilityId);
         } else {
           toast.error("Maximum de 5 onglets ouverts atteint.");

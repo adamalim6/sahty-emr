@@ -35,28 +35,33 @@ import { Remboursement } from './Remboursement';
 import { api } from '../../services/api';
 import { Admission } from '../../types';
 
-export const AdmissionDossier: React.FC = () => {
+export const AdmissionDossier: React.FC<{ mode?: 'emr' | 'lims' }> = ({ mode = 'emr' }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
   const [admission, setAdmission] = useState<Admission | null>(null);
   const [patient, setPatient] = useState<any | null>(null);
-  const [activeTab, setActiveTab] = useState('Dashboard');
+  const [activeTab, setActiveTab] = useState(mode === 'lims' ? 'Actes' : 'Dashboard');
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const admissions = await api.getAdmissions();
-        const foundAdmission = admissions.find(a => a.id === id);
+        const admissions = mode === 'lims' ? await api.limsConfig.execution.getAdmissions() : await api.getAdmissions();
+        const foundAdmission = admissions.find((a: any) => a.id === id);
 
         if (foundAdmission) {
           setAdmission(foundAdmission);
 
           // Load patient data from API
-          const patients = await api.getPatients();
-          const foundPatient = patients.find(p => p.id === foundAdmission.patientId);
+          let foundPatient = null;
+          if (mode === 'lims') {
+             foundPatient = await api.limsConfig.execution.getPatient(foundAdmission.tenantPatientId || foundAdmission.patientId);
+          } else {
+             const patients = await api.getPatients();
+             foundPatient = patients.find(p => p.id === (foundAdmission.tenantPatientId || foundAdmission.patientId));
+          }
           setPatient(foundPatient || null);
         }
       } catch (error) {
@@ -94,7 +99,7 @@ export const AdmissionDossier: React.FC = () => {
     );
   }
 
-  const tabs = [
+  let tabs = [
     { id: 'Dashboard', label: 'Dashboard', icon: LayoutDashboard, component: <Dashboard /> },
     { id: 'Actes', label: 'Actes', icon: ClipboardList, component: <Actes /> },
     { id: 'Pharmacie', label: 'Pharmacie', icon: Pill, component: <Pharmacie admission={admission} /> },
@@ -105,10 +110,14 @@ export const AdmissionDossier: React.FC = () => {
     { id: 'Remboursement', label: 'Remboursement', icon: ArrowLeftRight, component: <Remboursement /> },
   ];
 
+  if (mode === 'lims') {
+    tabs = tabs.filter(t => !['Dashboard', 'Pharmacie'].includes(t.id));
+  }
+
   return (
     <div className="flex flex-col h-[calc(100vh-100px)] animate-in fade-in duration-300">
       {/* Back Link */}
-      <button onClick={() => navigate('/admissions')} className="flex items-center text-gray-500 hover:text-gray-900 w-fit mb-4">
+      <button onClick={() => navigate(mode === 'lims' ? `/lims/patients/${admission.tenantPatientId || admission.patientId}` : '/admissions')} className="flex items-center text-gray-500 hover:text-gray-900 w-fit mb-4">
         <ArrowLeft size={18} className="mr-1" /> Retour
       </button>
 

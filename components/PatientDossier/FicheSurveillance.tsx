@@ -42,7 +42,9 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { Prescription, PrescriptionExecution, ExecutionStatus } from '../Prescription/types';
-import { AdministrationModal, AdministrationSavePayload } from './AdministrationModal';
+import { AdministrationSavePayload } from './AdministrationModal';
+import { AdminModalPortal } from './FicheSurveillance/AdminModalPortal';
+import { useAdminModalDispatch, AdminModalProvider } from './FicheSurveillance/AdminModalContext';
 import { generateDoseSchedule, durationToDecimal } from '../Prescription/utils';
 
 // --- Point-Collision Lane Allocator ---
@@ -508,6 +510,8 @@ const GridCell = ({
 
 export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId, isActiveWorkspace = true, isActiveTab = true }) => {
   const { user } = useAuth();
+  const dispatch = useAdminModalDispatch();
+
 
   // --- State ---
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -528,29 +532,12 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId,
   const [isMobile, setIsMobile] = useState(false);
   const [activeOnly, setActiveOnly] = useState(true);
 
-  // Expanded Event Action Modal Payload
-  const [adminModal, setAdminModal] = useState<{
-    isOpen: boolean,
-    prescriptionId: string,
-    eventId: string,
-    prescriptionName: string,
-    slotTime: string,
-    duration: number, // 0 for bolus, >0 for perfusion
-    requiresEndEvent: boolean, // Native boolean from DB flag
-    requiresFluidInfo: boolean,
-    activePerfusionEvent: any | null, // The 'started' event if it's currently running
-    historyEvents: any[], // The local chunk of administration actions previously recorded
-    isTransfusion?: boolean
-  }>({ isOpen: false, prescriptionId: '', eventId: '', prescriptionName: '', slotTime: '', duration: 0, requiresEndEvent: false, requiresFluidInfo: false, activePerfusionEvent: null, historyEvents: [], isTransfusion: false });
+  // Strip adminModal state
 
-  const closeAdminModal = () => {
-    setAdminModal({ isOpen: false, prescriptionId: '', eventId: '', prescriptionName: '', slotTime: '', duration: 0, requiresEndEvent: false, requiresFluidInfo: false, activePerfusionEvent: null, historyEvents: [], isTransfusion: false });
-  };
-
-  const handleCancelAdminEvent = async (adminEventId: string, reason?: string) => {
-    if (!patientId || !adminModal.prescriptionId || !adminModal.eventId) return;
+  const handleCancelAdminEvent = async (prescriptionId: string, eventId: string, adminEventId: string, reason?: string) => {
+    if (!patientId || !prescriptionId || !eventId) return;
     try {
-        await api.cancelAdministrationEvent(adminModal.prescriptionId, adminModal.eventId, adminEventId, reason);
+        await api.cancelAdministrationEvent(prescriptionId, eventId, adminEventId, reason);
         // Force a fresh fetch of the 72h window immediately to clear the UI
         const survStart = new Date(timeSlots[0].iso);
         const survEnd = new Date(timeSlots[timeSlots.length - 1].iso);
@@ -563,13 +550,31 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId,
         if (res.timelineEvents) setTimelineEvents(res.timelineEvents);
         
         fetchWindowData(); // Synchronize the cached hydric values immediately
-        
-        // Modal must close or trigger a refetch of its own history. 
-        // For simplicity and clinical safety, closing the modal forces them to re-click if they want to see the updated crossed-out state
-        closeAdminModal();
     } catch (err) {
         console.error("Failed to cancel administration event", err);
         alert("Erreur lors de l'annulation de l'événement.");
+    }
+  };
+
+  const handleSkipPrescriptionEvent = async (prescriptionId: string, eventId: string) => {
+    if (!patientId || !activeFlowsheetId || !prescriptionId) return;
+    try {
+        await api.skipPrescriptionEvent(eventId);
+        
+        // Force fetch to propagate visual Skipped state
+        const survStart = new Date(timeSlots[0].iso);
+        const survEnd = new Date(timeSlots[timeSlots.length - 1].iso);
+        survEnd.setHours(survEnd.getHours() + 1);
+        const res = await api.getSurveillanceTimeline(patientId!, {
+            flowsheetId: activeFlowsheetId,
+            fromDate: survStart.toISOString(),
+            toDate: survEnd.toISOString()
+        });
+        if (res.timelineEvents) setTimelineEvents(res.timelineEvents);
+        fetchWindowData();
+    } catch (err: any) {
+        console.error("Failed to skip event", err);
+        alert(err.response?.data?.error || "Erreur lors du saut de la prise.");
     }
   };
 
@@ -651,6 +656,25 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId,
     };
     fetchGlobalData();
   }, [patientId]);
+
+  // Explicitly refresh prescription metadata headers when the tab regains focus or the patient changes
+  useEffect(() => {
+    if (patientId && isActiveTab) {
+      const refreshPrescriptionsMap = async () => {
+        try {
+          const fetchedPrescriptions: any[] = await api.getPrescriptions(patientId);
+          setAllPrescriptions(fetchedPrescriptions);
+          
+          const executionPromises = fetchedPrescriptions.map(p => api.getExecutions(p.id).catch(() => []));
+          const allExecutions = (await Promise.all(executionPromises)).flat();
+          setExecutions(allExecutions);
+        } catch (error) {
+          console.error("Failed to refresh prescriptions global data on focus", error);
+        }
+      };
+      refreshPrescriptionsMap();
+    }
+  }, [patientId, isActiveTab]);
 
   // Expose the Window Data Fetching logic outside the useEffect so we can forcefully hit it upon commit updates
   const fetchWindowData = useCallback(async () => {
@@ -1218,34 +1242,46 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId,
     }
   };
 
-  const handleSaveAdministration = async (payload: AdministrationSavePayload | AdministrationSavePayload[]) => {
+  const handleSaveAdministration = async (prescriptionId: string, eventId: string, slotTime: string, payload: AdministrationSavePayload | AdministrationSavePayload[]) => {
     if (!user?.id) {
       alert("Authentication context missing. Please refresh.");
       return;
     }
-    if (!patientId || !adminModal.prescriptionId) return;
+    if (!patientId || !prescriptionId) return;
 
-    const pDate = new Date(adminModal.slotTime);
+    const pDate = new Date(slotTime);
 
     try {
       const payloads = Array.isArray(payload) ? payload : [payload];
       
       for (const p of payloads) {
-        await api.recordExecution(adminModal.prescriptionId, {
-           prescriptionId: adminModal.prescriptionId,
-           assigned_prescription_event_id: adminModal.eventId,
-           patientId: patientId, // Fallback if recordExecution expects it
-           action_type: p.action_type,
-           occurred_at: p.occurred_at,
-           actual_start_at: p.actual_start_at,
-           actual_end_at: p.actual_end_at,
-           planned_date: pDate.toISOString(),
-           justification: p.justification,
-           transfusion: p.transfusion,
-           administered_bags: p.administered_bags,
-           linked_event_id: p.linked_event_id,
-           volume_administered_ml: p.volume_administered_ml
-        });
+        if (p.anchor_prescription_event_id && p.selected_prescription_event_ids) {
+            await api.recordBiologyExecution({
+                action_type: p.action_type,
+                occurred_at: p.occurred_at,
+                actual_start_at: p.actual_start_at,
+                actual_end_at: p.actual_end_at,
+                justification: p.justification,
+                anchor_prescription_event_id: p.anchor_prescription_event_id,
+                selected_prescription_event_ids: p.selected_prescription_event_ids
+            });
+        } else {
+            await api.recordExecution(prescriptionId, {
+               prescriptionId: prescriptionId,
+               assigned_prescription_event_id: eventId,
+               patientId: patientId, // Fallback if recordExecution expects it
+               action_type: p.action_type,
+               occurred_at: p.occurred_at,
+               actual_start_at: p.actual_start_at,
+               actual_end_at: p.actual_end_at,
+               planned_date: pDate.toISOString(),
+               justification: p.justification,
+               transfusion: p.transfusion,
+               administered_bags: p.administered_bags,
+               linked_event_id: p.linked_event_id,
+               volume_administered_ml: p.volume_administered_ml
+            });
+        }
       }
 
       // Refetch events
@@ -1264,21 +1300,20 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId,
       
       // Explicitly trigger a fresh poll of the JSON buckets 
       // otherwise mathematically aggregated admin volumes remain hidden graphically until 30s timeout
-      fetchWindowData();
       
       // We close the modal to let the user see the updated timeline grid cell
-      setAdminModal(prev => ({ ...prev, isOpen: false }));
+      // We don't touch the modal state here anymore, it's done by the portal.
     } catch (err: any) {
       console.error("Error saving execution", err);
       alert("Error: " + err.message);
     }
   };
 
-  const timeToPx = (timeTs: number, timelineStartTs: number) => {
+  const timeToPx = useCallback((timeTs: number, timelineStartTs: number) => {
       const minutesFromStart = (timeTs - timelineStartTs) / 60000;
       const pixelsPerMinute = 80 / 60; // 80px column width exactly
       return minutesFromStart * pixelsPerMinute;
-  };
+  }, []);
 
   const getDurationMinsLocal = (duration: any): number => {
       if (!duration) return 0;
@@ -1403,14 +1438,14 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId,
 
       const lateWithLanes = assignPointLanes(lateDeviationsUnassigned as any[], {
           xOf: d => (d as any).aLeft,
-          // Ignore it's own scheduled dot when checking collisions!
+          // Ignore it's own scheduled dot when collisions!
           fixedXsOf: d => scheduledXs.filter(sx => sx !== (d as any).pLeft),
           minSeparationPx: MIN_PERCENT_SEP
       });
 
       const earlyWithLanes = assignPointLanes(earlyDeviationsUnassigned as any[], {
           xOf: d => (d as any).aLeft,
-          // Ignore it's own scheduled dot when checking collisions!
+          // Ignore it's own scheduled dot when collisions!
           fixedXsOf: d => scheduledXs.filter(sx => sx !== (d as any).pLeft),
           minSeparationPx: MIN_PERCENT_SEP
       });
@@ -1444,7 +1479,17 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId,
           return m > 0 ? `${h}h${m}` : `${h}h`;
       };
 
-      const getIconInst = (ev: any, isPending: boolean) => {
+      const getIconInst = (ev: any, isPending: boolean, isSkipped: boolean = false) => {
+          if (isSkipped) return (
+              <div 
+                  className="w-6 h-6 rounded-full shadow-inner border border-gray-400 cursor-not-allowed pointer-events-auto z-10 relative opacity-80"
+                  style={{
+                      backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(156, 163, 175, 0.5) 3px, rgba(156, 163, 175, 0.5) 6px)',
+                      backgroundColor: 'rgba(243, 244, 246, 0.9)'
+                  }}
+                  title="Dose sautée"
+              />
+          );
           if (isPending || !ev) return <div className="w-6 h-6 rounded-full bg-gray-300 pointer-events-auto cursor-pointer shadow-sm border border-gray-400"></div>;
           if (ev.action_type === 'administered') return <CheckCircle2 size={28} className="text-emerald-500 bg-white rounded-full pointer-events-auto cursor-pointer shadow-sm relative z-10" />;
           if (ev.action_type === 'refused') return <XCircle size={28} className="text-red-500 bg-white rounded-full pointer-events-auto cursor-pointer shadow-sm relative z-10" />;
@@ -1516,8 +1561,7 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId,
                                                 onClick={(e) => { 
                                                     e.stopPropagation(); 
                                                     if (row.prescriptionData?.status !== 'PAUSED' && row.prescriptionData?.status !== 'STOPPED') {
-                                                        setAdminModal({
-                                                            isOpen: true,
+                                                        dispatch.openAdminModal({
                                                             prescriptionId: row.prescriptionId!,
                                                             eventId: te.eventId || te.id,
                                                             prescriptionName: row.prescriptionData?.commercialName || '',
@@ -1527,7 +1571,8 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId,
                                                             requiresFluidInfo: te.requires_fluid_info || false,
                                                             activePerfusionEvent: null,
                                                             historyEvents: te.administrationEvents || [],
-                                                            isTransfusion: row.prescriptionData?.prescriptionType === 'transfusion'
+                                                            isTransfusion: row.prescriptionData?.prescriptionType === 'transfusion',
+                                                            isBiology: row.prescriptionData?.prescriptionType === 'biology'
                                                         });
                                                     }
                                                 }}
@@ -1583,8 +1628,7 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId,
                                                         e.stopPropagation(); 
                                                         console.log("Clicked prescription event:", te.eventId || te.id);
                                                         if (row.prescriptionData?.status !== 'PAUSED' && row.prescriptionData?.status !== 'STOPPED') {
-                                                            setAdminModal({
-                                                                isOpen: true,
+                                                            dispatch.openAdminModal({
                                                                 prescriptionId: row.prescriptionId!,
                                                                 eventId: te.eventId || te.id,
                                                                 prescriptionName: row.prescriptionData?.commercialName || '',
@@ -1594,7 +1638,8 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId,
                                                                 requiresFluidInfo: te.requires_fluid_info || false,
                                                                 activePerfusionEvent: isOngoing ? startedEv : null,
                                                                 historyEvents: te.administrationEvents || [],
-                                                                isTransfusion: row.prescriptionData?.prescriptionType === 'transfusion'
+                                                                isTransfusion: row.prescriptionData?.prescriptionType === 'transfusion',
+                                                                isBiology: row.prescriptionData?.prescriptionType === 'biology'
                                                             });
                                                         }
                                                     }}
@@ -1611,21 +1656,29 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId,
                                         );
                                     }
 
+                                    const isSkipped = te.plan_status === 'SKIPPED';
+                                    
                                     return (
                                         <React.Fragment key={`${evtId}-wrapper`}>
                                             <div key={`${evtId}-planned`}
-                                                className="absolute bg-gray-200 cursor-pointer hover:brightness-95 transition-all rounded-[2px]"
+                                                className={`absolute transition-all rounded-[2px] ${isSkipped ? 'border border-gray-400 opacity-80 cursor-not-allowed flex items-center justify-center overflow-hidden' : 'bg-gray-200 cursor-pointer hover:brightness-95'}`}
                                                 style={{ 
                                                     left: `${pLeft}px`, 
                                                     width: `${pWidth}px`,
                                                     height: '36px', 
                                                     top: '50%',
                                                     transform: 'translateY(-50%)',
-                                                    zIndex: 10
+                                                    zIndex: isSkipped ? 5 : 10,
+                                                    ...(isSkipped ? {
+                                                        backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(156, 163, 175, 0.5) 4px, rgba(156, 163, 175, 0.5) 8px)',
+                                                        backgroundColor: 'rgba(243, 244, 246, 0.9)'
+                                                    } : {})
                                                 }}
-                                                title={`Prévu: ${new Date(te.plannedDate).toLocaleTimeString()} pour ${durationMins} min`}
+                                                title={isSkipped ? 'Dose sautée' : `Prévu: ${new Date(te.plannedDate).toLocaleTimeString()} pour ${durationMins} min`}
                                                 onClick={(e) => { 
                                                     e.stopPropagation(); 
+                                                    if (isSkipped) return;
+                                                    
                                                     console.log("Clicked prescription event:", te.eventId || te.id);
                                                     const status = row.status;
                                                     const isFuture = pStartTs > Date.now();
@@ -1636,21 +1689,26 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId,
                                                     // Pause Matrix: Block FUTURE new administrations, unless ending active perfusion
                                                     if (status === 'PAUSED' && isFuture) return;
 
-                                                    setAdminModal({
-                                                        isOpen: true,
-                                                        prescriptionId: row.prescriptionId!,
-                                                        eventId: te.eventId || te.id,
-                                                        prescriptionName: row.prescriptionData?.commercialName || '',
-                                                        slotTime: te.plannedDate,
-                                                        duration: durationMins,
-                                                        requiresEndEvent: te.requires_end_event || false,
-                                                        requiresFluidInfo: te.requires_fluid_info || false,
-                                                        activePerfusionEvent: isOngoing ? startedEv : null,
-                                                        historyEvents: te.administrationEvents || [],
-                                                        isTransfusion: row.prescriptionData?.prescriptionType === 'transfusion'
-                                                    });
+                                                    // Continue...
+                                                        dispatch.openAdminModal({
+                                                            prescriptionId: row.prescriptionId!,
+                                                            eventId: te.eventId || te.id,
+                                                            prescriptionName: row.prescriptionData?.commercialName || '',
+                                                            slotTime: te.plannedDate,
+                                                            duration: durationMins,
+                                                            requiresEndEvent: te.requires_end_event || false,
+                                                            requiresFluidInfo: te.requires_fluid_info || false,
+                                                            activePerfusionEvent: isOngoing ? startedEv : null,
+                                                            historyEvents: te.administrationEvents || [],
+                                                            isTransfusion: row.prescriptionData?.prescriptionType === 'transfusion',
+                                                            isBiology: row.prescriptionData?.prescriptionType === 'biology'
+                                                        });
                                                 }}
-                                            />
+                                            >
+                                                {isSkipped && pWidth > 40 && (
+                                                    <span className="text-[10px] font-bold text-gray-400 rotate-[-10deg]">SAUTÉE</span>
+                                                )}
+                                            </div>
                                             {aBar}
                                         </React.Fragment>
                                     );
@@ -1674,24 +1732,26 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId,
                                     if (status === 'STOPPED') return;
                                     if (status === 'PAUSED' && isFuture) return;
 
-                                    setAdminModal({
-                                        isOpen: true,
-                                        prescriptionId: row.prescriptionId!,
-                                        eventId: item.te.eventId || item.te.id,
-                                        prescriptionName: row.prescriptionData?.commercialName || '',
-                                        slotTime: item.te.plannedDate,
-                                        duration: 0,
-                                        requiresEndEvent: item.te.requires_end_event || false,
-                                        requiresFluidInfo: item.te.requires_fluid_info || false,
-                                        activePerfusionEvent: null,
-                                        historyEvents: item.te.administrationEvents || [],
-                                        isTransfusion: row.prescriptionData?.prescriptionType === 'transfusion'
-                                    });
-                                };
+                                                        dispatch.openAdminModal({
+                                                            prescriptionId: row.prescriptionId!,
+                                                            eventId: item.te.eventId || item.te.id,
+                                                            prescriptionName: row.prescriptionData?.commercialName || '',
+                                                            slotTime: item.te.plannedDate,
+                                                            duration: 0,
+                                                            requiresEndEvent: item.te.requires_end_event || false,
+                                                            requiresFluidInfo: item.te.requires_fluid_info || false,
+                                                            activePerfusionEvent: null,
+                                                            historyEvents: item.te.administrationEvents || [],
+                                                            isTransfusion: row.prescriptionData?.prescriptionType === 'transfusion',
+                                                            isBiology: row.prescriptionData?.prescriptionType === 'biology'
+                                                        });
+                                                };
 
                                 if (item.type === 'pending') {
+                                    const isSkipped = item.te.plan_status === 'SKIPPED';
                                     const late = isSlotLate(item.te.plannedDate, undefined);
-                                    const icon = late ? <AlertTriangle size={28} className="text-amber-500 animate-pulse bg-white rounded-full pointer-events-auto cursor-pointer shadow-sm" /> : getIconInst(null, true);
+                                    let icon = late ? <AlertTriangle size={28} className="text-amber-500 animate-pulse bg-white rounded-full pointer-events-auto cursor-pointer shadow-sm" /> : getIconInst(null, true, isSkipped);
+                                    if (isSkipped) { icon = getIconInst(null, true, true); }
                                     
                                     // Dim future dots on Paused rows
                                     const isFuture = new Date(item.te.plannedDate).getTime() > Date.now();
@@ -1699,7 +1759,7 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId,
                                     
                                     return (
                                         <div key={`inst-pending-${idx}`} className={`absolute -translate-y-1/2 -translate-x-1/2 ${isDimmed ? 'opacity-30' : ''}`} style={{ left: `${item.pLeft}px`, top: '50%'}}>
-                                            <div onClick={openModal} className={`pointer-events-auto ${row.status === 'STOPPED' || isDimmed ? 'cursor-not-allowed' : 'cursor-pointer'}`}>{icon}</div>
+                                            <div onClick={isSkipped ? undefined : openModal} className={`pointer-events-auto ${row.status === 'STOPPED' || isDimmed || isSkipped ? 'cursor-not-allowed' : 'cursor-pointer'}`} title={isSkipped ? 'Dose sautée' : undefined}>{icon}</div>
                                         </div>
                                     );
                                 }
@@ -2163,24 +2223,20 @@ export const FicheSurveillance: React.FC<FicheSurveillanceProps> = ({ patientId,
         </div>
       )}
 
-      {/* --- Administration Modal --- */}
-      <AdministrationModal
-        isOpen={adminModal.isOpen}
-        onClose={closeAdminModal}
+      {/* --- Administration Modal Portal --- */}
+      <AdminModalPortal
         onSave={handleSaveAdministration}
         onCancelEvent={handleCancelAdminEvent}
-        prescriptionName={adminModal.prescriptionName}
-        slotTime={adminModal.slotTime}
-        duration={adminModal.duration}
-        requiresEndEvent={adminModal.requiresEndEvent}
-        requiresFluidInfo={adminModal.requiresFluidInfo}
-        activePerfusionEvent={adminModal.activePerfusionEvent}
-        historyEvents={adminModal.historyEvents}
-        isTransfusion={adminModal.isTransfusion}
-        availableBags={bloodBags}
-        eventId={adminModal.eventId}
+        onSkipEvent={handleSkipPrescriptionEvent}
+        availableBags={[]}
       />
-
+      
     </div>
   );
 };
+
+export const FicheSurveillanceTab: React.FC<any> = (props) => (
+  <AdminModalProvider>
+      <FicheSurveillance {...props} />
+  </AdminModalProvider>
+);

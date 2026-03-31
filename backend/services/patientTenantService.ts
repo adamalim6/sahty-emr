@@ -648,7 +648,8 @@ export class PatientTenantService {
                 }
 
                 // Delete identifiers that were removed (not in payload)
-                for (const [idId, row] of currentIdMap) {
+                const currentIdMapEntries = Array.from(currentIdMap.entries());
+                for (const [idId, row] of currentIdMapEntries) {
                     if (!processedIds.has(idId as string)) {
                         const r = row as any;
                         await client.query(`DELETE FROM identity_ids WHERE identity_id = $1`, [idId]);

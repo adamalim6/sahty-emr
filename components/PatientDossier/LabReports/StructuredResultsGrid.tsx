@@ -10,6 +10,7 @@ interface StructuredResultsGridProps {
 
 interface AnalyteRow {
   id?: string; // DB result ID
+  local_id: string; // UI robust identifier
   lab_analyte_context_id: string | null;
   analyte_label: string;
   method_label: string;
@@ -17,9 +18,6 @@ interface AnalyteRow {
   unit_label: string;
   value: string;
   value_type: 'NUMERIC' | 'TEXT' | 'BOOLEAN' | 'CHOICE';
-  interpretation?: string | null;
-  abnormal_flag_text?: string | null;
-  reference_range_text?: string | null;
   status?: string;
   isMoved?: boolean;
   isDirty?: boolean;
@@ -42,6 +40,7 @@ export const StructuredResultsGrid: React.FC<StructuredResultsGridProps> = ({ re
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [groups, setGroups] = useState<TestGroup[]>([]);
+  const [interpretedState, setInterpretedState] = useState<Record<string, any>>({});
   const [activeIndex, setActiveIndex] = useState(-1);
   const [isSaving, setIsSaving] = useState(false);
   
@@ -81,7 +80,10 @@ export const StructuredResultsGrid: React.FC<StructuredResultsGridProps> = ({ re
               value_type: a.value_type,
               numeric_value: numValue,
               text_value: textValue,
-              raw_unit_text: a.unit_label
+              raw_unit_text: a.unit_label,
+              raw_method_text: a.method_label,
+              raw_specimen_type_text: a.specimen_label,
+              raw_abnormal_flag_text: a.abnormal_flag_text
             });
           }
         });
@@ -130,26 +132,37 @@ export const StructuredResultsGrid: React.FC<StructuredResultsGridProps> = ({ re
            }));
         }
 
+        const initialInterpretedState: Record<string, any> = {};
+
         const loadedGroups: TestGroup[] = report.tests.map((t: any) => {
           const isStandalone = !t.global_act_id;
           let finalAnalytes: AnalyteRow[] = [];
 
           if (isStandalone) {
-             finalAnalytes = (t.results || []).filter((r: any) => r.status === 'ACTIVE').map((r: any) => ({
-                id: r.id,
-                lab_analyte_context_id: r.lab_analyte_context_id,
-                analyte_label: r.raw_analyte_label,
-                method_label: r.method_id || '',
-                specimen_label: r.specimen_type_id || '',
-                unit_label: r.raw_unit_text || '',
-                value: r.value_type === 'NUMERIC' ? (r.numeric_value != null ? Number(r.numeric_value).toString() : '') : (r.text_value || ''),
-                value_type: r.value_type,
-                interpretation: r.interpretation,
-                abnormal_flag_text: r.abnormal_flag || r.raw_abnormal_flag_text,
-                reference_range_text: r.reference_range_text,
-                status: r.status,
-                isDirty: false
-             }));
+             finalAnalytes = (t.results || []).filter((r: any) => r.status === 'ACTIVE').map((r: any) => {
+                if (r.lab_analyte_context_id) {
+                    initialInterpretedState[r.lab_analyte_context_id] = {
+                        interpretation: r.interpretation,
+                        reference_low: r.reference_low_numeric,
+                        reference_high: r.reference_high_numeric,
+                        reference_text: r.reference_range_text,
+                        abnormal_flag_text: r.abnormal_flag || r.raw_abnormal_flag_text
+                    };
+                }
+                return {
+                    id: r.id,
+                    local_id: r.id || Math.random().toString(36).substring(7),
+                    lab_analyte_context_id: r.lab_analyte_context_id,
+                    analyte_label: r.joined_analyte_label || r.raw_analyte_label || '',
+                    method_label: r.joined_method_label || r.raw_method_text || r.method_id || '',
+                    specimen_label: r.joined_specimen_label || r.raw_specimen_type_text || r.specimen_type_id || '',
+                    unit_label: r.joined_unit_label || r.raw_unit_text || '',
+                    value: r.value_type === 'NUMERIC' ? (r.numeric_value != null ? Number(r.numeric_value).toString() : '') : (r.text_value || ''),
+                    value_type: r.value_type,
+                    status: r.status,
+                    isDirty: false
+                };
+             });
           } else {
              // For tests, cross-reference the expected context analytes with what's actually saved
              const expectedAnalytes = contextsByAct[t.global_act_id] || [];
@@ -158,8 +171,16 @@ export const StructuredResultsGrid: React.FC<StructuredResultsGridProps> = ({ re
                 const savedResult = (t.results || []).find((r: any) => r.lab_analyte_context_id === ctx.id && r.status === 'ACTIVE');
                 
                 if (savedResult) {
+                   initialInterpretedState[ctx.id] = {
+                       interpretation: savedResult.interpretation,
+                       reference_low: savedResult.reference_low_numeric,
+                       reference_high: savedResult.reference_high_numeric,
+                       reference_text: savedResult.reference_range_text,
+                       abnormal_flag_text: savedResult.abnormal_flag || savedResult.raw_abnormal_flag_text
+                   };
                    return {
                       id: savedResult.id,
+                      local_id: savedResult.id || Math.random().toString(36).substring(7),
                       lab_analyte_context_id: savedResult.lab_analyte_context_id,
                       analyte_label: savedResult.raw_analyte_label,
                       method_label: savedResult.method_id || ctx.method_label || '',
@@ -167,15 +188,13 @@ export const StructuredResultsGrid: React.FC<StructuredResultsGridProps> = ({ re
                       unit_label: savedResult.raw_unit_text || ctx.unit_label || '',
                       value: savedResult.value_type === 'NUMERIC' ? (savedResult.numeric_value != null ? Number(savedResult.numeric_value).toString() : '') : (savedResult.text_value || ''),
                       value_type: savedResult.value_type,
-                      interpretation: savedResult.interpretation,
-                      abnormal_flag_text: savedResult.abnormal_flag || savedResult.raw_abnormal_flag_text,
-                      reference_range_text: savedResult.reference_range_text,
                       status: savedResult.status,
                       isDirty: false
                    };
                 } else {
                    // Inject empty placeholder from reference dictionary 
                    return {
+                      local_id: Math.random().toString(36).substring(7),
                       lab_analyte_context_id: ctx.id,
                       analyte_label: ctx.analyte_label,
                       method_label: ctx.method_label,
@@ -198,6 +217,7 @@ export const StructuredResultsGrid: React.FC<StructuredResultsGridProps> = ({ re
             analytes: finalAnalytes
           };
         });
+        setInterpretedState(initialInterpretedState);
         setGroups(loadedGroups);
       }
     } catch (e) {
@@ -255,7 +275,10 @@ export const StructuredResultsGrid: React.FC<StructuredResultsGridProps> = ({ re
               value_type: a.value_type,
               numeric_value: numValue,
               text_value: textValue,
-              raw_unit_text: a.unit_label
+              raw_unit_text: a.unit_label,
+              raw_method_text: a.method_label,
+              raw_specimen_type_text: a.specimen_label,
+              raw_abnormal_flag_text: a.abnormal_flag_text
             });
           }
         });
@@ -281,6 +304,22 @@ export const StructuredResultsGrid: React.FC<StructuredResultsGridProps> = ({ re
 
         // Update local state ONLY if still mounted
         if (isMountedRef.current) {
+           setInterpretedState(prev => {
+             const next = { ...prev };
+             savedDBRows.forEach((r: any) => {
+               if (r.lab_analyte_context_id) {
+                 next[r.lab_analyte_context_id] = {
+                   interpretation: r.interpretation,
+                   reference_low: r.reference_low_numeric,
+                   reference_high: r.reference_high_numeric,
+                   reference_text: r.reference_range_text,
+                   abnormal_flag_text: r.abnormal_flag_text || r.abnormal_flag || r.raw_abnormal_flag_text
+                 };
+               }
+             });
+             return next;
+           });
+
            setGroups(prev => prev.map(g => ({
              ...g,
              analytes: g.analytes.map(a => {
@@ -289,9 +328,6 @@ export const StructuredResultsGrid: React.FC<StructuredResultsGridProps> = ({ re
                  return {
                    ...a,
                    id: returnedRow.id,
-                   interpretation: returnedRow.interpretation,
-                   abnormal_flag_text: returnedRow.abnormal_flag_text,
-                   reference_range_text: returnedRow.reference_range_text,
                    isDirty: false
                  };
                }
@@ -309,15 +345,19 @@ export const StructuredResultsGrid: React.FC<StructuredResultsGridProps> = ({ re
     }, 1000); // 1s Debounce
   };
 
-  const handleValueChange = (groupId: string, analyteIdOrLabel: string, newValue: string) => {
+  const handlePropChange = (groupId: string, localId: string, prop: keyof AnalyteRow, newValue: string) => {
     setGroups(prev => prev.map(g => {
        if (g.groupId !== groupId) return g;
        return {
          ...g,
-         analytes: g.analytes.map(a => (a.lab_analyte_context_id === analyteIdOrLabel || a.analyte_label === analyteIdOrLabel) ? { ...a, value: newValue, isDirty: true } : a)
+         analytes: g.analytes.map(a => a.local_id === localId ? { ...a, [prop]: newValue, isDirty: true } : a)
        };
     }));
     triggerAutosave();
+  };
+
+  const handleValueChange = (groupId: string, localId: string, newValue: string) => {
+    handlePropChange(groupId, localId, 'value', newValue);
   };
 
   const findAnalyteInGroups = (contextId: string): { groupId: string; groupType: 'TEST' | 'STANDALONE'; analyte: AnalyteRow } | null => {
@@ -372,6 +412,7 @@ export const StructuredResultsGrid: React.FC<StructuredResultsGridProps> = ({ re
                }
             } else {
                testGroupAnalytes.push({
+                 local_id: Math.random().toString(36).substring(7),
                  lab_analyte_context_id: fetched.id,
                  analyte_label: fetched.analyte_label,
                  method_label: fetched.method_label,
@@ -404,29 +445,52 @@ export const StructuredResultsGrid: React.FC<StructuredResultsGridProps> = ({ re
         console.error("Error linking test analytes:", e);
       }
     } else {
-      // ANALYTE Selected
+      let standaloneTestId: string | undefined;
+      const standaloneGroup = groups.find(g => g.type === 'STANDALONE');
+      standaloneTestId = standaloneGroup?.testId;
+
+      if (!standaloneTestId) {
+         try {
+            const testRes = await fetch(`${API_BASE_URL}/patient-lab-reports/${reportId}/tests`, {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+               body: JSON.stringify({ global_act_id: null, raw_test_label: 'Paramètres isolés' })
+            });
+            if (testRes.ok) {
+                const createdTest = await testRes.json();
+                standaloneTestId = createdTest.id;
+            }
+         } catch(e) { console.error('Failed to create standalone test', e); }
+      }
+
       setGroups(prevGroups => {
-        const existing = findAnalyteInGroups(result.id);
-        if (existing) return prevGroups;
+        if (result.type !== 'FREE_ENTRY') {
+           const existing = findAnalyteInGroups(result.id);
+           if (existing) return prevGroups;
+        }
 
         let updatedGroups = [...prevGroups];
-        let standaloneGroup = updatedGroups.find(g => g.type === 'STANDALONE');
+        let sGroup = updatedGroups.find(g => g.type === 'STANDALONE');
+        
         const newRow: AnalyteRow = {
-           lab_analyte_context_id: result.id,
+           local_id: Math.random().toString(36).substring(7),
+           lab_analyte_context_id: result.type === 'FREE_ENTRY' ? null : result.id,
            analyte_label: result.label,
-           method_label: result.method_label,
-           specimen_label: result.specimen_label,
-           unit_label: result.unit_label,
+           method_label: result.method_label || '',
+           specimen_label: result.specimen_label || '',
+           unit_label: result.unit_label || '',
            value_type: 'NUMERIC',
            value: '',
            isDirty: true
         };
 
-        if (standaloneGroup) {
-          standaloneGroup.analytes.push(newRow);
+        if (sGroup) {
+          if (standaloneTestId) sGroup.testId = standaloneTestId;
+          sGroup.analytes.push(newRow);
         } else {
           updatedGroups.unshift({
              groupId: 'STANDALONE',
+             testId: standaloneTestId,
              type: 'STANDALONE',
              label: 'Paramètres isolés',
              analytes: [newRow],
@@ -435,15 +499,15 @@ export const StructuredResultsGrid: React.FC<StructuredResultsGridProps> = ({ re
         }
         return updatedGroups;
       });
-      triggerAutosave();
+      setTimeout(triggerAutosave, 50);
     }
   };
 
-  const removeAnalyte = (groupId: string, analyteId: string) => {
+  const removeAnalyte = (groupId: string, localId: string) => {
     // UI Only deletion for simplicity unless API deletion endpoint is added
     setGroups(prev => prev.map(g => {
        if (g.groupId !== groupId) return g;
-       return { ...g, analytes: g.analytes.filter(a => a.lab_analyte_context_id !== analyteId && a.analyte_label !== analyteId) };
+       return { ...g, analytes: g.analytes.filter(a => a.local_id !== localId) };
     }).filter(g => g.analytes.length > 0));
   };
 
@@ -465,6 +529,20 @@ export const StructuredResultsGrid: React.FC<StructuredResultsGridProps> = ({ re
       });
       if (!res.ok) throw new Error("Correction failed");
       const newDBRow = await res.json();
+
+      setInterpretedState(prev => {
+         const next = { ...prev };
+         if (newDBRow.lab_analyte_context_id) {
+             next[newDBRow.lab_analyte_context_id] = {
+                   interpretation: newDBRow.interpretation,
+                   reference_low: newDBRow.reference_low_numeric,
+                   reference_high: newDBRow.reference_high_numeric,
+                   reference_text: newDBRow.reference_range_text,
+                   abnormal_flag_text: newDBRow.abnormal_flag || newDBRow.raw_abnormal_flag_text
+             };
+         }
+         return next;
+      });
       
       setGroups(prev => prev.map(g => ({
         ...g,
@@ -472,8 +550,6 @@ export const StructuredResultsGrid: React.FC<StructuredResultsGridProps> = ({ re
           ...a,
           id: newDBRow.id,
           value: String(newDBRow.numeric_value || ''),
-          interpretation: newDBRow.interpretation,
-          abnormal_flag_text: newDBRow.raw_abnormal_flag_text,
           status: 'ACTIVE',
           isCorrecting: false
         } : a)
@@ -558,7 +634,7 @@ export const StructuredResultsGrid: React.FC<StructuredResultsGridProps> = ({ re
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => { if (searchResults.length > 0) setShowDropdown(true); }}
               />
-              {showDropdown && searchResults.length > 0 && (
+              {showDropdown && searchQuery.trim().length > 0 && (
                 <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-[400px] overflow-y-auto z-50">
                   {acts.length > 0 && (
                       <div className="py-2">
@@ -580,6 +656,15 @@ export const StructuredResultsGrid: React.FC<StructuredResultsGridProps> = ({ re
                         ))}
                       </div>
                   )}
+                  <div className="py-2 border-t border-gray-100 bg-gray-50/50">
+                    <div 
+                      onClick={() => handleSelectResult({ type: 'FREE_ENTRY', label: searchQuery.trim() })}
+                      className="px-4 py-3 cursor-pointer hover:bg-indigo-50 flex items-center text-indigo-700 transition-colors"
+                    >
+                       <Plus size={16} className="mr-2.5 opacity-80" />
+                       <span className="text-sm font-bold text-indigo-700">Ajouter <span className="text-indigo-900 mx-1">"{searchQuery.trim()}"</span> comme entrée libre</span>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -626,20 +711,46 @@ export const StructuredResultsGrid: React.FC<StructuredResultsGridProps> = ({ re
 
                   <div className="divide-y divide-gray-100">
                     {group.analytes.map((row) => {
-                      const { colorClass, bgClass, icon } = getInterpretationColorInfo(row.interpretation, row.abnormal_flag_text);
+                      const isFreeEntry = !row.lab_analyte_context_id;
+                      const interpData = (!isFreeEntry && row.lab_analyte_context_id) ? interpretedState[row.lab_analyte_context_id] : null;
+                      const { colorClass, bgClass, icon } = isFreeEntry ? { colorClass: 'text-gray-800', bgClass: 'bg-slate-100', icon: null } : getInterpretationColorInfo(interpData?.interpretation, interpData?.abnormal_flag_text);
                       const isLocked = reportStatus === 'VALIDATED' || reportStatus === 'AMENDED';
 
                       return (
-                      <div key={row.lab_analyte_context_id || row.analyte_label} className={`grid grid-cols-1 sm:grid-cols-[3fr_1.5fr_1fr_2.5fr_1fr] gap-3 sm:gap-4 items-center px-4 sm:px-6 py-3 hover:bg-gray-50 transition-colors ${bgClass}`}>
+                      <div key={row.local_id} className={`grid grid-cols-1 sm:grid-cols-[3fr_1.5fr_1fr_2.5fr_1fr] gap-3 sm:gap-4 items-center px-4 sm:px-6 py-3 hover:bg-white transition-colors border-b border-gray-50 last:border-b-0 ${bgClass}`}>
                          <div className="font-medium text-sm text-gray-800 flex items-center">
-                           <span className={`w-1.5 h-1.5 rounded-full ${row.interpretation ? colorClass.replace('text-', 'bg-') : 'bg-gray-400'} mr-2.5`}></span>
-                           <span className="truncate">{row.analyte_label}</span>
+                           {!isFreeEntry && <span className={`w-1.5 h-1.5 rounded-full min-w-1.5 ${interpData?.interpretation ? colorClass.replace('text-', 'bg-') : 'bg-gray-400'} mr-2.5`}></span>}
+                           {isFreeEntry && <span className="mr-2 text-[9px] uppercase tracking-wide font-bold bg-gray-300/60 text-gray-700 px-1.5 py-0.5 rounded border border-gray-300/80">Externe</span>}
+                           {isFreeEntry && reportStatus === 'DRAFT' ? (
+                              <input 
+                                className="w-full bg-transparent border-b border-dashed border-gray-300 focus:border-indigo-500 font-semibold focus:outline-none placeholder-gray-400"
+                                placeholder="Nom du paramètre"
+                                value={row.analyte_label}
+                                onChange={(e) => handlePropChange(group.groupId, row.local_id, 'analyte_label', e.target.value)}
+                              />
+                           ) : (
+                              <span className="truncate">{row.analyte_label}</span>
+                           )}
                          </div>
                          
-                         <div className="text-xs text-gray-500 truncate sm:block hidden">
-                            {row.method_label || '-'} / {row.specimen_label || '-'}
+                         <div className="text-xs text-gray-500 truncate hidden sm:flex items-center">
+                            {isFreeEntry && reportStatus === 'DRAFT' ? (
+                               <div className="flex space-x-2 w-full pr-2">
+                                 <input className="w-1/2 min-w-0 bg-white border border-gray-200 rounded px-1.5 py-1 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none placeholder-gray-400" placeholder="Méthode" value={row.method_label} onChange={(e) => handlePropChange(group.groupId, row.local_id, 'method_label', e.target.value)} />
+                                 <input className="w-1/2 min-w-0 bg-white border border-gray-200 rounded px-1.5 py-1 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none placeholder-gray-400" placeholder="Spécimen" value={row.specimen_label} onChange={(e) => handlePropChange(group.groupId, row.local_id, 'specimen_label', e.target.value)} />
+                               </div>
+                            ) : (
+                               <>{row.method_label || '-'} / {row.specimen_label || '-'}</>
+                            )}
                          </div>
-                         <div className="text-[11px] font-mono text-gray-500 truncate sm:block hidden">{row.unit_label || '-'}</div>
+                         
+                         <div className="text-[11px] font-mono text-gray-500 truncate hidden sm:flex items-center">
+                            {isFreeEntry && reportStatus === 'DRAFT' ? (
+                               <input className="w-full max-w-[80px] bg-white border border-gray-200 rounded px-1.5 py-1 text-xs font-mono focus:ring-1 focus:ring-indigo-500 focus:outline-none placeholder-gray-400" placeholder="Unité" value={row.unit_label} onChange={(e) => handlePropChange(group.groupId, row.local_id, 'unit_label', e.target.value)} />
+                            ) : (
+                               row.unit_label || '-'
+                            )}
+                         </div>
 
                          <div className="flex justify-end items-center space-x-2">
                            <div className="flex items-center">
@@ -648,14 +759,21 @@ export const StructuredResultsGrid: React.FC<StructuredResultsGridProps> = ({ re
                                   {row.value} {icon}
                                 </div>
                              ) : (
-                                <input 
-                                  type="text" 
-                                  className={`w-full sm:max-w-[120px] border border-gray-300 rounded-md px-3 py-1.5 text-sm font-semibold text-gray-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-right shadow-sm ${row.isDirty ? 'bg-amber-50' : 'bg-white'}`}
-                                  placeholder="Valeur"
-                                  value={row.value || ''}
-                                  onChange={(e) => handleValueChange(group.groupId, row.lab_analyte_context_id || row.analyte_label, e.target.value)}
-                                  autoFocus={row.isCorrecting}
-                                />
+                                <div className="flex items-center relative">
+                                  <input 
+                                    type="text" 
+                                    className={`w-full sm:max-w-[120px] border border-gray-300 rounded-md py-1.5 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-right shadow-sm ${row.isDirty ? 'bg-amber-50 text-gray-800 px-3' : `${colorClass} bg-white pl-3 ${icon ? 'pr-8' : 'pr-3'}`}`}
+                                    placeholder="Valeur"
+                                    value={row.value || ''}
+                                    onChange={(e) => handleValueChange(group.groupId, row.local_id, e.target.value)}
+                                    autoFocus={row.isCorrecting}
+                                  />
+                                  {!row.isDirty && icon && (
+                                    <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
+                                      {icon}
+                                    </div>
+                                  )}
+                                </div>
                              )}
                            </div>
                            
@@ -676,13 +794,20 @@ export const StructuredResultsGrid: React.FC<StructuredResultsGridProps> = ({ re
                              </div>
                            )}
                            
-                           {reportStatus === 'DRAFT' && !row.lab_analyte_context_id && (
-                              <button onClick={() => removeAnalyte(group.groupId, row.analyte_label)} className="text-gray-300 hover:text-red-500 ml-2"><Trash2 size={16} /></button>
+                           {reportStatus === 'DRAFT' && isFreeEntry && (
+                               <button onClick={() => removeAnalyte(group.groupId, row.local_id)} className="text-gray-400 hover:text-red-500 ml-2 p-1 hover:bg-red-50 rounded transition-colors" title="Supprimer cette ligne">
+                                 <Trash2 size={16} />
+                               </button>
+                           )}
+                           {reportStatus === 'DRAFT' && !isFreeEntry && (
+                               <button onClick={() => removeAnalyte(group.groupId, row.local_id)} className="text-gray-300 hover:text-red-500 ml-2 p-1 hover:bg-red-50 rounded transition-colors" title="Retirer ce paramètre">
+                                 <Trash2 size={16} />
+                               </button>
                            )}
                          </div>
 
                          <div className="text-[11px] text-gray-500 text-right">
-                            {row.reference_range_text || '-'}
+                            {(!isFreeEntry && interpData?.reference_text) ? interpData.reference_text : '-'}
                          </div>
                       </div>
                       );

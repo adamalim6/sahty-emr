@@ -1,5 +1,6 @@
 
 // Server restart trigger 10
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { createProxyMiddleware } from 'http-proxy-middleware';
@@ -23,12 +24,15 @@ import escarresRoutes from './routes/escarresRoutes';
 import observationsRoutes from './routes/observationsRoutes';
 import addictionsRoutes from './routes/addictionsRoutes';
 import patientDocumentRoutes from './routes/patientDocumentRoutes';
+import administrationRoutes from './routes/administrationRoutes';
 import labDocumentLinkRoutes from './routes/labDocumentLinkRoutes';
 import patientLabReportRoutes from './routes/patientLabReportRoutes';
 import labReferenceRoutes from './routes/labReferenceRoutes';
 import smartPhrasesRoutes from './routes/smartPhrasesRoutes';
 import smartValuesRoutes from './routes/smartValuesRoutes';
 import clinicalExamsRoutes from './routes/clinicalExamsRoutes';
+import limsRoutes from './routes/limsRoutes';
+import limsExecutionRoutes from './routes/limsExecutionRoutes';
 import { authenticateToken, authenticateAnyToken } from './middleware/authMiddleware';
 import { requireModule } from './middleware/moduleMiddleware';
 import { startIdentitySyncWorker } from './workers/identitySyncWorker';
@@ -43,7 +47,7 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors({
-    origin: ['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://localhost:3002', 'http://127.0.0.1:3002'],
+    origin: ['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://localhost:3002', 'http://127.0.0.1:3002', 'http://localhost:4173', 'http://127.0.0.1:4173', 'http://localhost:5173', 'http://127.0.0.1:5173'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'API-Version', 'Accept-Language']
@@ -102,12 +106,15 @@ app.use('/api/allergies', authenticateToken, allergiesRoutes);
 app.use('/api/observations', authenticateToken, observationsRoutes);
 app.use('/api/addictions', authenticateToken, addictionsRoutes);
 app.use('/api/documents', authenticateToken, patientDocumentRoutes);
+app.use('/api/administration', authenticateToken, administrationRoutes);
 app.use('/api/lab-reports', authenticateToken, labDocumentLinkRoutes);
 app.use('/api/patient-lab-reports', authenticateToken, patientLabReportRoutes);
 app.use('/api/reference', authenticateToken, labReferenceRoutes);
 app.use('/api/smart-phrases', authenticateToken, smartPhrasesRoutes);
 app.use('/api/smart-values', authenticateToken, smartValuesRoutes);
 app.use('/api/patients/:patientId/clinical-exams', authenticateToken, clinicalExamsRoutes);
+app.use('/api/lims', authenticateToken, limsRoutes);
+app.use('/api/lims/execution', authenticateToken, limsExecutionRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

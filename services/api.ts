@@ -860,6 +860,120 @@ export const api = {
     }),
 
     // ==========================================
+    // LIMS GLOBAL CATALOGS (SUPERADMIN)
+    // ==========================================
+    getLimsCatalog: <T = any>(resource: string) => fetchJson<T[]>(`/super-admin/lims/${resource}`),
+    createLimsCatalogItem: <T = any>(resource: string, data: Partial<T>) => fetchJson<T>(`/super-admin/lims/${resource}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    updateLimsCatalogItem: <T = any>(resource: string, id: string, data: Partial<T>) => fetchJson<T>(`/super-admin/lims/${resource}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    deactivateLimsCatalogItem: (resource: string, id: string) => fetchJson<any>(`/super-admin/lims/${resource}/${id}/deactivate`, {
+        method: 'PATCH'
+    }),
+    reactivateLimsCatalogItem: (resource: string, id: string) => fetchJson<any>(`/super-admin/lims/${resource}/${id}/activate`, {
+        method: 'PATCH'
+    }),
+
+    // ==========================================
+    // LIMS CONFIGURATION (TENANT-LOCAL)
+    // ==========================================
+    limsConfig: {
+        getAnalyteContexts: () => fetchJson<any[]>('/lims/analyte-contexts'),
+        createAnalyteContext: (data: any) => fetchJson<any>('/lims/analyte-contexts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+        updateAnalyteContext: (id: string, data: any) => fetchJson<any>(`/lims/analyte-contexts/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+        setContextStatus: (id: string, actif: boolean) => fetchJson<any>(`/lims/analyte-contexts/${id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ actif }) }),
+
+        getSectionTree: () => fetchJson<any[]>('/lims/section-tree'),
+        createSectionTree: (data: any) => fetchJson<any>('/lims/section-tree', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+        updateSectionTree: (id: string, data: any) => fetchJson<any>(`/lims/section-tree/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+        setSectionTreeStatus: (id: string, actif: boolean) => fetchJson<any>(`/lims/section-tree/${id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ actif }) }),
+
+        getSubSectionTree: () => fetchJson<any[]>('/lims/sub-section-tree'),
+        createSubSectionTree: (data: any) => fetchJson<any>('/lims/sub-section-tree', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+        updateSubSectionTree: (id: string, data: any) => fetchJson<any>(`/lims/sub-section-tree/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+        setSubSectionTreeStatus: (id: string, actif: boolean) => fetchJson<any>(`/lims/sub-section-tree/${id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ actif }) }),
+
+        getSousFamilles: () => fetchJson<any[]>('/lims/dictionaries/sous-familles'),
+        getSections: () => fetchJson<any[]>('/lims/dictionaries/sections'),
+        getSubSections: () => fetchJson<any[]>('/lims/dictionaries/sub-sections'),
+        getAnalytes: () => fetchJson<any[]>('/lims/dictionaries/analytes'),
+        getMethods: () => fetchJson<any[]>('/lims/dictionaries/methods'),
+        getSpecimenTypes: () => fetchJson<any[]>('/lims/dictionaries/specimens'),
+        getContainers: () => fetchJson<any[]>('/lims/dictionaries/containers'),
+        getSpecimenContainerTypes: () => fetchJson<any[]>('/lims/dictionaries/specimen-container-types'),
+        getUnits: () => fetchJson<any[]>('/lims/dictionaries/units'),
+        getCanonicalValues: (domain?: string) => fetchJson<any[]>(domain ? `/lims/canonical-values?category=${domain}` : '/lims/canonical-values'),
+        
+        execution: {
+            createLabRequests: (data: { tenantPatientId: string, admissionId: string, globalActIds: string[] }) => 
+                fetchJson<any>('/lims/execution/lab-requests', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                }),
+            searchUniversalPatient: (query: string) => fetchJson<any[]>(`/lims/execution/patients/search?query=${encodeURIComponent(query)}`),
+            searchCoverages: (orgId: string, policyNumber: string) => fetchJson<any[]>(`/lims/execution/coverages/search?orgId=${orgId}&policyNumber=${encodeURIComponent(policyNumber)}`),
+            getPatient: (id: string) => fetchJson<any>(`/lims/execution/patients/${id}`),
+            createPatient: (data: any) => fetchJson<any>('/lims/execution/patients', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            }),
+            updatePatient: (id: string, data: any) => fetchJson<any>(`/lims/execution/patients/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            }),
+            getAdmissions: () => fetchJson<any[]>('/lims/execution/admissions'),
+            getPatientAdmissions: (patientId: string) => fetchJson<any[]>(`/lims/execution/admissions/by-patient/${patientId}`),
+            createAdmission: (data: any) => fetchJson<any>('/lims/execution/admissions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            }),
+            getTenantOrganismes: () => fetchJson<any[]>('/lims/execution/reference/organismes'),
+            getTenantCountries: () => fetchJson<any[]>('/lims/execution/reference/countries'),
+            getTenantIdentityDocumentTypes: () => fetchJson<any[]>('/lims/execution/reference/identity-document-types'),
+            getActiveWalkinAdmission: (patientId: string) => fetchJson<any>(`/lims/execution/admissions/active-walkin-by-patient/${patientId}`),
+            getCollectionRequirements: (admissionId: string) => fetchJson<any[]>(`/lims/execution/admissions/${admissionId}/collection-requirements`),
+            executePrelevement: (data: any) => fetchJson<any>('/lims/execution/collections/prelever', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            }),
+            printBarcode: (data: any) => fetchJson<any>('/lims/execution/print-barcode', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            }),
+        },
+
+        getReferenceProfiles: (contextId: string) => fetchJson<any[]>(`/lims/analyte-contexts/${contextId}/reference-profiles`),
+        createReferenceProfile: (contextId: string, data: any) => fetchJson<any>(`/lims/analyte-contexts/${contextId}/reference-profiles`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+        updateReferenceProfile: (id: string, data: any) => fetchJson<any>(`/lims/reference-profiles/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+        setProfileStatus: (id: string, actif: boolean) => fetchJson<any>(`/lims/reference-profiles/${id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ actif }) }),
+
+        getReferenceRules: (profileId: string) => fetchJson<any[]>(`/lims/reference-profiles/${profileId}/rules`),
+        createReferenceRule: (profileId: string, data: any) => fetchJson<any>(`/lims/reference-profiles/${profileId}/rules`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+        updateReferenceRule: (id: string, data: any) => fetchJson<any>(`/lims/reference-rules/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+        setRuleStatus: (id: string, actif: boolean) => fetchJson<any>(`/lims/reference-rules/${id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ actif }) }),
+
+        getBiologyActs: () => fetchJson<any[]>('/lims/biology-acts'),
+        getBiologyActDetails: (id: string) => fetchJson<any>(`/lims/biology-acts/${id}`),
+        assignActContext: (id: string, data: any) => fetchJson<any>(`/lims/biology-acts/${id}/analyte-contexts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+        unassignActContext: (id: string, assignmentId: string) => fetchJson<any>(`/lims/biology-acts/${id}/analyte-contexts/${assignmentId}`, { method: 'DELETE' }),
+        assignActSpecimenContainer: (id: string, data: any) => fetchJson<any>(`/lims/biology-acts/${id}/specimen-containers`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+        unassignActSpecimenContainer: (id: string, assignmentId: string) => fetchJson<any>(`/lims/biology-acts/${id}/specimen-containers/${assignmentId}`, { method: 'DELETE' }),
+        assignActTaxonomy: (id: string, data: any) => fetchJson<any>(`/lims/biology-acts/${id}/taxonomy`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+    },
+
+    // ==========================================
     // *** DIAGNOSES (MEDICAL DOSSIER) ***
     getPatientDiagnoses: (tenantPatientId: string) => fetchJson<any[]>(`/emr/patients/${tenantPatientId}/diagnoses`),
     createDiagnosis: (tenantPatientId: string, payload: any) => fetchJson<any>(`/emr/patients/${tenantPatientId}/diagnoses`, {
@@ -919,9 +1033,28 @@ export const api = {
         });
     },
 
+    recordBiologyExecution: (payload: any) => {
+        return fetchJson<any>(`/administration/log-with-biology`, {
+            method: 'POST',
+            body: JSON.stringify({
+                actionType: payload.action_type,
+                occurredAt: payload.occurred_at,
+                actualStartAt: payload.actual_start_at,
+                actualEndAt: payload.actual_end_at,
+                note: payload.justification,
+                anchor_prescription_event_id: payload.anchor_prescription_event_id,
+                selected_prescription_event_ids: payload.selected_prescription_event_ids
+            })
+        });
+    },
+
     cancelAdministrationEvent: (prescriptionId: string, prescriptionEventId: string, adminEventId: string, cancellationReason?: string) => fetchJson<any>(`/prescriptions/${prescriptionId}/events/${prescriptionEventId}/admin/${adminEventId}/cancel`, {
         method: 'POST',
         body: JSON.stringify({ cancellationReason })
+    }),
+
+    skipPrescriptionEvent: (eventId: string) => fetchJson<any>(`/prescriptions/events/${eventId}/skip`, {
+        method: 'POST'
     }),
 
     // ==========================================
@@ -1069,7 +1202,19 @@ export const api = {
         body: formData as any
     }),
     
-    getPatientDocumentUrl: (id: string) => fetchJson<{url: string}>(`/documents/${id}/url`)
+    getPatientDocumentUrl: (id: string) => fetchJson<{url: string}>(`/documents/${id}/url`),
+
+    // ==========================================
+    // ICU LIMS SURVEILLANCE
+    // ==========================================
+    getLimsCollectionCandidates: (prescriptionEventId: string) => 
+        fetchJson<any>(`/lims/execution/surveillance/biology-collection-candidates?prescriptionEventId=${prescriptionEventId}`),
+
+    executeLimsSurveillanceCollection: (payload: { anchor_prescription_event_id: string, selected_prescription_event_ids: string[], collected_at: string, note: string }) => 
+        fetchJson<any>('/lims/execution/surveillance/collections', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        })
 };
 
 // Type for patient with prescription data

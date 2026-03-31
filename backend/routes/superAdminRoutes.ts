@@ -26,6 +26,7 @@ import {
     getCareCategories, createCareCategory, updateCareCategory
 } from '../controllers/superadminCareCategoryController';
 import * as smartPhrasesController from '../controllers/smartPhrasesController';
+import * as labCatalogController from '../controllers/superadmin/labCatalogController';
 
 const router = express.Router();
 
@@ -122,5 +123,12 @@ router.put('/observation/routes/:id', authenticateGlobalAdmin, updateRoute);
 router.get('/care-categories', authenticateGlobalAdmin, getCareCategories);
 router.post('/care-categories', authenticateGlobalAdmin, createCareCategory);
 router.put('/care-categories/:id', authenticateGlobalAdmin, updateCareCategory);
+
+// --- LIMS CATALOGS (GLOBAL DICTIONARIES) ---
+router.get('/lims/:resource', authenticateGlobalAdmin, labCatalogController.listLabCatalog);
+router.post('/lims/:resource', authenticateGlobalAdmin, labCatalogController.createLabCatalog);
+router.put('/lims/:resource/:id', authenticateGlobalAdmin, labCatalogController.updateLabCatalog);
+router.patch('/lims/:resource/:id/deactivate', authenticateGlobalAdmin, labCatalogController.deactivateLabCatalog);
+router.patch('/lims/:resource/:id/activate', authenticateGlobalAdmin, labCatalogController.reactivateLabCatalog);
 
 export default router;

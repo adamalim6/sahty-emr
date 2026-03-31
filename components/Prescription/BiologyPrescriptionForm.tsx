@@ -544,27 +544,36 @@ export const BiologyPrescriptionForm: React.FC<BiologyPrescriptionFormProps> = (
 
         const manualAdjustmentsRecord = Object.fromEntries(manuallyAdjustedEvents);
 
-        const prescriptions: FormData[] = selectedExams.map(exam => ({
-            acte_id: exam.id, // [NEW] Track the actual ID
-            libelle_sih: exam.label, // [NEW] Track the exact label from DB
-            molecule: exam.label,
-            commercialName: exam.label,
-            prescriptionType: 'biology' as const,
-            qty: '--',
-            unit: '',
-            route: '',
-            adminMode: 'instant' as const,
-            adminDuration: '00:00',
-            schedule_type: prescriptionType,
-            dilutionRequired: false,
-            solvent: undefined,
-            databaseMode: 'hospital' as const,
-            substitutable: false,
-            skippedEvents: skippedEvents,
-            manuallyAdjustedEvents: manualAdjustmentsRecord,
-            conditionComment: comment,
-            schedule: scheduleData
-        }));
+        const prescriptions: FormData[] = selectedExams.map(exam => {
+            const payload: FormData = {
+                acte_id: exam.id, // [NEW] Track the actual ID
+                libelle_sih: exam.label, // [NEW] Track the exact label from DB
+                molecule: exam.label,
+                commercialName: exam.label,
+                prescriptionType: 'biology' as const,
+                qty: '--',
+                unit: '',
+                route: '',
+                adminMode: 'instant' as const,
+                adminDuration: '00:00',
+                schedule_type: prescriptionType,
+                dilutionRequired: false,
+                solvent: undefined,
+                databaseMode: 'hospital' as const,
+                substitutable: false,
+                skippedEvents: skippedEvents,
+                manuallyAdjustedEvents: manualAdjustmentsRecord,
+                conditionComment: comment,
+                schedule: { ...scheduleData }
+            };
+
+            const isNonTemporal = ["biology", "imagery"].includes(payload.prescriptionType);
+            if (isNonTemporal && payload.schedule) {
+                delete payload.schedule.durationValue;
+            }
+
+            return payload;
+        });
 
         if (onSave) {
             onSave(prescriptions);

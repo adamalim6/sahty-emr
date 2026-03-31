@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, FileText, Settings, Shield, LogOut, Building, Truck, Package, FolderTree, Activity, Layers, Tag } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Settings, Shield, LogOut, Building, Truck, Package, FolderTree, Activity, Layers, Tag, TestTubes, FlaskConical, Dna, Database } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export const SuperAdminLayout: React.FC = () => {
@@ -19,7 +19,7 @@ export const SuperAdminLayout: React.FC = () => {
                     <p className="text-xs text-slate-400 mt-1">Publisher Access Only</p>
                 </div>
                 
-                <nav className="flex-1 p-4 space-y-2">
+                <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
                     <NavLink to="/super-admin/clients" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
                         <Users size={20} />
                         <span>Clients / Tenants</span>
@@ -100,6 +100,35 @@ export const SuperAdminLayout: React.FC = () => {
                         </div>
                         <span>Classification EMDN</span>
                     </NavLink>
+
+                    <div className="px-4 py-2 mt-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        Catalogues LIMS
+                    </div>
+                    <NavLink to="/super-admin/lims-analytes" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+                        <Activity size={20} />
+                        <span>Paramètres LIMS</span>
+                    </NavLink>
+                    <NavLink to="/super-admin/lims-methods" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+                        <Tag size={20} />
+                        <span>Méthodes Anlaytiques</span>
+                    </NavLink>
+                    <NavLink to="/super-admin/lims-specimens" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+                        <Dna size={20} />
+                        <span>Échantillons</span>
+                    </NavLink>
+                    <NavLink to="/super-admin/lims-containers" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+                        <FlaskConical size={20} />
+                        <span>Conteneurs (Tubes)</span>
+                    </NavLink>
+                    <NavLink to="/super-admin/lims-sections" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+                        <Database size={20} />
+                        <span>Sections LIMS</span>
+                    </NavLink>
+                    <NavLink to="/super-admin/lims-sub-sections" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+                        <Layers size={20} className="ml-2" />
+                        <span className="text-sm">Sous-sections LIMS</span>
+                    </NavLink>
+
                 </nav>
 
                 <div className="p-4 border-t border-slate-700">

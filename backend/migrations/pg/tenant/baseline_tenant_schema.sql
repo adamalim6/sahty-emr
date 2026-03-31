@@ -1,2047 +1,1059 @@
--- ============================================================================
--- BASELINE TENANT SCHEMA
--- ============================================================================
--- Single-file schema for new tenant databases.
--- Replaces all incremental migrations (000–028).
--- Generated from reference tenant HCK (36dff8fa-4729-4c10-a0bf-712be63cc9b2)
--- Date: 2026-02-10
--- ============================================================================
+--
+-- PostgreSQL database dump
+--
 
--- ============================================================================
--- 1. SCHEMA CREATION
--- ============================================================================
-CREATE SCHEMA IF NOT EXISTS auth;
-CREATE SCHEMA IF NOT EXISTS identity;
-CREATE SCHEMA IF NOT EXISTS identity_sync;
-CREATE SCHEMA IF NOT EXISTS reference;
+\restrict dquCcj176YX7bXQQ7ZRz0z1vHQmw7s2viiQO9vE9hIOiy4NHhrTZeioKNufamyh
 
--- ============================================================================
--- 2. AUTH SCHEMA
--- ============================================================================
+-- Dumped from database version 16.11 (Debian 16.11-1.pgdg13+1)
+-- Dumped by pg_dump version 16.11 (Debian 16.11-1.pgdg13+1)
 
-CREATE TABLE IF NOT EXISTS auth.users (
-    user_id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    username      TEXT NOT NULL UNIQUE,
-    first_name    TEXT NOT NULL,
-    last_name     TEXT NOT NULL,
-    display_name  TEXT NOT NULL,
-    inpe          TEXT NULL UNIQUE,
-    is_active     BOOLEAN NOT NULL DEFAULT TRUE,
-    master_patient_id UUID NULL,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+ALTER TABLE IF EXISTS ONLY reference.sih_sous_familles DROP CONSTRAINT IF EXISTS sih_sous_familles_famille_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.observation_parameters DROP CONSTRAINT IF EXISTS observation_parameters_unit_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_reference_rules DROP CONSTRAINT IF EXISTS lab_reference_rules_profile_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_reference_rules DROP CONSTRAINT IF EXISTS lab_reference_rules_canonical_value_min_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_reference_rules DROP CONSTRAINT IF EXISTS lab_reference_rules_canonical_value_max_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_reference_rules DROP CONSTRAINT IF EXISTS lab_reference_rules_canonical_value_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_reference_profiles DROP CONSTRAINT IF EXISTS lab_reference_profiles_analyte_context_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_panels DROP CONSTRAINT IF EXISTS lab_panels_sub_section_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_panels DROP CONSTRAINT IF EXISTS lab_panels_sous_famille_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_panels DROP CONSTRAINT IF EXISTS lab_panels_section_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_panel_items DROP CONSTRAINT IF EXISTS lab_panel_items_panel_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_panel_items DROP CONSTRAINT IF EXISTS lab_panel_items_child_panel_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_panel_items DROP CONSTRAINT IF EXISTS lab_panel_items_child_global_act_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_analyte_units DROP CONSTRAINT IF EXISTS lab_analyte_units_unit_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_analyte_units DROP CONSTRAINT IF EXISTS lab_analyte_units_analyte_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_analyte_reference_ranges DROP CONSTRAINT IF EXISTS lab_analyte_reference_ranges_unit_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_analyte_reference_ranges DROP CONSTRAINT IF EXISTS lab_analyte_reference_ranges_specimen_type_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_analyte_reference_ranges DROP CONSTRAINT IF EXISTS lab_analyte_reference_ranges_method_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_analyte_reference_ranges DROP CONSTRAINT IF EXISTS lab_analyte_reference_ranges_analyte_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_analyte_external_codes DROP CONSTRAINT IF EXISTS lab_analyte_external_codes_analyte_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_analyte_contexts DROP CONSTRAINT IF EXISTS lab_analyte_contexts_unit_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_analyte_contexts DROP CONSTRAINT IF EXISTS lab_analyte_contexts_specimen_type_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_analyte_contexts DROP CONSTRAINT IF EXISTS lab_analyte_contexts_method_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_analyte_contexts DROP CONSTRAINT IF EXISTS lab_analyte_contexts_analyte_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_analyte_aliases DROP CONSTRAINT IF EXISTS lab_analyte_aliases_analyte_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_act_methods DROP CONSTRAINT IF EXISTS lab_act_methods_method_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_act_methods DROP CONSTRAINT IF EXISTS lab_act_methods_global_act_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_act_contexts DROP CONSTRAINT IF EXISTS lab_act_contexts_global_act_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_act_contexts DROP CONSTRAINT IF EXISTS lab_act_contexts_analyte_context_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_act_analytes DROP CONSTRAINT IF EXISTS lab_act_analytes_global_act_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_act_analytes DROP CONSTRAINT IF EXISTS lab_act_analytes_analyte_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.group_parameters DROP CONSTRAINT IF EXISTS group_parameters_parameter_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.group_parameters DROP CONSTRAINT IF EXISTS group_parameters_group_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.global_product_price_history DROP CONSTRAINT IF EXISTS global_product_price_history_product_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.global_actes DROP CONSTRAINT IF EXISTS global_actes_sous_famille_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.global_actes DROP CONSTRAINT IF EXISTS global_actes_lab_sub_section_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.global_actes DROP CONSTRAINT IF EXISTS global_actes_lab_section_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.global_actes DROP CONSTRAINT IF EXISTS global_actes_famille_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.flowsheet_groups DROP CONSTRAINT IF EXISTS flowsheet_groups_group_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.flowsheet_groups DROP CONSTRAINT IF EXISTS flowsheet_groups_flowsheet_id_fkey;
+ALTER TABLE IF EXISTS ONLY reference.global_products DROP CONSTRAINT IF EXISTS fk_tenant_global_products_presc_route;
+ALTER TABLE IF EXISTS ONLY reference.lab_specimen_container_types DROP CONSTRAINT IF EXISTS fk_specimen;
+ALTER TABLE IF EXISTS ONLY reference.lab_panels DROP CONSTRAINT IF EXISTS fk_ref_lab_panels_global_act;
+ALTER TABLE IF EXISTS ONLY reference.lab_act_specimen_containers DROP CONSTRAINT IF EXISTS fk_lab_act_spec_cont_unit;
+ALTER TABLE IF EXISTS ONLY reference.lab_act_specimen_containers DROP CONSTRAINT IF EXISTS fk_lab_act_spec_cont_specimen;
+ALTER TABLE IF EXISTS ONLY reference.lab_act_specimen_containers DROP CONSTRAINT IF EXISTS fk_lab_act_spec_cont_container;
+ALTER TABLE IF EXISTS ONLY reference.lab_act_specimen_containers DROP CONSTRAINT IF EXISTS fk_lab_act_spec_cont_act;
+ALTER TABLE IF EXISTS ONLY reference.global_products DROP CONSTRAINT IF EXISTS fk_global_products_care_category;
+ALTER TABLE IF EXISTS ONLY reference.global_dci DROP CONSTRAINT IF EXISTS fk_global_dci_care_category;
+ALTER TABLE IF EXISTS ONLY reference.lab_specimen_container_types DROP CONSTRAINT IF EXISTS fk_container;
+ALTER TABLE IF EXISTS ONLY reference.dci_synonyms DROP CONSTRAINT IF EXISTS dci_synonyms_dci_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.user_services DROP CONSTRAINT IF EXISTS user_services_user_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.user_services DROP CONSTRAINT IF EXISTS user_services_service_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.stock_transfers DROP CONSTRAINT IF EXISTS stock_transfers_demand_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.stock_transfer_lines DROP CONSTRAINT IF EXISTS stock_transfer_lines_transfer_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.stock_transfer_lines DROP CONSTRAINT IF EXISTS stock_transfer_lines_demand_line_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.stock_returns DROP CONSTRAINT IF EXISTS stock_returns_stock_reservation_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.stock_return_lines DROP CONSTRAINT IF EXISTS stock_return_lines_stock_reservation_line_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.stock_return_lines DROP CONSTRAINT IF EXISTS stock_return_lines_return_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.stock_reservation_lines DROP CONSTRAINT IF EXISTS stock_reservation_lines_reservation_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.stock_demand_lines DROP CONSTRAINT IF EXISTS stock_demand_lines_demand_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.smart_phrases DROP CONSTRAINT IF EXISTS smart_phrases_user_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.smart_phrases DROP CONSTRAINT IF EXISTS smart_phrases_created_by_fkey;
+ALTER TABLE IF EXISTS ONLY public.service_units DROP CONSTRAINT IF EXISTS service_units_service_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.rooms DROP CONSTRAINT IF EXISTS rooms_service_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.rooms DROP CONSTRAINT IF EXISTS rooms_room_type_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.return_receptions DROP CONSTRAINT IF EXISTS return_receptions_return_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.return_reception_lines DROP CONSTRAINT IF EXISTS return_reception_lines_return_line_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.return_reception_lines DROP CONSTRAINT IF EXISTS return_reception_lines_reception_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.return_decisions DROP CONSTRAINT IF EXISTS return_decisions_reception_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.return_decision_lines DROP CONSTRAINT IF EXISTS return_decision_lines_return_line_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.return_decision_lines DROP CONSTRAINT IF EXISTS return_decision_lines_destination_location_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.return_decision_lines DROP CONSTRAINT IF EXISTS return_decision_lines_decision_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.product_price_versions DROP CONSTRAINT IF EXISTS product_price_versions_product_supplier_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.prescriptions DROP CONSTRAINT IF EXISTS prescriptions_tenant_patient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.prescriptions DROP CONSTRAINT IF EXISTS prescriptions_admission_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.prescription_events DROP CONSTRAINT IF EXISTS prescription_events_prescription_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.po_items DROP CONSTRAINT IF EXISTS po_items_po_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patients_tenant DROP CONSTRAINT IF EXISTS patients_tenant_merged_into_tenant_patient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_tenant_merge_events DROP CONSTRAINT IF EXISTS patient_tenant_merge_events_target_tenant_patient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_tenant_merge_events DROP CONSTRAINT IF EXISTS patient_tenant_merge_events_source_tenant_patient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_stays DROP CONSTRAINT IF EXISTS patient_stays_tenant_patient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_stays DROP CONSTRAINT IF EXISTS patient_stays_bed_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_stays DROP CONSTRAINT IF EXISTS patient_stays_admission_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_relationship_links DROP CONSTRAINT IF EXISTS patient_relationship_links_subject_tenant_patient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_relationship_links DROP CONSTRAINT IF EXISTS patient_relationship_links_related_tenant_patient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_observations DROP CONSTRAINT IF EXISTS patient_observations_tenant_patient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_observations DROP CONSTRAINT IF EXISTS patient_observations_signed_by_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_observations DROP CONSTRAINT IF EXISTS patient_observations_parent_observation_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_observations DROP CONSTRAINT IF EXISTS patient_observations_created_by_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_lab_results DROP CONSTRAINT IF EXISTS patient_lab_results_unit_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_lab_results DROP CONSTRAINT IF EXISTS patient_lab_results_specimen_type_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_lab_results DROP CONSTRAINT IF EXISTS patient_lab_results_patient_lab_report_test_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_lab_results DROP CONSTRAINT IF EXISTS patient_lab_results_patient_lab_report_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_lab_results DROP CONSTRAINT IF EXISTS patient_lab_results_method_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_lab_results DROP CONSTRAINT IF EXISTS patient_lab_results_entered_in_error_by_user_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_lab_results DROP CONSTRAINT IF EXISTS patient_lab_results_analyte_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_lab_reports DROP CONSTRAINT IF EXISTS patient_lab_reports_uploaded_by_user_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_lab_reports DROP CONSTRAINT IF EXISTS patient_lab_reports_tenant_patient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_lab_reports DROP CONSTRAINT IF EXISTS patient_lab_reports_structured_by_user_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_lab_reports DROP CONSTRAINT IF EXISTS patient_lab_reports_entered_in_error_by_user_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_lab_reports DROP CONSTRAINT IF EXISTS patient_lab_reports_admission_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_lab_report_tests DROP CONSTRAINT IF EXISTS patient_lab_report_tests_patient_lab_report_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_lab_report_tests DROP CONSTRAINT IF EXISTS patient_lab_report_tests_panel_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_lab_report_tests DROP CONSTRAINT IF EXISTS patient_lab_report_tests_global_act_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_lab_extraction_sessions DROP CONSTRAINT IF EXISTS patient_lab_extraction_sessions_patient_lab_report_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_identity_change DROP CONSTRAINT IF EXISTS patient_identity_change_tenant_patient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_diagnoses DROP CONSTRAINT IF EXISTS patient_diagnoses_patient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_allergy_manifestations DROP CONSTRAINT IF EXISTS patient_allergy_manifestations_patient_allergy_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_allergy_history DROP CONSTRAINT IF EXISTS patient_allergy_history_tenant_patient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_allergy_history DROP CONSTRAINT IF EXISTS patient_allergy_history_patient_allergy_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_allergies DROP CONSTRAINT IF EXISTS patient_allergies_tenant_patient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_allergies DROP CONSTRAINT IF EXISTS patient_allergies_allergen_dci_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.patient_addiction_history DROP CONSTRAINT IF EXISTS patient_addiction_history_addiction_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.lab_value_normalization DROP CONSTRAINT IF EXISTS lab_value_normalization_canonical_value_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.identity_ids DROP CONSTRAINT IF EXISTS identity_ids_tenant_patient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.transfusion_reactions DROP CONSTRAINT IF EXISTS fk_transfusion_reactions_user;
+ALTER TABLE IF EXISTS ONLY public.transfusion_reactions DROP CONSTRAINT IF EXISTS fk_transfusion_reactions_event;
+ALTER TABLE IF EXISTS ONLY public.transfusion_checks DROP CONSTRAINT IF EXISTS fk_transfusion_checks_user;
+ALTER TABLE IF EXISTS ONLY public.transfusion_checks DROP CONSTRAINT IF EXISTS fk_transfusion_checks_event;
+ALTER TABLE IF EXISTS ONLY public.transfusion_blood_bags DROP CONSTRAINT IF EXISTS fk_transfusion_blood_bags_user;
+ALTER TABLE IF EXISTS ONLY public.surveillance_values_events DROP CONSTRAINT IF EXISTS fk_surv_events_parameter;
+ALTER TABLE IF EXISTS ONLY public.lab_specimen_requests DROP CONSTRAINT IF EXISTS fk_lsr_specimen;
+ALTER TABLE IF EXISTS ONLY public.lab_collection_specimens DROP CONSTRAINT IF EXISTS fk_lcs_specimen;
+ALTER TABLE IF EXISTS ONLY public.lab_collection_specimens DROP CONSTRAINT IF EXISTS fk_lcs_collection;
+ALTER TABLE IF EXISTS ONLY public.lab_requests DROP CONSTRAINT IF EXISTS fk_lab_requests_prescription_event;
+ALTER TABLE IF EXISTS ONLY public.lab_requests DROP CONSTRAINT IF EXISTS fk_lab_requests_patient;
+ALTER TABLE IF EXISTS ONLY public.lab_requests DROP CONSTRAINT IF EXISTS fk_lab_requests_admission;
+ALTER TABLE IF EXISTS ONLY public.lab_requests DROP CONSTRAINT IF EXISTS fk_lab_requests_act;
+ALTER TABLE IF EXISTS ONLY public.patient_lab_report_documents DROP CONSTRAINT IF EXISTS fk_lab_doc_report;
+ALTER TABLE IF EXISTS ONLY public.patient_lab_report_documents DROP CONSTRAINT IF EXISTS fk_lab_doc_document;
+ALTER TABLE IF EXISTS ONLY public.patient_lab_extraction_sessions DROP CONSTRAINT IF EXISTS fk_extraction_document;
+ALTER TABLE IF EXISTS ONLY public.clinical_exams DROP CONSTRAINT IF EXISTS fk_clinical_exams_patient;
+ALTER TABLE IF EXISTS ONLY public.administration_event_lab_collections DROP CONSTRAINT IF EXISTS fk_aelc_lab_collection;
+ALTER TABLE IF EXISTS ONLY public.administration_event_lab_collections DROP CONSTRAINT IF EXISTS fk_aelc_admin_event;
+ALTER TABLE IF EXISTS ONLY public.admission_acts DROP CONSTRAINT IF EXISTS fk_admission_acts_admission;
+ALTER TABLE IF EXISTS ONLY public.administration_events DROP CONSTRAINT IF EXISTS fk_admin_event_user;
+ALTER TABLE IF EXISTS ONLY public.administration_event_blood_bags DROP CONSTRAINT IF EXISTS fk_admin_event_blood_bags_event;
+ALTER TABLE IF EXISTS ONLY public.administration_event_blood_bags DROP CONSTRAINT IF EXISTS fk_admin_event_blood_bags_bag;
+ALTER TABLE IF EXISTS ONLY public.escarres DROP CONSTRAINT IF EXISTS escarres_tenant_patient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.escarre_snapshots DROP CONSTRAINT IF EXISTS escarre_snapshots_escarre_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.coverages DROP CONSTRAINT IF EXISTS coverages_organisme_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.coverage_members DROP CONSTRAINT IF EXISTS coverage_members_tenant_patient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.coverage_members DROP CONSTRAINT IF EXISTS coverage_members_coverage_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.beds DROP CONSTRAINT IF EXISTS beds_room_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.admissions DROP CONSTRAINT IF EXISTS admissions_tenant_patient_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.admissions DROP CONSTRAINT IF EXISTS admissions_responsible_service_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.admissions DROP CONSTRAINT IF EXISTS admissions_current_service_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.admissions DROP CONSTRAINT IF EXISTS admissions_attending_physician_user_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.admissions DROP CONSTRAINT IF EXISTS admissions_admitting_service_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.admission_coverages DROP CONSTRAINT IF EXISTS admission_coverages_admission_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.admission_coverage_members DROP CONSTRAINT IF EXISTS admission_coverage_members_admission_coverage_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.administration_events DROP CONSTRAINT IF EXISTS administration_events_prescription_event_id_fkey;
+ALTER TABLE IF EXISTS ONLY public.administration_event_pauses DROP CONSTRAINT IF EXISTS administration_event_pauses_administration_event_id_fkey;
+ALTER TABLE IF EXISTS ONLY auth.user_tenants DROP CONSTRAINT IF EXISTS user_tenants_user_id_fkey;
+ALTER TABLE IF EXISTS ONLY auth.credentials DROP CONSTRAINT IF EXISTS credentials_user_id_fkey;
+DROP TRIGGER IF EXISTS trg_surveillance_event_bucket ON public.surveillance_values_events;
+DROP TRIGGER IF EXISTS trg_recompute_bag_status_assoc ON public.administration_event_blood_bags;
+DROP TRIGGER IF EXISTS trg_recompute_bag_status ON public.administration_events;
+DROP TRIGGER IF EXISTS trg_prevent_system_location_deactivate ON public.locations;
+DROP TRIGGER IF EXISTS audit_prescriptions ON public.prescriptions;
+DROP TRIGGER IF EXISTS audit_prescription_events ON public.prescription_events;
+DROP TRIGGER IF EXISTS audit_patients_tenant ON public.patients_tenant;
+DROP TRIGGER IF EXISTS audit_log_no_update ON public.audit_log;
+DROP TRIGGER IF EXISTS audit_administration_events ON public.administration_events;
+DROP TRIGGER IF EXISTS trg_auth_sync_users_update ON auth.users;
+DROP TRIGGER IF EXISTS trg_auth_sync_users_insert ON auth.users;
+DROP TRIGGER IF EXISTS trg_auth_sync_users_delete ON auth.users;
+DROP TRIGGER IF EXISTS trg_auth_sync_user_tenants_update ON auth.user_tenants;
+DROP TRIGGER IF EXISTS trg_auth_sync_user_tenants_insert ON auth.user_tenants;
+DROP TRIGGER IF EXISTS trg_auth_sync_user_tenants_delete ON auth.user_tenants;
+DROP TRIGGER IF EXISTS trg_auth_sync_credentials_update ON auth.credentials;
+DROP TRIGGER IF EXISTS trg_auth_sync_credentials_insert ON auth.credentials;
+DROP TRIGGER IF EXISTS trg_auth_sync_credentials_delete ON auth.credentials;
+DROP INDEX IF EXISTS reference.uq_ref_lab_analyte_context;
+DROP INDEX IF EXISTS reference.uq_ref_context_default;
+DROP INDEX IF EXISTS reference.uq_ref_act_default_context;
+DROP INDEX IF EXISTS reference.uq_ref_act_context;
+DROP INDEX IF EXISTS reference.uq_lab_reference_profile_tenant;
+DROP INDEX IF EXISTS reference.uq_groups_sort_order;
+DROP INDEX IF EXISTS reference.uq_group_parameters_sort_order;
+DROP INDEX IF EXISTS reference.uq_flowsheets_sort_order;
+DROP INDEX IF EXISTS reference.uniq_default_container_per_specimen_tenant;
+DROP INDEX IF EXISTS reference.idx_tenant_global_products_default_presc_route;
+DROP INDEX IF EXISTS reference.idx_specimen_base_tenant;
+DROP INDEX IF EXISTS reference.idx_routes_sort_order_unique;
+DROP INDEX IF EXISTS reference.idx_routes_active_order;
+DROP INDEX IF EXISTS reference.idx_ref_suppliers_active;
+DROP INDEX IF EXISTS reference.idx_ref_products_sahty;
+DROP INDEX IF EXISTS reference.idx_ref_products_name;
+DROP INDEX IF EXISTS reference.idx_ref_products_active;
+DROP INDEX IF EXISTS reference.idx_ref_price_hist_product;
+DROP INDEX IF EXISTS reference.idx_ref_price_hist_dates;
+DROP INDEX IF EXISTS reference.idx_ref_lab_sub_sections_actif;
+DROP INDEX IF EXISTS reference.idx_ref_lab_sections_actif;
+DROP INDEX IF EXISTS reference.idx_ref_lab_panels_sub_section_id;
+DROP INDEX IF EXISTS reference.idx_ref_lab_panels_sous_famille_id;
+DROP INDEX IF EXISTS reference.idx_ref_lab_panels_section_id;
+DROP INDEX IF EXISTS reference.idx_ref_lab_panels_actif;
+DROP INDEX IF EXISTS reference.idx_ref_lab_panel_items_panel_id;
+DROP INDEX IF EXISTS reference.idx_ref_lab_panel_items_child_panel_id;
+DROP INDEX IF EXISTS reference.idx_ref_lab_panel_items_child_act_id;
+DROP INDEX IF EXISTS reference.idx_ref_lab_analytes_value_type;
+DROP INDEX IF EXISTS reference.idx_ref_lab_analytes_actif;
+DROP INDEX IF EXISTS reference.idx_ref_lab_analyte_units_default;
+DROP INDEX IF EXISTS reference.idx_ref_lab_analyte_units_canonical;
+DROP INDEX IF EXISTS reference.idx_ref_lab_analyte_units_analyte;
+DROP INDEX IF EXISTS reference.idx_ref_lab_analyte_ext_codes_sys_code;
+DROP INDEX IF EXISTS reference.idx_ref_lab_analyte_ext_codes_analyte_id;
+DROP INDEX IF EXISTS reference.idx_ref_lab_analyte_aliases_analyte_id;
+DROP INDEX IF EXISTS reference.idx_ref_lab_analyte_aliases_alias_text_lower;
+DROP INDEX IF EXISTS reference.idx_ref_lab_act_spec_cont_specimen_type_id;
+DROP INDEX IF EXISTS reference.idx_ref_lab_act_spec_cont_global_act_id;
+DROP INDEX IF EXISTS reference.idx_ref_lab_act_spec_cont_container_type_id;
+DROP INDEX IF EXISTS reference.idx_ref_lab_act_methods_default;
+DROP INDEX IF EXISTS reference.idx_ref_lab_act_analytes_global_act_id;
+DROP INDEX IF EXISTS reference.idx_ref_lab_act_analytes_analyte_id;
+DROP INDEX IF EXISTS reference.idx_ref_global_actes_lab_sub_section_id;
+DROP INDEX IF EXISTS reference.idx_ref_global_actes_lab_section_id;
+DROP INDEX IF EXISTS reference.idx_ref_emdn_parent;
+DROP INDEX IF EXISTS reference.idx_ref_dci_synonyms_dci_id;
+DROP INDEX IF EXISTS reference.idx_ref_dci_name;
+DROP INDEX IF EXISTS reference.idx_ref_dci_atc;
+DROP INDEX IF EXISTS reference.idx_ref_atc_parent;
+DROP INDEX IF EXISTS reference.idx_ref_atc_level;
+DROP INDEX IF EXISTS reference.idx_lab_sub_section_tree_sub;
+DROP INDEX IF EXISTS reference.idx_lab_sub_section_tree_section;
+DROP INDEX IF EXISTS reference.idx_lab_section_tree_sous_famille;
+DROP INDEX IF EXISTS reference.idx_lab_section_tree_section;
+DROP INDEX IF EXISTS reference.idx_lab_act_tax_sf;
+DROP INDEX IF EXISTS reference.idx_lab_act_tax_sec;
+DROP INDEX IF EXISTS reference.idx_lab_act_tax_act;
+DROP INDEX IF EXISTS reference.idx_lab_act_ctx_ctx;
+DROP INDEX IF EXISTS reference.idx_lab_act_ctx_act;
+DROP INDEX IF EXISTS reference.idx_groups_sort_order;
+DROP INDEX IF EXISTS reference.idx_global_products_care_category;
+DROP INDEX IF EXISTS reference.idx_global_dci_care_category;
+DROP INDEX IF EXISTS reference.idx_flowsheets_sort_order;
+DROP INDEX IF EXISTS reference.idx_care_categories_active_order;
+DROP INDEX IF EXISTS public.uq_lab_report_document_link;
+DROP INDEX IF EXISTS public.uniq_admission_number_tenant;
+DROP INDEX IF EXISTS public.smart_phrases_trigger_unique_ci;
+DROP INDEX IF EXISTS public.idx_user_services_user_id;
+DROP INDEX IF EXISTS public.idx_user_services_service_id;
+DROP INDEX IF EXISTS public.idx_user_roles_user_id;
+DROP INDEX IF EXISTS public.idx_user_roles_role_id;
+DROP INDEX IF EXISTS public.idx_unique_rel_patient;
+DROP INDEX IF EXISTS public.idx_unique_nid_per_tenant;
+DROP INDEX IF EXISTS public.idx_unique_mrn_per_tenant;
+DROP INDEX IF EXISTS public.idx_unique_coverage_member;
+DROP INDEX IF EXISTS public.idx_transfusion_reactions_event;
+DROP INDEX IF EXISTS public.idx_transfusion_reactions_date;
+DROP INDEX IF EXISTS public.idx_transfusion_reactions_admin_event_id;
+DROP INDEX IF EXISTS public.idx_transfusion_checks_event;
+DROP INDEX IF EXISTS public.idx_transfusion_checks_date;
+DROP INDEX IF EXISTS public.idx_transfusion_checks_admin_event_id;
+DROP INDEX IF EXISTS public.idx_transfusion_bags_tenant_bag;
+DROP INDEX IF EXISTS public.idx_transfusion_bags_status;
+DROP INDEX IF EXISTS public.idx_transfusion_bags_product;
+DROP INDEX IF EXISTS public.idx_transfusion_bags_patient_date;
+DROP INDEX IF EXISTS public.idx_transfer_tenant;
+DROP INDEX IF EXISTS public.idx_transfer_line_transfer;
+DROP INDEX IF EXISTS public.idx_transfer_idempotency;
+DROP INDEX IF EXISTS public.idx_transfer_demand;
+DROP INDEX IF EXISTS public.idx_surveillance_events_patient_time_param;
+DROP INDEX IF EXISTS public.idx_surveillance_buckets_patient;
+DROP INDEX IF EXISTS public.idx_surv_events_tenant_patient_bucket;
+DROP INDEX IF EXISTS public.idx_surv_events_tenant_patient;
+DROP INDEX IF EXISTS public.idx_surv_events_parameter;
+DROP INDEX IF EXISTS public.idx_surv_events_context_param_latest;
+DROP INDEX IF EXISTS public.idx_surv_events_context_id;
+DROP INDEX IF EXISTS public.idx_surv_buckets_tenant_patient_bucket;
+DROP INDEX IF EXISTS public.idx_su_service;
+DROP INDEX IF EXISTS public.idx_stock_returns_reference;
+DROP INDEX IF EXISTS public.idx_stock_lookup;
+DROP INDEX IF EXISTS public.idx_smart_phrases_trigger_search;
+DROP INDEX IF EXISTS public.idx_smart_phrases_trigger;
+DROP INDEX IF EXISTS public.idx_smart_phrases_scope;
+DROP INDEX IF EXISTS public.idx_smart_phrases_active_search;
+DROP INDEX IF EXISTS public.idx_services_tenant;
+DROP INDEX IF EXISTS public.idx_rx_tenant;
+DROP INDEX IF EXISTS public.idx_rx_status;
+DROP INDEX IF EXISTS public.idx_rx_events_tenant;
+DROP INDEX IF EXISTS public.idx_rx_events_status;
+DROP INDEX IF EXISTS public.idx_rx_events_prescription;
+DROP INDEX IF EXISTS public.idx_rx_admission;
+DROP INDEX IF EXISTS public.idx_rooms_service;
+DROP INDEX IF EXISTS public.idx_returns_tenant;
+DROP INDEX IF EXISTS public.idx_returns_status;
+DROP INDEX IF EXISTS public.idx_returns_service;
+DROP INDEX IF EXISTS public.idx_return_receptions_reference;
+DROP INDEX IF EXISTS public.idx_return_lines_return;
+DROP INDEX IF EXISTS public.idx_return_lines_product;
+DROP INDEX IF EXISTS public.idx_resline_tenant;
+DROP INDEX IF EXISTS public.idx_resline_reservation;
+DROP INDEX IF EXISTS public.idx_resline_lookup;
+DROP INDEX IF EXISTS public.idx_res_session_active;
+DROP INDEX IF EXISTS public.idx_res_session;
+DROP INDEX IF EXISTS public.idx_res_expires;
+DROP INDEX IF EXISTS public.idx_res_cleanup;
+DROP INDEX IF EXISTS public.idx_rel_links_subject;
+DROP INDEX IF EXISTS public.idx_rel_links_related;
+DROP INDEX IF EXISTS public.idx_receptions_return;
+DROP INDEX IF EXISTS public.idx_reception_lines_return_line;
+DROP INDEX IF EXISTS public.idx_reception_lines_reception;
+DROP INDEX IF EXISTS public.idx_ps_tenant;
+DROP INDEX IF EXISTS public.idx_ps_product;
+DROP INDEX IF EXISTS public.idx_price_ver_supp;
+DROP INDEX IF EXISTS public.idx_price_ver_active;
+DROP INDEX IF EXISTS public.idx_prescriptions_tenant_patient;
+DROP INDEX IF EXISTS public.idx_prescriptions_patient;
+DROP INDEX IF EXISTS public.idx_prescription_events_time;
+DROP INDEX IF EXISTS public.idx_prescription_events_patient_time;
+DROP INDEX IF EXISTS public.idx_prescription_events_lookup;
+DROP INDEX IF EXISTS public.idx_presc_events_by_admission_time;
+DROP INDEX IF EXISTS public.idx_poi_po;
+DROP INDEX IF EXISTS public.idx_po_tenant;
+DROP INDEX IF EXISTS public.idx_po_status;
+DROP INDEX IF EXISTS public.idx_patients_tenant_tenant;
+DROP INDEX IF EXISTS public.idx_patient_stays_bed;
+DROP INDEX IF EXISTS public.idx_patient_stays_admission;
+DROP INDEX IF EXISTS public.idx_patient_stays_active;
+DROP INDEX IF EXISTS public.idx_patient_observations_timeline;
+DROP INDEX IF EXISTS public.idx_patient_observations_status;
+DROP INDEX IF EXISTS public.idx_patient_observations_role;
+DROP INDEX IF EXISTS public.idx_patient_observations_parent_patient;
+DROP INDEX IF EXISTS public.idx_patient_observations_parent;
+DROP INDEX IF EXISTS public.idx_patient_observations_linked_allergy;
+DROP INDEX IF EXISTS public.idx_patient_observations_linked_admission;
+DROP INDEX IF EXISTS public.idx_patient_observations_linked_addiction;
+DROP INDEX IF EXISTS public.idx_patient_lab_results_unit;
+DROP INDEX IF EXISTS public.idx_patient_lab_results_test;
+DROP INDEX IF EXISTS public.idx_patient_lab_results_status;
+DROP INDEX IF EXISTS public.idx_patient_lab_results_report;
+DROP INDEX IF EXISTS public.idx_patient_lab_results_observed;
+DROP INDEX IF EXISTS public.idx_patient_lab_results_analyte_ctx;
+DROP INDEX IF EXISTS public.idx_patient_lab_results_analyte;
+DROP INDEX IF EXISTS public.idx_patient_lab_reports_uploaded_at;
+DROP INDEX IF EXISTS public.idx_patient_lab_reports_status;
+DROP INDEX IF EXISTS public.idx_patient_lab_reports_source_type;
+DROP INDEX IF EXISTS public.idx_patient_lab_reports_report_date;
+DROP INDEX IF EXISTS public.idx_patient_lab_reports_patient;
+DROP INDEX IF EXISTS public.idx_patient_lab_reports_admission;
+DROP INDEX IF EXISTS public.idx_patient_lab_report_tests_report;
+DROP INDEX IF EXISTS public.idx_patient_lab_report_tests_panel;
+DROP INDEX IF EXISTS public.idx_patient_lab_report_tests_global_act;
+DROP INDEX IF EXISTS public.idx_patient_lab_extraction_status;
+DROP INDEX IF EXISTS public.idx_patient_lab_extraction_started;
+DROP INDEX IF EXISTS public.idx_patient_lab_extraction_report;
+DROP INDEX IF EXISTS public.idx_patient_lab_extraction_doc;
+DROP INDEX IF EXISTS public.idx_patient_documents_type;
+DROP INDEX IF EXISTS public.idx_patient_documents_tenant;
+DROP INDEX IF EXISTS public.idx_patient_documents_patient;
+DROP INDEX IF EXISTS public.idx_patient_documents_checksum;
+DROP INDEX IF EXISTS public.idx_patient_diagnoses_patient_id_entered_at;
+DROP INDEX IF EXISTS public.idx_patient_diagnoses_foundation_uri;
+DROP INDEX IF EXISTS public.idx_patient_diagnoses_active;
+DROP INDEX IF EXISTS public.idx_patient_allergy_history_allergy;
+DROP INDEX IF EXISTS public.idx_patient_allergies_patient_dci;
+DROP INDEX IF EXISTS public.idx_patient_allergies_patient;
+DROP INDEX IF EXISTS public.idx_patient_active_allergies;
+DROP INDEX IF EXISTS public.idx_observations_addiction;
+DROP INDEX IF EXISTS public.idx_merge_events_tenant;
+DROP INDEX IF EXISTS public.idx_merge_events_target;
+DROP INDEX IF EXISTS public.idx_merge_events_source;
+DROP INDEX IF EXISTS public.idx_locations_tenant;
+DROP INDEX IF EXISTS public.idx_lab_value_normalization_lookup;
+DROP INDEX IF EXISTS public.idx_lab_specimens_barcode_unique;
+DROP INDEX IF EXISTS public.idx_lab_specimen_requests_specimen_id;
+DROP INDEX IF EXISTS public.idx_lab_specimen_requests_lab_request_id;
+DROP INDEX IF EXISTS public.idx_lab_requests_patient;
+DROP INDEX IF EXISTS public.idx_lab_requests_event;
+DROP INDEX IF EXISTS public.idx_lab_requests_admission;
+DROP INDEX IF EXISTS public.idx_lab_doc_report;
+DROP INDEX IF EXISTS public.idx_lab_doc_document;
+DROP INDEX IF EXISTS public.idx_lab_collections_tenant_patient_id;
+DROP INDEX IF EXISTS public.idx_lab_collections_admission_id;
+DROP INDEX IF EXISTS public.idx_lab_collection_specimens_specimen_id;
+DROP INDEX IF EXISTS public.idx_lab_collection_specimens_collection_id;
+DROP INDEX IF EXISTS public.idx_inv_tenant;
+DROP INDEX IF EXISTS public.idx_inv_product;
+DROP INDEX IF EXISTS public.idx_inv_doc;
+DROP INDEX IF EXISTS public.idx_identity_ids_patient;
+DROP INDEX IF EXISTS public.idx_identity_ids_lookup;
+DROP INDEX IF EXISTS public.idx_identity_change_patient;
+DROP INDEX IF EXISTS public.idx_escarres_patient;
+DROP INDEX IF EXISTS public.idx_escarres_created_at;
+DROP INDEX IF EXISTS public.idx_escarres_active;
+DROP INDEX IF EXISTS public.idx_escarre_snapshots_lookup;
+DROP INDEX IF EXISTS public.idx_dnl_product;
+DROP INDEX IF EXISTS public.idx_dnl_dn;
+DROP INDEX IF EXISTS public.idx_dni_dn;
+DROP INDEX IF EXISTS public.idx_dn_tenant;
+DROP INDEX IF EXISTS public.idx_dn_supplier;
+DROP INDEX IF EXISTS public.idx_demand_tenant;
+DROP INDEX IF EXISTS public.idx_demand_status;
+DROP INDEX IF EXISTS public.idx_demand_service;
+DROP INDEX IF EXISTS public.idx_demand_ref;
+DROP INDEX IF EXISTS public.idx_demand_line_demand;
+DROP INDEX IF EXISTS public.idx_decisions_reception;
+DROP INDEX IF EXISTS public.idx_decision_lines_return_line;
+DROP INDEX IF EXISTS public.idx_decision_lines_decision;
+DROP INDEX IF EXISTS public.idx_coverages_lookup;
+DROP INDEX IF EXISTS public.idx_coverage_history_member;
+DROP INDEX IF EXISTS public.idx_coverage_history_date;
+DROP INDEX IF EXISTS public.idx_coverage_history_coverage;
+DROP INDEX IF EXISTS public.idx_config_enabled;
+DROP INDEX IF EXISTS public.idx_clinical_exams_patient_status_date;
+DROP INDEX IF EXISTS public.idx_beds_status;
+DROP INDEX IF EXISTS public.idx_beds_room;
+DROP INDEX IF EXISTS public.idx_aebb_blood_bag;
+DROP INDEX IF EXISTS public.idx_admissions_tenant;
+DROP INDEX IF EXISTS public.idx_admission_acts_lab_request_id;
+DROP INDEX IF EXISTS public.idx_admission_acts_global_act_id;
+DROP INDEX IF EXISTS public.idx_admission_acts_admission_id;
+DROP INDEX IF EXISTS public.idx_admin_events_patient_start;
+DROP INDEX IF EXISTS public.idx_admin_events_patient_end;
+DROP INDEX IF EXISTS public.idx_admin_events_fluid;
+DROP INDEX IF EXISTS public.idx_admin_events_by_presc_event_time;
+DROP INDEX IF EXISTS public.idx_admin_event_status;
+DROP INDEX IF EXISTS public.idx_admin_event_lab_collections_collection_id;
+DROP INDEX IF EXISTS public.idx_admin_event_lab_collections_admin_event_id;
+DROP INDEX IF EXISTS public.idx_admin_event_blood_bags_unique;
+DROP INDEX IF EXISTS public.idx_admin_event_blood_bags_event;
+DROP INDEX IF EXISTS public.idx_admin_event_blood_bags_bag;
+DROP INDEX IF EXISTS public.idx_admin_event_action;
+DROP INDEX IF EXISTS public.idx_adm_mem_patient;
+DROP INDEX IF EXISTS public.idx_adm_mem_coverage;
+DROP INDEX IF EXISTS public.idx_adm_hist_date;
+DROP INDEX IF EXISTS public.idx_adm_hist_coverage;
+DROP INDEX IF EXISTS public.idx_adm_hist_admission;
+DROP INDEX IF EXISTS public.idx_adm_cov_order;
+DROP INDEX IF EXISTS public.idx_adm_cov_coverage;
+DROP INDEX IF EXISTS public.idx_adm_cov_admission;
+DROP INDEX IF EXISTS public.idx_addiction_patient;
+DROP INDEX IF EXISTS public.idx_addiction_history_addiction;
+DROP INDEX IF EXISTS identity_sync.idx_outbox_processing;
+DROP INDEX IF EXISTS identity_sync.idx_outbox_dedupe;
+DROP INDEX IF EXISTS identity_sync.idx_inbox_processing;
+DROP INDEX IF EXISTS identity_sync.idx_inbox_dedupe;
+DROP INDEX IF EXISTS auth_sync.idx_auth_outbox_unprocessed;
+DROP INDEX IF EXISTS auth_sync.idx_auth_inbox_unapplied;
+ALTER TABLE IF EXISTS ONLY reference.lab_sub_section_tree DROP CONSTRAINT IF EXISTS uq_sub_section_section;
+ALTER TABLE IF EXISTS ONLY reference.lab_section_tree DROP CONSTRAINT IF EXISTS uq_section_sous_famille;
+ALTER TABLE IF EXISTS ONLY reference.lab_act_taxonomy DROP CONSTRAINT IF EXISTS uq_act_id;
+ALTER TABLE IF EXISTS ONLY reference.lab_act_analyte_context DROP CONSTRAINT IF EXISTS uq_act_analyte_ctx;
+ALTER TABLE IF EXISTS ONLY reference.units DROP CONSTRAINT IF EXISTS units_pkey;
+ALTER TABLE IF EXISTS ONLY reference.units DROP CONSTRAINT IF EXISTS units_code_key;
+ALTER TABLE IF EXISTS ONLY reference.lab_specimen_container_types DROP CONSTRAINT IF EXISTS unique_specimen_container;
+ALTER TABLE IF EXISTS ONLY reference.sih_sous_familles DROP CONSTRAINT IF EXISTS sih_sous_familles_pkey;
+ALTER TABLE IF EXISTS ONLY reference.sih_sous_familles DROP CONSTRAINT IF EXISTS sih_sous_familles_famille_id_code_key;
+ALTER TABLE IF EXISTS ONLY reference.sih_familles DROP CONSTRAINT IF EXISTS sih_familles_pkey;
+ALTER TABLE IF EXISTS ONLY reference.sih_familles DROP CONSTRAINT IF EXISTS sih_familles_code_key;
+ALTER TABLE IF EXISTS ONLY reference.routes DROP CONSTRAINT IF EXISTS routes_pkey;
+ALTER TABLE IF EXISTS ONLY reference.routes DROP CONSTRAINT IF EXISTS routes_code_key;
+ALTER TABLE IF EXISTS ONLY reference.global_actes DROP CONSTRAINT IF EXISTS ref_global_actes_code_sih_key;
+ALTER TABLE IF EXISTS ONLY reference.organismes DROP CONSTRAINT IF EXISTS organismes_pkey;
+ALTER TABLE IF EXISTS ONLY reference.observation_parameters DROP CONSTRAINT IF EXISTS observation_parameters_pkey;
+ALTER TABLE IF EXISTS ONLY reference.observation_parameters DROP CONSTRAINT IF EXISTS observation_parameters_code_key;
+ALTER TABLE IF EXISTS ONLY reference.observation_groups DROP CONSTRAINT IF EXISTS observation_groups_pkey;
+ALTER TABLE IF EXISTS ONLY reference.observation_groups DROP CONSTRAINT IF EXISTS observation_groups_code_key;
+ALTER TABLE IF EXISTS ONLY reference.observation_flowsheets DROP CONSTRAINT IF EXISTS observation_flowsheets_pkey;
+ALTER TABLE IF EXISTS ONLY reference.observation_flowsheets DROP CONSTRAINT IF EXISTS observation_flowsheets_code_key;
+ALTER TABLE IF EXISTS ONLY reference.lab_sub_sections DROP CONSTRAINT IF EXISTS lab_sub_sections_pkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_sub_section_tree DROP CONSTRAINT IF EXISTS lab_sub_section_tree_pkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_specimen_types DROP CONSTRAINT IF EXISTS lab_specimen_types_pkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_specimen_types DROP CONSTRAINT IF EXISTS lab_specimen_types_code_key;
+ALTER TABLE IF EXISTS ONLY reference.lab_specimen_container_types DROP CONSTRAINT IF EXISTS lab_specimen_container_types_pkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_sections DROP CONSTRAINT IF EXISTS lab_sections_pkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_section_tree DROP CONSTRAINT IF EXISTS lab_section_tree_pkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_reference_rules DROP CONSTRAINT IF EXISTS lab_reference_rules_pkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_reference_profiles DROP CONSTRAINT IF EXISTS lab_reference_profiles_pkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_panels DROP CONSTRAINT IF EXISTS lab_panels_pkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_panels DROP CONSTRAINT IF EXISTS lab_panels_global_act_id_key;
+ALTER TABLE IF EXISTS ONLY reference.lab_panels DROP CONSTRAINT IF EXISTS lab_panels_code_key;
+ALTER TABLE IF EXISTS ONLY reference.lab_panel_items DROP CONSTRAINT IF EXISTS lab_panel_items_pkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_methods DROP CONSTRAINT IF EXISTS lab_methods_pkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_methods DROP CONSTRAINT IF EXISTS lab_methods_code_key;
+ALTER TABLE IF EXISTS ONLY reference.lab_container_types DROP CONSTRAINT IF EXISTS lab_container_types_pkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_container_types DROP CONSTRAINT IF EXISTS lab_container_types_code_key;
+ALTER TABLE IF EXISTS ONLY reference.lab_canonical_allowed_values DROP CONSTRAINT IF EXISTS lab_canonical_allowed_values_pkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_canonical_allowed_values DROP CONSTRAINT IF EXISTS lab_canonical_allowed_values_code_key;
+ALTER TABLE IF EXISTS ONLY reference.lab_analytes DROP CONSTRAINT IF EXISTS lab_analytes_pkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_analytes DROP CONSTRAINT IF EXISTS lab_analytes_code_key;
+ALTER TABLE IF EXISTS ONLY reference.lab_analyte_units DROP CONSTRAINT IF EXISTS lab_analyte_units_pkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_analyte_units DROP CONSTRAINT IF EXISTS lab_analyte_units_analyte_unit_key;
+ALTER TABLE IF EXISTS ONLY reference.lab_analyte_reference_ranges DROP CONSTRAINT IF EXISTS lab_analyte_reference_ranges_pkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_analyte_external_codes DROP CONSTRAINT IF EXISTS lab_analyte_external_codes_pkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_analyte_external_codes DROP CONSTRAINT IF EXISTS lab_analyte_ext_codes_analyte_sys_code_key;
+ALTER TABLE IF EXISTS ONLY reference.lab_analyte_contexts DROP CONSTRAINT IF EXISTS lab_analyte_contexts_pkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_analyte_aliases DROP CONSTRAINT IF EXISTS lab_analyte_aliases_pkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_analyte_aliases DROP CONSTRAINT IF EXISTS lab_analyte_aliases_analyte_alias_type_key;
+ALTER TABLE IF EXISTS ONLY reference.lab_act_taxonomy DROP CONSTRAINT IF EXISTS lab_act_taxonomy_pkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_act_specimen_containers DROP CONSTRAINT IF EXISTS lab_act_specimen_containers_pkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_act_specimen_containers DROP CONSTRAINT IF EXISTS lab_act_spec_cont_unique;
+ALTER TABLE IF EXISTS ONLY reference.lab_act_methods DROP CONSTRAINT IF EXISTS lab_act_methods_pkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_act_methods DROP CONSTRAINT IF EXISTS lab_act_methods_act_method_key;
+ALTER TABLE IF EXISTS ONLY reference.lab_act_contexts DROP CONSTRAINT IF EXISTS lab_act_contexts_pkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_act_analytes DROP CONSTRAINT IF EXISTS lab_act_analytes_pkey;
+ALTER TABLE IF EXISTS ONLY reference.lab_act_analytes DROP CONSTRAINT IF EXISTS lab_act_analytes_act_analyte_key;
+ALTER TABLE IF EXISTS ONLY reference.lab_act_analyte_context DROP CONSTRAINT IF EXISTS lab_act_analyte_context_pkey;
+ALTER TABLE IF EXISTS ONLY reference.identity_document_types DROP CONSTRAINT IF EXISTS identity_document_types_pkey;
+ALTER TABLE IF EXISTS ONLY reference.group_parameters DROP CONSTRAINT IF EXISTS group_parameters_pkey;
+ALTER TABLE IF EXISTS ONLY reference.global_suppliers DROP CONSTRAINT IF EXISTS global_suppliers_pkey;
+ALTER TABLE IF EXISTS ONLY reference.global_roles DROP CONSTRAINT IF EXISTS global_roles_pkey;
+ALTER TABLE IF EXISTS ONLY reference.global_products DROP CONSTRAINT IF EXISTS global_products_pkey;
+ALTER TABLE IF EXISTS ONLY reference.global_product_price_history DROP CONSTRAINT IF EXISTS global_product_price_history_pkey;
+ALTER TABLE IF EXISTS ONLY reference.global_emdn DROP CONSTRAINT IF EXISTS global_emdn_pkey;
+ALTER TABLE IF EXISTS ONLY reference.global_dci DROP CONSTRAINT IF EXISTS global_dci_pkey;
+ALTER TABLE IF EXISTS ONLY reference.global_atc DROP CONSTRAINT IF EXISTS global_atc_pkey;
+ALTER TABLE IF EXISTS ONLY reference.global_actes DROP CONSTRAINT IF EXISTS global_actes_pkey;
+ALTER TABLE IF EXISTS ONLY reference.flowsheet_groups DROP CONSTRAINT IF EXISTS flowsheet_groups_pkey;
+ALTER TABLE IF EXISTS ONLY reference.dci_synonyms DROP CONSTRAINT IF EXISTS dci_synonyms_pkey;
+ALTER TABLE IF EXISTS ONLY reference.countries DROP CONSTRAINT IF EXISTS countries_pkey;
+ALTER TABLE IF EXISTS ONLY reference.care_categories DROP CONSTRAINT IF EXISTS care_categories_pkey;
+ALTER TABLE IF EXISTS ONLY reference.care_categories DROP CONSTRAINT IF EXISTS care_categories_code_key;
+ALTER TABLE IF EXISTS ONLY public.user_services DROP CONSTRAINT IF EXISTS user_services_pkey;
+ALTER TABLE IF EXISTS ONLY public.user_roles DROP CONSTRAINT IF EXISTS user_roles_pkey;
+ALTER TABLE IF EXISTS ONLY public.lab_requests DROP CONSTRAINT IF EXISTS unique_lab_request_per_event;
+ALTER TABLE IF EXISTS ONLY public.transfusion_reactions DROP CONSTRAINT IF EXISTS transfusion_reactions_pkey;
+ALTER TABLE IF EXISTS ONLY public.transfusion_checks DROP CONSTRAINT IF EXISTS transfusion_checks_pkey;
+ALTER TABLE IF EXISTS ONLY public.transfusion_checks DROP CONSTRAINT IF EXISTS transfusion_checks_administration_event_id_key;
+ALTER TABLE IF EXISTS ONLY public.transfusion_blood_bags DROP CONSTRAINT IF EXISTS transfusion_blood_bags_pkey;
+ALTER TABLE IF EXISTS ONLY public.surveillance_values_events DROP CONSTRAINT IF EXISTS surveillance_values_events_pkey;
+ALTER TABLE IF EXISTS ONLY public.surveillance_hour_buckets DROP CONSTRAINT IF EXISTS surveillance_hour_buckets_tenant_id_tenant_patient_id_bucke_key;
+ALTER TABLE IF EXISTS ONLY public.surveillance_hour_buckets DROP CONSTRAINT IF EXISTS surveillance_hour_buckets_pkey;
+ALTER TABLE IF EXISTS ONLY public.suppliers DROP CONSTRAINT IF EXISTS suppliers_pkey;
+ALTER TABLE IF EXISTS ONLY public.stock_transfers DROP CONSTRAINT IF EXISTS stock_transfers_pkey;
+ALTER TABLE IF EXISTS ONLY public.stock_transfer_lines DROP CONSTRAINT IF EXISTS stock_transfer_lines_pkey;
+ALTER TABLE IF EXISTS ONLY public.stock_returns DROP CONSTRAINT IF EXISTS stock_returns_pkey;
+ALTER TABLE IF EXISTS ONLY public.stock_return_lines DROP CONSTRAINT IF EXISTS stock_return_lines_pkey;
+ALTER TABLE IF EXISTS ONLY public.stock_reservations DROP CONSTRAINT IF EXISTS stock_reservations_pkey;
+ALTER TABLE IF EXISTS ONLY public.stock_reservation_lines DROP CONSTRAINT IF EXISTS stock_reservation_lines_pkey;
+ALTER TABLE IF EXISTS ONLY public.stock_demands DROP CONSTRAINT IF EXISTS stock_demands_pkey;
+ALTER TABLE IF EXISTS ONLY public.stock_demand_lines DROP CONSTRAINT IF EXISTS stock_demand_lines_pkey;
+ALTER TABLE IF EXISTS ONLY public.smart_phrases DROP CONSTRAINT IF EXISTS smart_phrases_pkey;
+ALTER TABLE IF EXISTS ONLY public.services DROP CONSTRAINT IF EXISTS services_pkey;
+ALTER TABLE IF EXISTS ONLY public.service_units DROP CONSTRAINT IF EXISTS service_units_pkey;
+ALTER TABLE IF EXISTS ONLY public.rooms DROP CONSTRAINT IF EXISTS rooms_pkey;
+ALTER TABLE IF EXISTS ONLY public.room_types DROP CONSTRAINT IF EXISTS room_types_pkey;
+ALTER TABLE IF EXISTS ONLY public.return_receptions DROP CONSTRAINT IF EXISTS return_receptions_pkey;
+ALTER TABLE IF EXISTS ONLY public.return_reception_lines DROP CONSTRAINT IF EXISTS return_reception_lines_pkey;
+ALTER TABLE IF EXISTS ONLY public.return_decisions DROP CONSTRAINT IF EXISTS return_decisions_pkey;
+ALTER TABLE IF EXISTS ONLY public.return_decision_lines DROP CONSTRAINT IF EXISTS return_decision_lines_pkey;
+ALTER TABLE IF EXISTS ONLY public.reference_schema_version DROP CONSTRAINT IF EXISTS reference_schema_version_pkey;
+ALTER TABLE IF EXISTS ONLY public.purchase_orders DROP CONSTRAINT IF EXISTS purchase_orders_pkey;
+ALTER TABLE IF EXISTS ONLY public.product_wac DROP CONSTRAINT IF EXISTS product_wac_pkey;
+ALTER TABLE IF EXISTS ONLY public.product_suppliers DROP CONSTRAINT IF EXISTS product_suppliers_tenant_id_product_id_supplier_id_key;
+ALTER TABLE IF EXISTS ONLY public.product_suppliers DROP CONSTRAINT IF EXISTS product_suppliers_pkey;
+ALTER TABLE IF EXISTS ONLY public.product_price_versions DROP CONSTRAINT IF EXISTS product_price_versions_pkey;
+ALTER TABLE IF EXISTS ONLY public.product_configs DROP CONSTRAINT IF EXISTS product_configs_pkey;
+ALTER TABLE IF EXISTS ONLY public.prescriptions DROP CONSTRAINT IF EXISTS prescriptions_pkey;
+ALTER TABLE IF EXISTS ONLY public.prescription_events DROP CONSTRAINT IF EXISTS prescription_events_pkey;
+ALTER TABLE IF EXISTS ONLY public.po_items DROP CONSTRAINT IF EXISTS po_items_pkey;
+ALTER TABLE IF EXISTS ONLY public.patients_tenant DROP CONSTRAINT IF EXISTS patients_tenant_pkey;
+ALTER TABLE IF EXISTS ONLY public.patient_tenant_merge_events DROP CONSTRAINT IF EXISTS patient_tenant_merge_events_pkey;
+ALTER TABLE IF EXISTS ONLY public.patient_stays DROP CONSTRAINT IF EXISTS patient_stays_pkey;
+ALTER TABLE IF EXISTS ONLY public.patient_relationship_links DROP CONSTRAINT IF EXISTS patient_relationship_links_pkey;
+ALTER TABLE IF EXISTS ONLY public.patient_observations DROP CONSTRAINT IF EXISTS patient_observations_pkey;
+ALTER TABLE IF EXISTS ONLY public.patient_lab_results DROP CONSTRAINT IF EXISTS patient_lab_results_pkey;
+ALTER TABLE IF EXISTS ONLY public.patient_lab_reports DROP CONSTRAINT IF EXISTS patient_lab_reports_pkey;
+ALTER TABLE IF EXISTS ONLY public.patient_lab_report_tests DROP CONSTRAINT IF EXISTS patient_lab_report_tests_pkey;
+ALTER TABLE IF EXISTS ONLY public.patient_lab_report_documents DROP CONSTRAINT IF EXISTS patient_lab_report_documents_pkey;
+ALTER TABLE IF EXISTS ONLY public.patient_lab_extraction_sessions DROP CONSTRAINT IF EXISTS patient_lab_extraction_sessions_pkey;
+ALTER TABLE IF EXISTS ONLY public.patient_identity_change DROP CONSTRAINT IF EXISTS patient_identity_change_pkey;
+ALTER TABLE IF EXISTS ONLY public.patient_documents DROP CONSTRAINT IF EXISTS patient_documents_pkey;
+ALTER TABLE IF EXISTS ONLY public.patient_diagnoses DROP CONSTRAINT IF EXISTS patient_diagnoses_pkey;
+ALTER TABLE IF EXISTS ONLY public.patient_contacts DROP CONSTRAINT IF EXISTS patient_contacts_pkey;
+ALTER TABLE IF EXISTS ONLY public.patient_allergy_manifestations DROP CONSTRAINT IF EXISTS patient_allergy_manifestations_pkey;
+ALTER TABLE IF EXISTS ONLY public.patient_allergy_manifestations DROP CONSTRAINT IF EXISTS patient_allergy_manifestation_patient_allergy_id_manifestat_key;
+ALTER TABLE IF EXISTS ONLY public.patient_allergy_history DROP CONSTRAINT IF EXISTS patient_allergy_history_pkey;
+ALTER TABLE IF EXISTS ONLY public.patient_allergies DROP CONSTRAINT IF EXISTS patient_allergies_pkey;
+ALTER TABLE IF EXISTS ONLY public.patient_addresses DROP CONSTRAINT IF EXISTS patient_addresses_pkey;
+ALTER TABLE IF EXISTS ONLY public.patient_addictions DROP CONSTRAINT IF EXISTS patient_addictions_pkey;
+ALTER TABLE IF EXISTS ONLY public.patient_addiction_history DROP CONSTRAINT IF EXISTS patient_addiction_history_pkey;
+ALTER TABLE IF EXISTS ONLY public.medication_dispense_events DROP CONSTRAINT IF EXISTS medication_dispense_events_pkey;
+ALTER TABLE IF EXISTS ONLY public.locations DROP CONSTRAINT IF EXISTS locations_pkey;
+ALTER TABLE IF EXISTS ONLY public.lab_value_normalization DROP CONSTRAINT IF EXISTS lab_value_normalization_pkey;
+ALTER TABLE IF EXISTS ONLY public.lab_specimens DROP CONSTRAINT IF EXISTS lab_specimens_pkey;
+ALTER TABLE IF EXISTS ONLY public.lab_specimens DROP CONSTRAINT IF EXISTS lab_specimens_barcode_key;
+ALTER TABLE IF EXISTS ONLY public.lab_specimen_requests DROP CONSTRAINT IF EXISTS lab_specimen_requests_specimen_id_lab_request_id_key;
+ALTER TABLE IF EXISTS ONLY public.lab_specimen_requests DROP CONSTRAINT IF EXISTS lab_specimen_requests_pkey;
+ALTER TABLE IF EXISTS ONLY public.lab_requests DROP CONSTRAINT IF EXISTS lab_requests_pkey;
+ALTER TABLE IF EXISTS ONLY public.lab_collections DROP CONSTRAINT IF EXISTS lab_collections_pkey;
+ALTER TABLE IF EXISTS ONLY public.lab_collection_specimens DROP CONSTRAINT IF EXISTS lab_collection_specimens_pkey;
+ALTER TABLE IF EXISTS ONLY public.lab_collection_specimens DROP CONSTRAINT IF EXISTS lab_collection_specimens_lab_collection_id_specimen_id_key;
+ALTER TABLE IF EXISTS ONLY public.inventory_movements DROP CONSTRAINT IF EXISTS inventory_movements_pkey;
+ALTER TABLE IF EXISTS ONLY public.identity_ids DROP CONSTRAINT IF EXISTS identity_ids_pkey;
+ALTER TABLE IF EXISTS ONLY public.escarres DROP CONSTRAINT IF EXISTS escarres_pkey;
+ALTER TABLE IF EXISTS ONLY public.escarre_snapshots DROP CONSTRAINT IF EXISTS escarre_snapshots_pkey;
+ALTER TABLE IF EXISTS ONLY public.delivery_notes DROP CONSTRAINT IF EXISTS delivery_notes_pkey;
+ALTER TABLE IF EXISTS ONLY public.delivery_note_items DROP CONSTRAINT IF EXISTS delivery_note_items_pkey;
+ALTER TABLE IF EXISTS ONLY public.coverages DROP CONSTRAINT IF EXISTS coverages_pkey;
+ALTER TABLE IF EXISTS ONLY public.coverage_members DROP CONSTRAINT IF EXISTS coverage_members_pkey;
+ALTER TABLE IF EXISTS ONLY public.coverage_change_history DROP CONSTRAINT IF EXISTS coverage_change_history_pkey;
+ALTER TABLE IF EXISTS ONLY public.clinical_exams DROP CONSTRAINT IF EXISTS clinical_exams_pkey;
+ALTER TABLE IF EXISTS ONLY public.beds DROP CONSTRAINT IF EXISTS beds_room_id_label_key;
+ALTER TABLE IF EXISTS ONLY public.beds DROP CONSTRAINT IF EXISTS beds_pkey;
+ALTER TABLE IF EXISTS ONLY public.audit_log DROP CONSTRAINT IF EXISTS audit_log_pkey;
+ALTER TABLE IF EXISTS ONLY public.appointments DROP CONSTRAINT IF EXISTS appointments_pkey;
+ALTER TABLE IF EXISTS ONLY public.admissions DROP CONSTRAINT IF EXISTS admissions_pkey;
+ALTER TABLE IF EXISTS ONLY public.admission_coverages DROP CONSTRAINT IF EXISTS admission_coverages_pkey;
+ALTER TABLE IF EXISTS ONLY public.admission_coverage_members DROP CONSTRAINT IF EXISTS admission_coverage_members_pkey;
+ALTER TABLE IF EXISTS ONLY public.admission_coverage_change_history DROP CONSTRAINT IF EXISTS admission_coverage_change_history_pkey;
+ALTER TABLE IF EXISTS ONLY public.admission_acts DROP CONSTRAINT IF EXISTS admission_acts_pkey;
+ALTER TABLE IF EXISTS ONLY public.administration_events DROP CONSTRAINT IF EXISTS administration_events_pkey;
+ALTER TABLE IF EXISTS ONLY public.administration_event_pauses DROP CONSTRAINT IF EXISTS administration_event_pauses_pkey;
+ALTER TABLE IF EXISTS ONLY public.administration_event_lab_collections DROP CONSTRAINT IF EXISTS administration_event_lab_collections_pkey;
+ALTER TABLE IF EXISTS ONLY public.administration_event_lab_collections DROP CONSTRAINT IF EXISTS administration_event_lab_coll_administration_event_id_lab_c_key;
+ALTER TABLE IF EXISTS ONLY public.administration_event_blood_bags DROP CONSTRAINT IF EXISTS administration_event_blood_bags_pkey;
+ALTER TABLE IF EXISTS ONLY public.actes DROP CONSTRAINT IF EXISTS actes_pkey;
+ALTER TABLE IF EXISTS ONLY public._migration_issues DROP CONSTRAINT IF EXISTS _migration_issues_pkey;
+ALTER TABLE IF EXISTS ONLY identity_sync.outbox_events DROP CONSTRAINT IF EXISTS outbox_events_pkey;
+ALTER TABLE IF EXISTS ONLY identity_sync.inbox_events DROP CONSTRAINT IF EXISTS inbox_events_pkey;
+ALTER TABLE IF EXISTS ONLY auth_sync.sync_state DROP CONSTRAINT IF EXISTS sync_state_pkey;
+ALTER TABLE IF EXISTS ONLY auth_sync.outbox_events DROP CONSTRAINT IF EXISTS outbox_events_pkey;
+ALTER TABLE IF EXISTS ONLY auth_sync.inbox_events DROP CONSTRAINT IF EXISTS inbox_events_pkey;
+ALTER TABLE IF EXISTS ONLY auth.users DROP CONSTRAINT IF EXISTS users_username_key;
+ALTER TABLE IF EXISTS ONLY auth.users DROP CONSTRAINT IF EXISTS users_pkey;
+ALTER TABLE IF EXISTS ONLY auth.users DROP CONSTRAINT IF EXISTS users_inpe_key;
+ALTER TABLE IF EXISTS ONLY auth.user_tenants DROP CONSTRAINT IF EXISTS user_tenants_pkey;
+ALTER TABLE IF EXISTS ONLY auth.credentials DROP CONSTRAINT IF EXISTS credentials_user_id_key;
+ALTER TABLE IF EXISTS ONLY auth.credentials DROP CONSTRAINT IF EXISTS credentials_pkey;
+ALTER TABLE IF EXISTS ONLY auth.audit_log DROP CONSTRAINT IF EXISTS audit_log_pkey;
+DROP TABLE IF EXISTS reference.units;
+DROP TABLE IF EXISTS reference.sih_sous_familles;
+DROP TABLE IF EXISTS reference.sih_familles;
+DROP TABLE IF EXISTS reference.routes;
+DROP TABLE IF EXISTS reference.organismes;
+DROP TABLE IF EXISTS reference.observation_parameters;
+DROP TABLE IF EXISTS reference.observation_groups;
+DROP TABLE IF EXISTS reference.observation_flowsheets;
+DROP TABLE IF EXISTS reference.lab_sub_sections;
+DROP TABLE IF EXISTS reference.lab_sub_section_tree;
+DROP TABLE IF EXISTS reference.lab_specimen_types;
+DROP TABLE IF EXISTS reference.lab_specimen_container_types;
+DROP TABLE IF EXISTS reference.lab_sections;
+DROP TABLE IF EXISTS reference.lab_section_tree;
+DROP TABLE IF EXISTS reference.lab_reference_rules;
+DROP TABLE IF EXISTS reference.lab_reference_profiles;
+DROP TABLE IF EXISTS reference.lab_panels;
+DROP TABLE IF EXISTS reference.lab_panel_items;
+DROP TABLE IF EXISTS reference.lab_methods;
+DROP TABLE IF EXISTS reference.lab_container_types;
+DROP TABLE IF EXISTS reference.lab_canonical_allowed_values;
+DROP TABLE IF EXISTS reference.lab_analytes;
+DROP TABLE IF EXISTS reference.lab_analyte_units;
+DROP TABLE IF EXISTS reference.lab_analyte_reference_ranges;
+DROP TABLE IF EXISTS reference.lab_analyte_external_codes;
+DROP TABLE IF EXISTS reference.lab_analyte_contexts;
+DROP TABLE IF EXISTS reference.lab_analyte_aliases;
+DROP TABLE IF EXISTS reference.lab_act_taxonomy;
+DROP TABLE IF EXISTS reference.lab_act_specimen_containers;
+DROP TABLE IF EXISTS reference.lab_act_methods;
+DROP TABLE IF EXISTS reference.lab_act_contexts;
+DROP TABLE IF EXISTS reference.lab_act_analytes;
+DROP TABLE IF EXISTS reference.lab_act_analyte_context;
+DROP TABLE IF EXISTS reference.identity_document_types;
+DROP TABLE IF EXISTS reference.group_parameters;
+DROP TABLE IF EXISTS reference.global_suppliers;
+DROP TABLE IF EXISTS reference.global_roles;
+DROP TABLE IF EXISTS reference.global_products;
+DROP TABLE IF EXISTS reference.global_product_price_history;
+DROP TABLE IF EXISTS reference.global_emdn;
+DROP TABLE IF EXISTS reference.global_dci;
+DROP TABLE IF EXISTS reference.global_atc;
+DROP TABLE IF EXISTS reference.global_actes;
+DROP TABLE IF EXISTS reference.flowsheet_groups;
+DROP TABLE IF EXISTS reference.dci_synonyms;
+DROP TABLE IF EXISTS reference.countries;
+DROP TABLE IF EXISTS reference.care_categories;
+DROP TABLE IF EXISTS public.user_services;
+DROP TABLE IF EXISTS public.user_roles;
+DROP TABLE IF EXISTS public.transfusion_reactions;
+DROP TABLE IF EXISTS public.transfusion_checks;
+DROP TABLE IF EXISTS public.transfusion_blood_bags;
+DROP TABLE IF EXISTS public.surveillance_values_events;
+DROP TABLE IF EXISTS public.surveillance_hour_buckets;
+DROP TABLE IF EXISTS public.suppliers;
+DROP TABLE IF EXISTS public.stock_transfers;
+DROP TABLE IF EXISTS public.stock_transfer_lines;
+DROP TABLE IF EXISTS public.stock_returns;
+DROP TABLE IF EXISTS public.stock_return_lines;
+DROP TABLE IF EXISTS public.stock_reservations;
+DROP TABLE IF EXISTS public.stock_reservation_lines;
+DROP TABLE IF EXISTS public.stock_demands;
+DROP TABLE IF EXISTS public.stock_demand_lines;
+DROP TABLE IF EXISTS public.smart_phrases;
+DROP TABLE IF EXISTS public.services;
+DROP TABLE IF EXISTS public.service_units;
+DROP TABLE IF EXISTS public.rooms;
+DROP TABLE IF EXISTS public.room_types;
+DROP TABLE IF EXISTS public.return_receptions;
+DROP TABLE IF EXISTS public.return_reception_lines;
+DROP TABLE IF EXISTS public.return_decisions;
+DROP TABLE IF EXISTS public.return_decision_lines;
+DROP TABLE IF EXISTS public.reference_schema_version;
+DROP TABLE IF EXISTS public.purchase_orders;
+DROP TABLE IF EXISTS public.product_wac;
+DROP TABLE IF EXISTS public.product_suppliers;
+DROP TABLE IF EXISTS public.product_price_versions;
+DROP TABLE IF EXISTS public.product_configs;
+DROP TABLE IF EXISTS public.prescriptions;
+DROP TABLE IF EXISTS public.prescription_events;
+DROP TABLE IF EXISTS public.po_items;
+DROP TABLE IF EXISTS public.patients_tenant;
+DROP TABLE IF EXISTS public.patient_tenant_merge_events;
+DROP TABLE IF EXISTS public.patient_stays;
+DROP TABLE IF EXISTS public.patient_relationship_links;
+DROP TABLE IF EXISTS public.patient_observations;
+DROP TABLE IF EXISTS public.patient_lab_results;
+DROP TABLE IF EXISTS public.patient_lab_reports;
+DROP TABLE IF EXISTS public.patient_lab_report_tests;
+DROP TABLE IF EXISTS public.patient_lab_report_documents;
+DROP TABLE IF EXISTS public.patient_lab_extraction_sessions;
+DROP TABLE IF EXISTS public.patient_identity_change;
+DROP TABLE IF EXISTS public.patient_documents;
+DROP TABLE IF EXISTS public.patient_diagnoses;
+DROP TABLE IF EXISTS public.patient_contacts;
+DROP TABLE IF EXISTS public.patient_allergy_manifestations;
+DROP TABLE IF EXISTS public.patient_allergy_history;
+DROP TABLE IF EXISTS public.patient_allergies;
+DROP TABLE IF EXISTS public.patient_addresses;
+DROP TABLE IF EXISTS public.patient_addictions;
+DROP TABLE IF EXISTS public.patient_addiction_history;
+DROP TABLE IF EXISTS public.medication_dispense_events;
+DROP TABLE IF EXISTS public.locations;
+DROP TABLE IF EXISTS public.lab_value_normalization;
+DROP TABLE IF EXISTS public.lab_specimens;
+DROP TABLE IF EXISTS public.lab_specimen_requests;
+DROP TABLE IF EXISTS public.lab_requests;
+DROP TABLE IF EXISTS public.lab_collections;
+DROP TABLE IF EXISTS public.lab_collection_specimens;
+DROP TABLE IF EXISTS public.inventory_movements;
+DROP TABLE IF EXISTS public.identity_ids;
+DROP TABLE IF EXISTS public.escarres;
+DROP TABLE IF EXISTS public.escarre_snapshots;
+DROP TABLE IF EXISTS public.delivery_notes;
+DROP TABLE IF EXISTS public.delivery_note_layers;
+DROP TABLE IF EXISTS public.delivery_note_items;
+DROP TABLE IF EXISTS public.current_stock;
+DROP TABLE IF EXISTS public.coverages;
+DROP TABLE IF EXISTS public.coverage_members;
+DROP TABLE IF EXISTS public.coverage_change_history;
+DROP TABLE IF EXISTS public.clinical_exams;
+DROP TABLE IF EXISTS public.beds;
+DROP TABLE IF EXISTS public.audit_log;
+DROP TABLE IF EXISTS public.appointments;
+DROP TABLE IF EXISTS public.admissions;
+DROP SEQUENCE IF EXISTS public.admission_number_seq;
+DROP TABLE IF EXISTS public.admission_coverages;
+DROP TABLE IF EXISTS public.admission_coverage_members;
+DROP TABLE IF EXISTS public.admission_coverage_change_history;
+DROP TABLE IF EXISTS public.admission_acts;
+DROP TABLE IF EXISTS public.administration_events;
+DROP TABLE IF EXISTS public.administration_event_pauses;
+DROP TABLE IF EXISTS public.administration_event_lab_collections;
+DROP TABLE IF EXISTS public.administration_event_blood_bags;
+DROP TABLE IF EXISTS public.actes;
+DROP TABLE IF EXISTS public._migration_issues;
+DROP TABLE IF EXISTS identity_sync.outbox_events;
+DROP TABLE IF EXISTS identity_sync.inbox_events;
+DROP TABLE IF EXISTS auth_sync.sync_state;
+DROP TABLE IF EXISTS auth_sync.outbox_events;
+DROP TABLE IF EXISTS auth_sync.inbox_events;
+DROP TABLE IF EXISTS auth.users;
+DROP TABLE IF EXISTS auth.user_tenants;
+DROP TABLE IF EXISTS auth.credentials;
+DROP TABLE IF EXISTS auth.audit_log;
+DROP FUNCTION IF EXISTS public.update_updated_at_column();
+DROP FUNCTION IF EXISTS public.update_surveillance_hour_bucket();
+DROP FUNCTION IF EXISTS public.trigger_recompute_bag_status_assoc();
+DROP FUNCTION IF EXISTS public.trigger_recompute_bag_status();
+DROP FUNCTION IF EXISTS public.recompute_blood_bag_status(p_bag_id uuid);
+DROP FUNCTION IF EXISTS public.fn_prevent_system_location_deactivate();
+DROP FUNCTION IF EXISTS public.fn_generic_audit();
+DROP FUNCTION IF EXISTS public.fn_audit_no_update();
+DROP FUNCTION IF EXISTS auth_sync.emit_outbox_event();
+DROP TYPE IF EXISTS public.bed_status;
+DROP EXTENSION IF EXISTS btree_gist;
+DROP SCHEMA IF EXISTS reference;
+DROP SCHEMA IF EXISTS identity_sync;
+DROP SCHEMA IF EXISTS auth_sync;
+DROP SCHEMA IF EXISTS auth;
+--
+-- Name: auth; Type: SCHEMA; Schema: -; Owner: -
+--
+
+CREATE SCHEMA auth;
+
+
+--
+-- Name: auth_sync; Type: SCHEMA; Schema: -; Owner: -
+--
+
+CREATE SCHEMA auth_sync;
+
+
+--
+-- Name: identity_sync; Type: SCHEMA; Schema: -; Owner: -
+--
+
+CREATE SCHEMA identity_sync;
+
+
+--
+-- Name: reference; Type: SCHEMA; Schema: -; Owner: -
+--
+
+CREATE SCHEMA reference;
+
+
+--
+-- Name: btree_gist; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS btree_gist WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION btree_gist; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION btree_gist IS 'support for indexing common datatypes in GiST';
+
+
+--
+-- Name: bed_status; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.bed_status AS ENUM (
+    'AVAILABLE',
+    'OCCUPIED',
+    'MAINTENANCE'
 );
 
-CREATE TABLE IF NOT EXISTS auth.credentials (
-    credential_id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id             UUID NOT NULL REFERENCES auth.users(user_id) ON DELETE CASCADE,
-    password_hash       TEXT NOT NULL,
-    password_algo       TEXT NOT NULL DEFAULT 'bcrypt',
-    must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
-    last_login_at       TIMESTAMPTZ NULL,
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (user_id)
-);
 
-CREATE TABLE IF NOT EXISTS auth.user_tenants (
-    user_id    UUID NOT NULL REFERENCES auth.users(user_id) ON DELETE CASCADE,
-    tenant_id  UUID NOT NULL,
-    is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (user_id, tenant_id)
-);
+--
+-- Name: emit_outbox_event(); Type: FUNCTION; Schema: auth_sync; Owner: -
+--
 
-CREATE TABLE IF NOT EXISTS auth.audit_log (
-    audit_id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    actor_user_id  UUID NULL,
-    action         TEXT NOT NULL,
-    target_user_id UUID NULL,
-    metadata       JSONB NULL,
-    created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- ============================================================================
--- 3. IDENTITY SCHEMA
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS identity.master_patients (
-    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    first_name        TEXT NOT NULL,
-    last_name         TEXT NOT NULL,
-    dob               DATE,
-    sex               TEXT,
-    status            TEXT NOT NULL DEFAULT 'ACTIVE',
-    created_at        TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at        TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS identity.master_patient_documents (
-    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    master_patient_id   UUID NOT NULL REFERENCES identity.master_patients(id) ON DELETE CASCADE,
-    document_type_code  TEXT NOT NULL,
-    document_number     TEXT NOT NULL,
-    issuing_country_code TEXT,
-    is_primary          BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at          TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at          TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_documents_master_patient_id ON identity.master_patient_documents (master_patient_id);
-CREATE INDEX IF NOT EXISTS idx_documents_doc_lookup ON identity.master_patient_documents (document_type_code, document_number);
-
-CREATE TABLE IF NOT EXISTS identity.master_patient_aliases (
-    alias_id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    master_patient_id UUID NOT NULL REFERENCES identity.master_patients(id) ON DELETE CASCADE,
-    alias_first_name  TEXT,
-    alias_last_name   TEXT,
-    created_at        TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS identity.master_patient_merge_events (
-    merge_event_id  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    survivor_id     UUID NOT NULL REFERENCES identity.master_patients(id),
-    retired_id      UUID NOT NULL REFERENCES identity.master_patients(id),
-    merged_by       UUID,
-    reason          TEXT,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- ============================================================================
--- 4. IDENTITY SYNC SCHEMA
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS identity_sync.outbox_events (
-    event_id    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    entity_type TEXT NOT NULL,
-    entity_id   UUID NOT NULL,
-    operation   TEXT NOT NULL,
-    payload     JSONB NOT NULL,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    processed_at TIMESTAMPTZ
-);
-
-CREATE TABLE IF NOT EXISTS identity_sync.inbox_events (
-    event_id        UUID PRIMARY KEY,
-    source_tenant_id UUID,
-    entity_type     TEXT NOT NULL,
-    entity_id       UUID NOT NULL,
-    operation       TEXT NOT NULL,
-    payload         JSONB NOT NULL,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    applied_at      TIMESTAMPTZ
-);
-
-CREATE TABLE IF NOT EXISTS identity_sync.sync_state (
-    id                    INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
-    last_central_outbox_seq BIGINT NOT NULL DEFAULT 0,
-    updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- Identity sync triggers (outbox auto-population on identity table changes)
-CREATE OR REPLACE FUNCTION identity_sync.fn_push_outbox()
-RETURNS TRIGGER AS $$
+CREATE FUNCTION auth_sync.emit_outbox_event() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    v_entity_type TEXT;
+    v_entity_id   TEXT;
+    v_operation   TEXT;
+    v_payload     JSONB;
 BEGIN
-    INSERT INTO identity_sync.outbox_events (entity_type, entity_id, operation, payload)
-    VALUES (
-        TG_TABLE_NAME,
-        COALESCE(NEW.id, NEW.master_patient_id, NEW.alias_id, NEW.merge_event_id, OLD.id, OLD.master_patient_id, OLD.alias_id, OLD.merge_event_id),
-        TG_OP,
-        CASE TG_OP
-            WHEN 'DELETE' THEN row_to_json(OLD)::jsonb
-            ELSE row_to_json(NEW)::jsonb
-        END
-    );
-    RETURN COALESCE(NEW, OLD);
+    -- Skip if we are applying incoming sync events (prevent echo loops)
+    IF current_setting('auth_sync.applying', true) = 'true' THEN
+        IF TG_OP = 'DELETE' THEN
+            RETURN OLD;
+        ELSE
+            RETURN NEW;
+        END IF;
+    END IF;
+
+    -- Determine entity type from table name
+    v_entity_type := TG_TABLE_NAME;
+
+    -- Build event based on operation
+    IF TG_OP = 'DELETE' THEN
+        v_operation := 'DELETE';
+        v_payload   := to_jsonb(OLD);
+
+        -- Entity-specific PK extraction
+        CASE TG_TABLE_NAME
+            WHEN 'users' THEN
+                v_entity_id := OLD.user_id::text;
+            WHEN 'credentials' THEN
+                v_entity_id := OLD.credential_id::text;
+            WHEN 'user_tenants' THEN
+                -- Composite PK: encode as "user_id::tenant_id"
+                v_entity_id := OLD.user_id::text || '::' || OLD.tenant_id::text;
+        END CASE;
+    ELSE
+        -- INSERT or UPDATE
+        v_operation := 'UPSERT';
+        v_payload   := to_jsonb(NEW);
+
+        CASE TG_TABLE_NAME
+            WHEN 'users' THEN
+                v_entity_id := NEW.user_id::text;
+            WHEN 'credentials' THEN
+                v_entity_id := NEW.credential_id::text;
+            WHEN 'user_tenants' THEN
+                v_entity_id := NEW.user_id::text || '::' || NEW.tenant_id::text;
+        END CASE;
+    END IF;
+
+    -- Emit to outbox (same transaction = atomic)
+    INSERT INTO auth_sync.outbox_events (entity_type, entity_id, operation, payload)
+    VALUES (v_entity_type, v_entity_id, v_operation, v_payload);
+
+    IF TG_OP = 'DELETE' THEN
+        RETURN OLD;
+    ELSE
+        RETURN NEW;
+    END IF;
 END;
-$$ LANGUAGE plpgsql;
-
--- master_patients
-CREATE OR REPLACE TRIGGER trg_sync_master_patients_insert
-    AFTER INSERT ON identity.master_patients FOR EACH ROW EXECUTE FUNCTION identity_sync.fn_push_outbox();
-CREATE OR REPLACE TRIGGER trg_sync_master_patients_update
-    AFTER UPDATE ON identity.master_patients FOR EACH ROW EXECUTE FUNCTION identity_sync.fn_push_outbox();
-CREATE OR REPLACE TRIGGER trg_sync_master_patients_delete
-    AFTER DELETE ON identity.master_patients FOR EACH ROW EXECUTE FUNCTION identity_sync.fn_push_outbox();
-
--- master_patient_documents
-CREATE OR REPLACE TRIGGER trg_sync_master_patient_documents_insert
-    AFTER INSERT ON identity.master_patient_documents FOR EACH ROW EXECUTE FUNCTION identity_sync.fn_push_outbox();
-CREATE OR REPLACE TRIGGER trg_sync_master_patient_documents_update
-    AFTER UPDATE ON identity.master_patient_documents FOR EACH ROW EXECUTE FUNCTION identity_sync.fn_push_outbox();
-CREATE OR REPLACE TRIGGER trg_sync_master_patient_documents_delete
-    AFTER DELETE ON identity.master_patient_documents FOR EACH ROW EXECUTE FUNCTION identity_sync.fn_push_outbox();
-
--- master_patient_aliases
-CREATE OR REPLACE TRIGGER trg_sync_master_patient_aliases_insert
-    AFTER INSERT ON identity.master_patient_aliases FOR EACH ROW EXECUTE FUNCTION identity_sync.fn_push_outbox();
-CREATE OR REPLACE TRIGGER trg_sync_master_patient_aliases_update
-    AFTER UPDATE ON identity.master_patient_aliases FOR EACH ROW EXECUTE FUNCTION identity_sync.fn_push_outbox();
-CREATE OR REPLACE TRIGGER trg_sync_master_patient_aliases_delete
-    AFTER DELETE ON identity.master_patient_aliases FOR EACH ROW EXECUTE FUNCTION identity_sync.fn_push_outbox();
-
--- master_patient_merge_events
-CREATE OR REPLACE TRIGGER trg_sync_master_patient_merge_events_insert
-    AFTER INSERT ON identity.master_patient_merge_events FOR EACH ROW EXECUTE FUNCTION identity_sync.fn_push_outbox();
-CREATE OR REPLACE TRIGGER trg_sync_master_patient_merge_events_update
-    AFTER UPDATE ON identity.master_patient_merge_events FOR EACH ROW EXECUTE FUNCTION identity_sync.fn_push_outbox();
-CREATE OR REPLACE TRIGGER trg_sync_master_patient_merge_events_delete
-    AFTER DELETE ON identity.master_patient_merge_events FOR EACH ROW EXECUTE FUNCTION identity_sync.fn_push_outbox();
-
--- ============================================================================
--- 5. REFERENCE SCHEMA (empty shell — tables populated by referenceSync)
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS reference.care_categories (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    code TEXT UNIQUE NOT NULL,
-    label TEXT NOT NULL,
-    is_active BOOLEAN DEFAULT true,
-    sort_order INTEGER DEFAULT 0,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS idx_care_categories_active_order ON reference.care_categories (is_active, sort_order);
-
-CREATE TABLE IF NOT EXISTS reference.countries (
-    country_id UUID PRIMARY KEY,
-    iso_code   TEXT,
-    name       TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS reference.sih_familles (
-    id uuid primary key default gen_random_uuid(),
-    code text not null unique,
-    libelle text not null,
-    actif boolean not null default true,
-    created_at timestamptz not null default now()
-);
-
-CREATE TABLE IF NOT EXISTS reference.sih_sous_familles (
-    id uuid primary key default gen_random_uuid(),
-    famille_id uuid not null references reference.sih_familles(id) on delete restrict,
-    code text not null,
-    libelle text not null,
-    actif boolean not null default true,
-    created_at timestamptz not null default now(),
-    unique (famille_id, code)
-);
-
-CREATE TABLE IF NOT EXISTS reference.global_actes (
-    id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    code_sih       TEXT NOT NULL UNIQUE,
-    libelle_sih    TEXT NOT NULL,
-    famille_id     UUID REFERENCES reference.sih_familles(id) on delete set null,
-    sous_famille_id UUID REFERENCES reference.sih_sous_familles(id) on delete set null,
-    code_ngap      TEXT,
-    libelle_ngap   TEXT,
-    cotation_ngap  TEXT,
-    code_ccam      TEXT,
-    libelle_ccam   TEXT,
-    type_acte      TEXT,
-    duree_moyenne  INTEGER,
-    actif          BOOLEAN DEFAULT TRUE,
-    catalog_version INTEGER NOT NULL DEFAULT 1,
-    bio_grise BOOLEAN,
-    bio_grise_prescription BOOLEAN,
-    bio_delai_resultats_heures INTEGER,
-    bio_cle_facturation TEXT,
-    bio_nombre_b INTEGER,
-    bio_nombre_b1 INTEGER,
-    bio_nombre_b2 INTEGER,
-    bio_nombre_b3 INTEGER,
-    bio_nombre_b4 INTEGER,
-    bio_instructions_prelevement TEXT,
-    bio_commentaire TEXT,
-    bio_commentaire_prescription TEXT,
-    lab_section_id UUID,
-    lab_sub_section_id UUID,
-    is_lims_enabled BOOLEAN DEFAULT FALSE,
-    is_panel BOOLEAN NOT NULL DEFAULT false,
-    billing_mode TEXT NOT NULL DEFAULT 'DECOMPOSED'
-);
-
-ALTER TABLE reference.global_actes ADD CONSTRAINT chk_ref_global_actes_lab_section_hierarchy 
-    CHECK (lab_sub_section_id IS NULL OR lab_section_id IS NOT NULL);
-
-ALTER TABLE reference.global_actes ADD CONSTRAINT chk_ref_global_actes_billing_mode 
-    CHECK (billing_mode IN ('PANEL', 'DECOMPOSED'));
-
-
---------------------------------------------------------------------------------
--- LAB SECTIONS (Fixed Classification Layer 1)
---------------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS reference.lab_sections (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    sous_famille_id UUID NOT NULL REFERENCES reference.sih_sous_familles(id),
-    code TEXT NOT NULL,
-    libelle TEXT NOT NULL,
-    description TEXT,
-    actif BOOLEAN NOT NULL DEFAULT TRUE,
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT lab_sections_sous_famille_code_key UNIQUE (sous_famille_id, code)
-);
-
-CREATE INDEX IF NOT EXISTS idx_ref_lab_sections_sous_famille_id ON reference.lab_sections(sous_famille_id);
-CREATE INDEX IF NOT EXISTS idx_ref_lab_sections_actif ON reference.lab_sections(actif);
-
---------------------------------------------------------------------------------
--- LAB SUB-SECTIONS (Fixed Classification Layer 2)
---------------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS reference.lab_sub_sections (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    section_id UUID NOT NULL REFERENCES reference.lab_sections(id),
-    code TEXT NOT NULL,
-    libelle TEXT NOT NULL,
-    description TEXT,
-    actif BOOLEAN NOT NULL DEFAULT TRUE,
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT lab_sub_sections_section_id_code_key UNIQUE (section_id, code)
-);
-
-CREATE INDEX IF NOT EXISTS idx_ref_lab_sub_sections_section_id ON reference.lab_sub_sections(section_id);
-CREATE INDEX IF NOT EXISTS idx_ref_lab_sub_sections_actif ON reference.lab_sub_sections(actif);
-
---------------------------------------------------------------------------------
--- LAB PANELS (Recursive Prescribable/Grouping Entities)
---------------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS reference.lab_panels (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    sous_famille_id UUID NOT NULL REFERENCES reference.sih_sous_familles(id),
-    section_id UUID REFERENCES reference.lab_sections(id),
-    sub_section_id UUID REFERENCES reference.lab_sub_sections(id),
-    code TEXT NOT NULL UNIQUE,
-    libelle TEXT NOT NULL,
-    description TEXT,
-    actif BOOLEAN NOT NULL DEFAULT TRUE,
-    is_prescribable BOOLEAN NOT NULL DEFAULT TRUE,
-    expand_to_child_tests BOOLEAN NOT NULL DEFAULT TRUE,
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    global_act_id UUID NOT NULL UNIQUE
-);
-
-ALTER TABLE reference.lab_panels ADD CONSTRAINT fk_ref_lab_panels_global_act 
-    FOREIGN KEY (global_act_id) REFERENCES reference.global_actes(id) ON DELETE RESTRICT;
-
-CREATE INDEX IF NOT EXISTS idx_ref_lab_panels_sous_famille_id ON reference.lab_panels(sous_famille_id);
-CREATE INDEX IF NOT EXISTS idx_ref_lab_panels_section_id ON reference.lab_panels(section_id);
-CREATE INDEX IF NOT EXISTS idx_ref_lab_panels_sub_section_id ON reference.lab_panels(sub_section_id);
-CREATE INDEX IF NOT EXISTS idx_ref_lab_panels_actif ON reference.lab_panels(actif);
-
---------------------------------------------------------------------------------
--- LAB PANEL ITEMS (Recursive Composition)
---------------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS reference.lab_panel_items (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    panel_id UUID NOT NULL REFERENCES reference.lab_panels(id),
-    item_type TEXT NOT NULL CHECK (item_type IN ('PANEL', 'ACT')),
-    child_panel_id UUID REFERENCES reference.lab_panels(id),
-    child_global_act_id UUID REFERENCES reference.global_actes(id),
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    is_required BOOLEAN NOT NULL DEFAULT TRUE,
-    quantity NUMERIC(12,3),
-    notes TEXT,
-    actif BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT chk_ref_lab_panel_items_type CHECK (item_type IN ('ACT', 'PANEL')),
-    CONSTRAINT chk_lab_panel_child_exclusive CHECK (
-        (item_type = 'ACT' AND child_global_act_id IS NOT NULL AND child_panel_id IS NULL) OR
-        (item_type = 'PANEL' AND child_panel_id IS NOT NULL AND child_global_act_id IS NULL)
-    ),
-    CONSTRAINT chk_lab_panel_no_self_ref CHECK (panel_id != child_panel_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_ref_lab_panel_items_panel_id ON reference.lab_panel_items(panel_id);
-CREATE INDEX IF NOT EXISTS idx_ref_lab_panel_items_child_panel_id ON reference.lab_panel_items(child_panel_id);
-CREATE INDEX IF NOT EXISTS idx_ref_lab_panel_items_child_act_id ON reference.lab_panel_items(child_global_act_id);
-
---------------------------------------------------------------------------------
--- LAB SPECIMEN TYPES
---------------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS reference.lab_specimen_types (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    code TEXT NOT NULL UNIQUE,
-    libelle TEXT NOT NULL,
-    description TEXT,
-    base_specimen TEXT NOT NULL,
-    matrix_type TEXT NOT NULL,
-    actif BOOLEAN NOT NULL DEFAULT TRUE,
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_specimen_base_tenant ON reference.lab_specimen_types(base_specimen);
-
-CREATE TABLE IF NOT EXISTS reference.lab_container_types (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    code TEXT NOT NULL UNIQUE,
-    libelle TEXT NOT NULL,
-    description TEXT NULL,
-    additive_type TEXT NULL,
-    tube_color TEXT NULL,
-    actif BOOLEAN NOT NULL DEFAULT true,
-    sort_order INTEGER NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS reference.lab_specimen_container_types (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    specimen_type_id UUID NOT NULL,
-    container_type_id UUID NOT NULL,
-    is_default BOOLEAN NOT NULL DEFAULT false,
-    actif BOOLEAN NOT NULL DEFAULT true,
-    sort_order INTEGER NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-
-    CONSTRAINT fk_specimen
-        FOREIGN KEY (specimen_type_id)
-        REFERENCES reference.lab_specimen_types(id)
-        ON DELETE RESTRICT,
-
-    CONSTRAINT fk_container
-        FOREIGN KEY (container_type_id)
-        REFERENCES reference.lab_container_types(id)
-        ON DELETE RESTRICT,
-
-    CONSTRAINT unique_specimen_container
-        UNIQUE (specimen_type_id, container_type_id)
-);
-
-CREATE UNIQUE INDEX uniq_default_container_per_specimen_tenant
-ON reference.lab_specimen_container_types(specimen_type_id)
-WHERE is_default = true;
-
---------------------------------------------------------------------------------
--- LAB ANALYTES (Atomic Structured Result Semantics)
---------------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS reference.lab_analytes (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    sous_famille_id UUID NOT NULL REFERENCES reference.sih_sous_familles(id),
-    section_id UUID REFERENCES reference.lab_sections(id),
-    sub_section_id UUID REFERENCES reference.lab_sub_sections(id),
-    code TEXT NOT NULL UNIQUE,
-    libelle TEXT NOT NULL,
-    short_label TEXT,
-    description TEXT,
-    value_type TEXT NOT NULL CHECK (value_type IN ('NUMERIC', 'TEXT', 'BOOLEAN', 'CHOICE')),
-    default_unit_id UUID REFERENCES reference.units(id),
-    canonical_unit_id UUID REFERENCES reference.units(id),
-    decimal_precision INTEGER,
-    is_calculated BOOLEAN NOT NULL DEFAULT FALSE,
-    actif BOOLEAN NOT NULL DEFAULT TRUE,
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_ref_lab_analytes_sous_famille_id ON reference.lab_analytes(sous_famille_id);
-CREATE INDEX IF NOT EXISTS idx_ref_lab_analytes_section_id ON reference.lab_analytes(section_id);
-CREATE INDEX IF NOT EXISTS idx_ref_lab_analytes_sub_section_id ON reference.lab_analytes(sub_section_id);
-CREATE INDEX IF NOT EXISTS idx_ref_lab_analytes_value_type ON reference.lab_analytes(value_type);
-CREATE INDEX IF NOT EXISTS idx_ref_lab_analytes_actif ON reference.lab_analytes(actif);
-
---------------------------------------------------------------------------------
--- LAB ACT ANALYTES (Mapping executable biology acts to analytes)
---------------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS reference.lab_act_analytes (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    global_act_id UUID NOT NULL REFERENCES reference.global_actes(id),
-    analyte_id UUID NOT NULL REFERENCES reference.lab_analytes(id),
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    is_primary BOOLEAN NOT NULL DEFAULT FALSE,
-    is_required BOOLEAN NOT NULL DEFAULT TRUE,
-    notes TEXT,
-    display_group TEXT,
-    actif BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT lab_act_analytes_act_analyte_key UNIQUE (global_act_id, analyte_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_ref_lab_act_analytes_global_act_id ON reference.lab_act_analytes(global_act_id);
-CREATE INDEX IF NOT EXISTS idx_ref_lab_act_analytes_analyte_id ON reference.lab_act_analytes(analyte_id);
-
---------------------------------------------------------------------------------
--- LAB ANALYTE UNITS
---------------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS reference.lab_analyte_units (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    analyte_id UUID NOT NULL REFERENCES reference.lab_analytes(id),
-    unit_id UUID NOT NULL REFERENCES reference.units(id),
-    is_default BOOLEAN NOT NULL DEFAULT FALSE,
-    is_canonical BOOLEAN NOT NULL DEFAULT FALSE,
-    conversion_factor NUMERIC NOT NULL DEFAULT 1,
-    conversion_offset NUMERIC NOT NULL DEFAULT 0,
-    actif BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT lab_analyte_units_analyte_unit_key UNIQUE (analyte_id, unit_id)
-);
-
--- Ensure only one default and one canonical unit per analyte
-CREATE UNIQUE INDEX IF NOT EXISTS idx_ref_lab_analyte_units_default ON reference.lab_analyte_units(analyte_id) WHERE is_default = TRUE AND actif = TRUE;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_ref_lab_analyte_units_canonical ON reference.lab_analyte_units(analyte_id) WHERE is_canonical = TRUE AND actif = TRUE;
-
---------------------------------------------------------------------------------
--- LAB ANALYTE ALIASES
---------------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS reference.lab_analyte_aliases (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    analyte_id UUID NOT NULL REFERENCES reference.lab_analytes(id),
-    alias_text TEXT NOT NULL,
-    alias_type TEXT NOT NULL DEFAULT 'DISPLAY' CHECK (alias_type IN ('DISPLAY', 'OCR', 'EXTERNAL', 'SHORT', 'ABBREVIATION')),
-    language_code TEXT,
-    source_system TEXT,
-    is_preferred BOOLEAN NOT NULL DEFAULT FALSE,
-    actif BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT lab_analyte_aliases_analyte_alias_type_key UNIQUE (analyte_id, alias_text, alias_type)
-);
-
-CREATE INDEX IF NOT EXISTS idx_ref_lab_analyte_aliases_analyte_id ON reference.lab_analyte_aliases(analyte_id);
-CREATE INDEX IF NOT EXISTS idx_ref_lab_analyte_aliases_alias_text_lower ON reference.lab_analyte_aliases(LOWER(alias_text));
-
---------------------------------------------------------------------------------
--- LAB METHODS
---------------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS reference.lab_methods (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    code TEXT NOT NULL UNIQUE,
-    libelle TEXT NOT NULL,
-    description TEXT,
-    actif BOOLEAN NOT NULL DEFAULT TRUE,
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
---------------------------------------------------------------------------------
--- LAB ACT METHODS (Biology Scope Only)
---------------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS reference.lab_act_methods (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    global_act_id UUID NOT NULL REFERENCES reference.global_actes(id),
-    method_id UUID NOT NULL REFERENCES reference.lab_methods(id),
-    is_default BOOLEAN NOT NULL DEFAULT FALSE,
-    actif BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT lab_act_methods_act_method_key UNIQUE (global_act_id, method_id)
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_ref_lab_act_methods_default ON reference.lab_act_methods(global_act_id) WHERE is_default = TRUE AND actif = TRUE;
-
---------------------------------------------------------------------------------
--- LAB ACT SPECIMEN TYPES (Biology Scope Only)
---------------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS reference.lab_act_specimen_types (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    global_act_id UUID NOT NULL REFERENCES reference.global_actes(id),
-    specimen_type_id UUID NOT NULL REFERENCES reference.lab_specimen_types(id),
-    is_default BOOLEAN NOT NULL DEFAULT FALSE,
-    is_required BOOLEAN NOT NULL DEFAULT TRUE,
-    collection_instructions TEXT,
-    min_volume NUMERIC(12,3),
-    volume_unit_id UUID REFERENCES reference.units(id) ON DELETE RESTRICT,
-    volume_unit_label TEXT,
-    transport_conditions TEXT,
-    stability_notes TEXT,
-    actif BOOLEAN NOT NULL DEFAULT TRUE,
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT lab_act_specimen_types_act_specimen_key UNIQUE (global_act_id, specimen_type_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_ref_lab_act_specimen_types_global_act_id ON reference.lab_act_specimen_types(global_act_id);
-CREATE INDEX IF NOT EXISTS idx_ref_lab_act_specimen_types_specimen_type_id ON reference.lab_act_specimen_types(specimen_type_id);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_ref_lab_act_specimen_types_default ON reference.lab_act_specimen_types(global_act_id) WHERE is_default = TRUE AND actif = TRUE;
-
---------------------------------------------------------------------------------
--- LAB ANALYTE REFERENCE RANGES
---------------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS reference.lab_analyte_reference_ranges (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    analyte_id UUID NOT NULL REFERENCES reference.lab_analytes(id),
-    unit_id UUID NOT NULL REFERENCES reference.units(id),
-    method_id UUID REFERENCES reference.lab_methods(id),
-    specimen_type_id UUID REFERENCES reference.lab_specimen_types(id),
-    sex TEXT CHECK (sex IN ('MALE', 'FEMALE', 'OTHER', 'UNKNOWN', 'ANY')),
-    age_min_days INTEGER,
-    age_max_days INTEGER,
-    lower_numeric NUMERIC(18,6),
-    upper_numeric NUMERIC(18,6),
-    lower_text TEXT,
-    upper_text TEXT,
-    reference_text TEXT,
-    critical_low_numeric NUMERIC(18,6),
-    critical_high_numeric NUMERIC(18,6),
-    actif BOOLEAN NOT NULL DEFAULT TRUE,
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_ref_lab_analyte_ref_ranges_analyte_id ON reference.lab_analyte_reference_ranges(analyte_id);
-CREATE INDEX IF NOT EXISTS idx_ref_lab_analyte_ref_ranges_unit_id ON reference.lab_analyte_reference_ranges(unit_id);
-CREATE INDEX IF NOT EXISTS idx_ref_lab_analyte_ref_ranges_method_id ON reference.lab_analyte_reference_ranges(method_id);
-CREATE INDEX IF NOT EXISTS idx_ref_lab_analyte_ref_ranges_specimen_id ON reference.lab_analyte_reference_ranges(specimen_type_id);
-
---------------------------------------------------------------------------------
--- LAB ANALYTE EXTERNAL CODES
---------------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS reference.lab_analyte_external_codes (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    analyte_id UUID NOT NULL REFERENCES reference.lab_analytes(id),
-    coding_system TEXT NOT NULL,
-    code TEXT NOT NULL,
-    display_text TEXT,
-    is_primary BOOLEAN NOT NULL DEFAULT FALSE,
-    actif BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT lab_analyte_ext_codes_analyte_sys_code_key UNIQUE (analyte_id, coding_system, code)
-);
-
-CREATE INDEX IF NOT EXISTS idx_ref_lab_analyte_ext_codes_analyte_id ON reference.lab_analyte_external_codes(analyte_id);
-CREATE INDEX IF NOT EXISTS idx_ref_lab_analyte_ext_codes_sys_code ON reference.lab_analyte_external_codes(coding_system, code);
-
-
-CREATE TABLE IF NOT EXISTS reference.global_atc (
-    code     TEXT PRIMARY KEY,
-    label_fr TEXT,
-    label_en TEXT,
-    level    INTEGER,
-    parent   TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_ref_atc_level ON reference.global_atc (level);
-CREATE INDEX IF NOT EXISTS idx_ref_atc_parent ON reference.global_atc (parent);
-
-CREATE TABLE IF NOT EXISTS reference.global_dci (
-    id                UUID PRIMARY KEY,
-    name              TEXT NOT NULL,
-    atc_code          TEXT,
-    therapeutic_class TEXT,
-    care_category_id  UUID REFERENCES reference.care_categories(id),
-    created_at        TIMESTAMPTZ
-);
-CREATE INDEX IF NOT EXISTS idx_ref_dci_name ON reference.global_dci (name);
-CREATE INDEX IF NOT EXISTS idx_ref_dci_atc ON reference.global_dci (atc_code) WHERE atc_code IS NOT NULL;
-
-CREATE TABLE IF NOT EXISTS reference.dci_synonyms (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    dci_id UUID NOT NULL REFERENCES reference.global_dci(id) ON DELETE CASCADE,
-    synonym TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-CREATE INDEX IF NOT EXISTS idx_ref_dci_synonyms_dci_id ON reference.dci_synonyms(dci_id);
-
-CREATE TABLE IF NOT EXISTS reference.global_emdn (
-    code     TEXT PRIMARY KEY,
-    label_fr TEXT,
-    label_en TEXT,
-    level    INTEGER,
-    parent   TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_ref_emdn_parent ON reference.global_emdn (parent);
-
-CREATE TABLE IF NOT EXISTS reference.units (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    code TEXT UNIQUE NOT NULL,
-    display TEXT NOT NULL,
-    is_ucum BOOLEAN DEFAULT false,
-    is_active BOOLEAN DEFAULT true,
-    requires_fluid_info BOOLEAN NOT NULL DEFAULT FALSE,
-    sort_order INT DEFAULT 0,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-CREATE INDEX IF NOT EXISTS idx_units_active_order ON reference.units (is_active, sort_order);
-
-CREATE TABLE IF NOT EXISTS reference.routes (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    code TEXT UNIQUE NOT NULL,
-    label TEXT NOT NULL,
-    is_active BOOLEAN DEFAULT true,
-    requires_fluid_info BOOLEAN NOT NULL DEFAULT FALSE,
-    sort_order INTEGER DEFAULT 0,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS idx_routes_active_order ON reference.routes (is_active, sort_order);
-
-CREATE TABLE IF NOT EXISTS reference.global_products (
-    id                  UUID PRIMARY KEY,
-    type                TEXT NOT NULL,
-    name                TEXT NOT NULL,
-    form                TEXT,
-    dci_composition     JSONB,
-    presentation        TEXT,
-    manufacturer        TEXT,
-    ppv                 NUMERIC,
-    ph                  NUMERIC,
-    pfht                NUMERIC,
-    class_therapeutique TEXT,
-    sahty_code          TEXT,
-    code                TEXT,
-    units_per_pack      INTEGER DEFAULT 1,
-    default_presc_unit  UUID REFERENCES reference.units(id),
-    default_presc_route UUID REFERENCES reference.routes(id),
-    care_category_id    UUID REFERENCES reference.care_categories(id),
-    is_active           BOOLEAN DEFAULT TRUE,
-    created_at          TIMESTAMPTZ,
-    updated_at          TIMESTAMPTZ
-);
-CREATE INDEX IF NOT EXISTS idx_ref_products_name ON reference.global_products (name);
-CREATE INDEX IF NOT EXISTS idx_ref_products_sahty ON reference.global_products (sahty_code) WHERE sahty_code IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_ref_products_active ON reference.global_products (is_active) WHERE is_active = TRUE;
-
-CREATE TABLE IF NOT EXISTS reference.global_product_price_history (
-    id         UUID PRIMARY KEY,
-    product_id UUID NOT NULL REFERENCES reference.global_products(id) ON DELETE CASCADE,
-    ppv        NUMERIC,
-    ph         NUMERIC,
-    pfht       NUMERIC,
-    valid_from TIMESTAMPTZ,
-    valid_to   TIMESTAMPTZ,
-    created_at TIMESTAMPTZ
-);
-CREATE INDEX IF NOT EXISTS idx_ref_price_hist_product ON reference.global_product_price_history (product_id);
-CREATE INDEX IF NOT EXISTS idx_ref_price_hist_dates ON reference.global_product_price_history (valid_from, valid_to);
-
-CREATE TABLE IF NOT EXISTS reference.global_roles (
-    id           UUID PRIMARY KEY,
-    code         TEXT,
-    name         TEXT NOT NULL,
-    description  TEXT,
-    permissions  JSONB,
-    modules      JSONB,
-    assignable_by TEXT,
-    created_at   TIMESTAMPTZ
-);
-
-CREATE TABLE IF NOT EXISTS reference.global_suppliers (
-    id           UUID PRIMARY KEY,
-    name         TEXT NOT NULL,
-    tax_id       TEXT,
-    address      TEXT,
-    contact_info JSONB,
-    is_active    BOOLEAN DEFAULT TRUE,
-    created_at   TIMESTAMPTZ
-);
-CREATE INDEX IF NOT EXISTS idx_ref_suppliers_active ON reference.global_suppliers (is_active) WHERE is_active = TRUE;
-
-CREATE TABLE IF NOT EXISTS reference.identity_document_types (
-    code             TEXT PRIMARY KEY,
-    label            TEXT NOT NULL,
-    validation_regex TEXT,
-    created_at       TIMESTAMPTZ,
-    updated_at       TIMESTAMPTZ
-);
-
-CREATE TABLE IF NOT EXISTS reference.organismes (
-    id          UUID PRIMARY KEY,
-    designation TEXT NOT NULL,
-    category    TEXT NOT NULL,
-    sub_type    TEXT,
-    active      BOOLEAN DEFAULT TRUE,
-    created_at  TIMESTAMPTZ,
-    updated_at  TIMESTAMPTZ
-);
-
--- ============================================================================
--- 6. PUBLIC SCHEMA — SETTINGS DOMAIN
--- ============================================================================
-
--- 6.1 Services
-CREATE TABLE IF NOT EXISTS services (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id   UUID NOT NULL,
-    name        TEXT NOT NULL,
-    code        TEXT,
-    description TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_services_tenant ON services (tenant_id);
-
--- 6.2 Service Units
-CREATE TABLE IF NOT EXISTS service_units (
-    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    service_id UUID NOT NULL REFERENCES services(id) ON DELETE CASCADE,
-    name       TEXT NOT NULL,
-    type       TEXT,
-    capacity   INTEGER DEFAULT 0
-);
-CREATE INDEX IF NOT EXISTS idx_su_service ON service_units (service_id);
-
--- 6.3 Room Types
-CREATE TABLE IF NOT EXISTS room_types (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name            TEXT NOT NULL,
-    description     TEXT,
-    unit_category   TEXT NOT NULL DEFAULT 'CHAMBRE',
-    number_of_beds  INTEGER,
-    is_active       BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- 6.4 Rooms
-CREATE TABLE IF NOT EXISTS rooms (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    service_id      UUID NOT NULL REFERENCES services(id),
-    room_type_id    UUID NOT NULL REFERENCES room_types(id),
-    name            TEXT NOT NULL,
-    description     TEXT,
-    is_active       BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS idx_rooms_service ON rooms (service_id);
-
--- 6.5 Beds
-DO $$ BEGIN
-    CREATE TYPE bed_status AS ENUM ('AVAILABLE', 'OCCUPIED', 'MAINTENANCE');
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
-
-CREATE TABLE IF NOT EXISTS beds (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    room_id     UUID NOT NULL REFERENCES rooms(id),
-    label       TEXT NOT NULL,
-    status      bed_status NOT NULL DEFAULT 'AVAILABLE',
-    is_active   BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE(room_id, label)
-);
-CREATE INDEX IF NOT EXISTS idx_beds_room ON beds (room_id);
-CREATE INDEX IF NOT EXISTS idx_beds_status ON beds (status) WHERE status = 'AVAILABLE';
-
--- 6.4 User Roles (links auth.users → reference.global_roles)
-CREATE TABLE IF NOT EXISTS user_roles (
-    user_id     UUID NOT NULL,
-    role_id     UUID NOT NULL,
-    assigned_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (user_id, role_id)
-);
-CREATE INDEX IF NOT EXISTS idx_user_roles_user_id ON user_roles (user_id);
-CREATE INDEX IF NOT EXISTS idx_user_roles_role_id ON user_roles (role_id);
-
--- 6.5 User Services (links auth.users → services)
-CREATE TABLE IF NOT EXISTS user_services (
-    user_id    UUID NOT NULL REFERENCES auth.users(user_id) ON DELETE CASCADE,
-    service_id UUID NOT NULL REFERENCES services(id) ON DELETE CASCADE,
-    PRIMARY KEY (user_id, service_id)
-);
-CREATE INDEX IF NOT EXISTS idx_user_services_user_id ON user_services (user_id);
-CREATE INDEX IF NOT EXISTS idx_user_services_service_id ON user_services (service_id);
-
--- ============================================================================
--- 7. PUBLIC SCHEMA — LOCATION MANAGEMENT
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS locations (
-    location_id      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id        UUID NOT NULL,
-    name             TEXT NOT NULL,
-    type             TEXT,
-    scope            TEXT,
-    service_id       UUID,
-    status           TEXT DEFAULT 'ACTIVE',
-    created_at       TIMESTAMPTZ DEFAULT now(),
-    location_class   TEXT DEFAULT 'COMMERCIAL',
-    valuation_policy TEXT NOT NULL DEFAULT 'VALUABLE'
-);
-CREATE INDEX IF NOT EXISTS idx_locations_tenant ON locations (tenant_id);
-
--- Prevent deactivation of system locations
-CREATE OR REPLACE FUNCTION fn_prevent_system_location_deactivate()
-RETURNS TRIGGER AS $$
+$$;
+
+
+--
+-- Name: fn_audit_no_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.fn_audit_no_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    RAISE EXCEPTION 'Audit log entries cannot be updated or deleted';
+    RETURN NULL;
+END;
+$$;
+
+
+--
+-- Name: fn_generic_audit(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.fn_generic_audit() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    v_old_data JSONB;
+    v_new_data JSONB;
+    v_record_id UUID;
+    v_user_id UUID;
+BEGIN
+    -- 1. Extract Record ID (Handle logic for different PKs)
+    IF (TG_OP = 'DELETE') THEN
+        IF (TG_TABLE_NAME = 'patients_tenant') THEN
+            v_record_id := OLD.tenant_patient_id;
+        ELSIF (TG_TABLE_NAME = 'identity_ids') THEN
+            v_record_id := OLD.identity_id;
+        ELSIF (TG_TABLE_NAME = 'patient_relationship_links') THEN
+            v_record_id := OLD.relationship_id;
+        ELSIF (TG_TABLE_NAME = 'patient_coverages') THEN
+            v_record_id := OLD.patient_coverage_id;
+        ELSIF (TG_TABLE_NAME = 'coverages') THEN
+            v_record_id := OLD.coverage_id;
+        ELSE
+            -- Default to 'id' if possible
+            BEGIN
+                v_record_id := OLD.id;
+            EXCEPTION WHEN OTHERS THEN
+                v_record_id := NULL; -- Or raise warning
+            END;
+        END IF;
+        v_old_data := to_jsonb(OLD);
+    ELSE
+        IF (TG_TABLE_NAME = 'patients_tenant') THEN
+            v_record_id := NEW.tenant_patient_id;
+        ELSIF (TG_TABLE_NAME = 'identity_ids') THEN
+            v_record_id := NEW.identity_id;
+        ELSIF (TG_TABLE_NAME = 'patient_relationship_links') THEN
+            v_record_id := NEW.relationship_id;
+        ELSIF (TG_TABLE_NAME = 'patient_coverages') THEN
+            v_record_id := NEW.patient_coverage_id;
+        ELSIF (TG_TABLE_NAME = 'coverages') THEN
+            v_record_id := NEW.coverage_id;
+        ELSE
+            BEGIN
+                v_record_id := NEW.id;
+            EXCEPTION WHEN OTHERS THEN
+                 v_record_id := NULL;
+            END;
+        END IF;
+        v_new_data := to_jsonb(NEW);
+        
+        IF (TG_OP = 'UPDATE') THEN
+            v_old_data := to_jsonb(OLD);
+        END IF;
+    END IF;
+
+    -- 2. Extract User ID from session (if available)
+    BEGIN
+        v_user_id := current_setting('sahty.current_user_id', true)::UUID;
+    EXCEPTION WHEN OTHERS THEN
+        v_user_id := NULL;
+    END;
+
+    -- 3. Insert Audit Log (Targeting public.audit_log)
+    INSERT INTO public.audit_log (
+        tenant_id,
+        table_name,
+        record_id,
+        action,
+        old_data,
+        new_data,
+        changed_by,
+        changed_at,
+        operation_txid
+    ) VALUES (
+        CASE WHEN TG_OP = 'DELETE' THEN OLD.tenant_id ELSE NEW.tenant_id END,
+        TG_TABLE_NAME,
+        v_record_id,
+        TG_OP,
+        v_old_data,
+        v_new_data,
+        v_user_id,
+        NOW(),
+        txid_current()
+    );
+
+    RETURN NULL; -- trigger is AFTER, return is ignored
+END;
+$$;
+
+
+--
+-- Name: fn_prevent_system_location_deactivate(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.fn_prevent_system_location_deactivate() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
 BEGIN
     IF OLD.scope = 'SYSTEM' AND NEW.status = 'INACTIVE' THEN
         RAISE EXCEPTION 'Cannot deactivate system location %', OLD.name;
     END IF;
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
-CREATE OR REPLACE TRIGGER trg_prevent_system_location_deactivate
-    BEFORE UPDATE ON locations FOR EACH ROW
-    EXECUTE FUNCTION fn_prevent_system_location_deactivate();
 
--- ============================================================================
--- 8. PUBLIC SCHEMA — SUPPLIER MANAGEMENT
--- ============================================================================
+--
+-- Name: recompute_blood_bag_status(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
 
-CREATE TABLE IF NOT EXISTS suppliers (
-    supplier_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id   UUID NOT NULL,
-    name        TEXT NOT NULL,
-    email       TEXT,
-    phone       TEXT,
-    address     TEXT,
-    is_active   BOOLEAN DEFAULT TRUE,
-    created_at  TIMESTAMPTZ DEFAULT now()
-);
-
--- ============================================================================
--- 9. PUBLIC SCHEMA — INVENTORY DOMAIN
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS inventory_movements (
-    movement_id      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id        UUID NOT NULL,
-    product_id       UUID NOT NULL,
-    lot              TEXT NOT NULL,
-    expiry           DATE NOT NULL,
-    qty_units        INTEGER NOT NULL,
-    from_location_id UUID,
-    to_location_id   UUID,
-    document_type    TEXT NOT NULL,
-    document_id      UUID,
-    created_by       UUID,
-    created_at       TIMESTAMPTZ DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS idx_inv_tenant ON inventory_movements (tenant_id);
-CREATE INDEX IF NOT EXISTS idx_inv_product ON inventory_movements (product_id);
-CREATE INDEX IF NOT EXISTS idx_inv_doc ON inventory_movements (document_type, document_id);
-
-CREATE TABLE IF NOT EXISTS current_stock (
-    tenant_id            UUID NOT NULL,
-    product_id           UUID NOT NULL,
-    lot                  TEXT NOT NULL,
-    expiry               DATE NOT NULL,
-    location_id          UUID NOT NULL,
-    qty_units            INTEGER NOT NULL,
-    reserved_units       INTEGER NOT NULL DEFAULT 0,
-    pending_return_units INTEGER NOT NULL DEFAULT 0
-);
-CREATE INDEX IF NOT EXISTS idx_stock_lookup ON current_stock (tenant_id, product_id, lot, expiry, location_id);
-
-CREATE TABLE IF NOT EXISTS product_wac (
-    tenant_id    UUID NOT NULL,
-    product_id   UUID NOT NULL,
-    wac          NUMERIC NOT NULL,
-    last_updated TIMESTAMPTZ DEFAULT now(),
-    PRIMARY KEY (tenant_id, product_id)
-);
-
--- ============================================================================
--- 10. PUBLIC SCHEMA — STOCK RESERVATIONS
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS stock_reservations (
-    reservation_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id      UUID NOT NULL,
-    session_id     UUID NOT NULL,
-    user_id        UUID NOT NULL,
-    stock_demand_id UUID,
-    status         TEXT DEFAULT 'ACTIVE',
-    reserved_at    TIMESTAMPTZ DEFAULT now(),
-    expires_at     TIMESTAMPTZ NOT NULL,
-    released_at    TIMESTAMPTZ,
-    committed_at   TIMESTAMPTZ
-);
-CREATE INDEX IF NOT EXISTS idx_res_session ON stock_reservations (tenant_id, session_id) WHERE status = 'ACTIVE';
-CREATE INDEX IF NOT EXISTS idx_res_session_active ON stock_reservations (tenant_id, session_id) WHERE status = 'ACTIVE';
-CREATE INDEX IF NOT EXISTS idx_res_expires ON stock_reservations (status, expires_at) WHERE status = 'ACTIVE';
-CREATE INDEX IF NOT EXISTS idx_res_cleanup ON stock_reservations (expires_at) WHERE status = 'ACTIVE';
-
-CREATE TABLE IF NOT EXISTS stock_reservation_lines (
-    id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    reservation_id          UUID NOT NULL REFERENCES stock_reservations(reservation_id),
-    tenant_id               UUID NOT NULL,
-    stock_demand_line_id    UUID,
-    product_id              UUID NOT NULL,
-    lot                     TEXT NOT NULL,
-    expiry                  DATE NOT NULL,
-    source_location_id      UUID NOT NULL,
-    destination_location_id UUID,
-    qty_units               INTEGER NOT NULL,
-    created_at              TIMESTAMPTZ DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS idx_resline_reservation ON stock_reservation_lines (reservation_id);
-CREATE INDEX IF NOT EXISTS idx_resline_tenant ON stock_reservation_lines (tenant_id);
-CREATE INDEX IF NOT EXISTS idx_resline_lookup ON stock_reservation_lines (product_id, lot, expiry, source_location_id);
-
--- ============================================================================
--- 11. PUBLIC SCHEMA — DELIVERY & PURCHASE ORDERS
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS delivery_notes (
-    delivery_note_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id        UUID NOT NULL,
-    supplier_id      TEXT NOT NULL,
-    po_id            UUID,
-    received_at      TIMESTAMPTZ NOT NULL,
-    status           TEXT DEFAULT 'PENDING',
-    created_by       TEXT,
-    created_at       TIMESTAMPTZ DEFAULT now(),
-    reference        TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_dn_tenant ON delivery_notes (tenant_id);
-CREATE INDEX IF NOT EXISTS idx_dn_supplier ON delivery_notes (supplier_id);
-
-CREATE TABLE IF NOT EXISTS delivery_note_items (
-    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id        UUID NOT NULL,
-    delivery_note_id UUID NOT NULL,
-    product_id       UUID NOT NULL,
-    qty_pending      INTEGER NOT NULL,
-    created_at       TIMESTAMPTZ DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS idx_dni_dn ON delivery_note_items (delivery_note_id);
-
-CREATE TABLE IF NOT EXISTS delivery_note_layers (
-    delivery_note_id  UUID NOT NULL,
-    tenant_id         UUID NOT NULL,
-    product_id        UUID NOT NULL,
-    lot               TEXT NOT NULL,
-    expiry            DATE NOT NULL,
-    qty_received      INTEGER NOT NULL,
-    qty_remaining     INTEGER NOT NULL,
-    purchase_unit_cost NUMERIC
-);
-CREATE INDEX IF NOT EXISTS idx_dnl_dn ON delivery_note_layers (delivery_note_id);
-CREATE INDEX IF NOT EXISTS idx_dnl_product ON delivery_note_layers (product_id);
-
-CREATE TABLE IF NOT EXISTS purchase_orders (
-    po_id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id   UUID NOT NULL,
-    supplier_id UUID NOT NULL,
-    status      TEXT NOT NULL,
-    created_by  UUID,
-    created_at  TIMESTAMPTZ DEFAULT now(),
-    updated_at  TIMESTAMPTZ DEFAULT now(),
-    reference   TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_po_tenant ON purchase_orders (tenant_id);
-CREATE INDEX IF NOT EXISTS idx_po_status ON purchase_orders (status);
-
-CREATE TABLE IF NOT EXISTS po_items (
-    po_id               UUID NOT NULL REFERENCES purchase_orders(po_id) ON DELETE CASCADE,
-    tenant_id           UUID NOT NULL,
-    product_id          UUID NOT NULL,
-    qty_ordered         INTEGER NOT NULL,
-    qty_delivered       INTEGER DEFAULT 0,
-    qty_to_be_delivered INTEGER DEFAULT 0,
-    unit_price          NUMERIC,
-    PRIMARY KEY (po_id, product_id)
-);
-CREATE INDEX IF NOT EXISTS idx_poi_po ON po_items (po_id);
-
--- ============================================================================
--- 12. PUBLIC SCHEMA — PRODUCT CONFIG
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS product_configs (
-    tenant_id      UUID NOT NULL,
-    product_id     UUID NOT NULL,
-    is_enabled     BOOLEAN DEFAULT TRUE,
-    min_stock      INTEGER,
-    max_stock      INTEGER,
-    security_stock INTEGER,
-    created_at     TIMESTAMPTZ DEFAULT now(),
-    updated_at     TIMESTAMPTZ DEFAULT now(),
-    PRIMARY KEY (tenant_id, product_id)
-);
-CREATE INDEX IF NOT EXISTS idx_config_enabled ON product_configs (tenant_id, is_enabled) WHERE is_enabled = TRUE;
-
-CREATE TABLE IF NOT EXISTS product_suppliers (
-    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id     UUID NOT NULL,
-    product_id    UUID NOT NULL,
-    supplier_id   UUID NOT NULL,
-    supplier_type TEXT DEFAULT 'GLOBAL',
-    is_active     BOOLEAN DEFAULT TRUE,
-    created_at    TIMESTAMPTZ DEFAULT now(),
-    updated_at    TIMESTAMPTZ DEFAULT now(),
-    UNIQUE (tenant_id, product_id, supplier_id)
-);
-CREATE INDEX IF NOT EXISTS idx_ps_tenant ON product_suppliers (tenant_id);
-CREATE INDEX IF NOT EXISTS idx_ps_product ON product_suppliers (product_id);
-
-CREATE TABLE IF NOT EXISTS product_price_versions (
-    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id           UUID NOT NULL,
-    product_supplier_id UUID NOT NULL REFERENCES product_suppliers(id) ON DELETE CASCADE,
-    purchase_price      NUMERIC NOT NULL,
-    margin              NUMERIC DEFAULT 0,
-    vat                 NUMERIC DEFAULT 0,
-    sale_price_ht       NUMERIC,
-    sale_price_ttc      NUMERIC,
-    unit_sale_price     NUMERIC,
-    valid_from          TIMESTAMPTZ DEFAULT now(),
-    valid_to            TIMESTAMPTZ,
-    created_by          TEXT,
-    change_reason       TEXT,
-    status              TEXT DEFAULT 'ACTIVE'
-);
-CREATE INDEX IF NOT EXISTS idx_price_ver_supp ON product_price_versions (product_supplier_id);
-CREATE INDEX IF NOT EXISTS idx_price_ver_active ON product_price_versions (product_supplier_id) WHERE valid_to IS NULL;
-
--- ============================================================================
--- 13. PUBLIC SCHEMA — STOCK DEMANDS & TRANSFERS
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS stock_demands (
-    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id    UUID NOT NULL,
-    service_id   UUID NOT NULL,
-    status       TEXT NOT NULL DEFAULT 'DRAFT',
-    priority     TEXT DEFAULT 'ROUTINE',
-    requested_by UUID,
-    created_at   TIMESTAMPTZ DEFAULT now(),
-    updated_at   TIMESTAMPTZ DEFAULT now(),
-    demand_ref   TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_demand_tenant ON stock_demands (tenant_id);
-CREATE INDEX IF NOT EXISTS idx_demand_service ON stock_demands (service_id);
-CREATE INDEX IF NOT EXISTS idx_demand_status ON stock_demands (status);
-CREATE INDEX IF NOT EXISTS idx_demand_ref ON stock_demands (demand_ref);
-
-CREATE TABLE IF NOT EXISTS stock_demand_lines (
-    id                        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    demand_id                 UUID NOT NULL REFERENCES stock_demands(id) ON DELETE CASCADE,
-    tenant_id                 UUID NOT NULL,
-    product_id                UUID NOT NULL,
-    qty_requested             INTEGER NOT NULL,
-    qty_allocated             INTEGER DEFAULT 0,
-    qty_transferred           INTEGER DEFAULT 0,
-    created_at                TIMESTAMPTZ DEFAULT now(),
-    target_stock_location_id  UUID
-);
-CREATE INDEX IF NOT EXISTS idx_demand_line_demand ON stock_demand_lines (demand_id);
-
-CREATE TABLE IF NOT EXISTS stock_transfers (
-    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id           UUID NOT NULL,
-    demand_id           UUID REFERENCES stock_demands(id),
-    status              TEXT NOT NULL DEFAULT 'PENDING',
-    validated_at        TIMESTAMPTZ,
-    validated_by        TEXT,
-    created_at          TIMESTAMPTZ DEFAULT now(),
-    client_request_id   TEXT,
-    stock_reservation_id UUID
-);
-CREATE INDEX IF NOT EXISTS idx_transfer_tenant ON stock_transfers (tenant_id);
-CREATE INDEX IF NOT EXISTS idx_transfer_demand ON stock_transfers (demand_id);
-CREATE INDEX IF NOT EXISTS idx_transfer_idempotency ON stock_transfers (tenant_id, client_request_id) WHERE client_request_id IS NOT NULL;
-
-CREATE TABLE IF NOT EXISTS stock_transfer_lines (
-    id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    transfer_id             UUID NOT NULL REFERENCES stock_transfers(id) ON DELETE CASCADE,
-    tenant_id               UUID NOT NULL,
-    product_id              UUID NOT NULL,
-    lot                     TEXT NOT NULL,
-    expiry                  DATE NOT NULL,
-    qty_transferred         INTEGER NOT NULL,
-    demand_line_id          UUID REFERENCES stock_demand_lines(id),
-    created_at              TIMESTAMPTZ DEFAULT now(),
-    source_location_id      UUID,
-    destination_location_id UUID,
-    reservation_line_id     UUID
-);
-CREATE INDEX IF NOT EXISTS idx_transfer_line_transfer ON stock_transfer_lines (transfer_id);
-
--- ============================================================================
--- 14. PUBLIC SCHEMA — RETURNS
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS stock_returns (
-    id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id            UUID NOT NULL,
-    source_type          TEXT NOT NULL,
-    source_service_id    UUID,
-    created_by           UUID NOT NULL,
-    created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
-    status               TEXT NOT NULL DEFAULT 'DRAFT',
-    stock_reservation_id UUID REFERENCES stock_reservations(reservation_id),
-    return_reference     TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_returns_tenant ON stock_returns (tenant_id);
-CREATE INDEX IF NOT EXISTS idx_returns_status ON stock_returns (tenant_id, status);
-CREATE INDEX IF NOT EXISTS idx_returns_service ON stock_returns (source_service_id);
-CREATE INDEX IF NOT EXISTS idx_stock_returns_reference ON stock_returns (return_reference);
-
-CREATE TABLE IF NOT EXISTS stock_return_lines (
-    id                         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    return_id                  UUID NOT NULL REFERENCES stock_returns(id) ON DELETE CASCADE,
-    product_id                 UUID NOT NULL,
-    lot                        TEXT NOT NULL,
-    expiry                     DATE NOT NULL,
-    source_location_id         UUID NOT NULL,
-    qty_declared_units         INTEGER NOT NULL,
-    original_dispense_event_id UUID,
-    stock_reservation_line_id  UUID REFERENCES stock_reservation_lines(id)
-);
-CREATE INDEX IF NOT EXISTS idx_return_lines_return ON stock_return_lines (return_id);
-CREATE INDEX IF NOT EXISTS idx_return_lines_product ON stock_return_lines (product_id);
-
-CREATE TABLE IF NOT EXISTS return_receptions (
-    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    return_id           UUID NOT NULL REFERENCES stock_returns(id) ON DELETE CASCADE,
-    received_by         UUID NOT NULL,
-    received_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
-    reception_reference TEXT,
-    status              TEXT NOT NULL DEFAULT 'OPEN'
-);
-CREATE INDEX IF NOT EXISTS idx_receptions_return ON return_receptions (return_id);
-CREATE INDEX IF NOT EXISTS idx_return_receptions_reference ON return_receptions (reception_reference);
-
-CREATE TABLE IF NOT EXISTS return_reception_lines (
-    id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    reception_id       UUID NOT NULL REFERENCES return_receptions(id) ON DELETE CASCADE,
-    return_line_id     UUID NOT NULL REFERENCES stock_return_lines(id),
-    qty_received_units INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_reception_lines_reception ON return_reception_lines (reception_id);
-CREATE INDEX IF NOT EXISTS idx_reception_lines_return_line ON return_reception_lines (return_line_id);
-
-CREATE TABLE IF NOT EXISTS return_decisions (
-    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    reception_id UUID NOT NULL REFERENCES return_receptions(id) ON DELETE CASCADE,
-    decided_by   UUID NOT NULL,
-    decided_at   TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS idx_decisions_reception ON return_decisions (reception_id);
-
-CREATE TABLE IF NOT EXISTS return_decision_lines (
-    id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    decision_id             UUID NOT NULL REFERENCES return_decisions(id) ON DELETE CASCADE,
-    return_line_id          UUID NOT NULL REFERENCES stock_return_lines(id),
-    qty_units               INTEGER NOT NULL,
-    outcome                 TEXT NOT NULL,
-    destination_location_id UUID REFERENCES locations(location_id)
-);
-CREATE INDEX IF NOT EXISTS idx_decision_lines_decision ON return_decision_lines (decision_id);
-CREATE INDEX IF NOT EXISTS idx_decision_lines_return_line ON return_decision_lines (return_line_id);
-
--- ============================================================================
--- 15. PUBLIC SCHEMA — EMR DOMAIN
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS patients_tenant (
-    tenant_patient_id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id                      UUID NOT NULL,
-    medical_record_number          TEXT,
-    lifecycle_status               TEXT NOT NULL DEFAULT 'ACTIVE'
-        CHECK (lifecycle_status IN ('ACTIVE', 'MERGED', 'INACTIVE')),
-    identity_status                TEXT NOT NULL DEFAULT 'PROVISIONAL'
-        CHECK (identity_status IN ('UNKNOWN', 'PROVISIONAL', 'VERIFIED')),
-    created_at                     TIMESTAMPTZ DEFAULT now(),
-    master_patient_id              UUID REFERENCES identity.master_patients(id),
-    mpi_link_status                TEXT NOT NULL DEFAULT 'UNLINKED',
-    first_name                     TEXT,
-    last_name                      TEXT,
-    dob                            DATE,
-    sex                            TEXT,
-    merged_into_tenant_patient_id  UUID REFERENCES patients_tenant(tenant_patient_id),
-    UNIQUE (tenant_id, medical_record_number)
-);
-CREATE INDEX IF NOT EXISTS idx_patients_tenant_tenant ON patients_tenant (tenant_id);
-CREATE INDEX IF NOT EXISTS idx_patients_tenant_mrn ON patients_tenant (tenant_id, medical_record_number);
-CREATE UNIQUE INDEX IF NOT EXISTS uniq_active_chart_per_master
-    ON patients_tenant (tenant_id, master_patient_id)
-    WHERE lifecycle_status = 'ACTIVE' AND master_patient_id IS NOT NULL;
-
-
-CREATE TABLE IF NOT EXISTS patient_contacts (
-    contact_id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_patient_id UUID NOT NULL,
-    phone             TEXT,
-    email             TEXT,
-    created_at        TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS patient_addresses (
-    address_id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_patient_id UUID NOT NULL,
-    address_line      TEXT,
-    city              TEXT,
-    country_id        UUID,
-    created_at        TIMESTAMPTZ DEFAULT now(),
-    address_line2     TEXT,
-    postal_code       TEXT,
-    region            TEXT,
-    country_code      TEXT,
-    is_primary        BOOLEAN NOT NULL DEFAULT FALSE
-);
-
--- 15.b Identity IDs (Migration 041) — Replaces patient_documents for new identity model
-CREATE TABLE IF NOT EXISTS identity_ids (
-    identity_id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id            UUID NOT NULL,
-    tenant_patient_id    UUID NOT NULL REFERENCES patients_tenant(tenant_patient_id) ON DELETE CASCADE,
-    identity_type_code   TEXT NOT NULL,
-    identity_value       TEXT NOT NULL,
-    issuing_country_code TEXT,
-    is_primary           BOOLEAN NOT NULL DEFAULT FALSE,
-    status               TEXT NOT NULL DEFAULT 'ACTIVE',
-    created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-CREATE INDEX IF NOT EXISTS idx_identity_ids_patient ON identity_ids(tenant_id, tenant_patient_id);
-CREATE INDEX IF NOT EXISTS idx_identity_ids_lookup ON identity_ids(tenant_id, identity_type_code, identity_value);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_mrn_per_tenant ON identity_ids(tenant_id, identity_type_code, identity_value) WHERE identity_type_code = 'LOCAL_MRN' AND status = 'ACTIVE';
-CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_nid_per_tenant ON identity_ids(tenant_id, identity_type_code, identity_value, issuing_country_code) WHERE identity_type_code IN ('NATIONAL_ID', 'PASSPORT', 'CIN') AND status = 'ACTIVE';
-
--- 15.c Patient Identity Change Log (Migration 041)
-CREATE TABLE IF NOT EXISTS patient_identity_change (
-    change_id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id           UUID NOT NULL,
-    tenant_patient_id   UUID NOT NULL REFERENCES patients_tenant(tenant_patient_id) ON DELETE CASCADE,
-    changed_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    changed_by_user_id  UUID,
-    change_source       TEXT NOT NULL,
-    field_path          TEXT NOT NULL,
-    old_value           TEXT,
-    new_value           TEXT,
-    reason              TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_identity_change_patient ON patient_identity_change(tenant_id, tenant_patient_id);
-
--- 15.d Patient Relationship Links (Migration 041 + 045)
-CREATE TABLE IF NOT EXISTS patient_relationship_links (
-    relationship_id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id                    UUID NOT NULL,
-    subject_tenant_patient_id    UUID NOT NULL REFERENCES patients_tenant(tenant_patient_id) ON DELETE CASCADE,
-    related_tenant_patient_id    UUID REFERENCES patients_tenant(tenant_patient_id) ON DELETE SET NULL,
-    related_first_name           TEXT,
-    related_last_name            TEXT,
-    related_identity_type_code   TEXT,
-    related_identity_value       TEXT,
-    related_issuing_country_code TEXT,
-    related_phone                TEXT,
-    relationship_type_code       TEXT NOT NULL,
-    is_legal_guardian             BOOLEAN NOT NULL DEFAULT FALSE,
-    is_decision_maker             BOOLEAN NOT NULL DEFAULT FALSE,
-    is_emergency_contact          BOOLEAN NOT NULL DEFAULT FALSE,
-    priority                     INTEGER,
-    is_primary                   BOOLEAN NOT NULL DEFAULT FALSE,
-    valid_from                   DATE,
-    valid_to                     DATE,
-    created_at                   TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-CREATE INDEX IF NOT EXISTS idx_rel_links_subject ON patient_relationship_links(tenant_id, subject_tenant_patient_id);
-CREATE INDEX IF NOT EXISTS idx_rel_links_related ON patient_relationship_links(tenant_id, related_tenant_patient_id);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_rel_patient ON patient_relationship_links(tenant_id, subject_tenant_patient_id, related_tenant_patient_id, relationship_type_code) WHERE related_tenant_patient_id IS NOT NULL;
-
--- 15.e Coverages & Members (Migration 041 + 046)
-CREATE TABLE IF NOT EXISTS coverages (
-    coverage_id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id          UUID NOT NULL,
-    organisme_id       UUID NOT NULL REFERENCES reference.organismes(id),
-    policy_number      TEXT NOT NULL,
-    group_number       TEXT,
-    plan_name          TEXT,
-    coverage_type_code TEXT,
-    effective_from     DATE,
-    effective_to       DATE,
-    status             TEXT NOT NULL DEFAULT 'ACTIVE',
-    -- Subscriber denormalization (intentional redundancy with coverage_members SELF row)
-    subscriber_tenant_patient_id UUID REFERENCES patients_tenant(tenant_patient_id),
-    subscriber_first_name        TEXT,
-    subscriber_last_name         TEXT,
-    subscriber_identity_type     TEXT,
-    subscriber_identity_value    TEXT,
-    subscriber_issuing_country   TEXT,
-    created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-CREATE INDEX IF NOT EXISTS idx_coverages_lookup ON coverages(tenant_id, organisme_id, policy_number);
-
-CREATE TABLE IF NOT EXISTS coverage_members (
-    coverage_member_id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id                    UUID NOT NULL,
-    coverage_id                  UUID NOT NULL REFERENCES coverages(coverage_id) ON DELETE CASCADE,
-    tenant_patient_id            UUID REFERENCES patients_tenant(tenant_patient_id) ON DELETE CASCADE, -- Nullable (Mig 046)
-    relationship_to_subscriber_code TEXT,
-
-    -- External Subscriber Fields (Mig 046)
-    member_first_name            TEXT,
-    member_last_name             TEXT,
-    member_identity_type         TEXT,
-    member_identity_value        TEXT,
-    member_issuing_country       TEXT,
-
-    created_at                   TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
--- Ensure uniqueness for patient members
-CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_coverage_member ON coverage_members(coverage_id, tenant_patient_id) WHERE tenant_patient_id IS NOT NULL;
--- Ensure max one 'SELF' subscriber per coverage
-CREATE UNIQUE INDEX IF NOT EXISTS idx_coverage_subscriber_unique ON coverage_members(coverage_id) WHERE relationship_to_subscriber_code = 'SELF';
-
-
-CREATE TABLE IF NOT EXISTS patient_tenant_merge_events (
-    merge_event_id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id                  UUID NOT NULL,
-    source_tenant_patient_id   UUID NOT NULL REFERENCES patients_tenant(tenant_patient_id),
-    target_tenant_patient_id   UUID NOT NULL REFERENCES patients_tenant(tenant_patient_id),
-    reason                     TEXT,
-    merged_by_user_id          UUID,
-    created_at                 TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS idx_merge_events_tenant ON patient_tenant_merge_events (tenant_id);
-CREATE INDEX IF NOT EXISTS idx_merge_events_source ON patient_tenant_merge_events (source_tenant_patient_id);
-CREATE INDEX IF NOT EXISTS idx_merge_events_target ON patient_tenant_merge_events (target_tenant_patient_id);
-
-CREATE TABLE IF NOT EXISTS admissions (
-    id                            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id                     UUID NOT NULL,
-    tenant_patient_id             UUID REFERENCES patients_tenant(tenant_patient_id),
-    admission_number              TEXT,
-    reason                        TEXT,
-    attending_physician_user_id   UUID REFERENCES auth.users(user_id),
-    admitting_service_id          UUID REFERENCES services(id),
-    responsible_service_id        UUID REFERENCES services(id),
-    current_service_id            UUID REFERENCES services(id),
-    admission_type                TEXT,
-    arrival_mode                  TEXT,
-    provenance                    TEXT,
-    admission_date                TIMESTAMPTZ NOT NULL,
-    discharge_date                TIMESTAMPTZ,
-    status                        TEXT,
-    currency                      TEXT DEFAULT 'MAD',
-    created_at                    TIMESTAMPTZ DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS idx_admissions_tenant ON admissions (tenant_id);
-CREATE UNIQUE INDEX IF NOT EXISTS uniq_admission_number_tenant
-    ON admissions (tenant_id, admission_number)
-    WHERE admission_number IS NOT NULL;
-CREATE SEQUENCE IF NOT EXISTS admission_number_seq START 1;
-
-CREATE TABLE IF NOT EXISTS patient_stays (
-    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    admission_id        UUID NOT NULL REFERENCES admissions(id),
-    tenant_patient_id   UUID NOT NULL REFERENCES patients_tenant(tenant_patient_id),
-    bed_id              UUID NOT NULL REFERENCES beds(id),
-    started_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
-    ended_at            TIMESTAMPTZ,
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS idx_patient_stays_admission ON patient_stays (admission_id);
-CREATE INDEX IF NOT EXISTS idx_patient_stays_bed ON patient_stays (bed_id);
-CREATE INDEX IF NOT EXISTS idx_patient_stays_active ON patient_stays (bed_id) WHERE ended_at IS NULL;
-
-CREATE TABLE IF NOT EXISTS prescriptions (
-    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id         UUID NOT NULL,
-    patient_id        UUID,
-    admission_id      UUID REFERENCES admissions(id),
-    status            TEXT DEFAULT 'ACTIVE',
-    data              JSONB,
-    created_at        TIMESTAMPTZ DEFAULT now(),
-    created_by        TEXT,
-    tenant_patient_id UUID REFERENCES patients_tenant(tenant_patient_id),
-    requires_fluid_info BOOLEAN NOT NULL DEFAULT FALSE
-);
-CREATE INDEX IF NOT EXISTS idx_rx_tenant ON prescriptions (tenant_id);
-CREATE INDEX IF NOT EXISTS idx_rx_patient ON prescriptions (patient_id);
-CREATE INDEX IF NOT EXISTS idx_rx_admission ON prescriptions (admission_id);
-CREATE INDEX IF NOT EXISTS idx_rx_status ON prescriptions (tenant_id, status);
-CREATE INDEX IF NOT EXISTS idx_prescriptions_tenant_patient ON prescriptions (tenant_patient_id);
-
-CREATE TABLE IF NOT EXISTS medication_dispense_events (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id       UUID NOT NULL,
-    prescription_id UUID,
-    admission_id    UUID,
-    product_id      UUID NOT NULL,
-    lot             TEXT,
-    expiry          DATE,
-    qty_dispensed   INTEGER NOT NULL,
-    dispensed_by    TEXT,
-    dispensed_at    TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS appointments (
-    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id         UUID NOT NULL,
-    patient_id        UUID,
-    service_id        UUID,
-    date_time         TIMESTAMPTZ NOT NULL,
-    reason            TEXT,
-    doctor_name       TEXT,
-    status            TEXT,
-    created_at        TIMESTAMPTZ DEFAULT now(),
-    tenant_patient_id UUID
-);
-
-CREATE TABLE IF NOT EXISTS actes (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id   UUID NOT NULL,
-    code        TEXT NOT NULL,
-    designation TEXT NOT NULL,
-    category    TEXT,
-    price       NUMERIC,
-    created_at  TIMESTAMPTZ DEFAULT now()
-);
-
--- ============================================================================
--- 16. PUBLIC SCHEMA — AUDIT LOG
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS audit_log (
-    audit_id      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id     UUID,
-    table_name    TEXT NOT NULL,
-    record_id     UUID NOT NULL,
-    action        TEXT NOT NULL,
-    old_data      JSONB,
-    new_data      JSONB,
-    changed_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    changed_by    UUID,
-    operation_txid BIGINT
-);
-
--- Prevent updates on audit log
-CREATE OR REPLACE FUNCTION fn_audit_no_update()
-RETURNS TRIGGER AS $$
-BEGIN
-    RAISE EXCEPTION 'Audit log entries cannot be updated or deleted';
-    RETURN NULL;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE TRIGGER audit_log_no_update
-    BEFORE UPDATE OR DELETE ON audit_log FOR EACH ROW
-    EXECUTE FUNCTION fn_audit_no_update();
-
--- Generic audit trigger function
-CREATE OR REPLACE FUNCTION fn_generic_audit()
-RETURNS TRIGGER AS $$
-DECLARE
-    v_tenant_id UUID;
-    v_record_id UUID;
-    v_changed_by UUID;
-BEGIN
-    v_tenant_id := COALESCE(
-        current_setting('app.tenant_id', true)::uuid,
-        NULL
-    );
-    v_changed_by := COALESCE(
-        current_setting('app.user_id', true)::uuid,
-        NULL
-    );
-
-    IF TG_OP = 'DELETE' THEN
-        v_record_id := OLD.id;
-        IF v_record_id IS NULL THEN v_record_id := COALESCE(OLD.tenant_patient_id, OLD.person_id, OLD.relationship_id, OLD.decision_maker_id, OLD.emergency_contact_id, OLD.legal_guardian_id, OLD.patient_insurance_id, OLD.contact_id, OLD.address_id); END IF;
-        INSERT INTO audit_log (tenant_id, table_name, record_id, action, old_data, changed_by, operation_txid)
-        VALUES (v_tenant_id, TG_TABLE_NAME, v_record_id, 'DELETE', row_to_json(OLD)::jsonb, v_changed_by, txid_current());
-        RETURN OLD;
-    ELSIF TG_OP = 'UPDATE' THEN
-        v_record_id := NEW.id;
-        IF v_record_id IS NULL THEN v_record_id := COALESCE(NEW.tenant_patient_id, NEW.person_id, NEW.relationship_id, NEW.decision_maker_id, NEW.emergency_contact_id, NEW.legal_guardian_id, NEW.patient_insurance_id, NEW.contact_id, NEW.address_id); END IF;
-        INSERT INTO audit_log (tenant_id, table_name, record_id, action, old_data, new_data, changed_by, operation_txid)
-        VALUES (v_tenant_id, TG_TABLE_NAME, v_record_id, 'UPDATE', row_to_json(OLD)::jsonb, row_to_json(NEW)::jsonb, v_changed_by, txid_current());
-        RETURN NEW;
-    ELSIF TG_OP = 'INSERT' THEN
-        v_record_id := NEW.id;
-        IF v_record_id IS NULL THEN v_record_id := COALESCE(NEW.tenant_patient_id, NEW.person_id, NEW.relationship_id, NEW.decision_maker_id, NEW.emergency_contact_id, NEW.legal_guardian_id, NEW.patient_insurance_id, NEW.contact_id, NEW.address_id); END IF;
-        INSERT INTO audit_log (tenant_id, table_name, record_id, action, new_data, changed_by, operation_txid)
-        VALUES (v_tenant_id, TG_TABLE_NAME, v_record_id, 'INSERT', row_to_json(NEW)::jsonb, v_changed_by, txid_current());
-        RETURN NEW;
-    END IF;
-END;
-$$ LANGUAGE plpgsql;
-
--- Audit triggers on EMR tables
-CREATE OR REPLACE TRIGGER audit_patients_tenant AFTER INSERT OR UPDATE OR DELETE ON patients_tenant FOR EACH ROW EXECUTE FUNCTION fn_generic_audit();
-
--- ============================================================================
--- 17. PUBLIC SCHEMA — MIGRATION TRACKING
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS _migration_issues (
-    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    source_table      TEXT NOT NULL,
-    source_id         TEXT,
-    issue_type        TEXT NOT NULL,
-    issue_description TEXT,
-    row_data          JSONB,
-    created_at        TIMESTAMPTZ DEFAULT now()
-);
-
--- ============================================================================
-
--- ============================================================================
--- 18. MISSING TABLES (COVERAGES & MEMBERS) - RECONSTRUCTED
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS coverages (
-    coverage_id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id         UUID NOT NULL,
-    organisme_id      UUID NOT NULL, -- References reference.organismes(id)
-    policy_number     TEXT,
-    group_number      TEXT,
-    plan_name         TEXT,
-    coverage_type_code TEXT,
-    effective_from    DATE,
-    effective_to      DATE,
-    status            TEXT NOT NULL DEFAULT 'ACTIVE',
-    created_at        TIMESTAMPTZ DEFAULT now(),
-    updated_at        TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_coverages_tenant ON coverages(tenant_id);
-CREATE INDEX IF NOT EXISTS idx_coverages_organisme ON coverages(organisme_id);
-
-CREATE TABLE IF NOT EXISTS coverage_members (
-    coverage_member_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id          UUID NOT NULL,
-    coverage_id        UUID NOT NULL REFERENCES coverages(coverage_id) ON DELETE CASCADE,
-    tenant_patient_id  UUID NOT NULL REFERENCES patients_tenant(tenant_patient_id) ON DELETE CASCADE,
-    relationship_to_subscriber_code TEXT NOT NULL,
-    created_at         TIMESTAMPTZ DEFAULT now(),
-    updated_at         TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_cov_mem_coverage ON coverage_members(coverage_id);
-CREATE INDEX IF NOT EXISTS idx_cov_mem_patient ON coverage_members(tenant_patient_id);
-
--- ============================================================================
--- 19. EPIC COVERAGE REFACTOR (Migration 047 Tables)
--- ============================================================================
-
--- Coverage Change History (Audit Log for Master Tables)
-CREATE TABLE IF NOT EXISTS coverage_change_history (
-  change_id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id              uuid NOT NULL,
-
-  coverage_id            uuid NOT NULL,
-  coverage_member_id     uuid NULL,
-
-  change_type_code       text NOT NULL,
-  field_name             text NULL,
-  old_value              text NULL,
-  new_value              text NULL,
-
-  change_source          text NOT NULL,
-  changed_by_user_id     uuid NULL,
-  change_reason          text NULL,
-
-  changed_at             timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_coverage_history_coverage ON coverage_change_history (tenant_id, coverage_id);
-CREATE INDEX IF NOT EXISTS idx_coverage_history_member ON coverage_change_history (tenant_id, coverage_member_id);
-CREATE INDEX IF NOT EXISTS idx_coverage_history_date ON coverage_change_history (tenant_id, changed_at DESC);
-
--- Admission Snapshot Tables
-
--- admission_coverages
-CREATE TABLE IF NOT EXISTS admission_coverages (
-  admission_coverage_id   uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id               uuid NOT NULL,
-  admission_id            uuid NOT NULL REFERENCES admissions(id),
-
-  coverage_id             uuid NOT NULL REFERENCES coverages(coverage_id),
-
-  filing_order            integer NOT NULL,
-
-  -- Snapshot of key billing fields
-  organisme_id            uuid NOT NULL,
-  policy_number           text NULL,
-  group_number            text NULL,
-  plan_name               text NULL,
-  coverage_type_code      text NULL,
-
-  -- Snapshot of subscriber identity
-  subscriber_first_name   text NULL,
-  subscriber_last_name    text NULL,
-  subscriber_identity_type text NULL,
-  subscriber_identity_value text NULL,
-  subscriber_issuing_country text NULL,
-
-  created_at              timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_adm_cov_admission ON admission_coverages (tenant_id, admission_id);
-CREATE INDEX IF NOT EXISTS idx_adm_cov_coverage ON admission_coverages (tenant_id, coverage_id);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_adm_cov_order ON admission_coverages (tenant_id, admission_id, filing_order);
-
--- admission_coverage_members
-CREATE TABLE IF NOT EXISTS admission_coverage_members (
-  admission_coverage_member_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id                    uuid NOT NULL,
-
-  admission_coverage_id        uuid NOT NULL REFERENCES admission_coverages(admission_coverage_id) ON DELETE CASCADE,
-
-  tenant_patient_id            uuid NULL,
-
-  -- Snapshot of member identity
-  member_first_name            text NULL,
-  member_last_name             text NULL,
-  relationship_to_subscriber_code text NULL,
-  member_identity_type         text NULL,
-  member_identity_value        text NULL,
-  member_issuing_country       text NULL,
-
-  created_at                   timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_adm_mem_coverage ON admission_coverage_members (tenant_id, admission_coverage_id);
-CREATE INDEX IF NOT EXISTS idx_adm_mem_patient ON admission_coverage_members (tenant_id, tenant_patient_id);
-
--- Admission Coverage Change History
-CREATE TABLE IF NOT EXISTS admission_coverage_change_history (
-  change_id                      uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id                      uuid NOT NULL,
-
-  admission_id                   uuid NOT NULL,
-  admission_coverage_id          uuid NULL,
-  admission_coverage_member_id   uuid NULL,
-
-  change_type_code               text NOT NULL,
-
-  field_name                     text NULL,
-  old_value                      text NULL,
-  new_value                      text NULL,
-
-  change_source                  text NOT NULL,
-  changed_by_user_id             uuid NULL,
-  change_reason                  text NULL,
-
-  changed_at                     timestamptz NOT NULL DEFAULT now(),
-
-  CHECK (
-    admission_coverage_id IS NOT NULL
-    OR admission_coverage_member_id IS NOT NULL
-  )
-);
-
-CREATE INDEX IF NOT EXISTS idx_adm_hist_admission ON admission_coverage_change_history (tenant_id, admission_id);
-CREATE INDEX IF NOT EXISTS idx_adm_hist_coverage ON admission_coverage_change_history (tenant_id, admission_coverage_id);
-CREATE INDEX IF NOT EXISTS idx_adm_hist_date ON admission_coverage_change_history (tenant_id, changed_at DESC);
-
--- ============================================================================
--- 21. PRESCRIPTION EVENTS AND ADMINISTRATION EVENTS
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS prescription_events (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id UUID NOT NULL,
-    prescription_id UUID NOT NULL REFERENCES prescriptions(id) ON DELETE CASCADE,
-    admission_id UUID,
-    scheduled_at TIMESTAMPTZ NOT NULL,
-    duration INTEGER,
-    status TEXT NOT NULL DEFAULT 'scheduled',
-    requires_fluid_info BOOLEAN NOT NULL DEFAULT FALSE,
-    requires_end_event BOOLEAN NOT NULL DEFAULT FALSE,
-    tenant_patient_id UUID NULL,
-    created_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_rx_events_tenant ON prescription_events(tenant_id);
-CREATE INDEX IF NOT EXISTS idx_rx_events_prescription ON prescription_events(prescription_id);
-CREATE INDEX IF NOT EXISTS idx_rx_events_status ON prescription_events(tenant_id, status);
-CREATE INDEX IF NOT EXISTS idx_presc_events_by_admission_time ON prescription_events(tenant_id, admission_id, scheduled_at);
-
-CREATE TABLE IF NOT EXISTS administration_events (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id UUID NOT NULL,
-    prescription_event_id UUID NOT NULL REFERENCES prescription_events(id) ON DELETE CASCADE,
-    action_type TEXT NOT NULL,
-    occurred_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    actual_start_at TIMESTAMPTZ,
-    actual_end_at TIMESTAMPTZ,
-    performed_by TEXT,
-    performed_by_user_id UUID,
-    note TEXT,
-    volume_administered_ml NUMERIC(10,2) NULL,
-    tenant_patient_id UUID NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_admin_events_by_presc_event_time
-    ON administration_events(tenant_id, prescription_event_id, occurred_at);
-
--- ============================================================================
--- 22. SURVEILLANCE HOUR BUCKETS
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS surveillance_hour_buckets (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id UUID NOT NULL,
-    admission_id UUID, -- Can be null, as MAR flowsheet is patient-centric
-    tenant_patient_id UUID NOT NULL,
-    bucket_start TIMESTAMPTZ NOT NULL,
-    values JSONB NOT NULL DEFAULT '{}'::jsonb,
-    revision INT NOT NULL DEFAULT 0,
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_by_user_id UUID,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    created_by_user_id UUID,
-    UNIQUE (tenant_id, tenant_patient_id, bucket_start)
-);
-
-
-CREATE INDEX IF NOT EXISTS idx_surveillance_buckets_patient ON surveillance_hour_buckets(tenant_id, tenant_patient_id, bucket_start);
-CREATE INDEX IF NOT EXISTS idx_surveillance_buckets_admission ON surveillance_hour_buckets(tenant_id, admission_id, bucket_start);
-
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
-
-CREATE TRIGGER trg_surv_hour_buckets_upd
-    BEFORE UPDATE ON surveillance_hour_buckets
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
-
--- ============================================================================
--- 23. PATIENT LABORATORY RESULTS PERSISTENCE LAYER
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS public.patient_lab_reports (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_patient_id UUID NOT NULL REFERENCES public.patients_tenant(tenant_patient_id),
-    admission_id UUID NULL REFERENCES public.admissions(id),
-
-    source_type TEXT NOT NULL CHECK (source_type IN ('EXTERNAL_REPORT', 'INTERNAL_LIMS', 'EXTERNAL_INTERFACE', 'LEGACY_MIGRATION')),
-    status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'ENTERED_IN_ERROR')),
-    structuring_status TEXT NOT NULL DEFAULT 'DOCUMENT_ONLY' CHECK (structuring_status IN ('DOCUMENT_ONLY', 'STRUCTURED')),
-
-    report_title TEXT NULL,
-    source_lab_name TEXT NULL,
-    source_lab_report_number TEXT NULL,
-
-    report_date DATE NULL,
-    collected_at TIMESTAMPTZ NULL,
-    received_at TIMESTAMPTZ NULL,
-
-    used_ai_assistance BOOLEAN NOT NULL DEFAULT FALSE,
-
-    uploaded_by_user_id UUID NOT NULL REFERENCES auth.users(user_id),
-    uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    structured_by_user_id UUID NULL REFERENCES auth.users(user_id),
-    structured_at TIMESTAMPTZ NULL,
-
-    entered_in_error_by_user_id UUID NULL REFERENCES auth.users(user_id),
-    entered_in_error_at TIMESTAMPTZ NULL,
-    entered_in_error_reason TEXT NULL,
-
-    interpretation_text TEXT NULL,
-
-    notes TEXT NULL,
-
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_patient_lab_reports_patient ON public.patient_lab_reports(tenant_patient_id);
-CREATE INDEX IF NOT EXISTS idx_patient_lab_reports_admission ON public.patient_lab_reports(admission_id);
-CREATE INDEX IF NOT EXISTS idx_patient_lab_reports_source_type ON public.patient_lab_reports(source_type);
-CREATE INDEX IF NOT EXISTS idx_patient_lab_reports_status ON public.patient_lab_reports(status);
-CREATE INDEX IF NOT EXISTS idx_patient_lab_reports_report_date ON public.patient_lab_reports(report_date);
-CREATE INDEX IF NOT EXISTS idx_patient_lab_reports_uploaded_at ON public.patient_lab_reports(uploaded_at);
-
-CREATE TABLE IF NOT EXISTS public.patient_documents (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-
-    tenant_id uuid NOT NULL,
-    tenant_patient_id uuid NOT NULL,
-
-    document_type TEXT NOT NULL,
-    original_filename TEXT,
-    stored_filename TEXT,
-    storage_path TEXT,
-
-    mime_type TEXT,
-    file_extension TEXT,
-    file_size_bytes BIGINT,
-
-    checksum TEXT,
-
-    source_type TEXT,
-    source_system TEXT,
-
-    extracted_text TEXT,
-    ai_processed BOOLEAN NOT NULL DEFAULT false,
-
-    uploaded_by_user_id uuid NULL,
-    uploaded_at timestamptz NULL,
-
-    actif BOOLEAN NOT NULL DEFAULT true,
-
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_patient_documents_patient ON public.patient_documents (tenant_patient_id);
-CREATE INDEX IF NOT EXISTS idx_patient_documents_tenant ON public.patient_documents (tenant_id);
-CREATE INDEX IF NOT EXISTS idx_patient_documents_type ON public.patient_documents (document_type);
-CREATE INDEX IF NOT EXISTS idx_patient_documents_checksum ON public.patient_documents (checksum);
-
-CREATE TABLE IF NOT EXISTS public.patient_lab_report_documents (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-
-    patient_lab_report_id uuid NOT NULL,
-    document_id uuid NOT NULL,
-
-    role TEXT NOT NULL DEFAULT 'PRIMARY',
-    sort_order INTEGER NULL,
-
-    actif BOOLEAN NOT NULL DEFAULT true,
-
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now(),
-
-    CONSTRAINT fk_lab_doc_report
-        FOREIGN KEY (patient_lab_report_id)
-        REFERENCES public.patient_lab_reports(id),
-
-    CONSTRAINT fk_lab_doc_document
-        FOREIGN KEY (document_id)
-        REFERENCES public.patient_documents(id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_lab_doc_report ON public.patient_lab_report_documents (patient_lab_report_id);
-CREATE INDEX IF NOT EXISTS idx_lab_doc_document ON public.patient_lab_report_documents (document_id);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_lab_report_document_link ON public.patient_lab_report_documents (patient_lab_report_id, document_id);
-
-CREATE TABLE IF NOT EXISTS public.patient_lab_report_tests (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    patient_lab_report_id UUID NOT NULL REFERENCES public.patient_lab_reports(id) ON DELETE CASCADE,
-
-    global_act_id UUID NULL REFERENCES reference.global_actes(id),
-    panel_id UUID NULL REFERENCES reference.lab_panels(id),
-
-    raw_test_label TEXT NULL,
-    display_order INTEGER NOT NULL DEFAULT 0,
-    notes TEXT NULL,
-
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_patient_lab_report_tests_report ON public.patient_lab_report_tests(patient_lab_report_id);
-CREATE INDEX IF NOT EXISTS idx_patient_lab_report_tests_global_act ON public.patient_lab_report_tests(global_act_id);
-CREATE INDEX IF NOT EXISTS idx_patient_lab_report_tests_panel ON public.patient_lab_report_tests(panel_id);
-
-CREATE TABLE IF NOT EXISTS public.patient_lab_results (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    patient_lab_report_id UUID NOT NULL REFERENCES public.patient_lab_reports(id) ON DELETE CASCADE,
-    patient_lab_report_test_id UUID NULL REFERENCES public.patient_lab_report_tests(id) ON DELETE SET NULL,
-
-    analyte_id UUID NULL REFERENCES reference.lab_analytes(id),
-    analyte_context_id UUID NULL,
-    result_value_id UUID NULL REFERENCES reference.lab_canonical_allowed_values(id),
-    raw_analyte_label TEXT NULL,
-
-    value_type TEXT NOT NULL CHECK (value_type IN ('NUMERIC', 'TEXT', 'BOOLEAN', 'CHOICE')),
-    numeric_value NUMERIC(18,6) NULL,
-    text_value TEXT NULL,
-    boolean_value BOOLEAN NULL,
-    choice_value TEXT NULL,
-
-    unit_id UUID NULL REFERENCES reference.units(id),
-    raw_unit_text TEXT NULL,
-
-    reference_range_text TEXT NULL,
-    reference_low_numeric NUMERIC(18,6) NULL,
-    reference_high_numeric NUMERIC(18,6) NULL,
-    reference_profile_id UUID NULL,
-    reference_rule_id UUID NULL,
-
-    raw_abnormal_flag_text TEXT NULL,
-    interpretation TEXT NULL CHECK (interpretation IN ('NORMAL', 'LOW', 'HIGH', 'CRITICAL_LOW', 'CRITICAL_HIGH', 'BORDERLINE', 'ABNORMAL')),
-
-    observed_at TIMESTAMPTZ NULL,
-    method_id UUID NULL REFERENCES reference.lab_methods(id),
-    specimen_type_id UUID NULL REFERENCES reference.lab_specimen_types(id),
-
-    source_line_reference TEXT NULL,
-
-    status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'ENTERED_IN_ERROR')),
-    entered_in_error_by_user_id UUID NULL REFERENCES auth.users(user_id),
-    entered_in_error_at TIMESTAMPTZ NULL,
-    entered_in_error_reason TEXT NULL,
-
-    notes TEXT NULL,
-
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    CONSTRAINT chk_value_type_consistency CHECK (
-        (value_type = 'NUMERIC' AND numeric_value IS NOT NULL)
-     OR (value_type = 'TEXT' AND text_value IS NOT NULL)
-     OR (value_type = 'BOOLEAN' AND boolean_value IS NOT NULL)
-     OR (value_type = 'CHOICE' AND choice_value IS NOT NULL)
-    )
-);
-
-CREATE INDEX IF NOT EXISTS idx_patient_lab_results_report ON public.patient_lab_results(patient_lab_report_id);
-CREATE INDEX IF NOT EXISTS idx_patient_lab_results_test ON public.patient_lab_results(patient_lab_report_test_id);
-CREATE INDEX IF NOT EXISTS idx_patient_lab_results_analyte ON public.patient_lab_results(analyte_id);
-CREATE INDEX IF NOT EXISTS idx_patient_lab_results_unit ON public.patient_lab_results(unit_id);
-CREATE INDEX IF NOT EXISTS idx_patient_lab_results_observed ON public.patient_lab_results(observed_at);
-CREATE INDEX IF NOT EXISTS idx_patient_lab_results_status ON public.patient_lab_results(status);
-
-CREATE TABLE IF NOT EXISTS public.patient_lab_extraction_sessions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    patient_lab_report_id UUID NOT NULL REFERENCES public.patient_lab_reports(id) ON DELETE CASCADE,
-    source_document_id UUID NULL REFERENCES public.patient_documents(id) ON DELETE CASCADE,
-
-    engine_name TEXT NULL,
-    engine_version TEXT NULL,
-
-    status TEXT NOT NULL CHECK (status IN ('PENDING', 'SUCCEEDED', 'FAILED', 'ABANDONED')),
-
-    started_at TIMESTAMPTZ NULL,
-    completed_at TIMESTAMPTZ NULL,
-
-    raw_output_json JSONB NULL,
-    notes TEXT NULL,
-
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_patient_lab_extraction_report ON public.patient_lab_extraction_sessions(patient_lab_report_id);
-CREATE INDEX IF NOT EXISTS idx_patient_lab_extraction_doc ON public.patient_lab_extraction_sessions(source_document_id);
-CREATE INDEX IF NOT EXISTS idx_patient_lab_extraction_status ON public.patient_lab_extraction_sessions(status);
-CREATE INDEX IF NOT EXISTS idx_patient_lab_extraction_started ON public.patient_lab_extraction_sessions(started_at);
-
--- ============================================================================
--- 24. REFERENCE SCHEMA VERSION TRACKER
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS public.reference_schema_version (
-    id              INTEGER PRIMARY KEY CHECK (id = 1),
-    current_version INTEGER NOT NULL,
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-INSERT INTO public.reference_schema_version (id, current_version)
-VALUES (1, 0)
-ON CONFLICT (id) DO NOTHING;
-
-
--- Migration 066: Fix blood bag cancellation logic
--- Migration 066: Fix blood bag cancellation logic
--- When a START event is cancelled (start_exists = FALSE), the bag's assigned_prescription_event_id
--- should be set back to NULL, so the bag is fully released for another prescription event.
--- We also ensure that bags marked as 'DISCARDED' are never modified.
-
-CREATE OR REPLACE FUNCTION public.recompute_blood_bag_status(p_bag_id UUID)
-RETURNS VOID
-LANGUAGE plpgsql
-AS $$
+CREATE FUNCTION public.recompute_blood_bag_status(p_bag_id uuid) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
 DECLARE
     start_exists BOOLEAN;
     end_exists BOOLEAN;
@@ -2091,3 +1103,7494 @@ END IF;
 
 END;
 $$;
+
+
+--
+-- Name: trigger_recompute_bag_status(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.trigger_recompute_bag_status() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    bag_id UUID;
+    v_event_id UUID;
+BEGIN
+
+-- Determine the event_id depending on operation
+IF TG_OP = 'DELETE' THEN
+    v_event_id := OLD.id;
+ELSE
+    v_event_id := NEW.id;
+END IF;
+
+FOR bag_id IN
+    SELECT blood_bag_id
+    FROM public.administration_event_blood_bags
+    WHERE administration_event_id = v_event_id
+LOOP
+    PERFORM public.recompute_blood_bag_status(bag_id);
+END LOOP;
+
+IF TG_OP = 'DELETE' THEN
+    RETURN OLD;
+ELSE
+    RETURN NEW;
+END IF;
+
+END;
+$$;
+
+
+--
+-- Name: trigger_recompute_bag_status_assoc(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.trigger_recompute_bag_status_assoc() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF TG_OP = 'DELETE' THEN
+        PERFORM public.recompute_blood_bag_status(OLD.blood_bag_id);
+        RETURN OLD;
+    ELSE
+        PERFORM public.recompute_blood_bag_status(NEW.blood_bag_id);
+        RETURN NEW;
+    END IF;
+END;
+$$;
+
+
+--
+-- Name: update_surveillance_hour_bucket(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.update_surveillance_hour_bucket() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    event_value JSONB;
+BEGIN
+
+    IF NEW.value_numeric IS NULL AND NEW.value_text IS NULL AND NEW.value_boolean IS NULL THEN
+        -- Handle Deletion: Remove key from the JSON object
+        INSERT INTO surveillance_hour_buckets (
+            id, tenant_id, tenant_patient_id, bucket_start, values
+        ) VALUES (
+            gen_random_uuid(), NEW.tenant_id, NEW.tenant_patient_id, NEW.bucket_start, '{}'::jsonb
+        )
+        ON CONFLICT (tenant_id, tenant_patient_id, bucket_start)
+        DO UPDATE SET values = surveillance_hour_buckets.values - NEW.parameter_code;
+    ELSE
+        -- Handle Insertion
+        IF NEW.value_numeric IS NOT NULL THEN event_value := to_jsonb(NEW.value_numeric);
+        ELSIF NEW.value_text IS NOT NULL THEN event_value := to_jsonb(NEW.value_text);
+        ELSE event_value := to_jsonb(NEW.value_boolean);
+        END IF;
+
+        INSERT INTO surveillance_hour_buckets (
+            id, tenant_id, tenant_patient_id, bucket_start, values
+        ) VALUES (
+            gen_random_uuid(), NEW.tenant_id, NEW.tenant_patient_id, NEW.bucket_start, jsonb_build_object(NEW.parameter_code, event_value)
+        )
+        ON CONFLICT (tenant_id, tenant_patient_id, bucket_start)
+        DO UPDATE SET values = surveillance_hour_buckets.values || jsonb_build_object(NEW.parameter_code, event_value);
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: update_updated_at_column(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.update_updated_at_column() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$;
+
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: audit_log; Type: TABLE; Schema: auth; Owner: -
+--
+
+CREATE TABLE auth.audit_log (
+    audit_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    actor_user_id uuid,
+    action text NOT NULL,
+    target_user_id uuid,
+    metadata jsonb,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: credentials; Type: TABLE; Schema: auth; Owner: -
+--
+
+CREATE TABLE auth.credentials (
+    credential_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    password_hash text NOT NULL,
+    password_algo text DEFAULT 'bcrypt'::text NOT NULL,
+    must_change_password boolean DEFAULT false NOT NULL,
+    last_login_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: user_tenants; Type: TABLE; Schema: auth; Owner: -
+--
+
+CREATE TABLE auth.user_tenants (
+    user_id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    is_enabled boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: users; Type: TABLE; Schema: auth; Owner: -
+--
+
+CREATE TABLE auth.users (
+    user_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    username text NOT NULL,
+    first_name text NOT NULL,
+    last_name text NOT NULL,
+    display_name text NOT NULL,
+    inpe text,
+    is_active boolean DEFAULT true NOT NULL,
+    master_patient_id uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: inbox_events; Type: TABLE; Schema: auth_sync; Owner: -
+--
+
+CREATE TABLE auth_sync.inbox_events (
+    event_id uuid NOT NULL,
+    source_tenant_id uuid,
+    entity_type text NOT NULL,
+    entity_id text NOT NULL,
+    operation text NOT NULL,
+    payload jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    applied_at timestamp with time zone
+);
+
+
+--
+-- Name: outbox_events; Type: TABLE; Schema: auth_sync; Owner: -
+--
+
+CREATE TABLE auth_sync.outbox_events (
+    event_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    entity_type text NOT NULL,
+    entity_id text NOT NULL,
+    operation text NOT NULL,
+    payload jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    processed_at timestamp with time zone
+);
+
+
+--
+-- Name: sync_state; Type: TABLE; Schema: auth_sync; Owner: -
+--
+
+CREATE TABLE auth_sync.sync_state (
+    id integer DEFAULT 1 NOT NULL,
+    last_group_outbox_seq bigint DEFAULT 0 NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT sync_state_id_check CHECK ((id = 1))
+);
+
+
+--
+-- Name: inbox_events; Type: TABLE; Schema: identity_sync; Owner: -
+--
+
+CREATE TABLE identity_sync.inbox_events (
+    inbox_event_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    event_type text NOT NULL,
+    payload jsonb NOT NULL,
+    received_at timestamp with time zone DEFAULT now() NOT NULL,
+    applied_at timestamp with time zone,
+    status text DEFAULT 'RECEIVED'::text NOT NULL,
+    dedupe_key text NOT NULL
+);
+
+
+--
+-- Name: outbox_events; Type: TABLE; Schema: identity_sync; Owner: -
+--
+
+CREATE TABLE identity_sync.outbox_events (
+    event_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    event_type text NOT NULL,
+    entity_type text NOT NULL,
+    entity_id uuid NOT NULL,
+    payload jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    status text DEFAULT 'PENDING'::text NOT NULL,
+    attempt_count integer DEFAULT 0 NOT NULL,
+    next_attempt_at timestamp with time zone,
+    last_error text,
+    dedupe_key text NOT NULL
+);
+
+
+--
+-- Name: _migration_issues; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public._migration_issues (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    source_table text NOT NULL,
+    source_id text,
+    issue_type text NOT NULL,
+    issue_description text,
+    row_data jsonb,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: actes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.actes (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    code text NOT NULL,
+    designation text NOT NULL,
+    category text,
+    price numeric,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: administration_event_blood_bags; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.administration_event_blood_bags (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    administration_event_id uuid NOT NULL,
+    blood_bag_id uuid NOT NULL,
+    qty_bags numeric DEFAULT 1 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    volume_administered_ml numeric
+);
+
+
+--
+-- Name: administration_event_lab_collections; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.administration_event_lab_collections (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    administration_event_id uuid NOT NULL,
+    lab_collection_id uuid NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: administration_event_pauses; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.administration_event_pauses (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    administration_event_id uuid NOT NULL,
+    paused_at timestamp with time zone NOT NULL,
+    resumed_at timestamp with time zone,
+    paused_by_user_id uuid,
+    resumed_by_user_id uuid,
+    pause_reason text,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: administration_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.administration_events (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    prescription_event_id uuid NOT NULL,
+    action_type text NOT NULL,
+    occurred_at timestamp with time zone DEFAULT now() NOT NULL,
+    actual_start_at timestamp with time zone,
+    actual_end_at timestamp with time zone,
+    performed_by_user_id uuid NOT NULL,
+    note text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    status text DEFAULT 'ACTIVE'::text NOT NULL,
+    cancellation_reason text,
+    linked_event_id uuid,
+    performed_by_first_name character varying,
+    performed_by_last_name character varying,
+    volume_administered_ml numeric(10,2),
+    tenant_patient_id uuid,
+    CONSTRAINT chk_administration_event_status CHECK ((status = ANY (ARRAY['ACTIVE'::text, 'CANCELLED'::text])))
+);
+
+
+--
+-- Name: admission_acts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.admission_acts (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    admission_id uuid NOT NULL,
+    global_act_id uuid NOT NULL,
+    lab_request_id uuid,
+    quantity numeric DEFAULT 1 NOT NULL,
+    entered_in_error_at timestamp without time zone,
+    entered_in_error_by uuid,
+    entered_in_error_reason text,
+    created_at timestamp without time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: admission_coverage_change_history; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.admission_coverage_change_history (
+    change_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    admission_id uuid NOT NULL,
+    admission_coverage_id uuid,
+    admission_coverage_member_id uuid,
+    change_type_code text NOT NULL,
+    field_name text,
+    old_value text,
+    new_value text,
+    change_source text NOT NULL,
+    changed_by_user_id uuid,
+    change_reason text,
+    changed_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT admission_coverage_change_history_check CHECK (((admission_coverage_id IS NOT NULL) OR (admission_coverage_member_id IS NOT NULL)))
+);
+
+
+--
+-- Name: admission_coverage_members; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.admission_coverage_members (
+    admission_coverage_member_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    admission_coverage_id uuid NOT NULL,
+    tenant_patient_id uuid,
+    member_first_name text,
+    member_last_name text,
+    relationship_to_subscriber_code text,
+    member_identity_type text,
+    member_identity_value text,
+    member_issuing_country text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: admission_coverages; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.admission_coverages (
+    admission_coverage_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    admission_id uuid NOT NULL,
+    coverage_id uuid NOT NULL,
+    filing_order integer NOT NULL,
+    organisme_id uuid NOT NULL,
+    policy_number text,
+    group_number text,
+    plan_name text,
+    coverage_type_code text,
+    subscriber_first_name text,
+    subscriber_last_name text,
+    subscriber_identity_type text,
+    subscriber_identity_value text,
+    subscriber_issuing_country text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: admission_number_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.admission_number_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: admissions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.admissions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    tenant_patient_id uuid,
+    admission_number text,
+    reason text,
+    attending_physician_user_id uuid,
+    admitting_service_id uuid,
+    responsible_service_id uuid,
+    current_service_id uuid,
+    admission_type text,
+    arrival_mode text,
+    provenance text,
+    admission_date timestamp with time zone NOT NULL,
+    discharge_date timestamp with time zone,
+    status text,
+    currency text DEFAULT 'MAD'::text,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: appointments; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.appointments (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    patient_id uuid,
+    service_id uuid,
+    date_time timestamp with time zone NOT NULL,
+    reason text,
+    doctor_name text,
+    status text,
+    created_at timestamp with time zone DEFAULT now(),
+    tenant_patient_id uuid
+);
+
+
+--
+-- Name: audit_log; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.audit_log (
+    audit_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid,
+    table_name text NOT NULL,
+    record_id uuid NOT NULL,
+    action text NOT NULL,
+    old_data jsonb,
+    new_data jsonb,
+    changed_at timestamp with time zone DEFAULT now() NOT NULL,
+    changed_by uuid,
+    operation_txid bigint
+);
+
+
+--
+-- Name: beds; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.beds (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    room_id uuid NOT NULL,
+    label text NOT NULL,
+    status public.bed_status DEFAULT 'AVAILABLE'::public.bed_status NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: clinical_exams; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.clinical_exams (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    tenant_patient_id uuid NOT NULL,
+    observed_at timestamp with time zone NOT NULL,
+    recorded_at timestamp with time zone DEFAULT now() NOT NULL,
+    recorded_by uuid NOT NULL,
+    recorded_by_first_name text,
+    recorded_by_last_name text,
+    last_amended_at timestamp with time zone,
+    last_amended_by uuid,
+    last_amended_by_first_name text,
+    last_amended_by_last_name text,
+    status text DEFAULT 'active'::text NOT NULL,
+    entered_in_error_at timestamp with time zone,
+    entered_in_error_by uuid,
+    entered_in_error_by_first_name text,
+    entered_in_error_by_last_name text,
+    entered_in_error_reason text,
+    CONSTRAINT chk_clinical_exams_status CHECK ((status = ANY (ARRAY['active'::text, 'entered_in_error'::text])))
+);
+
+
+--
+-- Name: coverage_change_history; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.coverage_change_history (
+    change_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    coverage_id uuid NOT NULL,
+    coverage_member_id uuid,
+    change_type_code text NOT NULL,
+    field_name text,
+    old_value text,
+    new_value text,
+    change_source text NOT NULL,
+    changed_by_user_id uuid,
+    change_reason text,
+    changed_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: coverage_members; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.coverage_members (
+    coverage_member_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    coverage_id uuid NOT NULL,
+    tenant_patient_id uuid,
+    relationship_to_subscriber_code text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    member_first_name text,
+    member_last_name text,
+    member_identity_type text,
+    member_identity_value text,
+    member_issuing_country text
+);
+
+
+--
+-- Name: coverages; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.coverages (
+    coverage_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    organisme_id uuid NOT NULL,
+    policy_number text NOT NULL,
+    group_number text,
+    plan_name text,
+    coverage_type_code text,
+    effective_from date,
+    effective_to date,
+    status text DEFAULT 'ACTIVE'::text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    subscriber_first_name text,
+    subscriber_last_name text,
+    subscriber_identity_type text,
+    subscriber_identity_value text,
+    subscriber_issuing_country text
+);
+
+
+--
+-- Name: current_stock; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.current_stock (
+    tenant_id uuid NOT NULL,
+    product_id uuid NOT NULL,
+    lot text NOT NULL,
+    expiry date NOT NULL,
+    location_id uuid NOT NULL,
+    qty_units integer NOT NULL,
+    reserved_units integer DEFAULT 0 NOT NULL,
+    pending_return_units integer DEFAULT 0 NOT NULL
+);
+
+
+--
+-- Name: delivery_note_items; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.delivery_note_items (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    delivery_note_id uuid NOT NULL,
+    product_id uuid NOT NULL,
+    qty_pending integer NOT NULL,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: delivery_note_layers; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.delivery_note_layers (
+    delivery_note_id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    product_id uuid NOT NULL,
+    lot text NOT NULL,
+    expiry date NOT NULL,
+    qty_received integer NOT NULL,
+    qty_remaining integer NOT NULL,
+    purchase_unit_cost numeric
+);
+
+
+--
+-- Name: delivery_notes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.delivery_notes (
+    delivery_note_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    supplier_id text NOT NULL,
+    po_id uuid,
+    received_at timestamp with time zone NOT NULL,
+    status text DEFAULT 'PENDING'::text,
+    created_by text,
+    created_at timestamp with time zone DEFAULT now(),
+    reference text
+);
+
+
+--
+-- Name: escarre_snapshots; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.escarre_snapshots (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    escarre_id uuid NOT NULL,
+    recorded_at timestamp with time zone DEFAULT now() NOT NULL,
+    recorded_by uuid,
+    stage integer NOT NULL,
+    length_mm numeric,
+    width_mm numeric,
+    depth_mm numeric,
+    tissue_type text,
+    exudate_amount text,
+    odor text,
+    pain_scale integer,
+    infection_signs boolean,
+    dressing text,
+    notes text,
+    photo_url text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT escarre_snapshots_exudate_amount_check CHECK ((exudate_amount = ANY (ARRAY['none'::text, 'low'::text, 'moderate'::text, 'heavy'::text]))),
+    CONSTRAINT escarre_snapshots_odor_check CHECK ((odor = ANY (ARRAY['none'::text, 'mild'::text, 'strong'::text]))),
+    CONSTRAINT escarre_snapshots_pain_scale_check CHECK (((pain_scale >= 0) AND (pain_scale <= 10))),
+    CONSTRAINT escarre_snapshots_stage_check CHECK ((stage = ANY (ARRAY[1, 2, 3, 4])))
+);
+
+
+--
+-- Name: escarres; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.escarres (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    tenant_patient_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by uuid,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    pos_x double precision NOT NULL,
+    pos_y double precision NOT NULL,
+    pos_z double precision NOT NULL,
+    body_side text,
+    body_region text
+);
+
+
+--
+-- Name: identity_ids; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.identity_ids (
+    identity_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    tenant_patient_id uuid NOT NULL,
+    identity_type_code text NOT NULL,
+    identity_value text NOT NULL,
+    issuing_country_code text,
+    is_primary boolean DEFAULT false NOT NULL,
+    status text DEFAULT 'ACTIVE'::text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: inventory_movements; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.inventory_movements (
+    movement_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    product_id uuid NOT NULL,
+    lot text NOT NULL,
+    expiry date NOT NULL,
+    qty_units integer NOT NULL,
+    from_location_id uuid,
+    to_location_id uuid,
+    document_type text NOT NULL,
+    document_id uuid,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: lab_collection_specimens; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.lab_collection_specimens (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    lab_collection_id uuid NOT NULL,
+    specimen_id uuid NOT NULL
+);
+
+
+--
+-- Name: lab_collections; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.lab_collections (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_patient_id uuid NOT NULL,
+    admission_id uuid,
+    collected_by_user_id uuid NOT NULL,
+    collected_at timestamp without time zone NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: lab_requests; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.lab_requests (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_patient_id uuid NOT NULL,
+    admission_id uuid NOT NULL,
+    global_act_id uuid NOT NULL,
+    prescription_event_id uuid NOT NULL,
+    created_by_user_id uuid,
+    created_at timestamp without time zone DEFAULT now()
+);
+
+
+--
+-- Name: lab_specimen_requests; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.lab_specimen_requests (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    specimen_id uuid NOT NULL,
+    lab_request_id uuid NOT NULL
+);
+
+
+--
+-- Name: lab_specimens; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.lab_specimens (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    lab_specimen_container_type_id uuid NOT NULL,
+    barcode text NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    created_by_user_id uuid
+);
+
+
+--
+-- Name: lab_value_normalization; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.lab_value_normalization (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    raw_value text NOT NULL,
+    canonical_value_id uuid NOT NULL,
+    analyzer_id uuid,
+    analyte_id uuid,
+    actif boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: locations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.locations (
+    location_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    name text NOT NULL,
+    type text,
+    scope text,
+    service_id uuid,
+    status text DEFAULT 'ACTIVE'::text,
+    created_at timestamp with time zone DEFAULT now(),
+    location_class text DEFAULT 'COMMERCIAL'::text,
+    valuation_policy text DEFAULT 'VALUABLE'::text NOT NULL
+);
+
+
+--
+-- Name: medication_dispense_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.medication_dispense_events (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    prescription_id uuid,
+    admission_id uuid,
+    product_id uuid NOT NULL,
+    lot text,
+    expiry date,
+    qty_dispensed integer NOT NULL,
+    dispensed_by text,
+    dispensed_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: patient_addiction_history; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.patient_addiction_history (
+    id uuid NOT NULL,
+    addiction_id uuid NOT NULL,
+    tenant_patient_id uuid NOT NULL,
+    field_name text NOT NULL,
+    old_value_text text,
+    new_value_text text,
+    old_value_number numeric,
+    new_value_number numeric,
+    changed_by uuid NOT NULL,
+    changed_at timestamp with time zone NOT NULL,
+    changed_by_first_name text,
+    changed_by_last_name text
+);
+
+
+--
+-- Name: patient_addictions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.patient_addictions (
+    id uuid NOT NULL,
+    tenant_patient_id uuid NOT NULL,
+    addiction_type text NOT NULL,
+    substance_label text,
+    qty numeric,
+    unit text,
+    frequency text,
+    status text NOT NULL,
+    stop_motivation_score numeric,
+    start_date date,
+    last_use_date date,
+    created_by uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone
+);
+
+
+--
+-- Name: patient_addresses; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.patient_addresses (
+    address_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_patient_id uuid NOT NULL,
+    address_line text,
+    city text,
+    country_id uuid,
+    created_at timestamp with time zone DEFAULT now(),
+    address_line2 text,
+    postal_code text,
+    region text,
+    country_code text,
+    is_primary boolean DEFAULT false NOT NULL
+);
+
+
+--
+-- Name: patient_allergies; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.patient_allergies (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    tenant_patient_id uuid NOT NULL,
+    allergen_dci_id uuid NOT NULL,
+    allergen_name_snapshot text NOT NULL,
+    allergy_type text NOT NULL,
+    severity text NOT NULL,
+    reaction_description text,
+    declared_at date,
+    status text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by uuid,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_by uuid,
+    created_by_first_name text,
+    created_by_last_name text,
+    CONSTRAINT chk_patient_allergies_status CHECK ((status = ANY (ARRAY['ACTIVE'::text, 'RESOLVED'::text, 'ENTERED_IN_ERROR'::text])))
+);
+
+
+--
+-- Name: patient_allergy_history; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.patient_allergy_history (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    tenant_patient_id uuid NOT NULL,
+    patient_allergy_id uuid NOT NULL,
+    event_type text NOT NULL,
+    changed_field text,
+    old_value text,
+    new_value text,
+    change_note text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by uuid,
+    created_by_first_name text,
+    created_by_last_name text,
+    CONSTRAINT chk_patient_allergy_history_event_type CHECK ((event_type = ANY (ARRAY['CREATED'::text, 'DETAILS_UPDATED'::text, 'STATUS_CHANGED'::text])))
+);
+
+
+--
+-- Name: patient_allergy_manifestations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.patient_allergy_manifestations (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    patient_allergy_id uuid NOT NULL,
+    manifestation_code text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by uuid,
+    CONSTRAINT chk_patient_allergy_manifestations_code CHECK ((manifestation_code = ANY (ARRAY['CUTANEE'::text, 'RESPIRATOIRE'::text, 'DIGESTIVE'::text, 'CARDIOVASCULAIRE'::text, 'NEUROLOGIQUE'::text])))
+);
+
+
+--
+-- Name: patient_contacts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.patient_contacts (
+    contact_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_patient_id uuid NOT NULL,
+    phone text,
+    email text,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: patient_diagnoses; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.patient_diagnoses (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    patient_id uuid NOT NULL,
+    status text DEFAULT 'ACTIVE'::text NOT NULL,
+    clinician_user_id uuid,
+    entered_at timestamp with time zone DEFAULT now() NOT NULL,
+    resolved_at timestamp with time zone,
+    voided_at timestamp with time zone,
+    void_reason text,
+    icd_linearization text DEFAULT 'mms'::text NOT NULL,
+    icd_language text DEFAULT 'fr'::text NOT NULL,
+    icd_code text,
+    icd_title text,
+    icd_selected_text text NOT NULL,
+    icd_foundation_uri text NOT NULL,
+    icd_linearization_uri text,
+    icd_minor_version text,
+    source_query text,
+    ect_instance_no text,
+    resolved_by_user_id uuid,
+    resolution_note text,
+    voided_by_user_id uuid,
+    CONSTRAINT patient_diagnoses_status_check CHECK ((status = ANY (ARRAY['ACTIVE'::text, 'RESOLVED'::text, 'VOIDED'::text])))
+);
+
+
+--
+-- Name: patient_documents; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.patient_documents (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    tenant_patient_id uuid NOT NULL,
+    document_type text NOT NULL,
+    original_filename text,
+    stored_filename text,
+    storage_path text,
+    mime_type text,
+    file_extension text,
+    file_size_bytes bigint,
+    checksum text,
+    source_system text,
+    extracted_text text,
+    ai_processed boolean DEFAULT false NOT NULL,
+    uploaded_by_user_id uuid,
+    uploaded_at timestamp with time zone,
+    actif boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    original_mime_type text,
+    CONSTRAINT chk_document_type CHECK ((document_type = ANY (ARRAY['LAB_REPORT'::text, 'RADIOLOGY'::text, 'GENERAL'::text, 'PRESCRIPTION'::text, 'OTHER'::text])))
+);
+
+
+--
+-- Name: patient_identity_change; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.patient_identity_change (
+    change_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    tenant_patient_id uuid NOT NULL,
+    changed_at timestamp with time zone DEFAULT now() NOT NULL,
+    changed_by_user_id uuid,
+    change_source text NOT NULL,
+    field_path text NOT NULL,
+    old_value text,
+    new_value text,
+    reason text
+);
+
+
+--
+-- Name: patient_lab_extraction_sessions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.patient_lab_extraction_sessions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    patient_lab_report_id uuid NOT NULL,
+    source_document_id uuid,
+    engine_name text,
+    engine_version text,
+    status text NOT NULL,
+    started_at timestamp with time zone,
+    completed_at timestamp with time zone,
+    raw_output_json jsonb,
+    notes text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT patient_lab_extraction_sessions_status_check CHECK ((status = ANY (ARRAY['PENDING'::text, 'SUCCEEDED'::text, 'FAILED'::text, 'ABANDONED'::text])))
+);
+
+
+--
+-- Name: patient_lab_report_documents; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.patient_lab_report_documents (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    patient_lab_report_id uuid NOT NULL,
+    document_id uuid NOT NULL,
+    sort_order integer,
+    actif boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    derivation_type text DEFAULT 'ORIGINAL'::text NOT NULL,
+    CONSTRAINT check_derivation_type_enum CHECK ((derivation_type = ANY (ARRAY['ORIGINAL'::text, 'MERGED'::text]))),
+    CONSTRAINT check_sort_order_derivation CHECK ((((derivation_type = 'MERGED'::text) AND (sort_order IS NULL)) OR (derivation_type = 'ORIGINAL'::text)))
+);
+
+
+--
+-- Name: patient_lab_report_tests; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.patient_lab_report_tests (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    patient_lab_report_id uuid NOT NULL,
+    global_act_id uuid,
+    panel_id uuid,
+    raw_test_label text,
+    display_order integer DEFAULT 0 NOT NULL,
+    notes text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: patient_lab_reports; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.patient_lab_reports (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_patient_id uuid NOT NULL,
+    admission_id uuid,
+    source_type text NOT NULL,
+    status text DEFAULT 'DRAFT'::text NOT NULL,
+    structuring_status text DEFAULT 'DOCUMENT_ONLY'::text NOT NULL,
+    report_title text,
+    source_lab_name text,
+    source_lab_report_number text,
+    report_date date,
+    collected_at timestamp with time zone,
+    received_at timestamp with time zone,
+    used_ai_assistance boolean DEFAULT false NOT NULL,
+    uploaded_by_user_id uuid NOT NULL,
+    uploaded_at timestamp with time zone DEFAULT now() NOT NULL,
+    structured_by_user_id uuid,
+    structured_at timestamp with time zone,
+    entered_in_error_by_user_id uuid,
+    entered_in_error_at timestamp with time zone,
+    entered_in_error_reason text,
+    notes text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    interpretation_text text,
+    CONSTRAINT patient_lab_reports_source_type_check CHECK ((source_type = ANY (ARRAY['EXTERNAL_REPORT'::text, 'INTERNAL_LIMS'::text, 'EXTERNAL_INTERFACE'::text, 'LEGACY_MIGRATION'::text]))),
+    CONSTRAINT patient_lab_reports_status_check CHECK ((status = ANY (ARRAY['ACTIVE'::text, 'ENTERED_IN_ERROR'::text, 'DRAFT'::text, 'VALIDATED'::text, 'AMENDED'::text]))),
+    CONSTRAINT patient_lab_reports_structuring_status_check CHECK ((structuring_status = ANY (ARRAY['DOCUMENT_ONLY'::text, 'STRUCTURED'::text])))
+);
+
+
+--
+-- Name: patient_lab_results; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.patient_lab_results (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    patient_lab_report_id uuid NOT NULL,
+    patient_lab_report_test_id uuid,
+    analyte_id uuid,
+    raw_analyte_label text,
+    value_type text NOT NULL,
+    numeric_value numeric(18,6),
+    text_value text,
+    boolean_value boolean,
+    choice_value text,
+    unit_id uuid,
+    raw_unit_text text,
+    reference_range_text text,
+    reference_low_numeric numeric(18,6),
+    reference_high_numeric numeric(18,6),
+    raw_abnormal_flag_text text,
+    abnormal_flag text,
+    observed_at timestamp with time zone,
+    method_id uuid,
+    specimen_type_id uuid,
+    source_line_reference text,
+    status text DEFAULT 'ACTIVE'::text NOT NULL,
+    entered_in_error_by_user_id uuid,
+    entered_in_error_at timestamp with time zone,
+    entered_in_error_reason text,
+    notes text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    lab_analyte_context_id uuid,
+    raw_method_text text,
+    raw_specimen_type_text text,
+    interpretation character varying,
+    CONSTRAINT chk_lab_result_mode CHECK ((((lab_analyte_context_id IS NULL) AND (raw_analyte_label IS NOT NULL)) OR (lab_analyte_context_id IS NOT NULL))),
+    CONSTRAINT chk_patient_lab_results_identity CHECK (((lab_analyte_context_id IS NOT NULL) OR (raw_analyte_label IS NOT NULL))),
+    CONSTRAINT patient_lab_results_abnormal_flag_check CHECK ((abnormal_flag = ANY (ARRAY['LOW'::text, 'HIGH'::text, 'CRITICAL_LOW'::text, 'CRITICAL_HIGH'::text, 'ABNORMAL'::text, 'NORMAL'::text]))),
+    CONSTRAINT patient_lab_results_status_check CHECK ((status = ANY (ARRAY['ACTIVE'::text, 'ENTERED_IN_ERROR'::text]))),
+    CONSTRAINT patient_lab_results_value_type_check CHECK ((value_type = ANY (ARRAY['NUMERIC'::text, 'TEXT'::text, 'BOOLEAN'::text, 'CHOICE'::text])))
+);
+
+
+--
+-- Name: patient_observations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.patient_observations (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_patient_id uuid NOT NULL,
+    created_by uuid NOT NULL,
+    author_role text NOT NULL,
+    note_type text NOT NULL,
+    privacy_level text DEFAULT 'NORMAL'::text NOT NULL,
+    status text NOT NULL,
+    declared_time timestamp with time zone NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone,
+    signed_at timestamp with time zone,
+    signed_by uuid,
+    parent_observation_id uuid,
+    linked_admission_id uuid,
+    linked_allergy_id uuid,
+    linked_addiction_id uuid,
+    body_html text NOT NULL,
+    body_plain text NOT NULL,
+    author_first_name text NOT NULL,
+    author_last_name text NOT NULL,
+    CONSTRAINT chk_no_self_parent CHECK (((parent_observation_id IS NULL) OR (parent_observation_id <> id))),
+    CONSTRAINT patient_observations_author_role_check CHECK ((author_role = ANY (ARRAY['DOCTOR'::text, 'NURSE'::text]))),
+    CONSTRAINT patient_observations_body_html_check CHECK ((length(body_html) < 200000)),
+    CONSTRAINT patient_observations_note_type_check CHECK ((note_type = ANY (ARRAY['ADMISSION'::text, 'PROGRESS'::text, 'DISCHARGE'::text, 'CONSULT'::text, 'GENERAL'::text]))),
+    CONSTRAINT patient_observations_privacy_level_check CHECK ((privacy_level = ANY (ARRAY['NORMAL'::text, 'SENSITIVE'::text, 'RESTRICTED'::text]))),
+    CONSTRAINT patient_observations_status_check CHECK ((status = ANY (ARRAY['DRAFT'::text, 'SIGNED'::text])))
+);
+
+
+--
+-- Name: patient_relationship_links; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.patient_relationship_links (
+    relationship_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    subject_tenant_patient_id uuid NOT NULL,
+    related_tenant_patient_id uuid,
+    related_first_name text,
+    related_last_name text,
+    related_identity_type_code text,
+    related_identity_value text,
+    related_issuing_country_code text,
+    relationship_type_code text NOT NULL,
+    is_legal_guardian boolean DEFAULT false NOT NULL,
+    is_decision_maker boolean DEFAULT false NOT NULL,
+    is_emergency_contact boolean DEFAULT false NOT NULL,
+    priority integer,
+    is_primary boolean DEFAULT false NOT NULL,
+    valid_from date,
+    valid_to date,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    related_phone text
+);
+
+
+--
+-- Name: patient_stays; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.patient_stays (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    admission_id uuid NOT NULL,
+    tenant_patient_id uuid NOT NULL,
+    bed_id uuid NOT NULL,
+    started_at timestamp with time zone DEFAULT now() NOT NULL,
+    ended_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: patient_tenant_merge_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.patient_tenant_merge_events (
+    merge_event_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    source_tenant_patient_id uuid NOT NULL,
+    target_tenant_patient_id uuid NOT NULL,
+    reason text,
+    merged_by_user_id uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: patients_tenant; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.patients_tenant (
+    tenant_patient_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    lifecycle_status text DEFAULT 'ACTIVE'::text NOT NULL,
+    identity_status text DEFAULT 'PROVISIONAL'::text NOT NULL,
+    created_at timestamp with time zone DEFAULT now(),
+    first_name text,
+    last_name text,
+    dob date,
+    sex text,
+    merged_into_tenant_patient_id uuid,
+    CONSTRAINT patients_tenant_identity_status_check CHECK ((identity_status = ANY (ARRAY['UNKNOWN'::text, 'PROVISIONAL'::text, 'VERIFIED'::text]))),
+    CONSTRAINT patients_tenant_lifecycle_status_check CHECK ((lifecycle_status = ANY (ARRAY['ACTIVE'::text, 'MERGED'::text, 'INACTIVE'::text])))
+);
+
+
+--
+-- Name: po_items; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.po_items (
+    po_id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    product_id uuid NOT NULL,
+    qty_ordered integer NOT NULL,
+    qty_delivered integer DEFAULT 0,
+    qty_to_be_delivered integer DEFAULT 0,
+    unit_price numeric
+);
+
+
+--
+-- Name: prescription_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.prescription_events (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    prescription_id uuid NOT NULL,
+    admission_id uuid,
+    scheduled_at timestamp with time zone NOT NULL,
+    status text DEFAULT 'ACTIVE'::text NOT NULL,
+    created_at timestamp with time zone DEFAULT now(),
+    duration integer,
+    requires_fluid_info boolean DEFAULT false NOT NULL,
+    requires_end_event boolean DEFAULT false NOT NULL,
+    tenant_patient_id uuid,
+    CONSTRAINT prescription_events_status_check CHECK ((status = ANY (ARRAY['ACTIVE'::text, 'SKIPPED'::text])))
+);
+
+
+--
+-- Name: prescriptions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.prescriptions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    admission_id uuid,
+    status text DEFAULT 'ACTIVE'::text,
+    created_at timestamp with time zone DEFAULT now(),
+    created_by uuid,
+    tenant_patient_id uuid,
+    prescription_type text DEFAULT 'medication'::text NOT NULL,
+    condition_comment text,
+    created_by_first_name text,
+    created_by_last_name text,
+    paused_at timestamp with time zone,
+    paused_by uuid,
+    stopped_at timestamp with time zone,
+    stopped_by uuid,
+    stopped_reason text,
+    requires_fluid_info boolean DEFAULT false NOT NULL,
+    qty numeric,
+    molecule_id uuid,
+    molecule_name text,
+    product_id uuid,
+    product_name text,
+    acte_id uuid,
+    libelle_sih text,
+    blood_product_type text,
+    unit_id uuid,
+    unit_label text,
+    route_id uuid,
+    route_label text,
+    substitutable boolean,
+    dilution_required boolean,
+    solvent_qty numeric,
+    solvent_unit_id uuid,
+    solvent_unit_label text,
+    solvent_molecule_id uuid,
+    solvent_molecule_name text,
+    solvent_product_id uuid,
+    solvent_product_name text,
+    schedule_mode text,
+    schedule_type text,
+    "interval" integer,
+    simple_count integer,
+    duration_unit text,
+    duration_value integer,
+    simple_period text,
+    daily_schedule text,
+    selected_days jsonb,
+    specific_times jsonb,
+    start_datetime timestamp without time zone,
+    interval_duration integer,
+    is_custom_interval boolean,
+    admin_mode text,
+    admin_duration_mins integer,
+    skipped_events jsonb,
+    manually_adjusted_events jsonb,
+    database_mode text
+);
+
+
+--
+-- Name: product_configs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.product_configs (
+    tenant_id uuid NOT NULL,
+    product_id uuid NOT NULL,
+    is_enabled boolean DEFAULT true,
+    min_stock integer,
+    max_stock integer,
+    security_stock integer,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: product_price_versions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.product_price_versions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    product_supplier_id uuid NOT NULL,
+    purchase_price numeric NOT NULL,
+    margin numeric DEFAULT 0,
+    vat numeric DEFAULT 0,
+    sale_price_ht numeric,
+    sale_price_ttc numeric,
+    unit_sale_price numeric,
+    valid_from timestamp with time zone DEFAULT now(),
+    valid_to timestamp with time zone,
+    created_by text,
+    change_reason text,
+    status text DEFAULT 'ACTIVE'::text
+);
+
+
+--
+-- Name: product_suppliers; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.product_suppliers (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    product_id uuid NOT NULL,
+    supplier_id uuid NOT NULL,
+    supplier_type text DEFAULT 'GLOBAL'::text,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: product_wac; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.product_wac (
+    tenant_id uuid NOT NULL,
+    product_id uuid NOT NULL,
+    wac numeric NOT NULL,
+    last_updated timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: purchase_orders; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.purchase_orders (
+    po_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    supplier_id uuid NOT NULL,
+    status text NOT NULL,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    reference text
+);
+
+
+--
+-- Name: reference_schema_version; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.reference_schema_version (
+    id integer NOT NULL,
+    current_version integer NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT reference_schema_version_id_check CHECK ((id = 1))
+);
+
+
+--
+-- Name: return_decision_lines; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.return_decision_lines (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    decision_id uuid NOT NULL,
+    return_line_id uuid NOT NULL,
+    qty_units integer NOT NULL,
+    outcome text NOT NULL,
+    destination_location_id uuid
+);
+
+
+--
+-- Name: return_decisions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.return_decisions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    reception_id uuid NOT NULL,
+    decided_by uuid NOT NULL,
+    decided_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: return_reception_lines; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.return_reception_lines (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    reception_id uuid NOT NULL,
+    return_line_id uuid NOT NULL,
+    qty_received_units integer NOT NULL
+);
+
+
+--
+-- Name: return_receptions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.return_receptions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    return_id uuid NOT NULL,
+    received_by uuid NOT NULL,
+    received_at timestamp with time zone DEFAULT now() NOT NULL,
+    reception_reference text,
+    status text DEFAULT 'OPEN'::text NOT NULL
+);
+
+
+--
+-- Name: room_types; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.room_types (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    name text NOT NULL,
+    description text,
+    unit_category text DEFAULT 'CHAMBRE'::text NOT NULL,
+    number_of_beds integer,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: rooms; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.rooms (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    service_id uuid NOT NULL,
+    room_type_id uuid NOT NULL,
+    name text NOT NULL,
+    description text,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: service_units; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.service_units (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    service_id uuid NOT NULL,
+    name text NOT NULL,
+    type text,
+    capacity integer DEFAULT 0
+);
+
+
+--
+-- Name: services; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.services (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    name text NOT NULL,
+    code text,
+    description text
+);
+
+
+--
+-- Name: smart_phrases; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.smart_phrases (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    trigger text NOT NULL,
+    trigger_search text NOT NULL,
+    label text,
+    description text,
+    body_html text NOT NULL,
+    scope text NOT NULL,
+    tenant_id uuid,
+    user_id uuid,
+    is_active boolean DEFAULT true NOT NULL,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT chk_smart_phrases_scope_refs CHECK ((((scope = 'system'::text) AND (user_id IS NULL)) OR ((scope = 'tenant'::text) AND (tenant_id IS NOT NULL) AND (user_id IS NULL)) OR ((scope = 'user'::text) AND (tenant_id IS NOT NULL) AND (user_id IS NOT NULL)))),
+    CONSTRAINT smart_phrases_scope_check CHECK ((scope = ANY (ARRAY['system'::text, 'tenant'::text, 'user'::text])))
+);
+
+
+--
+-- Name: stock_demand_lines; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.stock_demand_lines (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    demand_id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    product_id uuid NOT NULL,
+    qty_requested integer NOT NULL,
+    qty_allocated integer DEFAULT 0,
+    qty_transferred integer DEFAULT 0,
+    created_at timestamp with time zone DEFAULT now(),
+    target_stock_location_id uuid
+);
+
+
+--
+-- Name: stock_demands; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.stock_demands (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    service_id uuid NOT NULL,
+    status text DEFAULT 'DRAFT'::text NOT NULL,
+    priority text DEFAULT 'ROUTINE'::text,
+    requested_by uuid,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    demand_ref text
+);
+
+
+--
+-- Name: stock_reservation_lines; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.stock_reservation_lines (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    reservation_id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    stock_demand_line_id uuid,
+    product_id uuid NOT NULL,
+    lot text NOT NULL,
+    expiry date NOT NULL,
+    source_location_id uuid NOT NULL,
+    destination_location_id uuid,
+    qty_units integer NOT NULL,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: stock_reservations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.stock_reservations (
+    reservation_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    session_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    stock_demand_id uuid,
+    status text DEFAULT 'ACTIVE'::text,
+    reserved_at timestamp with time zone DEFAULT now(),
+    expires_at timestamp with time zone NOT NULL,
+    released_at timestamp with time zone,
+    committed_at timestamp with time zone
+);
+
+
+--
+-- Name: stock_return_lines; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.stock_return_lines (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    return_id uuid NOT NULL,
+    product_id uuid NOT NULL,
+    lot text NOT NULL,
+    expiry date NOT NULL,
+    source_location_id uuid NOT NULL,
+    qty_declared_units integer NOT NULL,
+    original_dispense_event_id uuid,
+    stock_reservation_line_id uuid
+);
+
+
+--
+-- Name: stock_returns; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.stock_returns (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    source_type text NOT NULL,
+    source_service_id uuid,
+    created_by uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    status text DEFAULT 'DRAFT'::text NOT NULL,
+    stock_reservation_id uuid,
+    return_reference text
+);
+
+
+--
+-- Name: stock_transfer_lines; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.stock_transfer_lines (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    transfer_id uuid NOT NULL,
+    tenant_id uuid NOT NULL,
+    product_id uuid NOT NULL,
+    lot text NOT NULL,
+    expiry date NOT NULL,
+    qty_transferred integer NOT NULL,
+    demand_line_id uuid,
+    created_at timestamp with time zone DEFAULT now(),
+    source_location_id uuid,
+    destination_location_id uuid,
+    reservation_line_id uuid
+);
+
+
+--
+-- Name: stock_transfers; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.stock_transfers (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    demand_id uuid,
+    status text DEFAULT 'PENDING'::text NOT NULL,
+    validated_at timestamp with time zone,
+    validated_by text,
+    created_at timestamp with time zone DEFAULT now(),
+    client_request_id text,
+    stock_reservation_id uuid
+);
+
+
+--
+-- Name: suppliers; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.suppliers (
+    supplier_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    name text NOT NULL,
+    email text,
+    phone text,
+    address text,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: surveillance_hour_buckets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.surveillance_hour_buckets (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    tenant_patient_id uuid NOT NULL,
+    bucket_start timestamp with time zone NOT NULL,
+    "values" jsonb DEFAULT '{}'::jsonb NOT NULL
+);
+
+
+--
+-- Name: surveillance_values_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.surveillance_values_events (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    tenant_patient_id uuid NOT NULL,
+    parameter_id uuid NOT NULL,
+    parameter_code text NOT NULL,
+    bucket_start timestamp with time zone NOT NULL,
+    value_numeric numeric,
+    value_text text,
+    value_boolean boolean,
+    recorded_at timestamp with time zone DEFAULT now() NOT NULL,
+    recorded_by uuid NOT NULL,
+    observed_at timestamp with time zone NOT NULL,
+    context_id uuid,
+    source_context text NOT NULL,
+    recorded_by_first_name text,
+    recorded_by_last_name text,
+    CONSTRAINT chk_exactly_one_value_type CHECK ((((((value_numeric IS NOT NULL))::integer + ((value_text IS NOT NULL))::integer) + ((value_boolean IS NOT NULL))::integer) <= 1)),
+    CONSTRAINT chk_surveillance_source_context CHECK ((source_context = ANY (ARRAY['flowsheet'::text, 'clinical_exam'::text, 'hydric_engine'::text, 'monitor'::text, 'pump'::text, 'integration'::text, 'system'::text])))
+);
+
+
+--
+-- Name: transfusion_blood_bags; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.transfusion_blood_bags (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    tenant_patient_id uuid NOT NULL,
+    admission_id uuid,
+    received_at timestamp with time zone DEFAULT now() NOT NULL,
+    received_by_user_id uuid NOT NULL,
+    received_by_user_first_name character varying(255),
+    received_by_user_last_name character varying(255),
+    blood_product_code text NOT NULL,
+    bag_number text NOT NULL,
+    abo_group text NOT NULL,
+    rhesus text NOT NULL,
+    volume_ml numeric,
+    expiry_at timestamp with time zone,
+    status text DEFAULT 'RECEIVED'::text NOT NULL,
+    notes text,
+    billed_at timestamp with time zone,
+    billing_status text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    assigned_prescription_event_id uuid,
+    CONSTRAINT chk_transfusion_bag_status CHECK ((status = ANY (ARRAY['RECEIVED'::text, 'ISSUED'::text, 'ADMINISTERED'::text, 'CANCELLED'::text, 'WASTED'::text, 'IN_USE'::text, 'USED'::text, 'DISCARDED'::text])))
+);
+
+
+--
+-- Name: transfusion_checks; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.transfusion_checks (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    administration_event_id uuid NOT NULL,
+    checked_at timestamp with time zone DEFAULT now() NOT NULL,
+    checked_by_user_id uuid NOT NULL,
+    identity_check_done boolean DEFAULT false NOT NULL,
+    compatibility_check_done boolean DEFAULT false NOT NULL,
+    bedside_double_check_done boolean DEFAULT false NOT NULL,
+    vitals_baseline_done boolean DEFAULT false NOT NULL,
+    notes text
+);
+
+
+--
+-- Name: transfusion_reactions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.transfusion_reactions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    administration_event_id uuid NOT NULL,
+    recorded_at timestamp with time zone DEFAULT now() NOT NULL,
+    recorded_by_user_id uuid NOT NULL,
+    reaction_type text NOT NULL,
+    severity text,
+    description text,
+    actions_taken text
+);
+
+
+--
+-- Name: user_roles; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_roles (
+    user_id uuid NOT NULL,
+    role_id uuid NOT NULL,
+    assigned_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: user_services; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_services (
+    user_id uuid NOT NULL,
+    service_id uuid NOT NULL
+);
+
+
+--
+-- Name: care_categories; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.care_categories (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    code text NOT NULL,
+    label text NOT NULL,
+    is_active boolean DEFAULT true,
+    sort_order integer DEFAULT 0,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: countries; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.countries (
+    country_id uuid NOT NULL,
+    iso_code text,
+    name text NOT NULL
+);
+
+
+--
+-- Name: dci_synonyms; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.dci_synonyms (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    dci_id uuid NOT NULL,
+    synonym text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: flowsheet_groups; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.flowsheet_groups (
+    flowsheet_id uuid NOT NULL,
+    group_id uuid NOT NULL,
+    sort_order integer DEFAULT 0
+);
+
+
+--
+-- Name: global_actes; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.global_actes (
+    code_sih text NOT NULL,
+    libelle_sih text NOT NULL,
+    code_ngap text,
+    libelle_ngap text,
+    cotation_ngap text,
+    code_ccam text,
+    libelle_ccam text,
+    type_acte text,
+    duree_moyenne integer,
+    actif boolean DEFAULT true,
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    catalog_version integer DEFAULT 1 NOT NULL,
+    famille_id uuid,
+    sous_famille_id uuid,
+    bio_grise boolean,
+    bio_grise_prescription boolean,
+    bio_delai_resultats_heures integer,
+    bio_cle_facturation text,
+    bio_nombre_b integer,
+    bio_nombre_b1 integer,
+    bio_nombre_b2 integer,
+    bio_nombre_b3 integer,
+    bio_nombre_b4 integer,
+    bio_instructions_prelevement text,
+    bio_commentaire text,
+    bio_commentaire_prescription text,
+    is_lims_enabled boolean DEFAULT false,
+    lab_section_id uuid,
+    lab_sub_section_id uuid,
+    is_panel boolean DEFAULT false NOT NULL,
+    billing_mode text DEFAULT 'DECOMPOSED'::text NOT NULL,
+    CONSTRAINT chk_ref_global_actes_billing_mode CHECK ((billing_mode = ANY (ARRAY['PANEL'::text, 'DECOMPOSED'::text]))),
+    CONSTRAINT chk_ref_global_actes_lab_section_hierarchy CHECK (((lab_sub_section_id IS NULL) OR (lab_section_id IS NOT NULL)))
+);
+
+
+--
+-- Name: global_atc; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.global_atc (
+    code text NOT NULL,
+    label_fr text,
+    label_en text,
+    level integer,
+    parent text
+);
+
+
+--
+-- Name: global_dci; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.global_dci (
+    id uuid NOT NULL,
+    name text NOT NULL,
+    atc_code text,
+    therapeutic_class text,
+    created_at timestamp with time zone,
+    care_category_id uuid
+);
+
+
+--
+-- Name: global_emdn; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.global_emdn (
+    code text NOT NULL,
+    label_fr text,
+    label_en text,
+    level integer,
+    parent text
+);
+
+
+--
+-- Name: global_product_price_history; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.global_product_price_history (
+    id uuid NOT NULL,
+    product_id uuid NOT NULL,
+    ppv numeric,
+    ph numeric,
+    pfht numeric,
+    valid_from timestamp with time zone,
+    valid_to timestamp with time zone,
+    created_at timestamp with time zone
+);
+
+
+--
+-- Name: global_products; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.global_products (
+    id uuid NOT NULL,
+    type text NOT NULL,
+    name text NOT NULL,
+    form text,
+    dci_composition jsonb,
+    presentation text,
+    manufacturer text,
+    ppv numeric,
+    ph numeric,
+    pfht numeric,
+    class_therapeutique text,
+    sahty_code text,
+    code text,
+    units_per_pack integer DEFAULT 1,
+    default_presc_unit uuid,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone,
+    updated_at timestamp with time zone,
+    default_presc_route uuid,
+    care_category_id uuid
+);
+
+
+--
+-- Name: global_roles; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.global_roles (
+    id uuid NOT NULL,
+    code text,
+    name text NOT NULL,
+    description text,
+    permissions jsonb,
+    modules jsonb,
+    assignable_by text,
+    created_at timestamp with time zone
+);
+
+
+--
+-- Name: global_suppliers; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.global_suppliers (
+    id uuid NOT NULL,
+    name text NOT NULL,
+    tax_id text,
+    address text,
+    contact_info jsonb,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone
+);
+
+
+--
+-- Name: group_parameters; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.group_parameters (
+    group_id uuid NOT NULL,
+    parameter_id uuid NOT NULL,
+    sort_order integer DEFAULT 0
+);
+
+
+--
+-- Name: identity_document_types; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.identity_document_types (
+    code text NOT NULL,
+    label text NOT NULL,
+    validation_regex text,
+    created_at timestamp with time zone,
+    updated_at timestamp with time zone
+);
+
+
+--
+-- Name: lab_act_analyte_context; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.lab_act_analyte_context (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    global_act_id uuid NOT NULL,
+    analyte_context_id uuid NOT NULL,
+    is_default boolean DEFAULT false,
+    actif boolean DEFAULT true,
+    sort_order integer DEFAULT 0,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: lab_act_analytes; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.lab_act_analytes (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    global_act_id uuid NOT NULL,
+    analyte_id uuid NOT NULL,
+    sort_order integer DEFAULT 0 NOT NULL,
+    is_primary boolean DEFAULT false NOT NULL,
+    is_required boolean DEFAULT true NOT NULL,
+    display_group text,
+    actif boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    notes text
+);
+
+
+--
+-- Name: lab_act_contexts; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.lab_act_contexts (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    global_act_id uuid NOT NULL,
+    analyte_context_id uuid NOT NULL,
+    sort_order integer,
+    is_required boolean DEFAULT true,
+    is_default boolean DEFAULT false,
+    display_group text,
+    actif boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: lab_act_methods; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.lab_act_methods (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    global_act_id uuid NOT NULL,
+    method_id uuid NOT NULL,
+    is_default boolean DEFAULT false NOT NULL,
+    actif boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: lab_act_specimen_containers; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.lab_act_specimen_containers (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    global_act_id uuid NOT NULL,
+    specimen_type_id uuid NOT NULL,
+    container_type_id uuid NOT NULL,
+    is_required boolean DEFAULT true NOT NULL,
+    is_default boolean DEFAULT false NOT NULL,
+    min_volume numeric,
+    volume_unit_id uuid,
+    volume_unit_label text,
+    collection_instructions text,
+    sort_order integer DEFAULT 0 NOT NULL,
+    actif boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: lab_act_taxonomy; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.lab_act_taxonomy (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    act_id uuid NOT NULL,
+    sous_famille_id uuid NOT NULL,
+    section_id uuid NOT NULL,
+    sub_section_id uuid,
+    actif boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: lab_analyte_aliases; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.lab_analyte_aliases (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    analyte_id uuid NOT NULL,
+    alias_text text NOT NULL,
+    alias_type text DEFAULT 'DISPLAY'::text NOT NULL,
+    language_code text,
+    source_system text,
+    is_preferred boolean DEFAULT false NOT NULL,
+    actif boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT lab_analyte_aliases_alias_type_check CHECK ((alias_type = ANY (ARRAY['DISPLAY'::text, 'OCR'::text, 'EXTERNAL'::text, 'SHORT'::text, 'ABBREVIATION'::text])))
+);
+
+
+--
+-- Name: lab_analyte_contexts; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.lab_analyte_contexts (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    analyte_id uuid NOT NULL,
+    specimen_type_id uuid NOT NULL,
+    unit_id uuid NOT NULL,
+    method_id uuid,
+    analyte_label text NOT NULL,
+    specimen_label text NOT NULL,
+    unit_label text NOT NULL,
+    method_label text,
+    is_default boolean DEFAULT false,
+    actif boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    cached_value_type text NOT NULL
+);
+
+
+--
+-- Name: lab_analyte_external_codes; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.lab_analyte_external_codes (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    analyte_id uuid NOT NULL,
+    coding_system text NOT NULL,
+    code text NOT NULL,
+    display_text text,
+    is_primary boolean DEFAULT false NOT NULL,
+    actif boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: lab_analyte_reference_ranges; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.lab_analyte_reference_ranges (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    analyte_id uuid NOT NULL,
+    unit_id uuid NOT NULL,
+    method_id uuid,
+    specimen_type_id uuid,
+    sex text,
+    age_min_days integer,
+    age_max_days integer,
+    lower_numeric numeric(18,6),
+    upper_numeric numeric(18,6),
+    lower_text text,
+    upper_text text,
+    reference_text text,
+    critical_low_numeric numeric(18,6),
+    critical_high_numeric numeric(18,6),
+    actif boolean DEFAULT true NOT NULL,
+    sort_order integer DEFAULT 0 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT lab_analyte_reference_ranges_sex_check CHECK ((sex = ANY (ARRAY['MALE'::text, 'FEMALE'::text, 'OTHER'::text, 'UNKNOWN'::text, 'ANY'::text])))
+);
+
+
+--
+-- Name: lab_analyte_units; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.lab_analyte_units (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    analyte_id uuid NOT NULL,
+    unit_id uuid NOT NULL,
+    is_default boolean DEFAULT false NOT NULL,
+    is_canonical boolean DEFAULT false NOT NULL,
+    actif boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    conversion_factor numeric DEFAULT 1 NOT NULL,
+    conversion_offset numeric DEFAULT 0 NOT NULL
+);
+
+
+--
+-- Name: lab_analytes; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.lab_analytes (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    code text NOT NULL,
+    libelle text NOT NULL,
+    short_label text,
+    description text,
+    value_type text NOT NULL,
+    is_calculated boolean DEFAULT false NOT NULL,
+    actif boolean DEFAULT true NOT NULL,
+    sort_order integer DEFAULT 0 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT lab_analytes_value_type_check CHECK ((value_type = ANY (ARRAY['NUMERIC'::text, 'TEXT'::text, 'BOOLEAN'::text, 'CHOICE'::text])))
+);
+
+
+--
+-- Name: lab_canonical_allowed_values; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.lab_canonical_allowed_values (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    code text NOT NULL,
+    label text NOT NULL,
+    value_domain text,
+    ordinal_rank integer,
+    actif boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT no_interpretation_values CHECK ((code <> ALL (ARRAY['NORMAL'::text, 'ABNORMAL'::text, 'ABNORMAL_LOW'::text, 'ABNORMAL_HIGH'::text, 'CAUTION'::text, 'CAUTION_LOW'::text, 'CAUTION_HIGH'::text])))
+);
+
+
+--
+-- Name: lab_container_types; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.lab_container_types (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    code text NOT NULL,
+    libelle text NOT NULL,
+    description text,
+    additive_type text,
+    tube_color text,
+    actif boolean DEFAULT true NOT NULL,
+    sort_order integer,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: lab_methods; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.lab_methods (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    code text NOT NULL,
+    libelle text NOT NULL,
+    description text,
+    actif boolean DEFAULT true NOT NULL,
+    sort_order integer DEFAULT 0 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: lab_panel_items; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.lab_panel_items (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    panel_id uuid NOT NULL,
+    item_type text NOT NULL,
+    child_panel_id uuid,
+    child_global_act_id uuid,
+    sort_order integer DEFAULT 0 NOT NULL,
+    is_required boolean DEFAULT true NOT NULL,
+    quantity numeric(12,3),
+    notes text,
+    actif boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT chk_lab_panel_child_exclusive CHECK ((((item_type = 'ACT'::text) AND (child_global_act_id IS NOT NULL) AND (child_panel_id IS NULL)) OR ((item_type = 'PANEL'::text) AND (child_panel_id IS NOT NULL) AND (child_global_act_id IS NULL)))),
+    CONSTRAINT chk_lab_panel_no_self_ref CHECK ((panel_id <> child_panel_id)),
+    CONSTRAINT chk_ref_lab_panel_items_type CHECK ((item_type = ANY (ARRAY['ACT'::text, 'PANEL'::text]))),
+    CONSTRAINT lab_panel_items_item_type_check CHECK ((item_type = ANY (ARRAY['PANEL'::text, 'ACT'::text])))
+);
+
+
+--
+-- Name: lab_panels; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.lab_panels (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    sous_famille_id uuid NOT NULL,
+    section_id uuid,
+    sub_section_id uuid,
+    code text NOT NULL,
+    libelle text NOT NULL,
+    description text,
+    actif boolean DEFAULT true NOT NULL,
+    is_prescribable boolean DEFAULT true NOT NULL,
+    expand_to_child_tests boolean DEFAULT true NOT NULL,
+    sort_order integer DEFAULT 0 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    global_act_id uuid NOT NULL
+);
+
+
+--
+-- Name: lab_reference_profiles; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.lab_reference_profiles (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    analyte_context_id uuid NOT NULL,
+    sex text,
+    age_min_days integer,
+    age_max_days integer,
+    is_default boolean DEFAULT false NOT NULL,
+    actif boolean DEFAULT true NOT NULL,
+    sort_order integer DEFAULT 0 NOT NULL,
+    source text,
+    notes text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT lab_reference_profiles_sex_check CHECK ((sex = ANY (ARRAY['M'::text, 'F'::text, 'U'::text])))
+);
+
+
+--
+-- Name: lab_reference_rules; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.lab_reference_rules (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    profile_id uuid NOT NULL,
+    interpretation text NOT NULL,
+    priority integer DEFAULT 0 NOT NULL,
+    lower_numeric numeric(18,6),
+    upper_numeric numeric(18,6),
+    lower_inclusive boolean DEFAULT true NOT NULL,
+    upper_inclusive boolean DEFAULT true NOT NULL,
+    canonical_value_id uuid,
+    canonical_value_min_id uuid,
+    canonical_value_max_id uuid,
+    display_text text,
+    reference_text text,
+    actif boolean DEFAULT true NOT NULL,
+    sort_order integer DEFAULT 0 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT lab_reference_rules_interpretation_check CHECK ((interpretation = ANY (ARRAY['NORMAL'::text, 'ABNORMAL HIGH'::text, 'ABNORMAL LOW'::text, 'CAUTION HIGH'::text, 'CAUTION LOW'::text, 'CAUTION'::text, 'ABNORMAL'::text])))
+);
+
+
+--
+-- Name: lab_section_tree; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.lab_section_tree (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    section_id uuid NOT NULL,
+    sous_famille_id uuid NOT NULL,
+    actif boolean DEFAULT true,
+    sort_order integer DEFAULT 0,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: lab_sections; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.lab_sections (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    code text NOT NULL,
+    libelle text NOT NULL,
+    description text,
+    actif boolean DEFAULT true NOT NULL,
+    sort_order integer DEFAULT 0 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: lab_specimen_container_types; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.lab_specimen_container_types (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    specimen_type_id uuid NOT NULL,
+    container_type_id uuid NOT NULL,
+    is_default boolean DEFAULT false NOT NULL,
+    actif boolean DEFAULT true NOT NULL,
+    sort_order integer,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: lab_specimen_types; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.lab_specimen_types (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    code text NOT NULL,
+    libelle text NOT NULL,
+    description text,
+    actif boolean DEFAULT true NOT NULL,
+    sort_order integer DEFAULT 0 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    base_specimen text NOT NULL,
+    matrix_type text NOT NULL
+);
+
+
+--
+-- Name: lab_sub_section_tree; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.lab_sub_section_tree (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    sub_section_id uuid NOT NULL,
+    section_id uuid NOT NULL,
+    actif boolean DEFAULT true,
+    sort_order integer DEFAULT 0,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: lab_sub_sections; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.lab_sub_sections (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    code text NOT NULL,
+    libelle text NOT NULL,
+    description text,
+    actif boolean DEFAULT true NOT NULL,
+    sort_order integer DEFAULT 0 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: observation_flowsheets; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.observation_flowsheets (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    code text NOT NULL,
+    label text NOT NULL,
+    sort_order integer DEFAULT 0,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: observation_groups; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.observation_groups (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    code text NOT NULL,
+    label text NOT NULL,
+    sort_order integer DEFAULT 0,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: observation_parameters; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.observation_parameters (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    code text NOT NULL,
+    label text NOT NULL,
+    unit text,
+    value_type text NOT NULL,
+    normal_min numeric,
+    normal_max numeric,
+    warning_min numeric,
+    warning_max numeric,
+    hard_min numeric,
+    hard_max numeric,
+    is_hydric_input boolean DEFAULT false,
+    is_hydric_output boolean DEFAULT false,
+    sort_order integer DEFAULT 0,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    unit_id uuid,
+    source text DEFAULT 'manual'::text NOT NULL,
+    CONSTRAINT chk_observation_source CHECK ((source = ANY (ARRAY['manual'::text, 'calculated'::text])))
+);
+
+
+--
+-- Name: organismes; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.organismes (
+    id uuid NOT NULL,
+    designation text NOT NULL,
+    category text NOT NULL,
+    sub_type text,
+    active boolean DEFAULT true,
+    created_at timestamp with time zone,
+    updated_at timestamp with time zone
+);
+
+
+--
+-- Name: routes; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.routes (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    code text NOT NULL,
+    label text NOT NULL,
+    is_active boolean DEFAULT true,
+    sort_order integer DEFAULT 0,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    requires_fluid_info boolean DEFAULT false NOT NULL
+);
+
+
+--
+-- Name: sih_familles; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.sih_familles (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    code text NOT NULL,
+    libelle text NOT NULL,
+    actif boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: sih_sous_familles; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.sih_sous_familles (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    famille_id uuid NOT NULL,
+    code text NOT NULL,
+    libelle text NOT NULL,
+    actif boolean DEFAULT true NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: units; Type: TABLE; Schema: reference; Owner: -
+--
+
+CREATE TABLE reference.units (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    code text NOT NULL,
+    display text NOT NULL,
+    is_ucum boolean DEFAULT false,
+    is_active boolean DEFAULT true,
+    sort_order integer DEFAULT 0,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    requires_fluid_info boolean DEFAULT false NOT NULL
+);
+
+
+--
+-- Name: audit_log audit_log_pkey; Type: CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.audit_log
+    ADD CONSTRAINT audit_log_pkey PRIMARY KEY (audit_id);
+
+
+--
+-- Name: credentials credentials_pkey; Type: CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.credentials
+    ADD CONSTRAINT credentials_pkey PRIMARY KEY (credential_id);
+
+
+--
+-- Name: credentials credentials_user_id_key; Type: CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.credentials
+    ADD CONSTRAINT credentials_user_id_key UNIQUE (user_id);
+
+
+--
+-- Name: user_tenants user_tenants_pkey; Type: CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.user_tenants
+    ADD CONSTRAINT user_tenants_pkey PRIMARY KEY (user_id, tenant_id);
+
+
+--
+-- Name: users users_inpe_key; Type: CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.users
+    ADD CONSTRAINT users_inpe_key UNIQUE (inpe);
+
+
+--
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.users
+    ADD CONSTRAINT users_pkey PRIMARY KEY (user_id);
+
+
+--
+-- Name: users users_username_key; Type: CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.users
+    ADD CONSTRAINT users_username_key UNIQUE (username);
+
+
+--
+-- Name: inbox_events inbox_events_pkey; Type: CONSTRAINT; Schema: auth_sync; Owner: -
+--
+
+ALTER TABLE ONLY auth_sync.inbox_events
+    ADD CONSTRAINT inbox_events_pkey PRIMARY KEY (event_id);
+
+
+--
+-- Name: outbox_events outbox_events_pkey; Type: CONSTRAINT; Schema: auth_sync; Owner: -
+--
+
+ALTER TABLE ONLY auth_sync.outbox_events
+    ADD CONSTRAINT outbox_events_pkey PRIMARY KEY (event_id);
+
+
+--
+-- Name: sync_state sync_state_pkey; Type: CONSTRAINT; Schema: auth_sync; Owner: -
+--
+
+ALTER TABLE ONLY auth_sync.sync_state
+    ADD CONSTRAINT sync_state_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: inbox_events inbox_events_pkey; Type: CONSTRAINT; Schema: identity_sync; Owner: -
+--
+
+ALTER TABLE ONLY identity_sync.inbox_events
+    ADD CONSTRAINT inbox_events_pkey PRIMARY KEY (inbox_event_id);
+
+
+--
+-- Name: outbox_events outbox_events_pkey; Type: CONSTRAINT; Schema: identity_sync; Owner: -
+--
+
+ALTER TABLE ONLY identity_sync.outbox_events
+    ADD CONSTRAINT outbox_events_pkey PRIMARY KEY (event_id);
+
+
+--
+-- Name: _migration_issues _migration_issues_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public._migration_issues
+    ADD CONSTRAINT _migration_issues_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: actes actes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.actes
+    ADD CONSTRAINT actes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: administration_event_blood_bags administration_event_blood_bags_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.administration_event_blood_bags
+    ADD CONSTRAINT administration_event_blood_bags_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: administration_event_lab_collections administration_event_lab_coll_administration_event_id_lab_c_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.administration_event_lab_collections
+    ADD CONSTRAINT administration_event_lab_coll_administration_event_id_lab_c_key UNIQUE (administration_event_id, lab_collection_id);
+
+
+--
+-- Name: administration_event_lab_collections administration_event_lab_collections_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.administration_event_lab_collections
+    ADD CONSTRAINT administration_event_lab_collections_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: administration_event_pauses administration_event_pauses_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.administration_event_pauses
+    ADD CONSTRAINT administration_event_pauses_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: administration_events administration_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.administration_events
+    ADD CONSTRAINT administration_events_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: admission_acts admission_acts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admission_acts
+    ADD CONSTRAINT admission_acts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: admission_coverage_change_history admission_coverage_change_history_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admission_coverage_change_history
+    ADD CONSTRAINT admission_coverage_change_history_pkey PRIMARY KEY (change_id);
+
+
+--
+-- Name: admission_coverage_members admission_coverage_members_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admission_coverage_members
+    ADD CONSTRAINT admission_coverage_members_pkey PRIMARY KEY (admission_coverage_member_id);
+
+
+--
+-- Name: admission_coverages admission_coverages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admission_coverages
+    ADD CONSTRAINT admission_coverages_pkey PRIMARY KEY (admission_coverage_id);
+
+
+--
+-- Name: admissions admissions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admissions
+    ADD CONSTRAINT admissions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: appointments appointments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.appointments
+    ADD CONSTRAINT appointments_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: audit_log audit_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.audit_log
+    ADD CONSTRAINT audit_log_pkey PRIMARY KEY (audit_id);
+
+
+--
+-- Name: beds beds_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.beds
+    ADD CONSTRAINT beds_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: beds beds_room_id_label_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.beds
+    ADD CONSTRAINT beds_room_id_label_key UNIQUE (room_id, label);
+
+
+--
+-- Name: clinical_exams clinical_exams_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clinical_exams
+    ADD CONSTRAINT clinical_exams_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: coverage_change_history coverage_change_history_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.coverage_change_history
+    ADD CONSTRAINT coverage_change_history_pkey PRIMARY KEY (change_id);
+
+
+--
+-- Name: coverage_members coverage_members_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.coverage_members
+    ADD CONSTRAINT coverage_members_pkey PRIMARY KEY (coverage_member_id);
+
+
+--
+-- Name: coverages coverages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.coverages
+    ADD CONSTRAINT coverages_pkey PRIMARY KEY (coverage_id);
+
+
+--
+-- Name: delivery_note_items delivery_note_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.delivery_note_items
+    ADD CONSTRAINT delivery_note_items_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: delivery_notes delivery_notes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.delivery_notes
+    ADD CONSTRAINT delivery_notes_pkey PRIMARY KEY (delivery_note_id);
+
+
+--
+-- Name: escarre_snapshots escarre_snapshots_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.escarre_snapshots
+    ADD CONSTRAINT escarre_snapshots_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: escarres escarres_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.escarres
+    ADD CONSTRAINT escarres_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: identity_ids identity_ids_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.identity_ids
+    ADD CONSTRAINT identity_ids_pkey PRIMARY KEY (identity_id);
+
+
+--
+-- Name: inventory_movements inventory_movements_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.inventory_movements
+    ADD CONSTRAINT inventory_movements_pkey PRIMARY KEY (movement_id);
+
+
+--
+-- Name: lab_collection_specimens lab_collection_specimens_lab_collection_id_specimen_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lab_collection_specimens
+    ADD CONSTRAINT lab_collection_specimens_lab_collection_id_specimen_id_key UNIQUE (lab_collection_id, specimen_id);
+
+
+--
+-- Name: lab_collection_specimens lab_collection_specimens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lab_collection_specimens
+    ADD CONSTRAINT lab_collection_specimens_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_collections lab_collections_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lab_collections
+    ADD CONSTRAINT lab_collections_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_requests lab_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lab_requests
+    ADD CONSTRAINT lab_requests_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_specimen_requests lab_specimen_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lab_specimen_requests
+    ADD CONSTRAINT lab_specimen_requests_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_specimen_requests lab_specimen_requests_specimen_id_lab_request_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lab_specimen_requests
+    ADD CONSTRAINT lab_specimen_requests_specimen_id_lab_request_id_key UNIQUE (specimen_id, lab_request_id);
+
+
+--
+-- Name: lab_specimens lab_specimens_barcode_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lab_specimens
+    ADD CONSTRAINT lab_specimens_barcode_key UNIQUE (barcode);
+
+
+--
+-- Name: lab_specimens lab_specimens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lab_specimens
+    ADD CONSTRAINT lab_specimens_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_value_normalization lab_value_normalization_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lab_value_normalization
+    ADD CONSTRAINT lab_value_normalization_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: locations locations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.locations
+    ADD CONSTRAINT locations_pkey PRIMARY KEY (location_id);
+
+
+--
+-- Name: medication_dispense_events medication_dispense_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.medication_dispense_events
+    ADD CONSTRAINT medication_dispense_events_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: patient_addiction_history patient_addiction_history_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_addiction_history
+    ADD CONSTRAINT patient_addiction_history_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: patient_addictions patient_addictions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_addictions
+    ADD CONSTRAINT patient_addictions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: patient_addresses patient_addresses_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_addresses
+    ADD CONSTRAINT patient_addresses_pkey PRIMARY KEY (address_id);
+
+
+--
+-- Name: patient_allergies patient_allergies_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_allergies
+    ADD CONSTRAINT patient_allergies_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: patient_allergy_history patient_allergy_history_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_allergy_history
+    ADD CONSTRAINT patient_allergy_history_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: patient_allergy_manifestations patient_allergy_manifestation_patient_allergy_id_manifestat_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_allergy_manifestations
+    ADD CONSTRAINT patient_allergy_manifestation_patient_allergy_id_manifestat_key UNIQUE (patient_allergy_id, manifestation_code);
+
+
+--
+-- Name: patient_allergy_manifestations patient_allergy_manifestations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_allergy_manifestations
+    ADD CONSTRAINT patient_allergy_manifestations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: patient_contacts patient_contacts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_contacts
+    ADD CONSTRAINT patient_contacts_pkey PRIMARY KEY (contact_id);
+
+
+--
+-- Name: patient_diagnoses patient_diagnoses_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_diagnoses
+    ADD CONSTRAINT patient_diagnoses_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: patient_documents patient_documents_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_documents
+    ADD CONSTRAINT patient_documents_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: patient_identity_change patient_identity_change_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_identity_change
+    ADD CONSTRAINT patient_identity_change_pkey PRIMARY KEY (change_id);
+
+
+--
+-- Name: patient_lab_extraction_sessions patient_lab_extraction_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_lab_extraction_sessions
+    ADD CONSTRAINT patient_lab_extraction_sessions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: patient_lab_report_documents patient_lab_report_documents_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_lab_report_documents
+    ADD CONSTRAINT patient_lab_report_documents_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: patient_lab_report_tests patient_lab_report_tests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_lab_report_tests
+    ADD CONSTRAINT patient_lab_report_tests_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: patient_lab_reports patient_lab_reports_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_lab_reports
+    ADD CONSTRAINT patient_lab_reports_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: patient_lab_results patient_lab_results_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_lab_results
+    ADD CONSTRAINT patient_lab_results_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: patient_observations patient_observations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_observations
+    ADD CONSTRAINT patient_observations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: patient_relationship_links patient_relationship_links_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_relationship_links
+    ADD CONSTRAINT patient_relationship_links_pkey PRIMARY KEY (relationship_id);
+
+
+--
+-- Name: patient_stays patient_stays_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_stays
+    ADD CONSTRAINT patient_stays_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: patient_tenant_merge_events patient_tenant_merge_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_tenant_merge_events
+    ADD CONSTRAINT patient_tenant_merge_events_pkey PRIMARY KEY (merge_event_id);
+
+
+--
+-- Name: patients_tenant patients_tenant_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patients_tenant
+    ADD CONSTRAINT patients_tenant_pkey PRIMARY KEY (tenant_patient_id);
+
+
+--
+-- Name: po_items po_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.po_items
+    ADD CONSTRAINT po_items_pkey PRIMARY KEY (po_id, product_id);
+
+
+--
+-- Name: prescription_events prescription_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.prescription_events
+    ADD CONSTRAINT prescription_events_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: prescriptions prescriptions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.prescriptions
+    ADD CONSTRAINT prescriptions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: product_configs product_configs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.product_configs
+    ADD CONSTRAINT product_configs_pkey PRIMARY KEY (tenant_id, product_id);
+
+
+--
+-- Name: product_price_versions product_price_versions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.product_price_versions
+    ADD CONSTRAINT product_price_versions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: product_suppliers product_suppliers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.product_suppliers
+    ADD CONSTRAINT product_suppliers_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: product_suppliers product_suppliers_tenant_id_product_id_supplier_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.product_suppliers
+    ADD CONSTRAINT product_suppliers_tenant_id_product_id_supplier_id_key UNIQUE (tenant_id, product_id, supplier_id);
+
+
+--
+-- Name: product_wac product_wac_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.product_wac
+    ADD CONSTRAINT product_wac_pkey PRIMARY KEY (tenant_id, product_id);
+
+
+--
+-- Name: purchase_orders purchase_orders_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.purchase_orders
+    ADD CONSTRAINT purchase_orders_pkey PRIMARY KEY (po_id);
+
+
+--
+-- Name: reference_schema_version reference_schema_version_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reference_schema_version
+    ADD CONSTRAINT reference_schema_version_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: return_decision_lines return_decision_lines_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.return_decision_lines
+    ADD CONSTRAINT return_decision_lines_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: return_decisions return_decisions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.return_decisions
+    ADD CONSTRAINT return_decisions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: return_reception_lines return_reception_lines_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.return_reception_lines
+    ADD CONSTRAINT return_reception_lines_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: return_receptions return_receptions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.return_receptions
+    ADD CONSTRAINT return_receptions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: room_types room_types_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.room_types
+    ADD CONSTRAINT room_types_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: rooms rooms_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rooms
+    ADD CONSTRAINT rooms_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: service_units service_units_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.service_units
+    ADD CONSTRAINT service_units_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: services services_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.services
+    ADD CONSTRAINT services_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: smart_phrases smart_phrases_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.smart_phrases
+    ADD CONSTRAINT smart_phrases_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: stock_demand_lines stock_demand_lines_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stock_demand_lines
+    ADD CONSTRAINT stock_demand_lines_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: stock_demands stock_demands_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stock_demands
+    ADD CONSTRAINT stock_demands_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: stock_reservation_lines stock_reservation_lines_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stock_reservation_lines
+    ADD CONSTRAINT stock_reservation_lines_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: stock_reservations stock_reservations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stock_reservations
+    ADD CONSTRAINT stock_reservations_pkey PRIMARY KEY (reservation_id);
+
+
+--
+-- Name: stock_return_lines stock_return_lines_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stock_return_lines
+    ADD CONSTRAINT stock_return_lines_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: stock_returns stock_returns_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stock_returns
+    ADD CONSTRAINT stock_returns_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: stock_transfer_lines stock_transfer_lines_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stock_transfer_lines
+    ADD CONSTRAINT stock_transfer_lines_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: stock_transfers stock_transfers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stock_transfers
+    ADD CONSTRAINT stock_transfers_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: suppliers suppliers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.suppliers
+    ADD CONSTRAINT suppliers_pkey PRIMARY KEY (supplier_id);
+
+
+--
+-- Name: surveillance_hour_buckets surveillance_hour_buckets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.surveillance_hour_buckets
+    ADD CONSTRAINT surveillance_hour_buckets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: surveillance_hour_buckets surveillance_hour_buckets_tenant_id_tenant_patient_id_bucke_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.surveillance_hour_buckets
+    ADD CONSTRAINT surveillance_hour_buckets_tenant_id_tenant_patient_id_bucke_key UNIQUE (tenant_id, tenant_patient_id, bucket_start);
+
+
+--
+-- Name: surveillance_values_events surveillance_values_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.surveillance_values_events
+    ADD CONSTRAINT surveillance_values_events_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: transfusion_blood_bags transfusion_blood_bags_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transfusion_blood_bags
+    ADD CONSTRAINT transfusion_blood_bags_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: transfusion_checks transfusion_checks_administration_event_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transfusion_checks
+    ADD CONSTRAINT transfusion_checks_administration_event_id_key UNIQUE (administration_event_id);
+
+
+--
+-- Name: transfusion_checks transfusion_checks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transfusion_checks
+    ADD CONSTRAINT transfusion_checks_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: transfusion_reactions transfusion_reactions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transfusion_reactions
+    ADD CONSTRAINT transfusion_reactions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_requests unique_lab_request_per_event; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lab_requests
+    ADD CONSTRAINT unique_lab_request_per_event UNIQUE (prescription_event_id);
+
+
+--
+-- Name: user_roles user_roles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_roles
+    ADD CONSTRAINT user_roles_pkey PRIMARY KEY (user_id, role_id);
+
+
+--
+-- Name: user_services user_services_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_services
+    ADD CONSTRAINT user_services_pkey PRIMARY KEY (user_id, service_id);
+
+
+--
+-- Name: care_categories care_categories_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.care_categories
+    ADD CONSTRAINT care_categories_code_key UNIQUE (code);
+
+
+--
+-- Name: care_categories care_categories_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.care_categories
+    ADD CONSTRAINT care_categories_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: countries countries_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.countries
+    ADD CONSTRAINT countries_pkey PRIMARY KEY (country_id);
+
+
+--
+-- Name: dci_synonyms dci_synonyms_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.dci_synonyms
+    ADD CONSTRAINT dci_synonyms_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: flowsheet_groups flowsheet_groups_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.flowsheet_groups
+    ADD CONSTRAINT flowsheet_groups_pkey PRIMARY KEY (flowsheet_id, group_id);
+
+
+--
+-- Name: global_actes global_actes_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.global_actes
+    ADD CONSTRAINT global_actes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: global_atc global_atc_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.global_atc
+    ADD CONSTRAINT global_atc_pkey PRIMARY KEY (code);
+
+
+--
+-- Name: global_dci global_dci_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.global_dci
+    ADD CONSTRAINT global_dci_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: global_emdn global_emdn_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.global_emdn
+    ADD CONSTRAINT global_emdn_pkey PRIMARY KEY (code);
+
+
+--
+-- Name: global_product_price_history global_product_price_history_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.global_product_price_history
+    ADD CONSTRAINT global_product_price_history_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: global_products global_products_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.global_products
+    ADD CONSTRAINT global_products_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: global_roles global_roles_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.global_roles
+    ADD CONSTRAINT global_roles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: global_suppliers global_suppliers_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.global_suppliers
+    ADD CONSTRAINT global_suppliers_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: group_parameters group_parameters_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.group_parameters
+    ADD CONSTRAINT group_parameters_pkey PRIMARY KEY (group_id, parameter_id);
+
+
+--
+-- Name: identity_document_types identity_document_types_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.identity_document_types
+    ADD CONSTRAINT identity_document_types_pkey PRIMARY KEY (code);
+
+
+--
+-- Name: lab_act_analyte_context lab_act_analyte_context_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_act_analyte_context
+    ADD CONSTRAINT lab_act_analyte_context_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_act_analytes lab_act_analytes_act_analyte_key; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_act_analytes
+    ADD CONSTRAINT lab_act_analytes_act_analyte_key UNIQUE (global_act_id, analyte_id);
+
+
+--
+-- Name: lab_act_analytes lab_act_analytes_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_act_analytes
+    ADD CONSTRAINT lab_act_analytes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_act_contexts lab_act_contexts_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_act_contexts
+    ADD CONSTRAINT lab_act_contexts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_act_methods lab_act_methods_act_method_key; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_act_methods
+    ADD CONSTRAINT lab_act_methods_act_method_key UNIQUE (global_act_id, method_id);
+
+
+--
+-- Name: lab_act_methods lab_act_methods_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_act_methods
+    ADD CONSTRAINT lab_act_methods_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_act_specimen_containers lab_act_spec_cont_unique; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_act_specimen_containers
+    ADD CONSTRAINT lab_act_spec_cont_unique UNIQUE (global_act_id, specimen_type_id, container_type_id);
+
+
+--
+-- Name: lab_act_specimen_containers lab_act_specimen_containers_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_act_specimen_containers
+    ADD CONSTRAINT lab_act_specimen_containers_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_act_taxonomy lab_act_taxonomy_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_act_taxonomy
+    ADD CONSTRAINT lab_act_taxonomy_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_analyte_aliases lab_analyte_aliases_analyte_alias_type_key; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_analyte_aliases
+    ADD CONSTRAINT lab_analyte_aliases_analyte_alias_type_key UNIQUE (analyte_id, alias_text, alias_type);
+
+
+--
+-- Name: lab_analyte_aliases lab_analyte_aliases_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_analyte_aliases
+    ADD CONSTRAINT lab_analyte_aliases_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_analyte_contexts lab_analyte_contexts_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_analyte_contexts
+    ADD CONSTRAINT lab_analyte_contexts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_analyte_external_codes lab_analyte_ext_codes_analyte_sys_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_analyte_external_codes
+    ADD CONSTRAINT lab_analyte_ext_codes_analyte_sys_code_key UNIQUE (analyte_id, coding_system, code);
+
+
+--
+-- Name: lab_analyte_external_codes lab_analyte_external_codes_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_analyte_external_codes
+    ADD CONSTRAINT lab_analyte_external_codes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_analyte_reference_ranges lab_analyte_reference_ranges_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_analyte_reference_ranges
+    ADD CONSTRAINT lab_analyte_reference_ranges_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_analyte_units lab_analyte_units_analyte_unit_key; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_analyte_units
+    ADD CONSTRAINT lab_analyte_units_analyte_unit_key UNIQUE (analyte_id, unit_id);
+
+
+--
+-- Name: lab_analyte_units lab_analyte_units_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_analyte_units
+    ADD CONSTRAINT lab_analyte_units_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_analytes lab_analytes_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_analytes
+    ADD CONSTRAINT lab_analytes_code_key UNIQUE (code);
+
+
+--
+-- Name: lab_analytes lab_analytes_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_analytes
+    ADD CONSTRAINT lab_analytes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_canonical_allowed_values lab_canonical_allowed_values_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_canonical_allowed_values
+    ADD CONSTRAINT lab_canonical_allowed_values_code_key UNIQUE (code);
+
+
+--
+-- Name: lab_canonical_allowed_values lab_canonical_allowed_values_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_canonical_allowed_values
+    ADD CONSTRAINT lab_canonical_allowed_values_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_container_types lab_container_types_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_container_types
+    ADD CONSTRAINT lab_container_types_code_key UNIQUE (code);
+
+
+--
+-- Name: lab_container_types lab_container_types_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_container_types
+    ADD CONSTRAINT lab_container_types_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_methods lab_methods_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_methods
+    ADD CONSTRAINT lab_methods_code_key UNIQUE (code);
+
+
+--
+-- Name: lab_methods lab_methods_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_methods
+    ADD CONSTRAINT lab_methods_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_panel_items lab_panel_items_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_panel_items
+    ADD CONSTRAINT lab_panel_items_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_panels lab_panels_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_panels
+    ADD CONSTRAINT lab_panels_code_key UNIQUE (code);
+
+
+--
+-- Name: lab_panels lab_panels_global_act_id_key; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_panels
+    ADD CONSTRAINT lab_panels_global_act_id_key UNIQUE (global_act_id);
+
+
+--
+-- Name: lab_panels lab_panels_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_panels
+    ADD CONSTRAINT lab_panels_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_reference_profiles lab_reference_profiles_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_reference_profiles
+    ADD CONSTRAINT lab_reference_profiles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_reference_rules lab_reference_rules_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_reference_rules
+    ADD CONSTRAINT lab_reference_rules_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_section_tree lab_section_tree_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_section_tree
+    ADD CONSTRAINT lab_section_tree_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_sections lab_sections_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_sections
+    ADD CONSTRAINT lab_sections_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_specimen_container_types lab_specimen_container_types_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_specimen_container_types
+    ADD CONSTRAINT lab_specimen_container_types_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_specimen_types lab_specimen_types_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_specimen_types
+    ADD CONSTRAINT lab_specimen_types_code_key UNIQUE (code);
+
+
+--
+-- Name: lab_specimen_types lab_specimen_types_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_specimen_types
+    ADD CONSTRAINT lab_specimen_types_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_sub_section_tree lab_sub_section_tree_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_sub_section_tree
+    ADD CONSTRAINT lab_sub_section_tree_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_sub_sections lab_sub_sections_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_sub_sections
+    ADD CONSTRAINT lab_sub_sections_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: observation_flowsheets observation_flowsheets_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.observation_flowsheets
+    ADD CONSTRAINT observation_flowsheets_code_key UNIQUE (code);
+
+
+--
+-- Name: observation_flowsheets observation_flowsheets_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.observation_flowsheets
+    ADD CONSTRAINT observation_flowsheets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: observation_groups observation_groups_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.observation_groups
+    ADD CONSTRAINT observation_groups_code_key UNIQUE (code);
+
+
+--
+-- Name: observation_groups observation_groups_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.observation_groups
+    ADD CONSTRAINT observation_groups_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: observation_parameters observation_parameters_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.observation_parameters
+    ADD CONSTRAINT observation_parameters_code_key UNIQUE (code);
+
+
+--
+-- Name: observation_parameters observation_parameters_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.observation_parameters
+    ADD CONSTRAINT observation_parameters_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: organismes organismes_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.organismes
+    ADD CONSTRAINT organismes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: global_actes ref_global_actes_code_sih_key; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.global_actes
+    ADD CONSTRAINT ref_global_actes_code_sih_key UNIQUE (code_sih);
+
+
+--
+-- Name: routes routes_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.routes
+    ADD CONSTRAINT routes_code_key UNIQUE (code);
+
+
+--
+-- Name: routes routes_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.routes
+    ADD CONSTRAINT routes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: sih_familles sih_familles_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.sih_familles
+    ADD CONSTRAINT sih_familles_code_key UNIQUE (code);
+
+
+--
+-- Name: sih_familles sih_familles_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.sih_familles
+    ADD CONSTRAINT sih_familles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: sih_sous_familles sih_sous_familles_famille_id_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.sih_sous_familles
+    ADD CONSTRAINT sih_sous_familles_famille_id_code_key UNIQUE (famille_id, code);
+
+
+--
+-- Name: sih_sous_familles sih_sous_familles_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.sih_sous_familles
+    ADD CONSTRAINT sih_sous_familles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_specimen_container_types unique_specimen_container; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_specimen_container_types
+    ADD CONSTRAINT unique_specimen_container UNIQUE (specimen_type_id, container_type_id);
+
+
+--
+-- Name: units units_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.units
+    ADD CONSTRAINT units_code_key UNIQUE (code);
+
+
+--
+-- Name: units units_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.units
+    ADD CONSTRAINT units_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_act_analyte_context uq_act_analyte_ctx; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_act_analyte_context
+    ADD CONSTRAINT uq_act_analyte_ctx UNIQUE (global_act_id, analyte_context_id);
+
+
+--
+-- Name: lab_act_taxonomy uq_act_id; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_act_taxonomy
+    ADD CONSTRAINT uq_act_id UNIQUE (act_id);
+
+
+--
+-- Name: lab_section_tree uq_section_sous_famille; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_section_tree
+    ADD CONSTRAINT uq_section_sous_famille UNIQUE (section_id, sous_famille_id);
+
+
+--
+-- Name: lab_sub_section_tree uq_sub_section_section; Type: CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_sub_section_tree
+    ADD CONSTRAINT uq_sub_section_section UNIQUE (sub_section_id, section_id);
+
+
+--
+-- Name: idx_auth_inbox_unapplied; Type: INDEX; Schema: auth_sync; Owner: -
+--
+
+CREATE INDEX idx_auth_inbox_unapplied ON auth_sync.inbox_events USING btree (created_at) WHERE (applied_at IS NULL);
+
+
+--
+-- Name: idx_auth_outbox_unprocessed; Type: INDEX; Schema: auth_sync; Owner: -
+--
+
+CREATE INDEX idx_auth_outbox_unprocessed ON auth_sync.outbox_events USING btree (created_at) WHERE (processed_at IS NULL);
+
+
+--
+-- Name: idx_inbox_dedupe; Type: INDEX; Schema: identity_sync; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_inbox_dedupe ON identity_sync.inbox_events USING btree (dedupe_key);
+
+
+--
+-- Name: idx_inbox_processing; Type: INDEX; Schema: identity_sync; Owner: -
+--
+
+CREATE INDEX idx_inbox_processing ON identity_sync.inbox_events USING btree (status);
+
+
+--
+-- Name: idx_outbox_dedupe; Type: INDEX; Schema: identity_sync; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_outbox_dedupe ON identity_sync.outbox_events USING btree (dedupe_key);
+
+
+--
+-- Name: idx_outbox_processing; Type: INDEX; Schema: identity_sync; Owner: -
+--
+
+CREATE INDEX idx_outbox_processing ON identity_sync.outbox_events USING btree (status, next_attempt_at);
+
+
+--
+-- Name: idx_addiction_history_addiction; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_addiction_history_addiction ON public.patient_addiction_history USING btree (addiction_id);
+
+
+--
+-- Name: idx_addiction_patient; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_addiction_patient ON public.patient_addictions USING btree (tenant_patient_id);
+
+
+--
+-- Name: idx_adm_cov_admission; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_adm_cov_admission ON public.admission_coverages USING btree (tenant_id, admission_id);
+
+
+--
+-- Name: idx_adm_cov_coverage; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_adm_cov_coverage ON public.admission_coverages USING btree (tenant_id, coverage_id);
+
+
+--
+-- Name: idx_adm_cov_order; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_adm_cov_order ON public.admission_coverages USING btree (tenant_id, admission_id, filing_order);
+
+
+--
+-- Name: idx_adm_hist_admission; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_adm_hist_admission ON public.admission_coverage_change_history USING btree (tenant_id, admission_id);
+
+
+--
+-- Name: idx_adm_hist_coverage; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_adm_hist_coverage ON public.admission_coverage_change_history USING btree (tenant_id, admission_coverage_id);
+
+
+--
+-- Name: idx_adm_hist_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_adm_hist_date ON public.admission_coverage_change_history USING btree (tenant_id, changed_at DESC);
+
+
+--
+-- Name: idx_adm_mem_coverage; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_adm_mem_coverage ON public.admission_coverage_members USING btree (tenant_id, admission_coverage_id);
+
+
+--
+-- Name: idx_adm_mem_patient; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_adm_mem_patient ON public.admission_coverage_members USING btree (tenant_id, tenant_patient_id);
+
+
+--
+-- Name: idx_admin_event_action; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_admin_event_action ON public.administration_events USING btree (action_type);
+
+
+--
+-- Name: idx_admin_event_blood_bags_bag; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_admin_event_blood_bags_bag ON public.administration_event_blood_bags USING btree (tenant_id, blood_bag_id);
+
+
+--
+-- Name: idx_admin_event_blood_bags_event; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_admin_event_blood_bags_event ON public.administration_event_blood_bags USING btree (tenant_id, administration_event_id);
+
+
+--
+-- Name: idx_admin_event_blood_bags_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_admin_event_blood_bags_unique ON public.administration_event_blood_bags USING btree (tenant_id, administration_event_id, blood_bag_id);
+
+
+--
+-- Name: idx_admin_event_lab_collections_admin_event_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_admin_event_lab_collections_admin_event_id ON public.administration_event_lab_collections USING btree (administration_event_id);
+
+
+--
+-- Name: idx_admin_event_lab_collections_collection_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_admin_event_lab_collections_collection_id ON public.administration_event_lab_collections USING btree (lab_collection_id);
+
+
+--
+-- Name: idx_admin_event_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_admin_event_status ON public.administration_events USING btree (status);
+
+
+--
+-- Name: idx_admin_events_by_presc_event_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_admin_events_by_presc_event_time ON public.administration_events USING btree (tenant_id, prescription_event_id, occurred_at);
+
+
+--
+-- Name: idx_admin_events_fluid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_admin_events_fluid ON public.administration_events USING btree (tenant_patient_id, actual_end_at) WHERE (volume_administered_ml IS NOT NULL);
+
+
+--
+-- Name: idx_admin_events_patient_end; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_admin_events_patient_end ON public.administration_events USING btree (tenant_patient_id, actual_end_at) WHERE (actual_end_at IS NOT NULL);
+
+
+--
+-- Name: idx_admin_events_patient_start; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_admin_events_patient_start ON public.administration_events USING btree (tenant_patient_id, actual_start_at) WHERE (actual_start_at IS NOT NULL);
+
+
+--
+-- Name: idx_admission_acts_admission_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_admission_acts_admission_id ON public.admission_acts USING btree (admission_id);
+
+
+--
+-- Name: idx_admission_acts_global_act_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_admission_acts_global_act_id ON public.admission_acts USING btree (global_act_id);
+
+
+--
+-- Name: idx_admission_acts_lab_request_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_admission_acts_lab_request_id ON public.admission_acts USING btree (lab_request_id);
+
+
+--
+-- Name: idx_admissions_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_admissions_tenant ON public.admissions USING btree (tenant_id);
+
+
+--
+-- Name: idx_aebb_blood_bag; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_aebb_blood_bag ON public.administration_event_blood_bags USING btree (blood_bag_id);
+
+
+--
+-- Name: idx_beds_room; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_beds_room ON public.beds USING btree (room_id);
+
+
+--
+-- Name: idx_beds_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_beds_status ON public.beds USING btree (status) WHERE (status = 'AVAILABLE'::public.bed_status);
+
+
+--
+-- Name: idx_clinical_exams_patient_status_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_clinical_exams_patient_status_date ON public.clinical_exams USING btree (tenant_patient_id, status, observed_at DESC);
+
+
+--
+-- Name: idx_config_enabled; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_config_enabled ON public.product_configs USING btree (tenant_id, is_enabled) WHERE (is_enabled = true);
+
+
+--
+-- Name: idx_coverage_history_coverage; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_coverage_history_coverage ON public.coverage_change_history USING btree (tenant_id, coverage_id);
+
+
+--
+-- Name: idx_coverage_history_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_coverage_history_date ON public.coverage_change_history USING btree (tenant_id, changed_at DESC);
+
+
+--
+-- Name: idx_coverage_history_member; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_coverage_history_member ON public.coverage_change_history USING btree (tenant_id, coverage_member_id);
+
+
+--
+-- Name: idx_coverages_lookup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_coverages_lookup ON public.coverages USING btree (tenant_id, organisme_id, policy_number);
+
+
+--
+-- Name: idx_decision_lines_decision; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_decision_lines_decision ON public.return_decision_lines USING btree (decision_id);
+
+
+--
+-- Name: idx_decision_lines_return_line; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_decision_lines_return_line ON public.return_decision_lines USING btree (return_line_id);
+
+
+--
+-- Name: idx_decisions_reception; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_decisions_reception ON public.return_decisions USING btree (reception_id);
+
+
+--
+-- Name: idx_demand_line_demand; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_demand_line_demand ON public.stock_demand_lines USING btree (demand_id);
+
+
+--
+-- Name: idx_demand_ref; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_demand_ref ON public.stock_demands USING btree (demand_ref);
+
+
+--
+-- Name: idx_demand_service; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_demand_service ON public.stock_demands USING btree (service_id);
+
+
+--
+-- Name: idx_demand_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_demand_status ON public.stock_demands USING btree (status);
+
+
+--
+-- Name: idx_demand_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_demand_tenant ON public.stock_demands USING btree (tenant_id);
+
+
+--
+-- Name: idx_dn_supplier; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_dn_supplier ON public.delivery_notes USING btree (supplier_id);
+
+
+--
+-- Name: idx_dn_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_dn_tenant ON public.delivery_notes USING btree (tenant_id);
+
+
+--
+-- Name: idx_dni_dn; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_dni_dn ON public.delivery_note_items USING btree (delivery_note_id);
+
+
+--
+-- Name: idx_dnl_dn; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_dnl_dn ON public.delivery_note_layers USING btree (delivery_note_id);
+
+
+--
+-- Name: idx_dnl_product; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_dnl_product ON public.delivery_note_layers USING btree (product_id);
+
+
+--
+-- Name: idx_escarre_snapshots_lookup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_escarre_snapshots_lookup ON public.escarre_snapshots USING btree (tenant_id, escarre_id, recorded_at DESC);
+
+
+--
+-- Name: idx_escarres_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_escarres_active ON public.escarres USING btree (tenant_id, tenant_patient_id, is_active);
+
+
+--
+-- Name: idx_escarres_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_escarres_created_at ON public.escarres USING btree (tenant_id, created_at);
+
+
+--
+-- Name: idx_escarres_patient; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_escarres_patient ON public.escarres USING btree (tenant_id, tenant_patient_id);
+
+
+--
+-- Name: idx_identity_change_patient; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_identity_change_patient ON public.patient_identity_change USING btree (tenant_id, tenant_patient_id);
+
+
+--
+-- Name: idx_identity_ids_lookup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_identity_ids_lookup ON public.identity_ids USING btree (tenant_id, identity_type_code, identity_value);
+
+
+--
+-- Name: idx_identity_ids_patient; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_identity_ids_patient ON public.identity_ids USING btree (tenant_id, tenant_patient_id);
+
+
+--
+-- Name: idx_inv_doc; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_inv_doc ON public.inventory_movements USING btree (document_type, document_id);
+
+
+--
+-- Name: idx_inv_product; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_inv_product ON public.inventory_movements USING btree (product_id);
+
+
+--
+-- Name: idx_inv_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_inv_tenant ON public.inventory_movements USING btree (tenant_id);
+
+
+--
+-- Name: idx_lab_collection_specimens_collection_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_lab_collection_specimens_collection_id ON public.lab_collection_specimens USING btree (lab_collection_id);
+
+
+--
+-- Name: idx_lab_collection_specimens_specimen_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_lab_collection_specimens_specimen_id ON public.lab_collection_specimens USING btree (specimen_id);
+
+
+--
+-- Name: idx_lab_collections_admission_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_lab_collections_admission_id ON public.lab_collections USING btree (admission_id);
+
+
+--
+-- Name: idx_lab_collections_tenant_patient_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_lab_collections_tenant_patient_id ON public.lab_collections USING btree (tenant_patient_id);
+
+
+--
+-- Name: idx_lab_doc_document; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_lab_doc_document ON public.patient_lab_report_documents USING btree (document_id);
+
+
+--
+-- Name: idx_lab_doc_report; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_lab_doc_report ON public.patient_lab_report_documents USING btree (patient_lab_report_id);
+
+
+--
+-- Name: idx_lab_requests_admission; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_lab_requests_admission ON public.lab_requests USING btree (admission_id);
+
+
+--
+-- Name: idx_lab_requests_event; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_lab_requests_event ON public.lab_requests USING btree (prescription_event_id);
+
+
+--
+-- Name: idx_lab_requests_patient; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_lab_requests_patient ON public.lab_requests USING btree (tenant_patient_id);
+
+
+--
+-- Name: idx_lab_specimen_requests_lab_request_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_lab_specimen_requests_lab_request_id ON public.lab_specimen_requests USING btree (lab_request_id);
+
+
+--
+-- Name: idx_lab_specimen_requests_specimen_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_lab_specimen_requests_specimen_id ON public.lab_specimen_requests USING btree (specimen_id);
+
+
+--
+-- Name: idx_lab_specimens_barcode_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_lab_specimens_barcode_unique ON public.lab_specimens USING btree (barcode);
+
+
+--
+-- Name: idx_lab_value_normalization_lookup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_lab_value_normalization_lookup ON public.lab_value_normalization USING btree (lower(raw_value));
+
+
+--
+-- Name: idx_locations_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_locations_tenant ON public.locations USING btree (tenant_id);
+
+
+--
+-- Name: idx_merge_events_source; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_merge_events_source ON public.patient_tenant_merge_events USING btree (source_tenant_patient_id);
+
+
+--
+-- Name: idx_merge_events_target; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_merge_events_target ON public.patient_tenant_merge_events USING btree (target_tenant_patient_id);
+
+
+--
+-- Name: idx_merge_events_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_merge_events_tenant ON public.patient_tenant_merge_events USING btree (tenant_id);
+
+
+--
+-- Name: idx_observations_addiction; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_observations_addiction ON public.patient_observations USING btree (linked_addiction_id);
+
+
+--
+-- Name: idx_patient_active_allergies; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_active_allergies ON public.patient_allergies USING btree (tenant_patient_id) WHERE (status = 'ACTIVE'::text);
+
+
+--
+-- Name: idx_patient_allergies_patient; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_allergies_patient ON public.patient_allergies USING btree (tenant_patient_id, status);
+
+
+--
+-- Name: idx_patient_allergies_patient_dci; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_allergies_patient_dci ON public.patient_allergies USING btree (tenant_patient_id, allergen_dci_id);
+
+
+--
+-- Name: idx_patient_allergy_history_allergy; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_allergy_history_allergy ON public.patient_allergy_history USING btree (patient_allergy_id, created_at);
+
+
+--
+-- Name: idx_patient_diagnoses_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_diagnoses_active ON public.patient_diagnoses USING btree (patient_id) WHERE (status = 'ACTIVE'::text);
+
+
+--
+-- Name: idx_patient_diagnoses_foundation_uri; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_diagnoses_foundation_uri ON public.patient_diagnoses USING btree (icd_foundation_uri);
+
+
+--
+-- Name: idx_patient_diagnoses_patient_id_entered_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_diagnoses_patient_id_entered_at ON public.patient_diagnoses USING btree (patient_id, entered_at DESC);
+
+
+--
+-- Name: idx_patient_documents_checksum; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_documents_checksum ON public.patient_documents USING btree (checksum);
+
+
+--
+-- Name: idx_patient_documents_patient; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_documents_patient ON public.patient_documents USING btree (tenant_patient_id);
+
+
+--
+-- Name: idx_patient_documents_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_documents_tenant ON public.patient_documents USING btree (tenant_id);
+
+
+--
+-- Name: idx_patient_documents_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_documents_type ON public.patient_documents USING btree (document_type);
+
+
+--
+-- Name: idx_patient_lab_extraction_doc; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_lab_extraction_doc ON public.patient_lab_extraction_sessions USING btree (source_document_id);
+
+
+--
+-- Name: idx_patient_lab_extraction_report; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_lab_extraction_report ON public.patient_lab_extraction_sessions USING btree (patient_lab_report_id);
+
+
+--
+-- Name: idx_patient_lab_extraction_started; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_lab_extraction_started ON public.patient_lab_extraction_sessions USING btree (started_at);
+
+
+--
+-- Name: idx_patient_lab_extraction_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_lab_extraction_status ON public.patient_lab_extraction_sessions USING btree (status);
+
+
+--
+-- Name: idx_patient_lab_report_tests_global_act; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_lab_report_tests_global_act ON public.patient_lab_report_tests USING btree (global_act_id);
+
+
+--
+-- Name: idx_patient_lab_report_tests_panel; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_lab_report_tests_panel ON public.patient_lab_report_tests USING btree (panel_id);
+
+
+--
+-- Name: idx_patient_lab_report_tests_report; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_lab_report_tests_report ON public.patient_lab_report_tests USING btree (patient_lab_report_id);
+
+
+--
+-- Name: idx_patient_lab_reports_admission; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_lab_reports_admission ON public.patient_lab_reports USING btree (admission_id);
+
+
+--
+-- Name: idx_patient_lab_reports_patient; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_lab_reports_patient ON public.patient_lab_reports USING btree (tenant_patient_id);
+
+
+--
+-- Name: idx_patient_lab_reports_report_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_lab_reports_report_date ON public.patient_lab_reports USING btree (report_date);
+
+
+--
+-- Name: idx_patient_lab_reports_source_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_lab_reports_source_type ON public.patient_lab_reports USING btree (source_type);
+
+
+--
+-- Name: idx_patient_lab_reports_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_lab_reports_status ON public.patient_lab_reports USING btree (status);
+
+
+--
+-- Name: idx_patient_lab_reports_uploaded_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_lab_reports_uploaded_at ON public.patient_lab_reports USING btree (uploaded_at);
+
+
+--
+-- Name: idx_patient_lab_results_analyte; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_lab_results_analyte ON public.patient_lab_results USING btree (analyte_id);
+
+
+--
+-- Name: idx_patient_lab_results_analyte_ctx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_lab_results_analyte_ctx ON public.patient_lab_results USING btree (lab_analyte_context_id);
+
+
+--
+-- Name: idx_patient_lab_results_observed; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_lab_results_observed ON public.patient_lab_results USING btree (observed_at);
+
+
+--
+-- Name: idx_patient_lab_results_report; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_lab_results_report ON public.patient_lab_results USING btree (patient_lab_report_id);
+
+
+--
+-- Name: idx_patient_lab_results_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_lab_results_status ON public.patient_lab_results USING btree (status);
+
+
+--
+-- Name: idx_patient_lab_results_test; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_lab_results_test ON public.patient_lab_results USING btree (patient_lab_report_test_id);
+
+
+--
+-- Name: idx_patient_lab_results_unit; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_lab_results_unit ON public.patient_lab_results USING btree (unit_id);
+
+
+--
+-- Name: idx_patient_observations_linked_addiction; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_observations_linked_addiction ON public.patient_observations USING btree (linked_addiction_id) WHERE (linked_addiction_id IS NOT NULL);
+
+
+--
+-- Name: idx_patient_observations_linked_admission; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_observations_linked_admission ON public.patient_observations USING btree (linked_admission_id) WHERE (linked_admission_id IS NOT NULL);
+
+
+--
+-- Name: idx_patient_observations_linked_allergy; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_observations_linked_allergy ON public.patient_observations USING btree (linked_allergy_id) WHERE (linked_allergy_id IS NOT NULL);
+
+
+--
+-- Name: idx_patient_observations_parent; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_observations_parent ON public.patient_observations USING btree (parent_observation_id) WHERE (parent_observation_id IS NOT NULL);
+
+
+--
+-- Name: idx_patient_observations_parent_patient; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_observations_parent_patient ON public.patient_observations USING btree (tenant_patient_id, parent_observation_id) WHERE (parent_observation_id IS NOT NULL);
+
+
+--
+-- Name: idx_patient_observations_role; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_observations_role ON public.patient_observations USING btree (tenant_patient_id, author_role, declared_time DESC);
+
+
+--
+-- Name: idx_patient_observations_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_observations_status ON public.patient_observations USING btree (tenant_patient_id, status, declared_time DESC);
+
+
+--
+-- Name: idx_patient_observations_timeline; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_observations_timeline ON public.patient_observations USING btree (tenant_patient_id, declared_time DESC, created_at DESC);
+
+
+--
+-- Name: idx_patient_stays_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_stays_active ON public.patient_stays USING btree (bed_id) WHERE (ended_at IS NULL);
+
+
+--
+-- Name: idx_patient_stays_admission; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_stays_admission ON public.patient_stays USING btree (admission_id);
+
+
+--
+-- Name: idx_patient_stays_bed; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patient_stays_bed ON public.patient_stays USING btree (bed_id);
+
+
+--
+-- Name: idx_patients_tenant_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_patients_tenant_tenant ON public.patients_tenant USING btree (tenant_id);
+
+
+--
+-- Name: idx_po_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_po_status ON public.purchase_orders USING btree (status);
+
+
+--
+-- Name: idx_po_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_po_tenant ON public.purchase_orders USING btree (tenant_id);
+
+
+--
+-- Name: idx_poi_po; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_poi_po ON public.po_items USING btree (po_id);
+
+
+--
+-- Name: idx_presc_events_by_admission_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_presc_events_by_admission_time ON public.prescription_events USING btree (tenant_id, admission_id, scheduled_at);
+
+
+--
+-- Name: idx_prescription_events_lookup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_prescription_events_lookup ON public.prescription_events USING btree (tenant_id, prescription_id, scheduled_at);
+
+
+--
+-- Name: idx_prescription_events_patient_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_prescription_events_patient_time ON public.prescription_events USING btree (tenant_patient_id, scheduled_at);
+
+
+--
+-- Name: idx_prescription_events_time; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_prescription_events_time ON public.prescription_events USING btree (tenant_id, scheduled_at);
+
+
+--
+-- Name: idx_prescriptions_patient; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_prescriptions_patient ON public.prescriptions USING btree (tenant_id, tenant_patient_id);
+
+
+--
+-- Name: idx_prescriptions_tenant_patient; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_prescriptions_tenant_patient ON public.prescriptions USING btree (tenant_patient_id);
+
+
+--
+-- Name: idx_price_ver_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_price_ver_active ON public.product_price_versions USING btree (product_supplier_id) WHERE (valid_to IS NULL);
+
+
+--
+-- Name: idx_price_ver_supp; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_price_ver_supp ON public.product_price_versions USING btree (product_supplier_id);
+
+
+--
+-- Name: idx_ps_product; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_ps_product ON public.product_suppliers USING btree (product_id);
+
+
+--
+-- Name: idx_ps_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_ps_tenant ON public.product_suppliers USING btree (tenant_id);
+
+
+--
+-- Name: idx_reception_lines_reception; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_reception_lines_reception ON public.return_reception_lines USING btree (reception_id);
+
+
+--
+-- Name: idx_reception_lines_return_line; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_reception_lines_return_line ON public.return_reception_lines USING btree (return_line_id);
+
+
+--
+-- Name: idx_receptions_return; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_receptions_return ON public.return_receptions USING btree (return_id);
+
+
+--
+-- Name: idx_rel_links_related; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_rel_links_related ON public.patient_relationship_links USING btree (tenant_id, related_tenant_patient_id);
+
+
+--
+-- Name: idx_rel_links_subject; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_rel_links_subject ON public.patient_relationship_links USING btree (tenant_id, subject_tenant_patient_id);
+
+
+--
+-- Name: idx_res_cleanup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_res_cleanup ON public.stock_reservations USING btree (expires_at) WHERE (status = 'ACTIVE'::text);
+
+
+--
+-- Name: idx_res_expires; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_res_expires ON public.stock_reservations USING btree (status, expires_at) WHERE (status = 'ACTIVE'::text);
+
+
+--
+-- Name: idx_res_session; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_res_session ON public.stock_reservations USING btree (tenant_id, session_id) WHERE (status = 'ACTIVE'::text);
+
+
+--
+-- Name: idx_res_session_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_res_session_active ON public.stock_reservations USING btree (tenant_id, session_id) WHERE (status = 'ACTIVE'::text);
+
+
+--
+-- Name: idx_resline_lookup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_resline_lookup ON public.stock_reservation_lines USING btree (product_id, lot, expiry, source_location_id);
+
+
+--
+-- Name: idx_resline_reservation; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_resline_reservation ON public.stock_reservation_lines USING btree (reservation_id);
+
+
+--
+-- Name: idx_resline_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_resline_tenant ON public.stock_reservation_lines USING btree (tenant_id);
+
+
+--
+-- Name: idx_return_lines_product; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_return_lines_product ON public.stock_return_lines USING btree (product_id);
+
+
+--
+-- Name: idx_return_lines_return; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_return_lines_return ON public.stock_return_lines USING btree (return_id);
+
+
+--
+-- Name: idx_return_receptions_reference; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_return_receptions_reference ON public.return_receptions USING btree (reception_reference);
+
+
+--
+-- Name: idx_returns_service; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_returns_service ON public.stock_returns USING btree (source_service_id);
+
+
+--
+-- Name: idx_returns_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_returns_status ON public.stock_returns USING btree (tenant_id, status);
+
+
+--
+-- Name: idx_returns_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_returns_tenant ON public.stock_returns USING btree (tenant_id);
+
+
+--
+-- Name: idx_rooms_service; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_rooms_service ON public.rooms USING btree (service_id);
+
+
+--
+-- Name: idx_rx_admission; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_rx_admission ON public.prescriptions USING btree (admission_id);
+
+
+--
+-- Name: idx_rx_events_prescription; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_rx_events_prescription ON public.prescription_events USING btree (prescription_id);
+
+
+--
+-- Name: idx_rx_events_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_rx_events_status ON public.prescription_events USING btree (tenant_id, status);
+
+
+--
+-- Name: idx_rx_events_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_rx_events_tenant ON public.prescription_events USING btree (tenant_id);
+
+
+--
+-- Name: idx_rx_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_rx_status ON public.prescriptions USING btree (tenant_id, status);
+
+
+--
+-- Name: idx_rx_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_rx_tenant ON public.prescriptions USING btree (tenant_id);
+
+
+--
+-- Name: idx_services_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_services_tenant ON public.services USING btree (tenant_id);
+
+
+--
+-- Name: idx_smart_phrases_active_search; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_smart_phrases_active_search ON public.smart_phrases USING btree (trigger_search) WHERE (is_active = true);
+
+
+--
+-- Name: idx_smart_phrases_scope; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_smart_phrases_scope ON public.smart_phrases USING btree (scope, tenant_id, user_id);
+
+
+--
+-- Name: idx_smart_phrases_trigger; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_smart_phrases_trigger ON public.smart_phrases USING btree (trigger);
+
+
+--
+-- Name: idx_smart_phrases_trigger_search; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_smart_phrases_trigger_search ON public.smart_phrases USING btree (trigger_search);
+
+
+--
+-- Name: idx_stock_lookup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_stock_lookup ON public.current_stock USING btree (tenant_id, product_id, lot, expiry, location_id);
+
+
+--
+-- Name: idx_stock_returns_reference; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_stock_returns_reference ON public.stock_returns USING btree (return_reference);
+
+
+--
+-- Name: idx_su_service; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_su_service ON public.service_units USING btree (service_id);
+
+
+--
+-- Name: idx_surv_buckets_tenant_patient_bucket; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_surv_buckets_tenant_patient_bucket ON public.surveillance_hour_buckets USING btree (tenant_id, tenant_patient_id, bucket_start DESC);
+
+
+--
+-- Name: idx_surv_events_context_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_surv_events_context_id ON public.surveillance_values_events USING btree (context_id) WHERE (context_id IS NOT NULL);
+
+
+--
+-- Name: idx_surv_events_context_param_latest; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_surv_events_context_param_latest ON public.surveillance_values_events USING btree (context_id, parameter_id, recorded_at DESC, id DESC) WHERE ((context_id IS NOT NULL) AND (source_context = 'clinical_exam'::text));
+
+
+--
+-- Name: idx_surv_events_parameter; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_surv_events_parameter ON public.surveillance_values_events USING btree (tenant_id, parameter_id, bucket_start DESC);
+
+
+--
+-- Name: idx_surv_events_tenant_patient; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_surv_events_tenant_patient ON public.surveillance_values_events USING btree (tenant_id, tenant_patient_id, bucket_start DESC);
+
+
+--
+-- Name: idx_surv_events_tenant_patient_bucket; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_surv_events_tenant_patient_bucket ON public.surveillance_values_events USING btree (tenant_id, tenant_patient_id, bucket_start DESC);
+
+
+--
+-- Name: idx_surveillance_buckets_patient; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_surveillance_buckets_patient ON public.surveillance_hour_buckets USING btree (tenant_id, tenant_patient_id, bucket_start);
+
+
+--
+-- Name: idx_surveillance_events_patient_time_param; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_surveillance_events_patient_time_param ON public.surveillance_values_events USING btree (tenant_patient_id, recorded_at, parameter_code);
+
+
+--
+-- Name: idx_transfer_demand; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_transfer_demand ON public.stock_transfers USING btree (demand_id);
+
+
+--
+-- Name: idx_transfer_idempotency; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_transfer_idempotency ON public.stock_transfers USING btree (tenant_id, client_request_id) WHERE (client_request_id IS NOT NULL);
+
+
+--
+-- Name: idx_transfer_line_transfer; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_transfer_line_transfer ON public.stock_transfer_lines USING btree (transfer_id);
+
+
+--
+-- Name: idx_transfer_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_transfer_tenant ON public.stock_transfers USING btree (tenant_id);
+
+
+--
+-- Name: idx_transfusion_bags_patient_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_transfusion_bags_patient_date ON public.transfusion_blood_bags USING btree (tenant_id, tenant_patient_id, received_at DESC);
+
+
+--
+-- Name: idx_transfusion_bags_product; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_transfusion_bags_product ON public.transfusion_blood_bags USING btree (tenant_id, blood_product_code);
+
+
+--
+-- Name: idx_transfusion_bags_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_transfusion_bags_status ON public.transfusion_blood_bags USING btree (tenant_id, status);
+
+
+--
+-- Name: idx_transfusion_bags_tenant_bag; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_transfusion_bags_tenant_bag ON public.transfusion_blood_bags USING btree (tenant_id, bag_number);
+
+
+--
+-- Name: idx_transfusion_checks_admin_event_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_transfusion_checks_admin_event_id ON public.transfusion_checks USING btree (administration_event_id);
+
+
+--
+-- Name: idx_transfusion_checks_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_transfusion_checks_date ON public.transfusion_checks USING btree (tenant_id, checked_at DESC);
+
+
+--
+-- Name: idx_transfusion_checks_event; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_transfusion_checks_event ON public.transfusion_checks USING btree (tenant_id, administration_event_id);
+
+
+--
+-- Name: idx_transfusion_reactions_admin_event_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_transfusion_reactions_admin_event_id ON public.transfusion_reactions USING btree (administration_event_id);
+
+
+--
+-- Name: idx_transfusion_reactions_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_transfusion_reactions_date ON public.transfusion_reactions USING btree (tenant_id, recorded_at DESC);
+
+
+--
+-- Name: idx_transfusion_reactions_event; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_transfusion_reactions_event ON public.transfusion_reactions USING btree (tenant_id, administration_event_id);
+
+
+--
+-- Name: idx_unique_coverage_member; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_unique_coverage_member ON public.coverage_members USING btree (coverage_id, tenant_patient_id);
+
+
+--
+-- Name: idx_unique_mrn_per_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_unique_mrn_per_tenant ON public.identity_ids USING btree (tenant_id, identity_type_code, identity_value) WHERE ((identity_type_code = 'LOCAL_MRN'::text) AND (status = 'ACTIVE'::text));
+
+
+--
+-- Name: idx_unique_nid_per_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_unique_nid_per_tenant ON public.identity_ids USING btree (tenant_id, identity_type_code, identity_value, issuing_country_code) WHERE ((identity_type_code = ANY (ARRAY['NATIONAL_ID'::text, 'PASSPORT'::text, 'CIN'::text])) AND (status = 'ACTIVE'::text));
+
+
+--
+-- Name: idx_unique_rel_patient; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_unique_rel_patient ON public.patient_relationship_links USING btree (tenant_id, subject_tenant_patient_id, related_tenant_patient_id, relationship_type_code) WHERE (related_tenant_patient_id IS NOT NULL);
+
+
+--
+-- Name: idx_user_roles_role_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_user_roles_role_id ON public.user_roles USING btree (role_id);
+
+
+--
+-- Name: idx_user_roles_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_user_roles_user_id ON public.user_roles USING btree (user_id);
+
+
+--
+-- Name: idx_user_services_service_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_user_services_service_id ON public.user_services USING btree (service_id);
+
+
+--
+-- Name: idx_user_services_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_user_services_user_id ON public.user_services USING btree (user_id);
+
+
+--
+-- Name: smart_phrases_trigger_unique_ci; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX smart_phrases_trigger_unique_ci ON public.smart_phrases USING btree (tenant_id, lower(trigger));
+
+
+--
+-- Name: uniq_admission_number_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX uniq_admission_number_tenant ON public.admissions USING btree (tenant_id, admission_number) WHERE (admission_number IS NOT NULL);
+
+
+--
+-- Name: uq_lab_report_document_link; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_lab_report_document_link ON public.patient_lab_report_documents USING btree (patient_lab_report_id, document_id);
+
+
+--
+-- Name: idx_care_categories_active_order; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_care_categories_active_order ON reference.care_categories USING btree (is_active, sort_order);
+
+
+--
+-- Name: idx_flowsheets_sort_order; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_flowsheets_sort_order ON reference.observation_flowsheets USING btree (sort_order);
+
+
+--
+-- Name: idx_global_dci_care_category; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_global_dci_care_category ON reference.global_dci USING btree (care_category_id);
+
+
+--
+-- Name: idx_global_products_care_category; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_global_products_care_category ON reference.global_products USING btree (care_category_id);
+
+
+--
+-- Name: idx_groups_sort_order; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_groups_sort_order ON reference.observation_groups USING btree (sort_order);
+
+
+--
+-- Name: idx_lab_act_ctx_act; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_lab_act_ctx_act ON reference.lab_act_analyte_context USING btree (global_act_id);
+
+
+--
+-- Name: idx_lab_act_ctx_ctx; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_lab_act_ctx_ctx ON reference.lab_act_analyte_context USING btree (analyte_context_id);
+
+
+--
+-- Name: idx_lab_act_tax_act; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_lab_act_tax_act ON reference.lab_act_taxonomy USING btree (act_id);
+
+
+--
+-- Name: idx_lab_act_tax_sec; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_lab_act_tax_sec ON reference.lab_act_taxonomy USING btree (section_id);
+
+
+--
+-- Name: idx_lab_act_tax_sf; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_lab_act_tax_sf ON reference.lab_act_taxonomy USING btree (sous_famille_id);
+
+
+--
+-- Name: idx_lab_section_tree_section; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_lab_section_tree_section ON reference.lab_section_tree USING btree (section_id);
+
+
+--
+-- Name: idx_lab_section_tree_sous_famille; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_lab_section_tree_sous_famille ON reference.lab_section_tree USING btree (sous_famille_id);
+
+
+--
+-- Name: idx_lab_sub_section_tree_section; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_lab_sub_section_tree_section ON reference.lab_sub_section_tree USING btree (section_id);
+
+
+--
+-- Name: idx_lab_sub_section_tree_sub; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_lab_sub_section_tree_sub ON reference.lab_sub_section_tree USING btree (sub_section_id);
+
+
+--
+-- Name: idx_ref_atc_level; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_atc_level ON reference.global_atc USING btree (level);
+
+
+--
+-- Name: idx_ref_atc_parent; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_atc_parent ON reference.global_atc USING btree (parent);
+
+
+--
+-- Name: idx_ref_dci_atc; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_dci_atc ON reference.global_dci USING btree (atc_code) WHERE (atc_code IS NOT NULL);
+
+
+--
+-- Name: idx_ref_dci_name; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_dci_name ON reference.global_dci USING btree (name);
+
+
+--
+-- Name: idx_ref_dci_synonyms_dci_id; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_dci_synonyms_dci_id ON reference.dci_synonyms USING btree (dci_id);
+
+
+--
+-- Name: idx_ref_emdn_parent; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_emdn_parent ON reference.global_emdn USING btree (parent);
+
+
+--
+-- Name: idx_ref_global_actes_lab_section_id; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_global_actes_lab_section_id ON reference.global_actes USING btree (lab_section_id);
+
+
+--
+-- Name: idx_ref_global_actes_lab_sub_section_id; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_global_actes_lab_sub_section_id ON reference.global_actes USING btree (lab_sub_section_id);
+
+
+--
+-- Name: idx_ref_lab_act_analytes_analyte_id; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_lab_act_analytes_analyte_id ON reference.lab_act_analytes USING btree (analyte_id);
+
+
+--
+-- Name: idx_ref_lab_act_analytes_global_act_id; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_lab_act_analytes_global_act_id ON reference.lab_act_analytes USING btree (global_act_id);
+
+
+--
+-- Name: idx_ref_lab_act_methods_default; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_ref_lab_act_methods_default ON reference.lab_act_methods USING btree (global_act_id) WHERE ((is_default = true) AND (actif = true));
+
+
+--
+-- Name: idx_ref_lab_act_spec_cont_container_type_id; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_lab_act_spec_cont_container_type_id ON reference.lab_act_specimen_containers USING btree (container_type_id);
+
+
+--
+-- Name: idx_ref_lab_act_spec_cont_global_act_id; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_lab_act_spec_cont_global_act_id ON reference.lab_act_specimen_containers USING btree (global_act_id);
+
+
+--
+-- Name: idx_ref_lab_act_spec_cont_specimen_type_id; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_lab_act_spec_cont_specimen_type_id ON reference.lab_act_specimen_containers USING btree (specimen_type_id);
+
+
+--
+-- Name: idx_ref_lab_analyte_aliases_alias_text_lower; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_lab_analyte_aliases_alias_text_lower ON reference.lab_analyte_aliases USING btree (lower(alias_text));
+
+
+--
+-- Name: idx_ref_lab_analyte_aliases_analyte_id; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_lab_analyte_aliases_analyte_id ON reference.lab_analyte_aliases USING btree (analyte_id);
+
+
+--
+-- Name: idx_ref_lab_analyte_ext_codes_analyte_id; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_lab_analyte_ext_codes_analyte_id ON reference.lab_analyte_external_codes USING btree (analyte_id);
+
+
+--
+-- Name: idx_ref_lab_analyte_ext_codes_sys_code; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_lab_analyte_ext_codes_sys_code ON reference.lab_analyte_external_codes USING btree (coding_system, code);
+
+
+--
+-- Name: idx_ref_lab_analyte_units_analyte; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_lab_analyte_units_analyte ON reference.lab_analyte_units USING btree (analyte_id);
+
+
+--
+-- Name: idx_ref_lab_analyte_units_canonical; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_ref_lab_analyte_units_canonical ON reference.lab_analyte_units USING btree (analyte_id) WHERE ((is_canonical = true) AND (actif = true));
+
+
+--
+-- Name: idx_ref_lab_analyte_units_default; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_ref_lab_analyte_units_default ON reference.lab_analyte_units USING btree (analyte_id) WHERE ((is_default = true) AND (actif = true));
+
+
+--
+-- Name: idx_ref_lab_analytes_actif; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_lab_analytes_actif ON reference.lab_analytes USING btree (actif);
+
+
+--
+-- Name: idx_ref_lab_analytes_value_type; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_lab_analytes_value_type ON reference.lab_analytes USING btree (value_type);
+
+
+--
+-- Name: idx_ref_lab_panel_items_child_act_id; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_lab_panel_items_child_act_id ON reference.lab_panel_items USING btree (child_global_act_id);
+
+
+--
+-- Name: idx_ref_lab_panel_items_child_panel_id; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_lab_panel_items_child_panel_id ON reference.lab_panel_items USING btree (child_panel_id);
+
+
+--
+-- Name: idx_ref_lab_panel_items_panel_id; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_lab_panel_items_panel_id ON reference.lab_panel_items USING btree (panel_id);
+
+
+--
+-- Name: idx_ref_lab_panels_actif; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_lab_panels_actif ON reference.lab_panels USING btree (actif);
+
+
+--
+-- Name: idx_ref_lab_panels_section_id; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_lab_panels_section_id ON reference.lab_panels USING btree (section_id);
+
+
+--
+-- Name: idx_ref_lab_panels_sous_famille_id; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_lab_panels_sous_famille_id ON reference.lab_panels USING btree (sous_famille_id);
+
+
+--
+-- Name: idx_ref_lab_panels_sub_section_id; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_lab_panels_sub_section_id ON reference.lab_panels USING btree (sub_section_id);
+
+
+--
+-- Name: idx_ref_lab_sections_actif; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_lab_sections_actif ON reference.lab_sections USING btree (actif);
+
+
+--
+-- Name: idx_ref_lab_sub_sections_actif; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_lab_sub_sections_actif ON reference.lab_sub_sections USING btree (actif);
+
+
+--
+-- Name: idx_ref_price_hist_dates; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_price_hist_dates ON reference.global_product_price_history USING btree (valid_from, valid_to);
+
+
+--
+-- Name: idx_ref_price_hist_product; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_price_hist_product ON reference.global_product_price_history USING btree (product_id);
+
+
+--
+-- Name: idx_ref_products_active; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_products_active ON reference.global_products USING btree (is_active) WHERE (is_active = true);
+
+
+--
+-- Name: idx_ref_products_name; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_products_name ON reference.global_products USING btree (name);
+
+
+--
+-- Name: idx_ref_products_sahty; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_products_sahty ON reference.global_products USING btree (sahty_code) WHERE (sahty_code IS NOT NULL);
+
+
+--
+-- Name: idx_ref_suppliers_active; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_ref_suppliers_active ON reference.global_suppliers USING btree (is_active) WHERE (is_active = true);
+
+
+--
+-- Name: idx_routes_active_order; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_routes_active_order ON reference.routes USING btree (is_active, sort_order);
+
+
+--
+-- Name: idx_routes_sort_order_unique; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_routes_sort_order_unique ON reference.routes USING btree (sort_order);
+
+
+--
+-- Name: idx_specimen_base_tenant; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_specimen_base_tenant ON reference.lab_specimen_types USING btree (base_specimen);
+
+
+--
+-- Name: idx_tenant_global_products_default_presc_route; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE INDEX idx_tenant_global_products_default_presc_route ON reference.global_products USING btree (default_presc_route);
+
+
+--
+-- Name: uniq_default_container_per_specimen_tenant; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE UNIQUE INDEX uniq_default_container_per_specimen_tenant ON reference.lab_specimen_container_types USING btree (specimen_type_id) WHERE (is_default = true);
+
+
+--
+-- Name: uq_flowsheets_sort_order; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_flowsheets_sort_order ON reference.observation_flowsheets USING btree (sort_order) WHERE (is_active = true);
+
+
+--
+-- Name: uq_group_parameters_sort_order; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_group_parameters_sort_order ON reference.group_parameters USING btree (group_id, sort_order);
+
+
+--
+-- Name: uq_groups_sort_order; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_groups_sort_order ON reference.observation_groups USING btree (sort_order);
+
+
+--
+-- Name: uq_lab_reference_profile_tenant; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_lab_reference_profile_tenant ON reference.lab_reference_profiles USING btree (analyte_context_id, COALESCE(sex, 'U'::text), COALESCE(age_min_days, '-1'::integer), COALESCE(age_max_days, '-1'::integer));
+
+
+--
+-- Name: uq_ref_act_context; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_ref_act_context ON reference.lab_act_contexts USING btree (global_act_id, analyte_context_id);
+
+
+--
+-- Name: uq_ref_act_default_context; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_ref_act_default_context ON reference.lab_act_contexts USING btree (global_act_id) WHERE (is_default = true);
+
+
+--
+-- Name: uq_ref_context_default; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_ref_context_default ON reference.lab_analyte_contexts USING btree (analyte_id, specimen_type_id) WHERE (is_default = true);
+
+
+--
+-- Name: uq_ref_lab_analyte_context; Type: INDEX; Schema: reference; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_ref_lab_analyte_context ON reference.lab_analyte_contexts USING btree (analyte_id, specimen_type_id, unit_id, COALESCE(method_id, '00000000-0000-0000-0000-000000000000'::uuid));
+
+
+--
+-- Name: credentials trg_auth_sync_credentials_delete; Type: TRIGGER; Schema: auth; Owner: -
+--
+
+CREATE TRIGGER trg_auth_sync_credentials_delete AFTER DELETE ON auth.credentials FOR EACH ROW EXECUTE FUNCTION auth_sync.emit_outbox_event();
+
+
+--
+-- Name: credentials trg_auth_sync_credentials_insert; Type: TRIGGER; Schema: auth; Owner: -
+--
+
+CREATE TRIGGER trg_auth_sync_credentials_insert AFTER INSERT ON auth.credentials FOR EACH ROW EXECUTE FUNCTION auth_sync.emit_outbox_event();
+
+
+--
+-- Name: credentials trg_auth_sync_credentials_update; Type: TRIGGER; Schema: auth; Owner: -
+--
+
+CREATE TRIGGER trg_auth_sync_credentials_update AFTER UPDATE ON auth.credentials FOR EACH ROW EXECUTE FUNCTION auth_sync.emit_outbox_event();
+
+
+--
+-- Name: user_tenants trg_auth_sync_user_tenants_delete; Type: TRIGGER; Schema: auth; Owner: -
+--
+
+CREATE TRIGGER trg_auth_sync_user_tenants_delete AFTER DELETE ON auth.user_tenants FOR EACH ROW EXECUTE FUNCTION auth_sync.emit_outbox_event();
+
+
+--
+-- Name: user_tenants trg_auth_sync_user_tenants_insert; Type: TRIGGER; Schema: auth; Owner: -
+--
+
+CREATE TRIGGER trg_auth_sync_user_tenants_insert AFTER INSERT ON auth.user_tenants FOR EACH ROW EXECUTE FUNCTION auth_sync.emit_outbox_event();
+
+
+--
+-- Name: user_tenants trg_auth_sync_user_tenants_update; Type: TRIGGER; Schema: auth; Owner: -
+--
+
+CREATE TRIGGER trg_auth_sync_user_tenants_update AFTER UPDATE ON auth.user_tenants FOR EACH ROW EXECUTE FUNCTION auth_sync.emit_outbox_event();
+
+
+--
+-- Name: users trg_auth_sync_users_delete; Type: TRIGGER; Schema: auth; Owner: -
+--
+
+CREATE TRIGGER trg_auth_sync_users_delete AFTER DELETE ON auth.users FOR EACH ROW EXECUTE FUNCTION auth_sync.emit_outbox_event();
+
+
+--
+-- Name: users trg_auth_sync_users_insert; Type: TRIGGER; Schema: auth; Owner: -
+--
+
+CREATE TRIGGER trg_auth_sync_users_insert AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION auth_sync.emit_outbox_event();
+
+
+--
+-- Name: users trg_auth_sync_users_update; Type: TRIGGER; Schema: auth; Owner: -
+--
+
+CREATE TRIGGER trg_auth_sync_users_update AFTER UPDATE ON auth.users FOR EACH ROW EXECUTE FUNCTION auth_sync.emit_outbox_event();
+
+
+--
+-- Name: administration_events audit_administration_events; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER audit_administration_events AFTER INSERT OR DELETE OR UPDATE ON public.administration_events FOR EACH ROW EXECUTE FUNCTION public.fn_generic_audit();
+
+
+--
+-- Name: audit_log audit_log_no_update; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER audit_log_no_update BEFORE DELETE OR UPDATE ON public.audit_log FOR EACH ROW EXECUTE FUNCTION public.fn_audit_no_update();
+
+
+--
+-- Name: patients_tenant audit_patients_tenant; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER audit_patients_tenant AFTER INSERT OR DELETE OR UPDATE ON public.patients_tenant FOR EACH ROW EXECUTE FUNCTION public.fn_generic_audit();
+
+
+--
+-- Name: prescription_events audit_prescription_events; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER audit_prescription_events AFTER INSERT OR DELETE OR UPDATE ON public.prescription_events FOR EACH ROW EXECUTE FUNCTION public.fn_generic_audit();
+
+
+--
+-- Name: prescriptions audit_prescriptions; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER audit_prescriptions AFTER INSERT OR DELETE OR UPDATE ON public.prescriptions FOR EACH ROW EXECUTE FUNCTION public.fn_generic_audit();
+
+
+--
+-- Name: locations trg_prevent_system_location_deactivate; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_prevent_system_location_deactivate BEFORE UPDATE ON public.locations FOR EACH ROW EXECUTE FUNCTION public.fn_prevent_system_location_deactivate();
+
+
+--
+-- Name: administration_events trg_recompute_bag_status; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_recompute_bag_status AFTER INSERT OR DELETE OR UPDATE OF status ON public.administration_events FOR EACH ROW EXECUTE FUNCTION public.trigger_recompute_bag_status();
+
+
+--
+-- Name: administration_event_blood_bags trg_recompute_bag_status_assoc; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_recompute_bag_status_assoc AFTER INSERT OR DELETE OR UPDATE ON public.administration_event_blood_bags FOR EACH ROW EXECUTE FUNCTION public.trigger_recompute_bag_status_assoc();
+
+
+--
+-- Name: surveillance_values_events trg_surveillance_event_bucket; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_surveillance_event_bucket AFTER INSERT ON public.surveillance_values_events FOR EACH ROW EXECUTE FUNCTION public.update_surveillance_hour_bucket();
+
+
+--
+-- Name: credentials credentials_user_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.credentials
+    ADD CONSTRAINT credentials_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(user_id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_tenants user_tenants_user_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
+--
+
+ALTER TABLE ONLY auth.user_tenants
+    ADD CONSTRAINT user_tenants_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(user_id) ON DELETE CASCADE;
+
+
+--
+-- Name: administration_event_pauses administration_event_pauses_administration_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.administration_event_pauses
+    ADD CONSTRAINT administration_event_pauses_administration_event_id_fkey FOREIGN KEY (administration_event_id) REFERENCES public.administration_events(id) ON DELETE CASCADE;
+
+
+--
+-- Name: administration_events administration_events_prescription_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.administration_events
+    ADD CONSTRAINT administration_events_prescription_event_id_fkey FOREIGN KEY (prescription_event_id) REFERENCES public.prescription_events(id) ON DELETE CASCADE;
+
+
+--
+-- Name: admission_coverage_members admission_coverage_members_admission_coverage_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admission_coverage_members
+    ADD CONSTRAINT admission_coverage_members_admission_coverage_id_fkey FOREIGN KEY (admission_coverage_id) REFERENCES public.admission_coverages(admission_coverage_id) ON DELETE CASCADE;
+
+
+--
+-- Name: admission_coverages admission_coverages_admission_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admission_coverages
+    ADD CONSTRAINT admission_coverages_admission_id_fkey FOREIGN KEY (admission_id) REFERENCES public.admissions(id);
+
+
+--
+-- Name: admissions admissions_admitting_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admissions
+    ADD CONSTRAINT admissions_admitting_service_id_fkey FOREIGN KEY (admitting_service_id) REFERENCES public.services(id);
+
+
+--
+-- Name: admissions admissions_attending_physician_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admissions
+    ADD CONSTRAINT admissions_attending_physician_user_id_fkey FOREIGN KEY (attending_physician_user_id) REFERENCES auth.users(user_id);
+
+
+--
+-- Name: admissions admissions_current_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admissions
+    ADD CONSTRAINT admissions_current_service_id_fkey FOREIGN KEY (current_service_id) REFERENCES public.services(id);
+
+
+--
+-- Name: admissions admissions_responsible_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admissions
+    ADD CONSTRAINT admissions_responsible_service_id_fkey FOREIGN KEY (responsible_service_id) REFERENCES public.services(id);
+
+
+--
+-- Name: admissions admissions_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admissions
+    ADD CONSTRAINT admissions_tenant_patient_id_fkey FOREIGN KEY (tenant_patient_id) REFERENCES public.patients_tenant(tenant_patient_id);
+
+
+--
+-- Name: beds beds_room_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.beds
+    ADD CONSTRAINT beds_room_id_fkey FOREIGN KEY (room_id) REFERENCES public.rooms(id);
+
+
+--
+-- Name: coverage_members coverage_members_coverage_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.coverage_members
+    ADD CONSTRAINT coverage_members_coverage_id_fkey FOREIGN KEY (coverage_id) REFERENCES public.coverages(coverage_id) ON DELETE CASCADE;
+
+
+--
+-- Name: coverage_members coverage_members_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.coverage_members
+    ADD CONSTRAINT coverage_members_tenant_patient_id_fkey FOREIGN KEY (tenant_patient_id) REFERENCES public.patients_tenant(tenant_patient_id) ON DELETE CASCADE;
+
+
+--
+-- Name: coverages coverages_organisme_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.coverages
+    ADD CONSTRAINT coverages_organisme_id_fkey FOREIGN KEY (organisme_id) REFERENCES reference.organismes(id);
+
+
+--
+-- Name: escarre_snapshots escarre_snapshots_escarre_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.escarre_snapshots
+    ADD CONSTRAINT escarre_snapshots_escarre_id_fkey FOREIGN KEY (escarre_id) REFERENCES public.escarres(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: escarres escarres_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.escarres
+    ADD CONSTRAINT escarres_tenant_patient_id_fkey FOREIGN KEY (tenant_patient_id) REFERENCES public.patients_tenant(tenant_patient_id) ON DELETE CASCADE;
+
+
+--
+-- Name: administration_event_blood_bags fk_admin_event_blood_bags_bag; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.administration_event_blood_bags
+    ADD CONSTRAINT fk_admin_event_blood_bags_bag FOREIGN KEY (blood_bag_id) REFERENCES public.transfusion_blood_bags(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: administration_event_blood_bags fk_admin_event_blood_bags_event; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.administration_event_blood_bags
+    ADD CONSTRAINT fk_admin_event_blood_bags_event FOREIGN KEY (administration_event_id) REFERENCES public.administration_events(id) ON DELETE CASCADE;
+
+
+--
+-- Name: administration_events fk_admin_event_user; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.administration_events
+    ADD CONSTRAINT fk_admin_event_user FOREIGN KEY (performed_by_user_id) REFERENCES auth.users(user_id) ON DELETE RESTRICT;
+
+
+--
+-- Name: admission_acts fk_admission_acts_admission; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admission_acts
+    ADD CONSTRAINT fk_admission_acts_admission FOREIGN KEY (admission_id) REFERENCES public.admissions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: administration_event_lab_collections fk_aelc_admin_event; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.administration_event_lab_collections
+    ADD CONSTRAINT fk_aelc_admin_event FOREIGN KEY (administration_event_id) REFERENCES public.administration_events(id) ON DELETE CASCADE;
+
+
+--
+-- Name: administration_event_lab_collections fk_aelc_lab_collection; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.administration_event_lab_collections
+    ADD CONSTRAINT fk_aelc_lab_collection FOREIGN KEY (lab_collection_id) REFERENCES public.lab_collections(id) ON DELETE CASCADE;
+
+
+--
+-- Name: clinical_exams fk_clinical_exams_patient; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clinical_exams
+    ADD CONSTRAINT fk_clinical_exams_patient FOREIGN KEY (tenant_patient_id) REFERENCES public.patients_tenant(tenant_patient_id) ON DELETE CASCADE;
+
+
+--
+-- Name: patient_lab_extraction_sessions fk_extraction_document; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_lab_extraction_sessions
+    ADD CONSTRAINT fk_extraction_document FOREIGN KEY (source_document_id) REFERENCES public.patient_documents(id) ON DELETE CASCADE;
+
+
+--
+-- Name: patient_lab_report_documents fk_lab_doc_document; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_lab_report_documents
+    ADD CONSTRAINT fk_lab_doc_document FOREIGN KEY (document_id) REFERENCES public.patient_documents(id);
+
+
+--
+-- Name: patient_lab_report_documents fk_lab_doc_report; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_lab_report_documents
+    ADD CONSTRAINT fk_lab_doc_report FOREIGN KEY (patient_lab_report_id) REFERENCES public.patient_lab_reports(id);
+
+
+--
+-- Name: lab_requests fk_lab_requests_act; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lab_requests
+    ADD CONSTRAINT fk_lab_requests_act FOREIGN KEY (global_act_id) REFERENCES reference.global_actes(id);
+
+
+--
+-- Name: lab_requests fk_lab_requests_admission; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lab_requests
+    ADD CONSTRAINT fk_lab_requests_admission FOREIGN KEY (admission_id) REFERENCES public.admissions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: lab_requests fk_lab_requests_patient; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lab_requests
+    ADD CONSTRAINT fk_lab_requests_patient FOREIGN KEY (tenant_patient_id) REFERENCES public.patients_tenant(tenant_patient_id) ON DELETE CASCADE;
+
+
+--
+-- Name: lab_requests fk_lab_requests_prescription_event; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lab_requests
+    ADD CONSTRAINT fk_lab_requests_prescription_event FOREIGN KEY (prescription_event_id) REFERENCES public.prescription_events(id) ON DELETE CASCADE;
+
+
+--
+-- Name: lab_collection_specimens fk_lcs_collection; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lab_collection_specimens
+    ADD CONSTRAINT fk_lcs_collection FOREIGN KEY (lab_collection_id) REFERENCES public.lab_collections(id) ON DELETE CASCADE;
+
+
+--
+-- Name: lab_collection_specimens fk_lcs_specimen; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lab_collection_specimens
+    ADD CONSTRAINT fk_lcs_specimen FOREIGN KEY (specimen_id) REFERENCES public.lab_specimens(id) ON DELETE CASCADE;
+
+
+--
+-- Name: lab_specimen_requests fk_lsr_specimen; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lab_specimen_requests
+    ADD CONSTRAINT fk_lsr_specimen FOREIGN KEY (specimen_id) REFERENCES public.lab_specimens(id) ON DELETE CASCADE;
+
+
+--
+-- Name: surveillance_values_events fk_surv_events_parameter; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.surveillance_values_events
+    ADD CONSTRAINT fk_surv_events_parameter FOREIGN KEY (parameter_id) REFERENCES reference.observation_parameters(id) ON DELETE CASCADE;
+
+
+--
+-- Name: transfusion_blood_bags fk_transfusion_blood_bags_user; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transfusion_blood_bags
+    ADD CONSTRAINT fk_transfusion_blood_bags_user FOREIGN KEY (received_by_user_id) REFERENCES auth.users(user_id);
+
+
+--
+-- Name: transfusion_checks fk_transfusion_checks_event; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transfusion_checks
+    ADD CONSTRAINT fk_transfusion_checks_event FOREIGN KEY (administration_event_id) REFERENCES public.administration_events(id) ON DELETE CASCADE;
+
+
+--
+-- Name: transfusion_checks fk_transfusion_checks_user; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transfusion_checks
+    ADD CONSTRAINT fk_transfusion_checks_user FOREIGN KEY (checked_by_user_id) REFERENCES auth.users(user_id);
+
+
+--
+-- Name: transfusion_reactions fk_transfusion_reactions_event; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transfusion_reactions
+    ADD CONSTRAINT fk_transfusion_reactions_event FOREIGN KEY (administration_event_id) REFERENCES public.administration_events(id) ON DELETE CASCADE;
+
+
+--
+-- Name: transfusion_reactions fk_transfusion_reactions_user; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transfusion_reactions
+    ADD CONSTRAINT fk_transfusion_reactions_user FOREIGN KEY (recorded_by_user_id) REFERENCES auth.users(user_id);
+
+
+--
+-- Name: identity_ids identity_ids_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.identity_ids
+    ADD CONSTRAINT identity_ids_tenant_patient_id_fkey FOREIGN KEY (tenant_patient_id) REFERENCES public.patients_tenant(tenant_patient_id) ON DELETE CASCADE;
+
+
+--
+-- Name: lab_value_normalization lab_value_normalization_canonical_value_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lab_value_normalization
+    ADD CONSTRAINT lab_value_normalization_canonical_value_id_fkey FOREIGN KEY (canonical_value_id) REFERENCES reference.lab_canonical_allowed_values(id);
+
+
+--
+-- Name: patient_addiction_history patient_addiction_history_addiction_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_addiction_history
+    ADD CONSTRAINT patient_addiction_history_addiction_id_fkey FOREIGN KEY (addiction_id) REFERENCES public.patient_addictions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: patient_allergies patient_allergies_allergen_dci_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_allergies
+    ADD CONSTRAINT patient_allergies_allergen_dci_id_fkey FOREIGN KEY (allergen_dci_id) REFERENCES reference.global_dci(id);
+
+
+--
+-- Name: patient_allergies patient_allergies_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_allergies
+    ADD CONSTRAINT patient_allergies_tenant_patient_id_fkey FOREIGN KEY (tenant_patient_id) REFERENCES public.patients_tenant(tenant_patient_id);
+
+
+--
+-- Name: patient_allergy_history patient_allergy_history_patient_allergy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_allergy_history
+    ADD CONSTRAINT patient_allergy_history_patient_allergy_id_fkey FOREIGN KEY (patient_allergy_id) REFERENCES public.patient_allergies(id) ON DELETE CASCADE;
+
+
+--
+-- Name: patient_allergy_history patient_allergy_history_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_allergy_history
+    ADD CONSTRAINT patient_allergy_history_tenant_patient_id_fkey FOREIGN KEY (tenant_patient_id) REFERENCES public.patients_tenant(tenant_patient_id);
+
+
+--
+-- Name: patient_allergy_manifestations patient_allergy_manifestations_patient_allergy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_allergy_manifestations
+    ADD CONSTRAINT patient_allergy_manifestations_patient_allergy_id_fkey FOREIGN KEY (patient_allergy_id) REFERENCES public.patient_allergies(id) ON DELETE CASCADE;
+
+
+--
+-- Name: patient_diagnoses patient_diagnoses_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_diagnoses
+    ADD CONSTRAINT patient_diagnoses_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients_tenant(tenant_patient_id) ON DELETE CASCADE;
+
+
+--
+-- Name: patient_identity_change patient_identity_change_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_identity_change
+    ADD CONSTRAINT patient_identity_change_tenant_patient_id_fkey FOREIGN KEY (tenant_patient_id) REFERENCES public.patients_tenant(tenant_patient_id) ON DELETE CASCADE;
+
+
+--
+-- Name: patient_lab_extraction_sessions patient_lab_extraction_sessions_patient_lab_report_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_lab_extraction_sessions
+    ADD CONSTRAINT patient_lab_extraction_sessions_patient_lab_report_id_fkey FOREIGN KEY (patient_lab_report_id) REFERENCES public.patient_lab_reports(id) ON DELETE CASCADE;
+
+
+--
+-- Name: patient_lab_report_tests patient_lab_report_tests_global_act_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_lab_report_tests
+    ADD CONSTRAINT patient_lab_report_tests_global_act_id_fkey FOREIGN KEY (global_act_id) REFERENCES reference.global_actes(id);
+
+
+--
+-- Name: patient_lab_report_tests patient_lab_report_tests_panel_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_lab_report_tests
+    ADD CONSTRAINT patient_lab_report_tests_panel_id_fkey FOREIGN KEY (panel_id) REFERENCES reference.lab_panels(id);
+
+
+--
+-- Name: patient_lab_report_tests patient_lab_report_tests_patient_lab_report_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_lab_report_tests
+    ADD CONSTRAINT patient_lab_report_tests_patient_lab_report_id_fkey FOREIGN KEY (patient_lab_report_id) REFERENCES public.patient_lab_reports(id) ON DELETE CASCADE;
+
+
+--
+-- Name: patient_lab_reports patient_lab_reports_admission_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_lab_reports
+    ADD CONSTRAINT patient_lab_reports_admission_id_fkey FOREIGN KEY (admission_id) REFERENCES public.admissions(id);
+
+
+--
+-- Name: patient_lab_reports patient_lab_reports_entered_in_error_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_lab_reports
+    ADD CONSTRAINT patient_lab_reports_entered_in_error_by_user_id_fkey FOREIGN KEY (entered_in_error_by_user_id) REFERENCES auth.users(user_id);
+
+
+--
+-- Name: patient_lab_reports patient_lab_reports_structured_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_lab_reports
+    ADD CONSTRAINT patient_lab_reports_structured_by_user_id_fkey FOREIGN KEY (structured_by_user_id) REFERENCES auth.users(user_id);
+
+
+--
+-- Name: patient_lab_reports patient_lab_reports_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_lab_reports
+    ADD CONSTRAINT patient_lab_reports_tenant_patient_id_fkey FOREIGN KEY (tenant_patient_id) REFERENCES public.patients_tenant(tenant_patient_id);
+
+
+--
+-- Name: patient_lab_reports patient_lab_reports_uploaded_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_lab_reports
+    ADD CONSTRAINT patient_lab_reports_uploaded_by_user_id_fkey FOREIGN KEY (uploaded_by_user_id) REFERENCES auth.users(user_id);
+
+
+--
+-- Name: patient_lab_results patient_lab_results_analyte_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_lab_results
+    ADD CONSTRAINT patient_lab_results_analyte_id_fkey FOREIGN KEY (analyte_id) REFERENCES reference.lab_analytes(id);
+
+
+--
+-- Name: patient_lab_results patient_lab_results_entered_in_error_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_lab_results
+    ADD CONSTRAINT patient_lab_results_entered_in_error_by_user_id_fkey FOREIGN KEY (entered_in_error_by_user_id) REFERENCES auth.users(user_id);
+
+
+--
+-- Name: patient_lab_results patient_lab_results_method_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_lab_results
+    ADD CONSTRAINT patient_lab_results_method_id_fkey FOREIGN KEY (method_id) REFERENCES reference.lab_methods(id);
+
+
+--
+-- Name: patient_lab_results patient_lab_results_patient_lab_report_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_lab_results
+    ADD CONSTRAINT patient_lab_results_patient_lab_report_id_fkey FOREIGN KEY (patient_lab_report_id) REFERENCES public.patient_lab_reports(id) ON DELETE CASCADE;
+
+
+--
+-- Name: patient_lab_results patient_lab_results_patient_lab_report_test_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_lab_results
+    ADD CONSTRAINT patient_lab_results_patient_lab_report_test_id_fkey FOREIGN KEY (patient_lab_report_test_id) REFERENCES public.patient_lab_report_tests(id) ON DELETE SET NULL;
+
+
+--
+-- Name: patient_lab_results patient_lab_results_specimen_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_lab_results
+    ADD CONSTRAINT patient_lab_results_specimen_type_id_fkey FOREIGN KEY (specimen_type_id) REFERENCES reference.lab_specimen_types(id);
+
+
+--
+-- Name: patient_lab_results patient_lab_results_unit_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_lab_results
+    ADD CONSTRAINT patient_lab_results_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES reference.units(id);
+
+
+--
+-- Name: patient_observations patient_observations_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_observations
+    ADD CONSTRAINT patient_observations_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(user_id);
+
+
+--
+-- Name: patient_observations patient_observations_parent_observation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_observations
+    ADD CONSTRAINT patient_observations_parent_observation_id_fkey FOREIGN KEY (parent_observation_id) REFERENCES public.patient_observations(id);
+
+
+--
+-- Name: patient_observations patient_observations_signed_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_observations
+    ADD CONSTRAINT patient_observations_signed_by_fkey FOREIGN KEY (signed_by) REFERENCES auth.users(user_id);
+
+
+--
+-- Name: patient_observations patient_observations_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_observations
+    ADD CONSTRAINT patient_observations_tenant_patient_id_fkey FOREIGN KEY (tenant_patient_id) REFERENCES public.patients_tenant(tenant_patient_id);
+
+
+--
+-- Name: patient_relationship_links patient_relationship_links_related_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_relationship_links
+    ADD CONSTRAINT patient_relationship_links_related_tenant_patient_id_fkey FOREIGN KEY (related_tenant_patient_id) REFERENCES public.patients_tenant(tenant_patient_id) ON DELETE SET NULL;
+
+
+--
+-- Name: patient_relationship_links patient_relationship_links_subject_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_relationship_links
+    ADD CONSTRAINT patient_relationship_links_subject_tenant_patient_id_fkey FOREIGN KEY (subject_tenant_patient_id) REFERENCES public.patients_tenant(tenant_patient_id) ON DELETE CASCADE;
+
+
+--
+-- Name: patient_stays patient_stays_admission_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_stays
+    ADD CONSTRAINT patient_stays_admission_id_fkey FOREIGN KEY (admission_id) REFERENCES public.admissions(id);
+
+
+--
+-- Name: patient_stays patient_stays_bed_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_stays
+    ADD CONSTRAINT patient_stays_bed_id_fkey FOREIGN KEY (bed_id) REFERENCES public.beds(id);
+
+
+--
+-- Name: patient_stays patient_stays_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_stays
+    ADD CONSTRAINT patient_stays_tenant_patient_id_fkey FOREIGN KEY (tenant_patient_id) REFERENCES public.patients_tenant(tenant_patient_id);
+
+
+--
+-- Name: patient_tenant_merge_events patient_tenant_merge_events_source_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_tenant_merge_events
+    ADD CONSTRAINT patient_tenant_merge_events_source_tenant_patient_id_fkey FOREIGN KEY (source_tenant_patient_id) REFERENCES public.patients_tenant(tenant_patient_id);
+
+
+--
+-- Name: patient_tenant_merge_events patient_tenant_merge_events_target_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patient_tenant_merge_events
+    ADD CONSTRAINT patient_tenant_merge_events_target_tenant_patient_id_fkey FOREIGN KEY (target_tenant_patient_id) REFERENCES public.patients_tenant(tenant_patient_id);
+
+
+--
+-- Name: patients_tenant patients_tenant_merged_into_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.patients_tenant
+    ADD CONSTRAINT patients_tenant_merged_into_tenant_patient_id_fkey FOREIGN KEY (merged_into_tenant_patient_id) REFERENCES public.patients_tenant(tenant_patient_id);
+
+
+--
+-- Name: po_items po_items_po_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.po_items
+    ADD CONSTRAINT po_items_po_id_fkey FOREIGN KEY (po_id) REFERENCES public.purchase_orders(po_id) ON DELETE CASCADE;
+
+
+--
+-- Name: prescription_events prescription_events_prescription_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.prescription_events
+    ADD CONSTRAINT prescription_events_prescription_id_fkey FOREIGN KEY (prescription_id) REFERENCES public.prescriptions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: prescriptions prescriptions_admission_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.prescriptions
+    ADD CONSTRAINT prescriptions_admission_id_fkey FOREIGN KEY (admission_id) REFERENCES public.admissions(id);
+
+
+--
+-- Name: prescriptions prescriptions_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.prescriptions
+    ADD CONSTRAINT prescriptions_tenant_patient_id_fkey FOREIGN KEY (tenant_patient_id) REFERENCES public.patients_tenant(tenant_patient_id);
+
+
+--
+-- Name: product_price_versions product_price_versions_product_supplier_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.product_price_versions
+    ADD CONSTRAINT product_price_versions_product_supplier_id_fkey FOREIGN KEY (product_supplier_id) REFERENCES public.product_suppliers(id) ON DELETE CASCADE;
+
+
+--
+-- Name: return_decision_lines return_decision_lines_decision_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.return_decision_lines
+    ADD CONSTRAINT return_decision_lines_decision_id_fkey FOREIGN KEY (decision_id) REFERENCES public.return_decisions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: return_decision_lines return_decision_lines_destination_location_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.return_decision_lines
+    ADD CONSTRAINT return_decision_lines_destination_location_id_fkey FOREIGN KEY (destination_location_id) REFERENCES public.locations(location_id);
+
+
+--
+-- Name: return_decision_lines return_decision_lines_return_line_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.return_decision_lines
+    ADD CONSTRAINT return_decision_lines_return_line_id_fkey FOREIGN KEY (return_line_id) REFERENCES public.stock_return_lines(id);
+
+
+--
+-- Name: return_decisions return_decisions_reception_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.return_decisions
+    ADD CONSTRAINT return_decisions_reception_id_fkey FOREIGN KEY (reception_id) REFERENCES public.return_receptions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: return_reception_lines return_reception_lines_reception_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.return_reception_lines
+    ADD CONSTRAINT return_reception_lines_reception_id_fkey FOREIGN KEY (reception_id) REFERENCES public.return_receptions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: return_reception_lines return_reception_lines_return_line_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.return_reception_lines
+    ADD CONSTRAINT return_reception_lines_return_line_id_fkey FOREIGN KEY (return_line_id) REFERENCES public.stock_return_lines(id);
+
+
+--
+-- Name: return_receptions return_receptions_return_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.return_receptions
+    ADD CONSTRAINT return_receptions_return_id_fkey FOREIGN KEY (return_id) REFERENCES public.stock_returns(id) ON DELETE CASCADE;
+
+
+--
+-- Name: rooms rooms_room_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rooms
+    ADD CONSTRAINT rooms_room_type_id_fkey FOREIGN KEY (room_type_id) REFERENCES public.room_types(id);
+
+
+--
+-- Name: rooms rooms_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.rooms
+    ADD CONSTRAINT rooms_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id);
+
+
+--
+-- Name: service_units service_units_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.service_units
+    ADD CONSTRAINT service_units_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id) ON DELETE CASCADE;
+
+
+--
+-- Name: smart_phrases smart_phrases_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.smart_phrases
+    ADD CONSTRAINT smart_phrases_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(user_id);
+
+
+--
+-- Name: smart_phrases smart_phrases_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.smart_phrases
+    ADD CONSTRAINT smart_phrases_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(user_id);
+
+
+--
+-- Name: stock_demand_lines stock_demand_lines_demand_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stock_demand_lines
+    ADD CONSTRAINT stock_demand_lines_demand_id_fkey FOREIGN KEY (demand_id) REFERENCES public.stock_demands(id) ON DELETE CASCADE;
+
+
+--
+-- Name: stock_reservation_lines stock_reservation_lines_reservation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stock_reservation_lines
+    ADD CONSTRAINT stock_reservation_lines_reservation_id_fkey FOREIGN KEY (reservation_id) REFERENCES public.stock_reservations(reservation_id);
+
+
+--
+-- Name: stock_return_lines stock_return_lines_return_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stock_return_lines
+    ADD CONSTRAINT stock_return_lines_return_id_fkey FOREIGN KEY (return_id) REFERENCES public.stock_returns(id) ON DELETE CASCADE;
+
+
+--
+-- Name: stock_return_lines stock_return_lines_stock_reservation_line_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stock_return_lines
+    ADD CONSTRAINT stock_return_lines_stock_reservation_line_id_fkey FOREIGN KEY (stock_reservation_line_id) REFERENCES public.stock_reservation_lines(id);
+
+
+--
+-- Name: stock_returns stock_returns_stock_reservation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stock_returns
+    ADD CONSTRAINT stock_returns_stock_reservation_id_fkey FOREIGN KEY (stock_reservation_id) REFERENCES public.stock_reservations(reservation_id);
+
+
+--
+-- Name: stock_transfer_lines stock_transfer_lines_demand_line_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stock_transfer_lines
+    ADD CONSTRAINT stock_transfer_lines_demand_line_id_fkey FOREIGN KEY (demand_line_id) REFERENCES public.stock_demand_lines(id);
+
+
+--
+-- Name: stock_transfer_lines stock_transfer_lines_transfer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stock_transfer_lines
+    ADD CONSTRAINT stock_transfer_lines_transfer_id_fkey FOREIGN KEY (transfer_id) REFERENCES public.stock_transfers(id) ON DELETE CASCADE;
+
+
+--
+-- Name: stock_transfers stock_transfers_demand_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stock_transfers
+    ADD CONSTRAINT stock_transfers_demand_id_fkey FOREIGN KEY (demand_id) REFERENCES public.stock_demands(id);
+
+
+--
+-- Name: user_services user_services_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_services
+    ADD CONSTRAINT user_services_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_services user_services_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_services
+    ADD CONSTRAINT user_services_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(user_id) ON DELETE CASCADE;
+
+
+--
+-- Name: dci_synonyms dci_synonyms_dci_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.dci_synonyms
+    ADD CONSTRAINT dci_synonyms_dci_id_fkey FOREIGN KEY (dci_id) REFERENCES reference.global_dci(id) ON DELETE CASCADE;
+
+
+--
+-- Name: lab_specimen_container_types fk_container; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_specimen_container_types
+    ADD CONSTRAINT fk_container FOREIGN KEY (container_type_id) REFERENCES reference.lab_container_types(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: global_dci fk_global_dci_care_category; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.global_dci
+    ADD CONSTRAINT fk_global_dci_care_category FOREIGN KEY (care_category_id) REFERENCES reference.care_categories(id);
+
+
+--
+-- Name: global_products fk_global_products_care_category; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.global_products
+    ADD CONSTRAINT fk_global_products_care_category FOREIGN KEY (care_category_id) REFERENCES reference.care_categories(id);
+
+
+--
+-- Name: lab_act_specimen_containers fk_lab_act_spec_cont_act; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_act_specimen_containers
+    ADD CONSTRAINT fk_lab_act_spec_cont_act FOREIGN KEY (global_act_id) REFERENCES reference.global_actes(id) ON DELETE CASCADE;
+
+
+--
+-- Name: lab_act_specimen_containers fk_lab_act_spec_cont_container; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_act_specimen_containers
+    ADD CONSTRAINT fk_lab_act_spec_cont_container FOREIGN KEY (container_type_id) REFERENCES reference.lab_container_types(id) ON DELETE CASCADE;
+
+
+--
+-- Name: lab_act_specimen_containers fk_lab_act_spec_cont_specimen; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_act_specimen_containers
+    ADD CONSTRAINT fk_lab_act_spec_cont_specimen FOREIGN KEY (specimen_type_id) REFERENCES reference.lab_specimen_types(id) ON DELETE CASCADE;
+
+
+--
+-- Name: lab_act_specimen_containers fk_lab_act_spec_cont_unit; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_act_specimen_containers
+    ADD CONSTRAINT fk_lab_act_spec_cont_unit FOREIGN KEY (volume_unit_id) REFERENCES reference.units(id) ON DELETE SET NULL;
+
+
+--
+-- Name: lab_panels fk_ref_lab_panels_global_act; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_panels
+    ADD CONSTRAINT fk_ref_lab_panels_global_act FOREIGN KEY (global_act_id) REFERENCES reference.global_actes(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: lab_specimen_container_types fk_specimen; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_specimen_container_types
+    ADD CONSTRAINT fk_specimen FOREIGN KEY (specimen_type_id) REFERENCES reference.lab_specimen_types(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: global_products fk_tenant_global_products_presc_route; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.global_products
+    ADD CONSTRAINT fk_tenant_global_products_presc_route FOREIGN KEY (default_presc_route) REFERENCES reference.routes(id) ON DELETE SET NULL;
+
+
+--
+-- Name: flowsheet_groups flowsheet_groups_flowsheet_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.flowsheet_groups
+    ADD CONSTRAINT flowsheet_groups_flowsheet_id_fkey FOREIGN KEY (flowsheet_id) REFERENCES reference.observation_flowsheets(id) ON DELETE CASCADE;
+
+
+--
+-- Name: flowsheet_groups flowsheet_groups_group_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.flowsheet_groups
+    ADD CONSTRAINT flowsheet_groups_group_id_fkey FOREIGN KEY (group_id) REFERENCES reference.observation_groups(id) ON DELETE CASCADE;
+
+
+--
+-- Name: global_actes global_actes_famille_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.global_actes
+    ADD CONSTRAINT global_actes_famille_id_fkey FOREIGN KEY (famille_id) REFERENCES reference.sih_familles(id) ON DELETE SET NULL;
+
+
+--
+-- Name: global_actes global_actes_lab_section_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.global_actes
+    ADD CONSTRAINT global_actes_lab_section_id_fkey FOREIGN KEY (lab_section_id) REFERENCES reference.lab_sections(id);
+
+
+--
+-- Name: global_actes global_actes_lab_sub_section_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.global_actes
+    ADD CONSTRAINT global_actes_lab_sub_section_id_fkey FOREIGN KEY (lab_sub_section_id) REFERENCES reference.lab_sub_sections(id);
+
+
+--
+-- Name: global_actes global_actes_sous_famille_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.global_actes
+    ADD CONSTRAINT global_actes_sous_famille_id_fkey FOREIGN KEY (sous_famille_id) REFERENCES reference.sih_sous_familles(id) ON DELETE SET NULL;
+
+
+--
+-- Name: global_product_price_history global_product_price_history_product_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.global_product_price_history
+    ADD CONSTRAINT global_product_price_history_product_id_fkey FOREIGN KEY (product_id) REFERENCES reference.global_products(id) ON DELETE CASCADE;
+
+
+--
+-- Name: group_parameters group_parameters_group_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.group_parameters
+    ADD CONSTRAINT group_parameters_group_id_fkey FOREIGN KEY (group_id) REFERENCES reference.observation_groups(id) ON DELETE CASCADE;
+
+
+--
+-- Name: group_parameters group_parameters_parameter_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.group_parameters
+    ADD CONSTRAINT group_parameters_parameter_id_fkey FOREIGN KEY (parameter_id) REFERENCES reference.observation_parameters(id) ON DELETE CASCADE;
+
+
+--
+-- Name: lab_act_analytes lab_act_analytes_analyte_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_act_analytes
+    ADD CONSTRAINT lab_act_analytes_analyte_id_fkey FOREIGN KEY (analyte_id) REFERENCES reference.lab_analytes(id);
+
+
+--
+-- Name: lab_act_analytes lab_act_analytes_global_act_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_act_analytes
+    ADD CONSTRAINT lab_act_analytes_global_act_id_fkey FOREIGN KEY (global_act_id) REFERENCES reference.global_actes(id);
+
+
+--
+-- Name: lab_act_contexts lab_act_contexts_analyte_context_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_act_contexts
+    ADD CONSTRAINT lab_act_contexts_analyte_context_id_fkey FOREIGN KEY (analyte_context_id) REFERENCES reference.lab_analyte_contexts(id);
+
+
+--
+-- Name: lab_act_contexts lab_act_contexts_global_act_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_act_contexts
+    ADD CONSTRAINT lab_act_contexts_global_act_id_fkey FOREIGN KEY (global_act_id) REFERENCES reference.global_actes(id);
+
+
+--
+-- Name: lab_act_methods lab_act_methods_global_act_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_act_methods
+    ADD CONSTRAINT lab_act_methods_global_act_id_fkey FOREIGN KEY (global_act_id) REFERENCES reference.global_actes(id);
+
+
+--
+-- Name: lab_act_methods lab_act_methods_method_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_act_methods
+    ADD CONSTRAINT lab_act_methods_method_id_fkey FOREIGN KEY (method_id) REFERENCES reference.lab_methods(id);
+
+
+--
+-- Name: lab_analyte_aliases lab_analyte_aliases_analyte_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_analyte_aliases
+    ADD CONSTRAINT lab_analyte_aliases_analyte_id_fkey FOREIGN KEY (analyte_id) REFERENCES reference.lab_analytes(id);
+
+
+--
+-- Name: lab_analyte_contexts lab_analyte_contexts_analyte_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_analyte_contexts
+    ADD CONSTRAINT lab_analyte_contexts_analyte_id_fkey FOREIGN KEY (analyte_id) REFERENCES reference.lab_analytes(id);
+
+
+--
+-- Name: lab_analyte_contexts lab_analyte_contexts_method_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_analyte_contexts
+    ADD CONSTRAINT lab_analyte_contexts_method_id_fkey FOREIGN KEY (method_id) REFERENCES reference.lab_methods(id);
+
+
+--
+-- Name: lab_analyte_contexts lab_analyte_contexts_specimen_type_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_analyte_contexts
+    ADD CONSTRAINT lab_analyte_contexts_specimen_type_id_fkey FOREIGN KEY (specimen_type_id) REFERENCES reference.lab_specimen_types(id);
+
+
+--
+-- Name: lab_analyte_contexts lab_analyte_contexts_unit_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_analyte_contexts
+    ADD CONSTRAINT lab_analyte_contexts_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES reference.units(id);
+
+
+--
+-- Name: lab_analyte_external_codes lab_analyte_external_codes_analyte_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_analyte_external_codes
+    ADD CONSTRAINT lab_analyte_external_codes_analyte_id_fkey FOREIGN KEY (analyte_id) REFERENCES reference.lab_analytes(id);
+
+
+--
+-- Name: lab_analyte_reference_ranges lab_analyte_reference_ranges_analyte_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_analyte_reference_ranges
+    ADD CONSTRAINT lab_analyte_reference_ranges_analyte_id_fkey FOREIGN KEY (analyte_id) REFERENCES reference.lab_analytes(id);
+
+
+--
+-- Name: lab_analyte_reference_ranges lab_analyte_reference_ranges_method_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_analyte_reference_ranges
+    ADD CONSTRAINT lab_analyte_reference_ranges_method_id_fkey FOREIGN KEY (method_id) REFERENCES reference.lab_methods(id);
+
+
+--
+-- Name: lab_analyte_reference_ranges lab_analyte_reference_ranges_specimen_type_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_analyte_reference_ranges
+    ADD CONSTRAINT lab_analyte_reference_ranges_specimen_type_id_fkey FOREIGN KEY (specimen_type_id) REFERENCES reference.lab_specimen_types(id);
+
+
+--
+-- Name: lab_analyte_reference_ranges lab_analyte_reference_ranges_unit_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_analyte_reference_ranges
+    ADD CONSTRAINT lab_analyte_reference_ranges_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES reference.units(id);
+
+
+--
+-- Name: lab_analyte_units lab_analyte_units_analyte_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_analyte_units
+    ADD CONSTRAINT lab_analyte_units_analyte_id_fkey FOREIGN KEY (analyte_id) REFERENCES reference.lab_analytes(id);
+
+
+--
+-- Name: lab_analyte_units lab_analyte_units_unit_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_analyte_units
+    ADD CONSTRAINT lab_analyte_units_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES reference.units(id);
+
+
+--
+-- Name: lab_panel_items lab_panel_items_child_global_act_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_panel_items
+    ADD CONSTRAINT lab_panel_items_child_global_act_id_fkey FOREIGN KEY (child_global_act_id) REFERENCES reference.global_actes(id);
+
+
+--
+-- Name: lab_panel_items lab_panel_items_child_panel_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_panel_items
+    ADD CONSTRAINT lab_panel_items_child_panel_id_fkey FOREIGN KEY (child_panel_id) REFERENCES reference.lab_panels(id);
+
+
+--
+-- Name: lab_panel_items lab_panel_items_panel_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_panel_items
+    ADD CONSTRAINT lab_panel_items_panel_id_fkey FOREIGN KEY (panel_id) REFERENCES reference.lab_panels(id);
+
+
+--
+-- Name: lab_panels lab_panels_section_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_panels
+    ADD CONSTRAINT lab_panels_section_id_fkey FOREIGN KEY (section_id) REFERENCES reference.lab_sections(id);
+
+
+--
+-- Name: lab_panels lab_panels_sous_famille_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_panels
+    ADD CONSTRAINT lab_panels_sous_famille_id_fkey FOREIGN KEY (sous_famille_id) REFERENCES reference.sih_sous_familles(id);
+
+
+--
+-- Name: lab_panels lab_panels_sub_section_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_panels
+    ADD CONSTRAINT lab_panels_sub_section_id_fkey FOREIGN KEY (sub_section_id) REFERENCES reference.lab_sub_sections(id);
+
+
+--
+-- Name: lab_reference_profiles lab_reference_profiles_analyte_context_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_reference_profiles
+    ADD CONSTRAINT lab_reference_profiles_analyte_context_id_fkey FOREIGN KEY (analyte_context_id) REFERENCES reference.lab_analyte_contexts(id);
+
+
+--
+-- Name: lab_reference_rules lab_reference_rules_canonical_value_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_reference_rules
+    ADD CONSTRAINT lab_reference_rules_canonical_value_id_fkey FOREIGN KEY (canonical_value_id) REFERENCES reference.lab_canonical_allowed_values(id);
+
+
+--
+-- Name: lab_reference_rules lab_reference_rules_canonical_value_max_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_reference_rules
+    ADD CONSTRAINT lab_reference_rules_canonical_value_max_id_fkey FOREIGN KEY (canonical_value_max_id) REFERENCES reference.lab_canonical_allowed_values(id);
+
+
+--
+-- Name: lab_reference_rules lab_reference_rules_canonical_value_min_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_reference_rules
+    ADD CONSTRAINT lab_reference_rules_canonical_value_min_id_fkey FOREIGN KEY (canonical_value_min_id) REFERENCES reference.lab_canonical_allowed_values(id);
+
+
+--
+-- Name: lab_reference_rules lab_reference_rules_profile_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.lab_reference_rules
+    ADD CONSTRAINT lab_reference_rules_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES reference.lab_reference_profiles(id) ON DELETE CASCADE;
+
+
+--
+-- Name: observation_parameters observation_parameters_unit_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.observation_parameters
+    ADD CONSTRAINT observation_parameters_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES reference.units(id) ON DELETE SET NULL;
+
+
+--
+-- Name: sih_sous_familles sih_sous_familles_famille_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+--
+
+ALTER TABLE ONLY reference.sih_sous_familles
+    ADD CONSTRAINT sih_sous_familles_famille_id_fkey FOREIGN KEY (famille_id) REFERENCES reference.sih_familles(id) ON DELETE RESTRICT;
+
+
+--
+-- PostgreSQL database dump complete
+--
+
+\unrestrict dquCcj176YX7bXQQ7ZRz0z1vHQmw7s2viiQO9vE9hIOiy4NHhrTZeioKNufamyh
+

@@ -50,6 +50,8 @@ export interface PrescriptionData {
     conditionComment?: string;
     substitutable: boolean;
     prescriptionType?: 'medication' | 'biology' | 'imagery' | 'care' | 'procedure' | 'transfusion';
+    skippedEvents?: string[];
+    manuallyAdjustedEvents?: Record<string, string>;
 
     // Non-medication fields (sent by future UIs)
     test?: { catalog_test_id?: string; code: string; display_name: string };

@@ -15,6 +15,8 @@ export interface CreateFullLabReportPayload extends CreatePatientLabReportDTO {
 }
 
 export class PatientLabReportService {
+    private evaluationEngine = new ReferenceEvaluationEngine();
+
     constructor(
         private reportRepo: PatientLabReportRepository,
         private testRepo: PatientLabReportTestRepository,
@@ -274,7 +276,7 @@ export class PatientLabReportService {
                 if (patientRes.rows.length > 0) {
                     const patient = patientRes.rows[0];
                     sex = (patient.sex === 'M' || patient.sex === 'F') ? patient.sex : 'U';
-                    ageInDays = patient.date_of_birth ? Math.floor((new Date().getTime() - new Date(patient.date_of_birth).getTime()) / 86400000) : 0;
+                    ageInDays = Math.max(0, patient.date_of_birth ? Math.floor((new Date().getTime() - new Date(patient.date_of_birth).getTime()) / 86400000) : 0);
                     patientContextExists = true;
                 }
                 await client.query('RELEASE SAVEPOINT patient_fetch');
@@ -296,6 +298,15 @@ export class PatientLabReportService {
                     if (isNaN(parsed)) {
                         safeNumericValue = null;
                     }
+                }
+
+                // Prevent saving empty free rows
+                if (!row.lab_analyte_context_id && 
+                    (!row.raw_analyte_label || String(row.raw_analyte_label).trim() === '') && 
+                    safeNumericValue === null && 
+                    (!row.text_value || String(row.text_value).trim() === '')) {
+                    await client.query('RELEASE SAVEPOINT row_savepoint');
+                    continue;
                 }
 
                 const mappedRow = {
@@ -322,24 +333,39 @@ export class PatientLabReportService {
                                 value_type = $1, numeric_value = $2, text_value = $3,
                                 reference_low_numeric = $4, reference_high_numeric = $5,
                                 reference_range_text = $6, abnormal_flag = $7,
+                                raw_unit_text = $8, raw_method_text = $9,
+                                raw_specimen_type_text = $10, raw_abnormal_flag_text = $11,
                                 updated_at = NOW()
-                            WHERE id = $8 AND status = 'ACTIVE' RETURNING *;
+                            WHERE id = $12 AND status = 'ACTIVE' RETURNING *;
                         `, [
                             mappedRow.value_type, mappedRow.numeric_value, mappedRow.text_value,
                             mappedRow.reference_low_numeric, mappedRow.reference_high_numeric,
                             mappedRow.reference_range_text, mappedRow.abnormal_flag,
+                            mappedRow.raw_unit_text, mappedRow.raw_method_text,
+                            mappedRow.raw_specimen_type_text, mappedRow.raw_abnormal_flag_text,
                             row.id
                         ]);
                         finalResult = updateRes.rows[0];
-                    } else if (row.lab_analyte_context_id) {
-                        // Match mapped analyte active row
-                        const existingRes = await client.query(`
-                            SELECT id FROM public.patient_lab_results 
-                            WHERE patient_lab_report_id = $1 
-                            AND patient_lab_report_test_id IS NOT DISTINCT FROM $2 
-                            AND lab_analyte_context_id = $3 
-                            AND status = 'ACTIVE';
-                        `, [reportId, mappedRow.patient_lab_report_test_id, mappedRow.lab_analyte_context_id]);
+                    } else if (mappedRow.lab_analyte_context_id || mappedRow.raw_analyte_label) {
+                        // Match mapped analyte or free entry active row
+                        let existingRes;
+                        if (mappedRow.lab_analyte_context_id) {
+                            existingRes = await client.query(`
+                                SELECT id FROM public.patient_lab_results 
+                                WHERE patient_lab_report_id = $1 
+                                AND patient_lab_report_test_id IS NOT DISTINCT FROM $2 
+                                AND lab_analyte_context_id = $3 
+                                AND status = 'ACTIVE';
+                            `, [reportId, mappedRow.patient_lab_report_test_id, mappedRow.lab_analyte_context_id]);
+                        } else {
+                            existingRes = await client.query(`
+                                SELECT id FROM public.patient_lab_results 
+                                WHERE patient_lab_report_id = $1 
+                                AND patient_lab_report_test_id IS NOT DISTINCT FROM $2 
+                                AND lab_analyte_context_id IS NULL AND raw_analyte_label = $3 
+                                AND status = 'ACTIVE';
+                            `, [reportId, mappedRow.patient_lab_report_test_id, mappedRow.raw_analyte_label]);
+                        }
 
                         if (existingRes.rows.length > 0) {
                             const updateRes = await client.query(`
@@ -347,12 +373,16 @@ export class PatientLabReportService {
                                     value_type = $1, numeric_value = $2, text_value = $3,
                                     reference_low_numeric = $4, reference_high_numeric = $5,
                                     reference_range_text = $6, abnormal_flag = $7,
+                                    raw_unit_text = $8, raw_method_text = $9,
+                                    raw_specimen_type_text = $10, raw_abnormal_flag_text = $11,
                                     updated_at = NOW()
-                                WHERE id = $8 RETURNING *;
+                                WHERE id = $12 RETURNING *;
                             `, [
                                 mappedRow.value_type, mappedRow.numeric_value, mappedRow.text_value,
                                 mappedRow.reference_low_numeric, mappedRow.reference_high_numeric,
                                 mappedRow.reference_range_text, mappedRow.abnormal_flag,
+                                mappedRow.raw_unit_text, mappedRow.raw_method_text,
+                                mappedRow.raw_specimen_type_text, mappedRow.raw_abnormal_flag_text,
                                 existingRes.rows[0].id
                             ]);
                             finalResult = updateRes.rows[0];
@@ -363,7 +393,6 @@ export class PatientLabReportService {
                         // Unmapped -> Insert entirely new ACTIVE row
                         finalResult = await this.resultRepo.createLabResult(client, mappedRow as any);
                     }
-                    await client.query('RELEASE SAVEPOINT row_savepoint');
                 } catch (upsertError) {
                     await client.query('ROLLBACK TO SAVEPOINT row_savepoint');
                     console.error("CRITICAL: UPSERT failed for raw data", row, upsertError);
@@ -372,38 +401,59 @@ export class PatientLabReportService {
 
                 if (!finalResult) continue;
 
-                // STEP B: EVALUATION MUST BE NON-BLOCKING
+                // STEP 2 - Evaluate (non-blocking assistive evaluation)
                 await client.query('SAVEPOINT eval_savepoint');
                 try {
-                    const resultValueForEval = finalResult.value_type === 'NUMERIC' ? finalResult.numeric_value : (finalResult.value_type === 'TEXT' ? finalResult.text_value : null);
-                    
-                    if (finalResult.lab_analyte_context_id && patientContextExists && resultValueForEval !== null && resultValueForEval !== undefined) {
-                        const interpretationData = await ReferenceEvaluationEngine.evaluate(
-                            client, finalResult.lab_analyte_context_id, resultValueForEval, sex, ageInDays
-                        ) as any;
+                    if (finalResult.lab_analyte_context_id) {
+                        const evalResult = await this.evaluationEngine.evaluate(client, {
+                            analyte_context_id: finalResult.lab_analyte_context_id,
+                            numeric_value: finalResult.numeric_value,
+                            text_value: finalResult.text_value,
+                            boolean_value: finalResult.boolean_value,
+                            patient_sex: sex,
+                            patient_age_days: ageInDays
+                        });
                         
-                        if (interpretationData && (interpretationData.interpretation || interpretationData.reference_range_text || interpretationData.reference_low_numeric !== null)) {
-                            // Update the row with evaluated interpretation
-                            const evalUpdateRes = await client.query(`
+                        if (evalResult && (evalResult.interpretation || evalResult.reference_text || evalResult.reference_low !== null)) {
+                            const interpStr = evalResult.interpretation || '';
+                            let finalFlag = interpStr;
+                            if (interpStr.includes('HIGH')) finalFlag = 'HIGH';
+                            else if (interpStr.includes('LOW')) finalFlag = 'LOW';
+
+                            await client.query(`
                                 UPDATE public.patient_lab_results SET
-                                    reference_low_numeric = $1, reference_high_numeric = $2,
-                                    reference_range_text = $3, abnormal_flag = $4,
+                                    interpretation = $1,
+                                    abnormal_flag = $2,
+                                    reference_low_numeric = $3,
+                                    reference_high_numeric = $4,
+                                    reference_range_text = $5,
                                     updated_at = NOW()
-                                WHERE id = $5 RETURNING *;
+                                WHERE id = $6 AND status = 'ACTIVE'
                             `, [
-                                interpretationData.reference_low_numeric, interpretationData.reference_high_numeric,
-                                interpretationData.reference_range_text, interpretationData.abnormal_flag_text,
+                                evalResult.interpretation,
+                                finalFlag,
+                                evalResult.reference_low,
+                                evalResult.reference_high,
+                                evalResult.reference_text,
                                 finalResult.id
                             ]);
-                            finalResult = evalUpdateRes.rows[0];
+                            
+                            Object.assign(finalResult, {
+                                interpretation: evalResult.interpretation,
+                                abnormal_flag: finalFlag,
+                                reference_low_numeric: evalResult.reference_low,
+                                reference_high_numeric: evalResult.reference_high,
+                                reference_range_text: evalResult.reference_text
+                            });
                         }
                     }
                     await client.query('RELEASE SAVEPOINT eval_savepoint');
-                } catch (evalError) {
-                    await client.query('ROLLBACK TO SAVEPOINT eval_savepoint');
-                    console.error("Evaluation failed, skipping", evalError);
+                } catch (e) {
+                     await client.query('ROLLBACK TO SAVEPOINT eval_savepoint');
+                     console.error("Evaluation failed (non-blocking)", e);
                 }
 
+                // We already evaluated the result on line 392, so we just continue
                 savedRows.push(finalResult);
             }
 
@@ -466,13 +516,22 @@ export class PatientLabReportService {
             const patientRes = await client.query(`SELECT sexe, date_of_birth FROM public.patients_tenant WHERE tenant_patient_id = $1`, [report.tenant_patient_id]);
             const patient = patientRes.rows[0];
             const sex = (patient.sexe === 'M' || patient.sexe === 'F') ? patient.sexe : 'U';
-            const ageInDays = patient.date_of_birth ? Math.floor((new Date().getTime() - new Date(patient.date_of_birth).getTime()) / 86400000) : 0;
+            const ageInDays = Math.max(0, patient.date_of_birth ? Math.floor((new Date().getTime() - new Date(patient.date_of_birth).getTime()) / 86400000) : 0);
 
-            const resultValue = payload.value_type === 'NUMERIC' ? payload.numeric_value : (payload.value_type === 'TEXT' ? payload.text_value : null);
-            let interpretationData = { interpretation: null, reference_low_numeric: null, reference_high_numeric: null, reference_range_text: null, abnormal_flag_text: null };
+            let interpretationData: any = { interpretation: null, reference_low: null, reference_high: null, reference_text: null };
 
-            if (oldRow.lab_analyte_context_id && resultValue !== null && resultValue !== undefined) {
-                interpretationData = await ReferenceEvaluationEngine.evaluate(client, oldRow.lab_analyte_context_id, resultValue, sex, ageInDays) as any;
+            if (oldRow.lab_analyte_context_id && payload.value_type) {
+                try {
+                    const evalResult = await this.evaluationEngine.evaluate(client, {
+                        analyte_context_id: oldRow.lab_analyte_context_id,
+                        numeric_value: payload.numeric_value ?? null,
+                        text_value: payload.text_value ?? null,
+                        boolean_value: payload.boolean_value ?? null,
+                        patient_sex: sex,
+                        patient_age_days: ageInDays
+                    });
+                    if (evalResult) interpretationData = evalResult;
+                } catch(e) { console.error("Eval fail", e); }
             }
 
             const newRowPayload = {
@@ -480,10 +539,10 @@ export class PatientLabReportService {
                 value_type: payload.value_type,
                 numeric_value: payload.numeric_value ?? null,
                 text_value: payload.text_value ?? null,
-                reference_low_numeric: interpretationData.reference_low_numeric ?? null,
-                reference_high_numeric: interpretationData.reference_high_numeric ?? null,
-                reference_range_text: interpretationData.reference_range_text ?? null,
-                abnormal_flag: interpretationData.abnormal_flag_text ?? null,
+                reference_low_numeric: interpretationData.reference_low ?? null,
+                reference_high_numeric: interpretationData.reference_high ?? null,
+                reference_range_text: interpretationData.reference_text ?? null,
+                abnormal_flag: interpretationData.interpretation ? (interpretationData.interpretation.includes('HIGH') ? 'HIGH' : (interpretationData.interpretation.includes('LOW') ? 'LOW' : interpretationData.interpretation)) : null,
                 status: 'ACTIVE',
                 id: undefined, created_at: undefined, updated_at: undefined // Let DB default insert these
             };

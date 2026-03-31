@@ -61,5 +61,16 @@ export const PAGE_REGISTRY = [
             { id: 'ph_stock', name: 'Stock Pharma', description: 'Consultation du stock', route: '/pharmacy/stock' },
             { id: 'ph_requests', name: 'Demandes & Transferts', description: 'Demandes de services', route: '/pharmacy/requests' }
         ]
+    },
+
+    // --- LIMS (Laboratoire) ---
+    {
+        module: 'LIMS (Laboratoire)',
+        pages: [
+            { id: 'lims_parametres', name: 'Paramètres', description: 'Configuration des contextes analytiques', route: '/lims/parametres' },
+            { id: 'lims_chapitres', name: 'Chapitres', description: 'Gestion de la taxonomie (Sections)', route: '/lims/chapitres' },
+            { id: 'lims_sous_chapitres', name: 'Sous-chapitres', description: 'Gestion de la taxonomie (Sous-sections)', route: '/lims/sous-chapitres' },
+            { id: 'lims_actes', name: 'Actes Biologiques', description: 'Mappage des actes vers la biologie', route: '/lims/actes-biologiques' }
+        ]
     }
 ];

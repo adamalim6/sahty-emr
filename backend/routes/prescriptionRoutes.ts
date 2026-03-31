@@ -177,4 +177,33 @@ router.post('/:id/events/:eventId/admin/:adminEventId/cancel', async (req: any, 
     }
 });
 
+// Skip a specific prescription event (manually overridden during execution)
+router.post('/events/:eventId/skip', async (req: any, res) => {
+    try {
+        if (!req.user || !req.user.userId) {
+            return res.status(401).json({ error: 'Invalid authentication context' });
+        }
+
+        const { eventId } = req.params;
+
+        let tenantId;
+        try {
+            tenantId = getTenantId(req);
+        } catch (err) {
+            return res.status(403).json({ error: 'Tenant ID is required' });
+        }
+
+        const success = await prescriptionService.skipPrescriptionEvent(tenantId, eventId);
+        
+        if (success) {
+            res.status(200).json({ success: true, message: 'Event successfully skipped' });
+        } else {
+            res.status(400).json({ error: 'Failed to skip event. It may already be completed or skipped.' });
+        }
+    } catch (error: any) {
+        console.error('Error skipping prescription event:', error);
+        res.status(500).json({ error: 'Failed to skip prescription event' });
+    }
+});
+
 export default router;

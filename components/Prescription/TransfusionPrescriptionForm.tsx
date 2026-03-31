@@ -493,10 +493,9 @@ export const TransfusionPrescriptionForm: React.FC<TransfusionPrescriptionFormPr
         });
 
         const prescriptions: FormData[] = Object.entries(selectedProductsQty).map(([pid, qty]) => {
-            const productDef = TRANSFUSION_PRODUCT_OPTS.find(p => p.id === pid);
             return {
-                molecule: productDef?.fullName || pid,
-                commercialName: productDef?.fullName || pid,
+                molecule: '',
+                commercialName: '',
                 prescriptionType: 'transfusion' as const,
                 qty: qty === '--' ? 0 : Number(qty),
                 blood_product_type: pid,

@@ -247,6 +247,17 @@ export const getAdmissions = async (req: Request, res: Response) => {
     }
 };
 
+export const getAdmissionsByPatient = async (req: Request, res: Response) => {
+    try {
+        const { tenantId } = getContext(req);
+        const { patientId } = req.params;
+        const admissions = await emrService.getAdmissionsByPatient(tenantId, patientId);
+        res.json(admissions);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 // --- ADMISSIONS ---
 
 export const getHospitalServices = async (req: Request, res: Response) => {

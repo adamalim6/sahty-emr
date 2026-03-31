@@ -102,7 +102,9 @@ export class HydricEngineService {
             const transRes = await db.query(`
                 SELECT 
                     s.actual_start_at as t_start, 
-                    COALESCE(e.actual_end_at, s.actual_end_at, s.actual_start_at) as t_end, 
+                    COALESCE(e.actual_end_at, s.actual_end_at, 
+                             (s.actual_start_at + (pe.duration || ' minutes')::interval),
+                             s.actual_start_at) as t_end, 
                     b.volume_administered_ml
                 FROM administration_event_blood_bags b
                 JOIN administration_events s ON b.administration_event_id = s.id AND s.action_type = 'started'
@@ -112,7 +114,7 @@ export class HydricEngineService {
                 WHERE p.tenant_patient_id = $1
                   AND s.status != 'CANCELLED'
                   AND s.actual_start_at <= $3::timestamptz
-                  AND COALESCE(e.actual_end_at, s.actual_end_at, s.actual_start_at) >= $2::timestamptz
+                  AND COALESCE(e.actual_end_at, s.actual_end_at, (s.actual_start_at + (pe.duration || ' minutes')::interval), s.actual_start_at) >= $2::timestamptz
             `, [tenantPatientId, minIso, maxIso]);
 
             console.log("[HydricEngine] Found transfusions:", transRes.rows.length);
@@ -124,7 +126,7 @@ export class HydricEngineService {
 
                 if (tStart === tEnd) {
                     const t = new Date(tStart);
-                    t.setUTCMinutes(0, 0, 0);
+                    t.setMinutes(0, 0, 0);
                     const bIso = t.toISOString();
                     if (!buckets[bIso]) buckets[bIso] = { in: 0, out: 0 };
                     buckets[bIso].in += vol;
@@ -164,6 +166,7 @@ export class HydricEngineService {
                         m.occurred_at,
                         m.action_type,
                         pe.requires_fluid_info,
+                        pe.duration as admin_duration,
                         p.tenant_patient_id,
                         ROW_NUMBER() OVER(PARTITION BY COALESCE(m.linked_event_id, m.id) ORDER BY CASE WHEN m.action_type = 'ended' THEN 1 WHEN m.action_type = 'started' THEN 2 ELSE 3 END) as rn
                     FROM administration_events m
@@ -177,14 +180,16 @@ export class HydricEngineService {
                 SELECT 
                     v.event_id,
                     COALESCE(s.actual_start_at, v.actual_start_at, v.occurred_at) as t_start,
-                    COALESCE(e.actual_end_at, v.actual_end_at, v.actual_start_at, v.occurred_at) as t_end,
+                    COALESCE(e.actual_end_at, v.actual_end_at, 
+                             (COALESCE(s.actual_start_at, v.actual_start_at, v.occurred_at) + (v.admin_duration || ' minutes')::interval),
+                             v.actual_start_at, v.occurred_at) as t_end,
                     v.volume_administered_ml
                 FROM valid_meds v
                 LEFT JOIN administration_events s ON (s.id = v.linked_event_id OR s.linked_event_id = v.linked_event_id) AND s.action_type = 'started' AND s.status != 'CANCELLED'
                 LEFT JOIN administration_events e ON (e.id = COALESCE(v.linked_event_id, v.event_id) OR e.linked_event_id = COALESCE(v.linked_event_id, v.event_id)) AND e.action_type = 'ended' AND e.status != 'CANCELLED'
                 WHERE v.rn = 1
                   AND COALESCE(s.actual_start_at, v.actual_start_at, v.occurred_at) <= $3::timestamptz
-                  AND COALESCE(e.actual_end_at, v.actual_end_at, v.actual_start_at, v.occurred_at) >= $2::timestamptz
+                  AND COALESCE(e.actual_end_at, v.actual_end_at, (COALESCE(s.actual_start_at, v.actual_start_at, v.occurred_at) + (v.admin_duration || ' minutes')::interval), v.actual_start_at, v.occurred_at) >= $2::timestamptz
             `, [tenantPatientId, minIso, maxIso]);
 
             console.log("[HydricEngine] Found medications with requires_fluid_info:", medsRes.rows.length);
@@ -196,14 +201,14 @@ export class HydricEngineService {
 
                 if (tStart === tEnd) {
                     const t = new Date(tStart);
-                    t.setUTCMinutes(0, 0, 0);
+                    t.setMinutes(0, 0, 0);
                     const bIso = t.toISOString();
                     if (!buckets[bIso]) buckets[bIso] = { in: 0, out: 0 };
                     buckets[bIso].in += vol;
                 } else {
                     const dur = tEnd - tStart;
                     const bStartIter = new Date(tStart);
-                    bStartIter.setUTCMinutes(0, 0, 0);
+                    bStartIter.setMinutes(0, 0, 0);
                     while (bStartIter.getTime() < tEnd) {
                         const bIso = bStartIter.toISOString();
                         if (!buckets[bIso]) buckets[bIso] = { in: 0, out: 0 };
@@ -239,7 +244,7 @@ export class HydricEngineService {
                 // We must insert zeroes to authoritatively state the result of the recalculation.
                 // This guarantees UI cells show '0' rather than being visually blanked out
                 const addRow = (paramId: string, paramCode: string, val: number) => {
-                    insertChunks.push(`($${argCount}, $${argCount+1}, $${argCount+2}, $${argCount+3}, $${argCount+4}, $${argCount+5}, $${argCount+6})`);
+                    insertChunks.push(`($${argCount}, $${argCount+1}, $${argCount+2}, $${argCount+3}, $${argCount+4}, $${argCount+5}, $${argCount+6}, NOW(), $${argCount+4}, 'hydric_engine')`);
                     values.push(tenantId, tenantPatientId, paramId, paramCode, bIso, val, fallbackUserId);
                     argCount += 7;
                 };
@@ -255,7 +260,7 @@ export class HydricEngineService {
                 // securely re-aggregating the fresh calculations into the JSON bucket.
                 const query = `
                     INSERT INTO surveillance_values_events (
-                        tenant_id, tenant_patient_id, parameter_id, parameter_code, bucket_start, value_numeric, recorded_by
+                        tenant_id, tenant_patient_id, parameter_id, parameter_code, bucket_start, value_numeric, recorded_by, recorded_at, observed_at, source_context
                     ) VALUES ${insertChunks.join(', ')}
                 `;
                 console.log("[HydricEngine] Running INSERT with args:", values);

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Check, AlertCircle } from 'lucide-react';
+import { X, Check, AlertCircle, Loader2, Printer } from 'lucide-react';
+import { api } from '../../services/api';
 
 export type AdminModalActionType = 'administered' | 'refused' | 'started' | 'ended';
 
@@ -29,6 +30,8 @@ export interface AdministrationSavePayload {
     administered_bags?: { id: string, volume_ml: number }[];
     linked_event_id?: string;
     volume_administered_ml?: number | null;
+    anchor_prescription_event_id?: string;
+    selected_prescription_event_ids?: string[];
 }
 
 interface AdministrationModalProps {
@@ -46,10 +49,12 @@ interface AdministrationModalProps {
     availableBags?: any[];
     eventId?: string;
     requiresFluidInfo?: boolean;
+    onSkipEvent?: (eventId: string) => void;
+    isBiology?: boolean;
 }
 
 export const AdministrationModal: React.FC<AdministrationModalProps> = ({
-    isOpen, onClose, onSave, onCancelEvent, prescriptionName, slotTime, duration, requiresEndEvent, activePerfusionEvent, historyEvents, isTransfusion = false, availableBags = [], eventId, requiresFluidInfo = false
+    isOpen, onClose, onSave, onCancelEvent, onSkipEvent, prescriptionName, slotTime, duration, requiresEndEvent, activePerfusionEvent, historyEvents, isTransfusion = false, availableBags = [], eventId, requiresFluidInfo = false, isBiology = false
 }) => {
     const isPerfusion = requiresEndEvent;
     const isPerfusionStarted = !!activePerfusionEvent;
@@ -82,6 +87,30 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     const [sliderEndOffsetMin, setSliderEndOffsetMin] = useState<number>(0);
     const [logEndSimultaneously, setLogEndSimultaneously] = useState<boolean>(false);
     const [showCancelled, setShowCancelled] = useState<boolean>(false);
+
+    // Biology state
+    const [isLoadingBiology, setIsLoadingBiology] = useState(false);
+    const [biologyCandidates, setBiologyCandidates] = useState<any[]>([]);
+    const [biologySuggestedSpecimens, setBiologySuggestedSpecimens] = useState<any[]>([]);
+    const [biologySelectedEventIds, setBiologySelectedEventIds] = useState<string[]>([]);
+
+    useEffect(() => {
+        if (isOpen && isBiology && eventId) {
+            setIsLoadingBiology(true);
+            api.getLimsCollectionCandidates(eventId)
+                .then(res => {
+                    setBiologyCandidates(res.candidate_events);
+                    setBiologySuggestedSpecimens(res.suggested_specimens);
+                    setBiologySelectedEventIds(res.candidate_events.map((e: any) => e.prescription_event_id));
+                })
+                .catch(err => alert("Erreur chargement biologie: " + err.message))
+                .finally(() => setIsLoadingBiology(false));
+        }
+    }, [isOpen, isBiology, eventId]);
+
+    const requiredBiologyGroups = biologySuggestedSpecimens.filter(g => {
+        return g.lab_requests.some((lr: any) => biologySelectedEventIds.includes(lr.prescription_event_id));
+    });
 
     useEffect(() => {
         if (isOpen) {
@@ -355,6 +384,12 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
             }
         }
 
+        if (tacheEffectuee === 'OUI' && isBiology) {
+            if (!biologySelectedEventIds.includes(eventId || '')) {
+                return "L'acte principal doit être sélectionné.";
+            }
+        }
+
         return null;
     };
 
@@ -367,6 +402,20 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         }
 
         if (!isPerfusion) {
+            // Biology
+            if (isBiology && tacheEffectuee === 'OUI') {
+                const payload: AdministrationSavePayload = {
+                    action_type: 'administered',
+                    occurred_at: new Date().toISOString(),
+                    actual_start_at: selectedStartObj.toISOString(),
+                    actual_end_at: null,
+                    anchor_prescription_event_id: eventId,
+                    selected_prescription_event_ids: biologySelectedEventIds
+                };
+                onSave(payload);
+                return;
+            }
+
             // Bolus
             let transfusionPayload: any = undefined;
             let adminBags: { id: string; volume_ml: number; }[] = [];
@@ -547,8 +596,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     // The blocksArray memoization moved to the top level Hooks section
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 shadow-lg backdrop-blur-[2px] animate-in fade-in duration-200">
-            <div className="bg-[#EDEDED] rounded-xl overflow-hidden shadow-2xl w-full max-w-[1000px] max-h-[95vh] flex flex-col relative text-gray-800 font-sans">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/30 animate-in fade-in duration-200">
+            <div className="bg-[#EDEDED] rounded-xl overflow-hidden shadow-lg border border-gray-300 w-full max-w-[1000px] max-h-[95vh] flex flex-col relative text-gray-800 font-sans transform-gpu">
                 {/* Close Button X absolute over header */}
                 <button onClick={onClose} className="absolute right-4 top-4 text-white hover:text-gray-200 bg-white/20 p-1 rounded-full z-10 transition-colors">
                     <X size={20} />
@@ -562,20 +611,21 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     <p className="text-white/80 mt-1 font-medium">{headerText}</p>
                 </div>
 
-                <div className="flex w-full min-h-[450px] overflow-hidden relative">
-                    {/* Left Pane - Nouvel événement */}
-                    <div className="w-[55%] p-8 border-r-2 border-gray-300 flex flex-col overflow-y-auto custom-scrollbar">
-                        <h3 className="font-bold text-xl mb-6 text-black border-b border-gray-300 pb-2">Nouvel événement</h3>
+                <div className="flex w-full min-h-[450px] overflow-hidden relative flex-1">
+                    <div className="overflow-y-auto custom-scrollbar w-full flex items-stretch">
+                        {/* Left Pane - Nouvel événement */}
+                        <div className="w-[55%] p-8 border-r-2 border-gray-300 flex flex-col h-max">
+                            <h3 className="font-bold text-xl mb-6 text-black border-b border-gray-300 pb-2">Nouvel événement</h3>
 
-                        <div className="space-y-8 flex-1">
-                            {/* Toggle OUI / NON */}
-                            <div className="flex items-center space-x-6">
-                                <span className="font-semibold text-gray-700 w-[140px] uppercase text-sm tracking-wider">Tâche effectuée</span>
-                                <div className="flex rounded-md overflow-hidden bg-gray-200 border-2 border-transparent focus-within:border-gray-300 shadow-inner">
-                                    <button 
-                                        className={`px-8 py-2 font-bold transition-all duration-200 ${tacheEffectuee === 'OUI' ? 'bg-white text-[#4B7BFF] shadow-sm transform scale-[1.02]' : 'bg-transparent text-gray-500 hover:bg-gray-300'}`}
-                                        onClick={() => setTacheEffectuee('OUI')}
-                                    >
+                            <div className="space-y-8 flex-1">
+                                {/* Toggle OUI / NON */}
+                                <div className="flex items-center space-x-6">
+                                    <span className="font-semibold text-gray-700 w-[140px] uppercase text-sm tracking-wider">Tâche effectuée</span>
+                                    <div className="flex rounded-md overflow-hidden bg-gray-200 border-2 border-transparent focus-within:border-gray-300 shadow-inner">
+                                        <button 
+                                            className={`px-8 py-2 font-bold transition-all duration-200 ${tacheEffectuee === 'OUI' ? 'bg-white text-[#4B7BFF] shadow-sm transform scale-[1.02]' : 'bg-transparent text-gray-500 hover:bg-gray-300'}`}
+                                            onClick={() => setTacheEffectuee('OUI')}
+                                        >
                                         OUI
                                     </button>
                                     <button 
@@ -698,6 +748,72 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* BIOLOGY BLOCK */}
+                                    {tacheEffectuee === 'OUI' && isBiology && (
+                                        <div className="space-y-4 mt-6">
+                                            {isLoadingBiology ? (
+                                                <div className="flex flex-col items-center justify-center p-6 bg-gray-50 rounded border animate-pulse">
+                                                    <Loader2 className="w-8 h-8 text-violet-500 animate-spin" />
+                                                    <p className="mt-4 text-xs font-semibold text-gray-500">Recherche d'actes simultanés...</p>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col xl:flex-row gap-4 align-top">
+                                                    {/* Actes Prescrits List */}
+                                                    <div className="bg-white border rounded-lg shadow-sm flex-1">
+                                                        <h4 className="text-xs font-bold text-white bg-violet-600 px-3 py-1.5 rounded-t-lg uppercase tracking-wider flex justify-between items-center">
+                                                            Actes Liés à Prélever
+                                                            <span className="bg-white/20 px-2 py-0.5 rounded text-[10px]">{biologySelectedEventIds.length} inclus</span>
+                                                        </h4>
+                                                        <div className="divide-y max-h-[160px] overflow-y-auto">
+                                                            {biologyCandidates.map(evt => {
+                                                                const isAnchor = evt.prescription_event_id === eventId;
+                                                                const isSelected = biologySelectedEventIds.includes(evt.prescription_event_id);
+                                                                return (
+                                                                    <div key={evt.prescription_event_id}
+                                                                        onClick={isAnchor ? undefined : () => {
+                                                                            setBiologySelectedEventIds(prev => prev.includes(evt.prescription_event_id) ? prev.filter(x => x !== evt.prescription_event_id) : [...prev, evt.prescription_event_id]);
+                                                                        }}
+                                                                        className={`p-2 flex items-center gap-3 transition-colors ${isAnchor ? 'bg-violet-50' : 'hover:bg-gray-50 cursor-pointer'} ${isSelected ? 'opacity-100' : 'opacity-60 bg-gray-50'}`}>
+                                                                        <div className={`w-4 h-4 min-w-[16px] rounded-full border-2 flex items-center justify-center ${isSelected ? 'bg-violet-600 border-violet-600' : 'border-gray-400 bg-white'}`}>
+                                                                            {isSelected && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
+                                                                        </div>
+                                                                        <div className="min-w-0">
+                                                                            <div className={`font-semibold text-xs leading-tight truncate ${isSelected ? 'text-gray-900' : 'text-gray-500'}`}>{evt.act_name}</div>
+                                                                            <div className="text-[10px] text-gray-500 mt-0.5">Prévu: {new Date(evt.scheduled_at).toLocaleTimeString()}{isAnchor && <span className="ml-1 px-1 bg-violet-100 text-violet-700 rounded-[2px] text-[8px] font-bold">CIBLE</span>}</div>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Tubes Requis List */}
+                                                    <div className="bg-white border rounded-lg shadow-sm flex-1">
+                                                        <h4 className="text-xs font-bold text-gray-700 bg-gray-100 px-3 py-1.5 rounded-t-lg uppercase tracking-wider border-b">
+                                                            Tubes Requis ({requiredBiologyGroups.length})
+                                                        </h4>
+                                                        <div className="p-2 flex flex-col gap-2 max-h-[160px] overflow-y-auto">
+                                                            {requiredBiologyGroups.map((group, idx) => (
+                                                                <div key={idx} className="flex items-center gap-2 border bg-gray-50 rounded p-1.5 shadow-sm">
+                                                                    <div className="w-6 h-6 min-w-[24px] rounded-full shadow-inner ring-1 ring-white" style={{ backgroundColor: group.container_color || '#e2e8f0' }} />
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <div className="font-bold text-[10px] text-gray-800 truncate leading-tight flex justify-between">
+                                                                            {group.container_label}
+                                                                            <span className="text-[9px] font-semibold text-gray-500 bg-white px-1 border rounded">1 TUBE</span>
+                                                                        </div>
+                                                                        <div className="text-[9px] text-gray-500 truncate mt-0.5">{group.specimen_label}</div>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                            {requiredBiologyGroups.length === 0 && <div className="text-[10px] text-gray-400 italic p-2 w-full text-center">Aucun tube requis</div>}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
                                 </div>
                             )}
 
@@ -948,7 +1064,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     </div>
 
                     {/* Right Pane - Historique */}
-                    <div className="w-[45%] p-8 bg-[#EAEAEA] relative flex flex-col">
+                    <div className="w-[45%] p-8 bg-[#EAEAEA] relative flex flex-col h-max border-l border-gray-300">
                         <div className="flex justify-between items-center mb-6 border-b border-gray-300 pb-2">
                             <h3 className="font-bold text-xl text-black">Historique</h3>
                             <label className="flex items-center space-x-2 cursor-pointer">
@@ -961,7 +1077,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                 />
                             </label>
                         </div>
-                        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
+                        <div className="flex-1 pr-2 space-y-4">
                             {blocksArray.length === 0 ? (
                                 <div className="h-full flex items-center justify-center text-gray-400 italic">
                                     Aucun événement enregistré.
@@ -1004,23 +1120,40 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                         </div>
                     </div>
                 </div>
+            </div>
 
-                {/* Footer Buttons */}
-                <div className="bg-gray-200 p-5 flex flex-shrink-0 justify-end space-x-4 border-t border-gray-300">
-                    <button 
-                        onClick={onClose}
-                        className="bg-white hover:bg-gray-100 text-gray-600 font-bold rounded-lg px-8 py-2.5 transition-colors border border-gray-300 shadow-sm"
-                    >
-                        Annuler
-                    </button>
-                    <button 
-                        onClick={handleSave}
-                        disabled={!!errorMsg}
-                        className="bg-[#00CC66] hover:bg-emerald-600 text-white font-bold rounded-lg px-12 py-2.5 transition-all shadow-md focus:ring-4 focus:ring-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-                    >
-                        <Check size={18} className="mr-2" />
-                        Enregistrer
-                    </button>
+            {/* Footer Buttons */}
+                <div className="bg-gray-200 p-5 flex flex-shrink-0 justify-between items-center border-t border-gray-300">
+                    <div>
+                        {onSkipEvent && eventId && !isPerfusionStarted && historyEvents.length === 0 && (
+                            <button
+                                onClick={() => {
+                                    if (window.confirm("Êtes-vous sûr de vouloir sauter cette prise définitivement ? (Action irréversible)")) {
+                                        onSkipEvent(eventId);
+                                    }
+                                }}
+                                className="bg-orange-100 hover:bg-orange-200 text-orange-800 font-bold rounded-lg px-6 py-2.5 transition-colors border border-orange-300 shadow-sm flex items-center"
+                            >
+                                Sauter cette prise
+                            </button>
+                        )}
+                    </div>
+                    <div className="flex space-x-4">
+                        <button 
+                            onClick={onClose}
+                            className="bg-white hover:bg-gray-100 text-gray-600 font-bold rounded-lg px-8 py-2.5 transition-colors border border-gray-300 shadow-sm"
+                        >
+                            Annuler
+                        </button>
+                        <button 
+                            onClick={handleSave}
+                            disabled={!!errorMsg}
+                            className="bg-[#00CC66] hover:bg-emerald-600 text-white font-bold rounded-lg px-12 py-2.5 transition-all shadow-md focus:ring-4 focus:ring-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                        >
+                            <Check size={18} className="mr-2" />
+                            Enregistrer
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1038,10 +1171,48 @@ const HistoryItem = ({ ev, onCancel, hideReaction = false }: { ev: any, onCancel
         ended: 'Fin'
     };
     
+    const handlePrintSpecimens = () => {
+        if (!ev.lab_collection || !ev.lab_collection.specimens) return;
+        
+        const w = window.open('', '_blank');
+        if (!w) return;
+        
+        const html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Impression Codes-Barres</title>
+                <style>
+                    @media print {
+                        @page { size: 60mm 40mm; margin: 0; }
+                        body { margin: 0; padding: 2mm; width: 60mm; height: 40mm; font-family: sans-serif; text-align: center; }
+                        .page { page-break-after: always; height: 36mm; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+                    }
+                    body { margin: 0; padding: 2mm; font-family: sans-serif; text-align: center; }
+                    .page { page-break-after: always; margin-bottom: 20px; border: 1px dashed #ccc; width: 60mm; height: 40mm; padding: 2mm; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+                </style>
+            </head>
+            <body>
+                ${ev.lab_collection.specimens.map((sp: any) => `
+                    <div class="page">
+                        <div style="font-size: 16px; font-weight: bold; letter-spacing: 2px;">${sp.barcode}</div>
+                        <div style="font-size: 10px; margin-top: 5px;">${sp.container_name || 'Tube Biologique'}</div>
+                        <div style="font-size: 9px; margin-top: 3px; color: #666;">Date: ${new Date(ev.occurred_at).toLocaleDateString()}</div>
+                    </div>
+                `).join('')}
+                <script>
+                    window.onload = () => { setTimeout(() => { window.print(); window.close(); }, 500); }
+                </script>
+            </body>
+            </html>
+        `;
+        w.document.write(html);
+        w.document.close();
+    };
+
     const label = actionLabels[ev.action_type] || ev.action_type;
     const isError = ev.action_type === 'refused' || isCancelled;
     
-    const targetAt = ev.actual_start_at || ev.actual_end_at || ev.occurred_at;
     let actionAt = ev.occurred_at;
     if (ev.action_type === 'ended') {
         actionAt = ev.actual_end_at || ev.occurred_at;
@@ -1049,13 +1220,16 @@ const HistoryItem = ({ ev, onCancel, hideReaction = false }: { ev: any, onCancel
         actionAt = ev.actual_start_at || ev.occurred_at;
     }
 
-    const actionD = new Date(actionAt);
-    const dateStr = !isNaN(actionD.getTime()) ? actionD.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) : '';
-    const timeStr = !isNaN(actionD.getTime()) ? actionD.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
-    
-    // "enregistré à" strictly follows occurred_at which is the frontend payload submission time
-    const recordedD = new Date(ev.occurred_at);
-    const recordedTimeStr = !isNaN(recordedD.getTime()) ? recordedD.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
+    const { dateStr, timeStr, recordedTimeStr } = useMemo(() => {
+        const actionD = new Date(actionAt);
+        const dStr = !isNaN(actionD.getTime()) ? actionD.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) : '';
+        const tStr = !isNaN(actionD.getTime()) ? actionD.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
+        
+        const recordedD = new Date(ev.occurred_at);
+        const recTStr = !isNaN(recordedD.getTime()) ? recordedD.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
+        
+        return { dateStr: dStr, timeStr: tStr, recordedTimeStr: recTStr };
+    }, [actionAt, ev.occurred_at]);
     
     return (
         <div className={`rounded-md p-3 flex flex-col space-y-1 relative shadow-sm border border-transparent transition-all overflow-hidden ${isCancelled ? 'bg-gray-200 opacity-60' : 'bg-white hover:border-gray-300'}`}>
@@ -1092,6 +1266,33 @@ const HistoryItem = ({ ev, onCancel, hideReaction = false }: { ev: any, onCancel
                     </div>
                     {ev.reaction.description && <div className="italic text-red-600 mb-0.5"><span className="font-semibold not-italic text-red-800">Détails:</span> {ev.reaction.description}</div>}
                     {ev.reaction.actions_taken && <div className="italic text-red-600"><span className="font-semibold not-italic text-red-800">Actions:</span> {ev.reaction.actions_taken}</div>}
+                </div>
+            )}
+
+            {!isCancelled && ev.lab_collection && ev.lab_collection.specimens && ev.lab_collection.specimens.length > 0 && (
+                <div className="mt-2 bg-violet-50 border border-violet-200 rounded p-2">
+                    <div className="text-[10px] font-bold text-violet-800 uppercase mb-1.5 flex justify-between items-center">
+                        <div className="flex items-center">
+                            <span className="w-1.5 h-1.5 rounded-full bg-violet-500 mr-1.5"></span>
+                            Spécimens Prélevés
+                        </div>
+                        <button onClick={handlePrintSpecimens} className="text-violet-600 hover:text-violet-900 bg-violet-100 hover:bg-violet-200 px-1.5 py-0.5 rounded flex items-center transition-colors">
+                            <Printer size={10} className="mr-1" /> Imprimer Codes-Barres
+                        </button>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                        {ev.lab_collection.specimens.map((sp: any, i: number) => (
+                            <div key={i} className="flex justify-between items-center bg-white border border-violet-100 rounded px-2 py-1 shadow-sm">
+                                <div className="flex items-center gap-2 overflow-hidden flex-1">
+                                    <div className="w-3 h-3 min-w-[12px] rounded-full shadow-inner ring-1 ring-white border border-gray-200" style={{ backgroundColor: sp.container_color || '#e2e8f0' }} />
+                                    <span className="text-[9px] font-bold text-gray-700 truncate">{sp.container_name || 'Tube Biologique'}</span>
+                                </div>
+                                <span className="text-[10px] font-mono font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded ml-2 whitespace-nowrap">
+                                    {sp.barcode}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
             

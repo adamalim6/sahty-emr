@@ -125,14 +125,18 @@ export class TransfusionService {
             SELECT 
                 p.id as prescription_id,
                 p.tenant_patient_id,
-                p.details,
+                p.blood_product_type,
+                p.qty,
+                p.unit_id,
+                p.route_label as route,
+                p.admin_duration_mins,
                 p.status,
                 p.paused_at,
                 p.stopped_at,
                 p.created_at,
                 p.created_by_first_name,
                 p.created_by_last_name,
-                u.display as unit_name,
+                COALESCE(u.display, p.unit_label, 'poche(s)') as unit_name,
                 (
                     SELECT COALESCE(jsonb_agg(
                         jsonb_build_object(
@@ -198,7 +202,7 @@ export class TransfusionService {
                     WHERE pe.prescription_id = p.id AND pe.tenant_id = $1
                 ) as events
             FROM public.prescriptions p
-            LEFT JOIN reference.units u ON u.id = (p.details->>'unit_id')::uuid
+            LEFT JOIN reference.units u ON u.id = p.unit_id
             WHERE p.tenant_id = $1 
               AND p.tenant_patient_id = $2 
               AND p.prescription_type = 'transfusion'
