@@ -1,6 +1,7 @@
 
 import { Request, Response } from 'express';
 import { prescriptionService } from '../services/prescriptionService';
+import { emrService } from '../services/emrService';
 import { getTenantId } from '../middleware/authMiddleware';
 
 export const prescriptionController = {
@@ -39,10 +40,13 @@ export const prescriptionController = {
                 return res.status(403).json({ error: 'Tenant ID is required' });
             }
 
+            // Resolve or auto-create admission for this patient
+            const admissionId = await emrService.resolveOrCreateAdmissionForPrescription(tenantId, patientId);
+
             const newPrescription = await prescriptionService.createPrescription(
                 tenantId,
                 patientId,
-                null as any, // admissionId not currently provided by frontend
+                admissionId,
                 prescriptionData,
                 userId,
                 prenom || undefined,
@@ -52,7 +56,7 @@ export const prescriptionController = {
 
             res.status(201).json(newPrescription);
         } catch (error: any) {
-            console.error('getPrescriptionsByPatient Error:', error);
+            console.error('createPrescription Error:', error);
             res.status(500).json({ error: 'Failed to create prescription', details: error.message, stack: error.stack });
         }
     },

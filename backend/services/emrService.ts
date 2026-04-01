@@ -32,6 +32,78 @@ export class EmrService {
         `, []);
     }
 
+    // --- PRESCRIPTION → ADMISSION RESOLUTION ---
+
+    /**
+     * Resolves the best admission for a new prescription, or auto-creates an ORDER_ONLY admission.
+     * 
+     * Priority rules (highest first):
+     *   1. Soins intensifs
+     *   2. Hospitalisation complète
+     *   3. Hôpital de jour
+     *   4. Ambulatoire
+     *   5. Urgence
+     *   6. ORDER_ONLY
+     * 
+     * LAB_WALKIN is EXCLUDED from prescription assignment (mandatory).
+     */
+    async resolveOrCreateAdmissionForPrescription(tenantId: string, patientId: string): Promise<string> {
+        const PRIORITY_ORDER = [
+            'Soins intensifs',
+            'Hospitalisation complète',
+            'Hôpital de jour',
+            'Ambulatoire',
+            'Urgence',
+            'ORDER_ONLY'
+        ];
+
+        // 1. Fetch all active admissions for the patient (exclude LAB_WALKIN)
+        const activeAdmissions = await tenantQuery(tenantId, `
+            SELECT id, admission_type
+            FROM public.admissions
+            WHERE tenant_patient_id = $1
+              AND status = 'En cours'
+              AND (admission_type IS NULL OR admission_type != 'LAB_WALKIN')
+            ORDER BY admission_date DESC
+        `, [patientId]);
+
+        if (activeAdmissions.length === 1) {
+            return activeAdmissions[0].id;
+        }
+
+        if (activeAdmissions.length > 1) {
+            // Apply priority rules — pick the highest-priority admission
+            const sorted = activeAdmissions.sort((a: any, b: any) => {
+                const aPrio = PRIORITY_ORDER.indexOf(a.admission_type);
+                const bPrio = PRIORITY_ORDER.indexOf(b.admission_type);
+                // Unknown types go to the end
+                return (aPrio === -1 ? 999 : aPrio) - (bPrio === -1 ? 999 : bPrio);
+            });
+            return sorted[0].id;
+        }
+
+        // 0 eligible admissions → auto-create ORDER_ONLY
+        const newId = uuidv4();
+        const seqResult = await tenantQuery(tenantId, `SELECT nextval('admission_number_seq') AS seq`, []);
+        const seq = seqResult[0].seq;
+        const year = new Date().getFullYear();
+        const admissionNumber = `ORD-${year}-${String(seq).padStart(6, '0')}`;
+
+        await tenantQuery(tenantId, `
+            INSERT INTO public.admissions (
+                id, tenant_id, tenant_patient_id, admission_number,
+                admission_type, admission_date, auto_close_at,
+                status, currency
+            ) VALUES (
+                $1, $2, $3, $4,
+                'ORDER_ONLY', NOW(), NOW() + INTERVAL '7 days',
+                'En cours', 'MAD'
+            )
+        `, [newId, tenantId, patientId, admissionNumber]);
+
+        return newId;
+    }
+
     // --- ADMISSIONS (TENANT) ---
 
     async getAllAdmissions(tenantId: string): Promise<Admission[]> {

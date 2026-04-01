@@ -316,17 +316,31 @@ export class PrescriptionService {
                                 requires_fluid_info, requires_end_event,
                                 tenant_patient_id
                             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                            RETURNING id
                         `;
                         
                         const scheduledAt = new Date(dose.plannedDateTime);
                         const status = dose.isSkipped ? 'SKIPPED' : 'ACTIVE';
                         
-                        await client.query(eventQuery, [
+                        const eventResult = await client.query(eventQuery, [
                             tenantId, newId, admissionId,
                             scheduledAt, durationMinutes, status,
                             requiresFluidInfo, requiresEndEvent,
                             patientId
                         ]);
+
+                        // For biology prescriptions: create the lab_request linking event → global act
+                        if (pType === 'biology' && acteId && admissionId && eventResult.rows[0]?.id) {
+                            await client.query(`
+                                INSERT INTO lab_requests (
+                                    id, tenant_patient_id, admission_id,
+                                    global_act_id, prescription_event_id,
+                                    created_by_user_id, created_at
+                                ) VALUES (
+                                    gen_random_uuid(), $1, $2, $3, $4, $5, NOW()
+                                )
+                            `, [patientId, admissionId, acteId, eventResult.rows[0].id, createdBy]);
+                        }
                     }
                 }
             }
