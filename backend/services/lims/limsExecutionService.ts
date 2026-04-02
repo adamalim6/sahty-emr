@@ -208,10 +208,30 @@ export const limsExecutionService = {
         `;
         const candidateEvents = await tenantQuery(tenantId, candidateEventsSql, [anchor.admission_id, prescriptionEventId]);
 
+        // Resolve patient info (name + IPP) for label printing
+        let patientInfo = { first_name: '', last_name: '', ipp: '' };
+        if (anchor.admission_id) {
+            const ptRows = await tenantQuery(tenantId, `
+                SELECT pt.first_name, pt.last_name, 
+                       (SELECT ii.identity_value FROM identity_ids ii 
+                        WHERE ii.tenant_patient_id = pt.tenant_patient_id 
+                        AND ii.identity_type_code = 'LOCAL_MRN' 
+                        AND ii.is_primary = true 
+                        LIMIT 1) as ipp
+                FROM admissions a
+                JOIN patients_tenant pt ON pt.tenant_patient_id = a.tenant_patient_id
+                WHERE a.id = $1
+            `, [anchor.admission_id]);
+            if (ptRows.length > 0) {
+                patientInfo = { first_name: ptRows[0].first_name || '', last_name: ptRows[0].last_name || '', ipp: ptRows[0].ipp || '' };
+            }
+        }
+
         return {
             anchor_event: { id: prescriptionEventId },
             candidate_events: candidateEvents,
-            suggested_specimens: groups
+            suggested_specimens: groups,
+            patient_info: patientInfo
         };
     },
 

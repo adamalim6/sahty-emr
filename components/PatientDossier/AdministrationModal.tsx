@@ -93,6 +93,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     const [biologyCandidates, setBiologyCandidates] = useState<any[]>([]);
     const [biologySuggestedSpecimens, setBiologySuggestedSpecimens] = useState<any[]>([]);
     const [biologySelectedEventIds, setBiologySelectedEventIds] = useState<string[]>([]);
+    const [biologyPatientInfo, setBiologyPatientInfo] = useState<{ first_name: string; last_name: string; ipp: string }>({ first_name: '', last_name: '', ipp: '' });
 
     useEffect(() => {
         if (isOpen && isBiology && eventId) {
@@ -102,6 +103,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                     setBiologyCandidates(res.candidate_events);
                     setBiologySuggestedSpecimens(res.suggested_specimens);
                     setBiologySelectedEventIds(res.candidate_events.map((e: any) => e.prescription_event_id));
+                    if (res.patient_info) setBiologyPatientInfo(res.patient_info);
                 })
                 .catch(err => alert("Erreur chargement biologie: " + err.message))
                 .finally(() => setIsLoadingBiology(false));
@@ -749,38 +751,47 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                         )}
                                     </div>
 
-                                    {/* BIOLOGY BLOCK */}
+                                    {/* BIOLOGY COLLECTION BLOCK — VERTICAL TUBE-CENTRIC */}
                                     {tacheEffectuee === 'OUI' && isBiology && (
-                                        <div className="space-y-4 mt-6">
+                                        <div className="space-y-5 mt-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                             {isLoadingBiology ? (
-                                                <div className="flex flex-col items-center justify-center p-6 bg-gray-50 rounded border animate-pulse">
+                                                <div className="flex flex-col items-center justify-center p-8 bg-white rounded-xl border border-gray-200 shadow-sm">
                                                     <Loader2 className="w-8 h-8 text-violet-500 animate-spin" />
-                                                    <p className="mt-4 text-xs font-semibold text-gray-500">Recherche d'actes simultanés...</p>
+                                                    <p className="mt-4 text-xs font-semibold text-gray-500 tracking-wide uppercase">Recherche d'actes simultanés...</p>
                                                 </div>
                                             ) : (
-                                                <div className="flex flex-col xl:flex-row gap-4 align-top">
-                                                    {/* Actes Prescrits List */}
-                                                    <div className="bg-white border rounded-lg shadow-sm flex-1">
-                                                        <h4 className="text-xs font-bold text-white bg-violet-600 px-3 py-1.5 rounded-t-lg uppercase tracking-wider flex justify-between items-center">
-                                                            Actes Liés à Prélever
-                                                            <span className="bg-white/20 px-2 py-0.5 rounded text-[10px]">{biologySelectedEventIds.length} inclus</span>
-                                                        </h4>
-                                                        <div className="divide-y max-h-[160px] overflow-y-auto">
+                                                <div className="space-y-5">
+                                                    {/* ─── SECTION: Prélèvement Biologie ─── */}
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <div className="w-1 h-5 bg-violet-500 rounded-full"></div>
+                                                        <h4 className="text-sm font-black text-gray-800 uppercase tracking-widest">Prélèvement Biologie</h4>
+                                                    </div>
+
+                                                    {/* ─── BLOCK 1: Actes Liés (read-only, compact) ─── */}
+                                                    <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                                                        <div className="bg-violet-600 px-4 py-2 flex justify-between items-center">
+                                                            <span className="text-xs font-bold text-white uppercase tracking-wider">Actes Liés à Prélever</span>
+                                                            <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{biologySelectedEventIds.length} INCLUS</span>
+                                                        </div>
+                                                        <div className="divide-y divide-gray-100 max-h-[140px] overflow-y-auto">
                                                             {biologyCandidates.map(evt => {
                                                                 const isAnchor = evt.prescription_event_id === eventId;
                                                                 const isSelected = biologySelectedEventIds.includes(evt.prescription_event_id);
                                                                 return (
                                                                     <div key={evt.prescription_event_id}
                                                                         onClick={isAnchor ? undefined : () => {
-                                                                            setBiologySelectedEventIds(prev => prev.includes(evt.prescription_event_id) ? prev.filter(x => x !== evt.prescription_event_id) : [...prev, evt.prescription_event_id]);
+                                                                            setBiologySelectedEventIds(prev => prev.includes(evt.prescription_event_id) ? prev.filter((x: string) => x !== evt.prescription_event_id) : [...prev, evt.prescription_event_id]);
                                                                         }}
-                                                                        className={`p-2 flex items-center gap-3 transition-colors ${isAnchor ? 'bg-violet-50' : 'hover:bg-gray-50 cursor-pointer'} ${isSelected ? 'opacity-100' : 'opacity-60 bg-gray-50'}`}>
-                                                                        <div className={`w-4 h-4 min-w-[16px] rounded-full border-2 flex items-center justify-center ${isSelected ? 'bg-violet-600 border-violet-600' : 'border-gray-400 bg-white'}`}>
+                                                                        className={`px-4 py-2.5 flex items-center gap-3 transition-all ${isAnchor ? 'bg-violet-50/60' : 'hover:bg-gray-50 cursor-pointer'} ${isSelected ? '' : 'opacity-50'}`}>
+                                                                        <div className={`w-4 h-4 min-w-[16px] rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-violet-600 border-violet-600 shadow-sm' : 'border-gray-300 bg-white'}`}>
                                                                             {isSelected && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
                                                                         </div>
-                                                                        <div className="min-w-0">
+                                                                        <div className="flex-1 min-w-0">
                                                                             <div className={`font-semibold text-xs leading-tight truncate ${isSelected ? 'text-gray-900' : 'text-gray-500'}`}>{evt.act_name}</div>
-                                                                            <div className="text-[10px] text-gray-500 mt-0.5">Prévu: {new Date(evt.scheduled_at).toLocaleTimeString()}{isAnchor && <span className="ml-1 px-1 bg-violet-100 text-violet-700 rounded-[2px] text-[8px] font-bold">CIBLE</span>}</div>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2 shrink-0">
+                                                                            <span className="text-[10px] text-gray-400 font-medium">Prévu: {new Date(evt.scheduled_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                                            {isAnchor && <span className="px-1.5 py-0.5 bg-violet-100 text-violet-700 rounded text-[8px] font-black uppercase tracking-wider">Cible</span>}
                                                                         </div>
                                                                     </div>
                                                                 );
@@ -788,26 +799,161 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                                         </div>
                                                     </div>
 
-                                                    {/* Tubes Requis List */}
-                                                    <div className="bg-white border rounded-lg shadow-sm flex-1">
-                                                        <h4 className="text-xs font-bold text-gray-700 bg-gray-100 px-3 py-1.5 rounded-t-lg uppercase tracking-wider border-b">
-                                                            Tubes Requis ({requiredBiologyGroups.length})
-                                                        </h4>
-                                                        <div className="p-2 flex flex-col gap-2 max-h-[160px] overflow-y-auto">
-                                                            {requiredBiologyGroups.map((group, idx) => (
-                                                                <div key={idx} className="flex items-center gap-2 border bg-gray-50 rounded p-1.5 shadow-sm">
-                                                                    <div className="w-6 h-6 min-w-[24px] rounded-full shadow-inner ring-1 ring-white" style={{ backgroundColor: group.container_color || '#e2e8f0' }} />
-                                                                    <div className="flex-1 min-w-0">
-                                                                        <div className="font-bold text-[10px] text-gray-800 truncate leading-tight flex justify-between">
-                                                                            {group.container_label}
-                                                                            <span className="text-[9px] font-semibold text-gray-500 bg-white px-1 border rounded">1 TUBE</span>
-                                                                        </div>
-                                                                        <div className="text-[9px] text-gray-500 truncate mt-0.5">{group.specimen_label}</div>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                            {requiredBiologyGroups.length === 0 && <div className="text-[10px] text-gray-400 italic p-2 w-full text-center">Aucun tube requis</div>}
+                                                    {/* ─── BLOCK 2: Tubes Requis (MAIN FOCUS — actionable cards) ─── */}
+                                                    <div>
+                                                        <div className="flex items-center justify-between mb-3">
+                                                            <span className="text-xs font-black text-gray-700 uppercase tracking-widest">Tubes Requis ({requiredBiologyGroups.length})</span>
                                                         </div>
+
+                                                        {requiredBiologyGroups.length === 0 ? (
+                                                            <div className="bg-white border border-dashed border-gray-300 rounded-xl p-8 text-center">
+                                                                <p className="text-sm text-gray-400 italic">Aucun prélèvement requis</p>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="space-y-4">
+                                                                {requiredBiologyGroups.map((group, idx) => {
+                                                                    const coveredActs = group.lab_requests
+                                                                        .filter((lr: any) => biologySelectedEventIds.includes(lr.prescription_event_id))
+                                                                        .map((lr: any) => lr.name);
+                                                                    const uniqueActs = [...new Set(coveredActs)];
+                                                                    const isCollected = group.is_collected;
+
+                                                                    return (
+                                                                        <div key={idx} className={`bg-white rounded-xl shadow-sm border overflow-hidden transition-all ${isCollected ? 'border-emerald-200 bg-emerald-50/30' : 'border-gray-200 hover:shadow-md'}`}>
+                                                                            {/* Tube Header */}
+                                                                            <div className="flex items-center gap-3 px-4 py-3">
+                                                                                {/* Color Indicator */}
+                                                                                <div className="w-3 h-full min-h-[40px] rounded-full shadow-inner ring-1 ring-black/5" style={{ backgroundColor: group.container_color || '#94a3b8' }}></div>
+                                                                                
+                                                                                <div className="flex-1 min-w-0">
+                                                                                    <div className="flex items-center justify-between">
+                                                                                        <span className="font-bold text-sm text-gray-900">Tube {group.container_label}</span>
+                                                                                        <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">1 TUBE</span>
+                                                                                    </div>
+                                                                                    <div className="text-xs text-gray-500 mt-0.5">Specimen: <span className="font-medium text-gray-600">{group.specimen_label}</span></div>
+                                                                                </div>
+                                                                            </div>
+
+                                                                            {/* Covered Acts */}
+                                                                            <div className="px-4 pb-3 border-t border-gray-100 pt-2">
+                                                                                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Couvre :</div>
+                                                                                <div className="flex flex-wrap gap-1.5">
+                                                                                    {uniqueActs.map((actName: string, i: number) => (
+                                                                                        <span key={i} className="inline-flex items-center px-2 py-0.5 bg-violet-50 text-violet-700 text-[10px] font-semibold rounded-full border border-violet-100">
+                                                                                            • {actName}
+                                                                                        </span>
+                                                                                    ))}
+                                                                                </div>
+                                                                            </div>
+
+                                                                            {/* Action Button */}
+                                                                            <div className="px-4 pb-4 pt-1">
+                                                                                {isCollected ? (
+                                                                                    <div className="flex items-center justify-center gap-2 py-2 bg-emerald-50 border border-emerald-200 rounded-lg">
+                                                                                        <Check className="w-4 h-4 text-emerald-600" strokeWidth={3} />
+                                                                                        <span className="text-xs font-black text-emerald-700 uppercase tracking-wider">Prélevé</span>
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={async () => {
+                                                                                            try {
+                                                                                                const labRequestIds = group.lab_requests
+                                                                                                    .filter((lr: any) => biologySelectedEventIds.includes(lr.prescription_event_id))
+                                                                                                    .map((lr: any) => lr.id);
+
+                                                                                                const result = await api.executeLimsSurveillanceCollection({
+                                                                                                    anchor_prescription_event_id: eventId || '',
+                                                                                                    selected_prescription_event_ids: biologySelectedEventIds,
+                                                                                                    collected_at: new Date().toISOString(),
+                                                                                                    note: ''
+                                                                                                });
+
+                                                                                                // Mark as collected immediately
+                                                                                                group.is_collected = true;
+                                                                                                setBiologySuggestedSpecimens([...biologySuggestedSpecimens]);
+
+                                                                                                // Generate a unique barcode value
+                                                                                                const barcodeValue = result.labCollectionId ? result.labCollectionId.slice(0, 12).toUpperCase() : Date.now().toString();
+
+                                                                                                // Print via hidden iframe (stays in same window)
+                                                                                                const iframe = document.createElement('iframe');
+                                                                                                iframe.style.position = 'fixed';
+                                                                                                iframe.style.right = '0';
+                                                                                                iframe.style.bottom = '0';
+                                                                                                iframe.style.width = '0';
+                                                                                                iframe.style.height = '0';
+                                                                                                iframe.style.border = 'none';
+                                                                                                document.body.appendChild(iframe);
+
+                                                                                                const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+                                                                                                if (iframeDoc) {
+                                                                                                    const patientFullName = `${biologyPatientInfo.last_name} ${biologyPatientInfo.first_name}`.trim() || 'N/A';
+                                                                                                    const patientIPP = biologyPatientInfo.ipp || 'N/A';
+                                                                                                    const nowStr = `${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+                                                                                                    const tubeSpecimen = `${group.container_label} ▸ ${group.specimen_label}`;
+
+                                                                                                    iframeDoc.open();
+                                                                                                    iframeDoc.write(`
+                                                                                                        <html><head><title>Étiquette Tube</title>
+                                                                                                        <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
+                                                                                                        <style>
+                                                                                                            * { margin: 0; padding: 0; box-sizing: border-box; }
+                                                                                                            body { font-family: Arial, Helvetica, sans-serif; }
+                                                                                                            .label { border: 1.5px solid #222; padding: 6px 8px; width: 72mm; }
+                                                                                                            .patient { font-weight: bold; font-size: 12px; margin-bottom: 1px; }
+                                                                                                            .ipp { font-size: 10px; color: #333; margin-bottom: 4px; border-bottom: 0.5px solid #ccc; padding-bottom: 3px; }
+                                                                                                            .tube-specimen { font-weight: bold; font-size: 11px; margin-bottom: 2px; }
+                                                                                                            .info-row { font-size: 9px; color: #444; margin: 1px 0; }
+                                                                                                            .info-row strong { font-weight: 700; }
+                                                                                                            .barcode-wrap { text-align: center; margin-top: 3px; }
+                                                                                                            .barcode-wrap svg { max-width: 100%; }
+                                                                                                            @media print { 
+                                                                                                                @page { margin: 2mm; size: 76mm 38mm; }
+                                                                                                                body { padding: 0; }
+                                                                                                            }
+                                                                                                        </style></head><body>
+                                                                                                        <div class="label">
+                                                                                                            <div class="patient">${patientFullName}</div>
+                                                                                                            <div class="ipp">IPP: ${patientIPP}</div>
+                                                                                                            <div class="tube-specimen">🧪 ${tubeSpecimen}</div>
+                                                                                                            <div class="info-row"><strong>Prélevé:</strong> ${nowStr}</div>
+                                                                                                            <div class="info-row"><strong>Actes:</strong> ${uniqueActs.join(', ')}</div>
+                                                                                                            <div class="barcode-wrap"><svg id="barcode"></svg></div>
+                                                                                                        </div>
+                                                                                                        <script>
+                                                                                                            window.onload = function() {
+                                                                                                                try { JsBarcode("#barcode", "${barcodeValue}", { format: "CODE128", width: 1.2, height: 28, fontSize: 9, margin: 2, displayValue: true }); } catch(e) {}
+                                                                                                                setTimeout(function() { window.print(); }, 200);
+                                                                                                            };
+                                                                                                        <\/script>
+                                                                                                        </body></html>
+                                                                                                    `);
+                                                                                                    iframeDoc.close();
+
+                                                                                                    // Cleanup iframe after print
+                                                                                                    iframe.onload = () => {
+                                                                                                        setTimeout(() => {
+                                                                                                            try { document.body.removeChild(iframe); } catch(e) {}
+                                                                                                        }, 3000);
+                                                                                                    };
+                                                                                                }
+                                                                                            } catch (err: any) {
+                                                                                                alert('Erreur lors du prélèvement: ' + (err.message || err));
+                                                                                            }
+                                                                                        }}
+                                                                                        className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#4B7BFF] hover:bg-[#3a63d4] text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
+                                                                                    >
+                                                                                        <Printer className="w-4 h-4" />
+                                                                                        Prélever & Imprimer
+                                                                                    </button>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             )}
