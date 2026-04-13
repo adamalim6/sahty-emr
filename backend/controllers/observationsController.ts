@@ -78,3 +78,19 @@ export const createAddendum = async (req: Request, res: Response) => {
         res.status(400).json({ error: err.message });
     }
 };
+
+export const enterObservationInError = async (req: Request, res: Response) => {
+    try {
+        const tenantId = (req as any).auth?.tenantId;
+        if (!tenantId) return res.status(401).json({ error: "Missing tenant context" });
+
+        const auth = (req as any).auth;
+        if (!auth?.userId) return res.status(401).json({ error: "Unauthorized" });
+
+        const { reason } = req.body;
+        const observation = await observationsService.enterObservationInError(tenantId, req.params.id, auth.userId, reason);
+        res.status(200).json(observation);
+    } catch (err: any) {
+        res.status(400).json({ error: err.message });
+    }
+};

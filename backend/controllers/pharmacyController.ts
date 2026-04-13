@@ -388,8 +388,11 @@ export const getPurchaseOrders = async (req: Request, res: Response) => {
     export const createPurchaseOrder = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const userId = (req as any).user?.username || (req as any).user?.id || 'Système';
-        const po = await pharmacyService.createPurchaseOrder({ ...req.body, tenantId, userId });
+        const auth = (req as any).auth;
+        const userId    = auth?.userId    || (req as any).user?.userId || null;
+        const firstName = auth?.firstName || null;
+        const lastName  = auth?.lastName  || null;
+        const po = await pharmacyService.createPurchaseOrder({ ...req.body, tenantId, userId, firstName, lastName });
         res.status(201).json(po);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -409,8 +412,11 @@ export const getDeliveryNotes = async (req: Request, res: Response) => {
 export const createDeliveryNote = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const userId = (req as any).user?.username || (req as any).user?.id || 'Système';
-        const note = await pharmacyService.createDeliveryNote({ ...req.body, tenantId, userId });
+        const auth = (req as any).auth;
+        const userId    = auth?.userId    || (req as any).user?.userId || null;
+        const firstName = auth?.firstName || null;
+        const lastName  = auth?.lastName  || null;
+        const note = await pharmacyService.createDeliveryNote({ ...req.body, tenantId, userId, firstName, lastName });
         res.status(201).json(note);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -420,7 +426,8 @@ export const createDeliveryNote = async (req: Request, res: Response) => {
 export const processQuarantine = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const result = await pharmacyService.processQuarantine({ ...req.body, tenantId });
+        const userId = (req as any).auth?.userId || null;
+        const result = await pharmacyService.processQuarantine({ ...req.body, tenantId, userId });
         res.json(result);
     } catch (error: any) {
         res.status(500).json({ message: error.message });

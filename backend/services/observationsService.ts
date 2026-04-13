@@ -179,6 +179,43 @@ export class ObservationsService {
         
         return res.rows;
     }
+    async enterObservationInError(tenantId: string, observationId: string, authorId: string, reason?: string): Promise<PatientObservation> {
+        const pool = getTenantPool(tenantId);
+
+        const check = await pool.query(
+            `SELECT status, parent_observation_id FROM patient_observations WHERE id = $1`,
+            [observationId]
+        );
+        if (check.rows.length === 0) throw new Error('Observation introuvable.');
+        if (check.rows[0].status === 'DRAFT') throw new Error('Supprimez le brouillon plutôt que de le saisir par erreur.');
+        if (check.rows[0].status === 'ENTERED_IN_ERROR') throw new Error('Cette observation est déjà marquée comme saisie par erreur.');
+        if (check.rows[0].parent_observation_id) throw new Error("Utilisez l'action sur la note parente.");
+
+        // Mark the primary note
+        const result = await pool.query(
+            `UPDATE patient_observations
+             SET status = 'ENTERED_IN_ERROR',
+                 entered_in_error_by = $2,
+                 entered_in_error_at = NOW(),
+                 entered_in_error_reason = $3
+             WHERE id = $1
+             RETURNING *`,
+            [observationId, authorId, reason ?? null]
+        );
+
+        // Cascade to all addendums
+        await pool.query(
+            `UPDATE patient_observations
+             SET status = 'ENTERED_IN_ERROR',
+                 entered_in_error_by = $2,
+                 entered_in_error_at = NOW(),
+                 entered_in_error_reason = $3
+             WHERE parent_observation_id = $1`,
+            [observationId, authorId, reason ?? null]
+        );
+
+        return result.rows[0];
+    }
 }
 
 export const observationsService = new ObservationsService();

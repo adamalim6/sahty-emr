@@ -17,6 +17,9 @@ router.post('/print-barcode', limsExecutionController.printBarcode);
 router.get('/surveillance/biology-collection-candidates', limsExecutionController.getSurveillanceCandidates);
 router.post('/surveillance/collections', limsExecutionController.executeSurveillanceCollection);
 
+// Specimen Lifecycle (Nurse-side)
+router.patch('/specimens/:specimenId/status', limsExecutionController.updateSpecimenStatus);
+
 // Proxied EMR Functions (Authorized for LIMS Execution)
 router.get('/patients/search', emrController.searchUniversalPatient);
 router.post('/patients', emrController.createPatient);

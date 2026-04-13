@@ -129,7 +129,9 @@ export class TenantProvisioningService {
                 (gen_random_uuid(), $1, 'RETURN_QUARANTINE', 'VIRTUAL', 'SYSTEM',
                  'COMMERCIAL', 'NON_VALUABLE', NULL, 'ACTIVE', NOW()),
                 (gen_random_uuid(), $1, 'WASTE', 'VIRTUAL', 'SYSTEM',
-                 'COMMERCIAL', 'NON_VALUABLE', NULL, 'ACTIVE', NOW())
+                 'COMMERCIAL', 'NON_VALUABLE', NULL, 'ACTIVE', NOW()),
+                (gen_random_uuid(), $1, 'QUARANTINE_DELIVERY', 'VIRTUAL', 'SYSTEM',
+                 'COMMERCIAL', 'VALUABLE', NULL, 'ACTIVE', NOW())
                 ON CONFLICT DO NOTHING
             `, [tenantId]);
             console.log(`[TenantProvisioning] Phase 2 (System Locations) created.`);

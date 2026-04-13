@@ -10,7 +10,10 @@ import {
     
     // Rooms
     getRooms, createRoom, updateRoom, deleteRoom,
-    
+
+    // Technical Unit Types
+    getTechnicalUnitTypes, createTechnicalUnitType, updateTechnicalUnitType, deleteTechnicalUnitType,
+
     // Pricing
     getPricing, createPricing,
     updateTenantUser,
@@ -73,6 +76,12 @@ router.delete('/beds/:bedId', requireModule('SETTINGS'), deactivateBed);
 
 // --- BED OCCUPANCY (by service) ---
 router.get('/occupancy/:serviceId', getBedOccupancy);
+
+// --- TECHNICAL UNIT TYPES (Plateaux Techniques) ---
+router.get('/technical-unit-types', getTechnicalUnitTypes);
+router.post('/technical-unit-types', requireModule('SETTINGS'), createTechnicalUnitType);
+router.put('/technical-unit-types/:id', requireModule('SETTINGS'), updateTechnicalUnitType);
+router.delete('/technical-unit-types/:id', requireModule('SETTINGS'), deleteTechnicalUnitType);
 
 // --- PRICING ---
 router.get('/pricing', getPricing); // Pricing view might be needed?

@@ -19,9 +19,12 @@ const TransferManager: React.FC = () => {
     const [sessionId, setSessionId] = useState<string>('');
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [readOnly, setReadOnly] = useState(false);
     
-    // Global Cart State (Map of demandLineId -> Reservations)
+    // Global Cart State (Map of productId -> Reservations)
     const [cart, setCart] = useState<Map<string, any[]>>(new Map());
+    
+    const TERMINAL_STATUSES = ['FILLED', 'CANCELLED', 'REJECTED'];
     
     // Session Init & Concurrency Lock
     useEffect(() => {
@@ -29,6 +32,27 @@ const TransferManager: React.FC = () => {
 
         const initSession = async () => {
             if (!demandId) return;
+
+            // 0. Load demand first to determine read-only mode
+            let demandData: any;
+            try {
+                demandData = await api.getStockDemandDetails(demandId);
+                if (active) setDemand(demandData);
+            } catch (e) {
+                console.error("Failed to load demand", e);
+                toast.error("Demande introuvable");
+                navigate('/pharmacy/requests');
+                return;
+            }
+
+            // Terminal statuses -> read-only, no claim needed
+            if (TERMINAL_STATUSES.includes(demandData.status)) {
+                if (active) {
+                    setReadOnly(true);
+                    setLoading(false);
+                }
+                return;
+            }
 
             try {
                 // 1. Claim Demand (Concurrency Lock)
@@ -47,14 +71,11 @@ const TransferManager: React.FC = () => {
                     });
                     
                     navigate('/pharmacy/requests');
-                    return; // Stop execution
+                    return;
                 }
                 console.error("Claim error", error);
-                // If other error, maybe continue? Or block? 
-                // Creating a session without a claim is bad.
-                // Let's block generally if claim fails.
-                 navigate('/pharmacy/requests');
-                 return;
+                navigate('/pharmacy/requests');
+                return;
             }
 
             // 2. Hydrate or Create Session
@@ -88,11 +109,10 @@ const TransferManager: React.FC = () => {
                 }
             } catch (e) {
                 console.error("Hydration error", e);
-                // Fallback new session
                 if (active) setSessionId(uuidv4());
             }
 
-            if (active) loadDemand();
+            if (active) setLoading(false);
         };
 
         if (demandId) {
@@ -107,12 +127,12 @@ const TransferManager: React.FC = () => {
         return () => {
             active = false;
             clearInterval(interval);
-            // On unmount/leave, release the claim
-            if (demandId) {
+            // On unmount/leave, release the claim (only if not read-only)
+            if (demandId && !readOnly) {
                 api.releaseDemand(demandId).catch(console.error);
             }
         };
-    }, [demandId]); // sessionId is set inside, don't depend on it to avoid loops
+    }, [demandId]);
 
     const loadDemand = async () => {
         try {
@@ -194,7 +214,7 @@ const TransferManager: React.FC = () => {
                     </button>
                     <div>
                         <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                            Demande {demand.id.slice(0,8)}...
+                            Demande {demand.demand_ref || demand.id.slice(0,8) + '...'}
                             <span className={`px-2 py-0.5 rounded text-xs ${
                                 demand.priority === 'URGENT' ? 'bg-red-100 text-red-700' : 'bg-blue-50 text-blue-700'
                             }`}>
@@ -202,7 +222,7 @@ const TransferManager: React.FC = () => {
                             </span>
                         </h1>
                         <div className="text-sm text-slate-500">
-                             Service: <span className="font-medium text-slate-700">{demand.service_id}</span> • 
+                             Service: <span className="font-medium text-slate-700">{demand.service_name || demand.service_id}</span> • 
                              Par: {demand.requested_by} • 
                              {new Date(demand.created_at).toLocaleString()}
                         </div>
@@ -211,33 +231,37 @@ const TransferManager: React.FC = () => {
                 <div className="flex items-center gap-4">
                     <div className="text-right">
                         <div className="text-xs text-slate-400">Statut</div>
-                        <div className="font-medium">{demand.status}</div>
+                        <div className="font-medium">{{
+                            'SUBMITTED': 'À Traiter',
+                            'PARTIALLY_FILLED': 'En Cours',
+                            'FILLED': 'Terminé',
+                            'CANCELLED': 'Annulé',
+                            'REJECTED': 'Rejeté',
+                            'DRAFT': 'Brouillon'
+                        }[demand.status] || demand.status}</div>
                     </div>
                 </div>
             </div>
 
             {/* Content Scroller */}
-            <div className="max-w-5xl mx-auto p-6 space-y-6">
+            <div className="px-8 py-6 space-y-6">
                 
                 {demand.items?.map((line: any) => (
                     <DemandLineBlock 
-                        key={line.product_id} // Should be unique per demand, or use demand_line_id logic if available?
-                        // Actually in `stock_demand_lines`, PK is (request_id, product_id). So product_id is unique per demand.
+                        key={line.product_id}
                         demandId={demand.id}
                         line={line}
                         sessionId={sessionId}
-                        cartItems={cart.get(line.product_id) || []} // We used product_id as key in cart logic? No, we used demand_line_id.
-                        // My schema update for `stock_demand_lines` didn't add a dedicated UUID line ID.
-                        // So `demand_line_id` in reservations MUST be the `product_id` (from the demand line).
-                        // Let's verify: In createDemand, I inserted product_id.
-                        // So `demand_line_id` === `line.product_id`.
+                        cartItems={cart.get(line.product_id) || []}
                         refreshCart={refreshCart}
+                        readOnly={readOnly}
                     />
                 ))}
 
             </div>
 
-            {/* Sticky Footer */}
+            {/* Sticky Footer - Only when not read-only */}
+            {!readOnly && (
             <div className="fixed bottom-0 left-0 right-0 bg-indigo-900 text-white p-4 shadow-lg z-30">
                 <div className="max-w-5xl mx-auto flex justify-between items-center">
                     <div className="flex items-center gap-8">
@@ -261,6 +285,7 @@ const TransferManager: React.FC = () => {
                     </button>
                 </div>
             </div>
+            )}
 
         </div>
     );

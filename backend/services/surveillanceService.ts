@@ -84,7 +84,9 @@ class SurveillanceService {
                                         'barcode', ls.barcode,
                                         'container_type', ls.lab_specimen_container_type_id,
                                         'container_color', ct.tube_color,
-                                        'container_name', ct.libelle
+                                        'container_name', ct.libelle,
+                                        'status', ls.status,
+                                        'rejected_reason', ls.rejected_reason
                                     ))
                                     FROM lab_collection_specimens lcs
                                     JOIN lab_specimens ls ON ls.id = lcs.specimen_id

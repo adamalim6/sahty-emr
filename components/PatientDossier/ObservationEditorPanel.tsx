@@ -156,7 +156,7 @@ function cleanPasteHTML(html: string) {
     return doc.body.innerHTML;
 }
 
-const TipTapEditor = ({ content, onChange, phrases, values, patientId, editable = true, onOpenSmartPhrases }: { content: string, onChange?: (html: string) => void, phrases?: SmartPhrase[], values?: SmartPhrase[], patientId: string, editable?: boolean, onOpenSmartPhrases?: (payload?: any) => void }) => {
+export const TipTapEditor = ({ content, onChange, phrases, values, patientId, editable = true, onOpenSmartPhrases }: { content: string, onChange?: (html: string) => void, phrases?: SmartPhrase[], values?: SmartPhrase[], patientId: string, editable?: boolean, onOpenSmartPhrases?: (payload?: any) => void }) => {
     const editorRef = useRef<any>(null);
     const phrasesRef = useRef<SmartPhrase[]>(phrases || []);
     const valuesRef = useRef<SmartPhrase[]>(values || []);
@@ -507,6 +507,8 @@ export const ObservationEditorPanel: React.FC<ObservationEditorPanelProps> = ({
                             <option value="ADMISSION">Note d'Admission</option>
                             <option value="CONSULT">Note de Consultation</option>
                             <option value="DISCHARGE">Note de Sortie</option>
+                            <option value="INTERP_ECG" disabled>Interprétation ECG (auto)</option>
+                            <option value="INTERP_ECHO" disabled>Interprétation Écho (auto)</option>
                         </select>
                     </div>
                     

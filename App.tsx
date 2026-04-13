@@ -28,10 +28,13 @@ import { UsersPage } from './components/Settings/UsersPage';
 import { ServicesPage } from './components/Settings/ServicesPage';
 import { ServiceDetailPage } from './components/Settings/ServiceDetailPage';
 import { RoomsPage } from './components/Settings/RoomsPage';
+import { PlateauxTechniquesPage } from './components/Settings/PlateauxTechniquesPage';
 import { PricingPage } from './components/Settings/PricingPage';
 import { RolesPage } from './components/Settings/RolesPage'; 
 import { ReadOnlyRoleDetailPage } from './components/Settings/ReadOnlyRoleDetailPage'; 
 import { TenantTemplatesManager } from './components/Settings/Templates';
+import { ExternalSystemsPage } from './components/Settings/ExternalSystemsPage';
+import { ActExternalCodesPage } from './components/Settings/ActExternalCodesPage';
 import { LimsPatientListPage } from './components/LIMS/Navigation/LimsPatientListPage';
 import { LimsPatientPage } from './components/LIMS/Navigation/LimsPatientPage';
 import { LimsAdmissionPage } from './components/LIMS/Navigation/LimsAdmissionPage';
@@ -48,6 +51,7 @@ import { UnitsManager } from './components/SuperAdmin/UnitsManager';
 import { RoutesManager } from './components/SuperAdmin/RoutesManager';
 import { ServiceStockPage } from './components/ServiceStock/ServiceStockPage';
 import ServiceStockManager from './components/StockTransfer/ServiceStockManager';
+import DemandDetailView from './components/StockTransfer/DemandDetailView';
 import { EmrLocationManager } from './components/EmrLocationManager';
 import TransferManager from './components/StockTransfer/TransferManager';
 import ReturnsManager from './components/Returns/ReturnsManager';
@@ -62,6 +66,7 @@ import { LabSubSectionsPage } from './components/SuperAdmin/LIMSCatalogs/LabSubS
 import { LIMSLayout } from './components/LIMS/LIMSLayout';
 import { LimsRegistrationPage } from './components/LIMS/Registration/LimsRegistrationPage';
 import { LimsCollectionPage } from './components/LIMS/Collection/LimsCollectionPage';
+import { LimsReceptionPage } from './components/LIMS/Reception/LimsReceptionPage';
 import { SectionTreePage } from './components/LIMS/SectionTreePage';
 import { SubSectionTreePage } from './components/LIMS/SubSectionTreePage';
 import { AnalyteContextsPage } from './components/LIMS/AnalyteContextsPage';
@@ -124,6 +129,7 @@ const App: React.FC = () => {
             <Route path="service-stock" element={<ServiceStockPage />} />
             <Route path="retours" element={<ReturnsManager />} />
             <Route path="replenishment" element={<ServiceStockManager />} />
+            <Route path="service-stock/demands/:demandId" element={<DemandDetailView />} />
             <Route path="templates" element={<UserTemplatesTab />} />
 
           </Route>
@@ -147,10 +153,13 @@ const App: React.FC = () => {
              <Route path="services" element={<ServicesPage />} />
              <Route path="services/:id" element={<ServiceDetailPage />} />
              <Route path="rooms" element={<RoomsPage />} />
+             <Route path="plateaux-techniques" element={<PlateauxTechniquesPage />} />
              <Route path="pricing" element={<PricingPage />} />
              <Route path="roles" element={<RolesPage />} />
              <Route path="roles/:id" element={<ReadOnlyRoleDetailPage />} />
              <Route path="smart-phrases" element={<TenantTemplatesManager />} />
+             <Route path="external-systems" element={<ExternalSystemsPage />} />
+             <Route path="act-external-codes" element={<ActExternalCodesPage />} />
           </Route>
 
           <Route path="/lims" element={
@@ -161,6 +170,7 @@ const App: React.FC = () => {
              <Route index element={<Navigate to="registration" replace />} />
              <Route path="registration" element={<LimsRegistrationPage />} />
              <Route path="collection" element={<LimsCollectionPage />} />
+             <Route path="reception" element={<LimsReceptionPage />} />
              <Route path="patients" element={<LimsPatientListPage />} />
              <Route path="patients/:id" element={<LimsPatientPage />} />
              <Route path="admissions/:id" element={<LimsAdmissionPage />} />

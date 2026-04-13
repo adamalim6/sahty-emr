@@ -1,6 +1,7 @@
 import { tenantQuery, tenantTransaction } from '../../db/tenantPg';
 import { v4 as uuidv4 } from 'uuid';
 import { nanoid } from 'nanoid';
+import { hprimOutboundService } from '../integrations/hprim/hprimOutboundService';
 
 function generateSpecimenBarcode() {
     const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -30,35 +31,18 @@ export const limsExecutionService = {
             const labRequestIds: string[] = [];
 
             for (const actId of payload.globalActIds) {
-                const prescId = uuidv4();
-                await client.query(`
-                    INSERT INTO prescriptions (
-                        id, tenant_id, tenant_patient_id, admission_id,
-                        prescription_type, status, created_by,
-                        global_act_id
-                    ) VALUES ($1, $2, $3, $4, 'biology', 'ACTIVE', $5, $6)
-                `, [prescId, tenantId, payload.tenantPatientId, payload.admissionId, userId, actId]);
-
-                const eventId = uuidv4();
-                await client.query(`
-                    INSERT INTO prescription_events (
-                        id, tenant_id, prescription_id, admission_id,
-                        scheduled_at, status, tenant_patient_id
-                    ) VALUES ($1, $2, $3, $4, NOW(), 'ACTIVE', $5)
-                `, [eventId, tenantId, prescId, payload.admissionId, payload.tenantPatientId]);
-
                 const labRequestId = uuidv4();
                 
                 // 1. Insert Lab Request
                 await client.query(`
                     INSERT INTO lab_requests (
                         id, tenant_patient_id, admission_id,
-                        global_act_id, prescription_event_id,
+                        global_act_id,
                         created_by_user_id, created_at
                     ) VALUES (
-                        $1, $2, $3, $4, $5, $6, NOW()
+                        $1, $2, $3, $4, $5, NOW()
                     )
-                `, [labRequestId, payload.tenantPatientId, payload.admissionId, actId, eventId, userId]);
+                `, [labRequestId, payload.tenantPatientId, payload.admissionId, actId, userId]);
 
                 // 2. Insert Billing Anchor (admission_acts)
                 await client.query(`
@@ -106,7 +90,7 @@ export const limsExecutionService = {
                lsct.id as target_lsct_id,
                lsr.id as existing_link_id
             FROM public.lab_requests lr
-            JOIN public.prescription_events pe ON pe.id = lr.prescription_event_id
+            LEFT JOIN public.prescription_events pe ON pe.id = lr.prescription_event_id
             JOIN reference.global_actes ga ON ga.id = lr.global_act_id
             JOIN reference.lab_act_specimen_containers lasc 
                  ON lasc.global_act_id = lr.global_act_id AND lasc.actif = true
@@ -162,7 +146,7 @@ export const limsExecutionService = {
     async getCollectionRequirements(tenantId: string, admissionId: string) {
         return this._buildCollectionRequirementsGroups(
             tenantId, 
-            "WHERE lr.admission_id = $1 AND pe.status = 'ACTIVE'", 
+            "WHERE lr.admission_id = $1 AND (pe.status = 'ACTIVE' OR lr.prescription_event_id IS NULL)", 
             [admissionId]
         );
     },
@@ -185,11 +169,7 @@ export const limsExecutionService = {
             WHERE lr.admission_id = $1 
             AND pe.status = 'ACTIVE'
             AND ABS(EXTRACT(EPOCH FROM (pe.scheduled_at - anchor_pe.scheduled_at))) <= 2700 -- 45 minutes
-            AND NOT EXISTS (
-                SELECT 1 FROM administration_event_lab_collections aelc
-                JOIN administration_events ae ON ae.id = aelc.administration_event_id
-                WHERE ae.prescription_event_id = pe.id
-            )
+            -- No recollection blocking: biology allows unlimited collection attempts
         `;
 
         const groups = await this._buildCollectionRequirementsGroups(tenantId, joinConditionSQL, [anchor.admission_id, prescriptionEventId]);
@@ -227,11 +207,35 @@ export const limsExecutionService = {
             }
         }
 
+        // Fetch prior collections for these candidate events (for the history/recollection UI)
+        const candidateEventIds = candidateEvents.map((e: any) => e.prescription_event_id);
+        let priorCollections: any[] = [];
+        if (candidateEventIds.length > 0) {
+            priorCollections = await tenantQuery(tenantId, `
+                SELECT ae.id as admin_event_id, ae.prescription_event_id, ae.occurred_at, ae.status as admin_status,
+                       ae.performed_by_first_name, ae.performed_by_last_name,
+                       lc.id as collection_id, lc.collected_at,
+                       ls.id as specimen_id, ls.barcode, ls.status as specimen_status, ls.rejected_reason,
+                       ct.libelle as container_name, ct.tube_color as container_color
+                FROM administration_events ae
+                JOIN administration_event_lab_collections aelc ON aelc.administration_event_id = ae.id
+                JOIN lab_collections lc ON lc.id = aelc.lab_collection_id
+                JOIN lab_collection_specimens lcs ON lcs.lab_collection_id = lc.id
+                JOIN lab_specimens ls ON ls.id = lcs.specimen_id
+                LEFT JOIN reference.lab_specimen_container_types sct ON sct.id = ls.lab_specimen_container_type_id
+                LEFT JOIN reference.lab_container_types ct ON ct.id = sct.container_type_id
+                WHERE ae.prescription_event_id = ANY($1)
+                  AND ae.status = 'ACTIVE'
+                ORDER BY ae.occurred_at DESC
+            `, [candidateEventIds]);
+        }
+
         return {
             anchor_event: { id: prescriptionEventId },
             candidate_events: candidateEvents,
             suggested_specimens: groups,
-            patient_info: patientInfo
+            patient_info: patientInfo,
+            prior_collections: priorCollections
         };
     },
 
@@ -344,7 +348,7 @@ export const limsExecutionService = {
             throw new Error("No events selected");
         }
 
-        return await tenantTransaction(tenantId, async (client) => {
+        const result = await tenantTransaction(tenantId, async (client) => {
             const labCollectionId = uuidv4();
             
             // Track required data
@@ -388,9 +392,11 @@ export const limsExecutionService = {
             }
 
             // Execute Tube mapping
+            const createdSpecimens: { specimenId: string; barcode: string; lsctId: string }[] = [];
             for (const [targetLsctId, reqData] of Array.from(reqMap.entries())) {
                 const specimenId = uuidv4();
                 const barcode = generateSpecimenBarcode();
+                createdSpecimens.push({ specimenId, barcode, lsctId: targetLsctId });
                 
                 // 2. Create Specimen
                 await client.query(`
@@ -415,26 +421,8 @@ export const limsExecutionService = {
                 `, [labCollectionId, specimenId]);
             }
 
-            // 5. Administration Events
-            for (const peId of payload.selected_prescription_event_ids) {
-                const adminEventId = uuidv4();
-                await client.query(`
-                    INSERT INTO administration_events (
-                        id, tenant_id, prescription_event_id, action_type, 
-                        occurred_at, performed_by_user_id, status
-                    ) VALUES ($1, $2, $3, 'completed', $4, $5, 'ACTIVE')
-                `, [
-                    adminEventId, tenantId, peId, 
-                    payload.collected_at ? new Date(payload.collected_at) : new Date(),
-                    userId
-                ]);
-
-                await client.query(`
-                    INSERT INTO administration_event_lab_collections (
-                        administration_event_id, lab_collection_id
-                    ) VALUES ($1, $2)
-                `, [adminEventId, labCollectionId]);
-            }
+            // 5. Administration Event linking is handled externally by logWithBiology.
+            // executeSurveillanceCollection only creates physical specimens and billing.
 
             // 6. Billing
             for (const row of lrResult.rows) {
@@ -453,8 +441,17 @@ export const limsExecutionService = {
                 `, [uuidv4(), row.admission_id, row.global_act_id, row.id]);
             }
 
-            return { success: true, labCollectionId };
+            return { success: true, labCollectionId, specimens: createdSpecimens };
         });
+
+        // HPRIM: Fire ORM generation for each created specimen (non-blocking)
+        if (result?.specimens) {
+            const specIds = result.specimens.map((s: any) => s.specimenId);
+            hprimOutboundService.generateOrmForSpecimens(tenantId, specIds)
+                .catch(err => console.error('[HPRIM] ORM trigger failed (surveillance):', err.message));
+        }
+
+        return result;
     },
 
     async executePrelevement(tenantId: string, userId: string, params: {
@@ -463,7 +460,7 @@ export const limsExecutionService = {
         targetLsctId: string,
         labRequestIds: string[]
     }) {
-        return await tenantTransaction(tenantId, async (client) => {
+        const result = await tenantTransaction(tenantId, async (client) => {
             // STEP 1: Ensure collection event exists for this admission
             let collectionResult = await client.query(`
                 SELECT id FROM public.lab_collections 
@@ -514,5 +511,79 @@ export const limsExecutionService = {
 
             return { specimenId, collectionId, barcode };
         });
+
+        // HPRIM: Fire ORM generation after collection (non-blocking)
+        if (result?.specimenId) {
+            hprimOutboundService.generateOrmForSpecimen(tenantId, result.specimenId)
+                .catch(err => console.error('[HPRIM] ORM trigger failed (executePrelevement):', err.message));
+        }
+
+        return result;
+    },
+
+    /**
+     * Update specimen status (nurse-side).
+     * Only allows COLLECTED → REJECTED or COLLECTED → INSUFFICIENT.
+     * RECEIVED specimens cannot be changed by nurses.
+     */
+    async updateSpecimenStatus(
+        tenantId: string,
+        specimenId: string,
+        status: string,
+        rejectedReason?: string,
+        userId?: string
+    ): Promise<{ id: string; status: string; rejected_reason: string | null }> {
+        // Validate target status
+        const allowedStatuses = ['REJECTED', 'INSUFFICIENT'];
+        if (!allowedStatuses.includes(status)) {
+            throw new Error(`Invalid status '${status}'. Allowed: ${allowedStatuses.join(', ')}`);
+        }
+
+        return tenantTransaction(tenantId, async (client) => {
+            // Fetch current specimen status
+            const current = await client.query(
+                `SELECT id, status FROM public.lab_specimens WHERE id = $1`,
+                [specimenId]
+            );
+            if (current.rows.length === 0) {
+                throw new Error(`Specimen ${specimenId} not found.`);
+            }
+            const oldStatus = current.rows[0].status;
+            if (oldStatus === 'RECEIVED') {
+                throw new Error(`Cannot change a specimen that has already been received by the lab.`);
+            }
+
+            const now = new Date();
+
+            // Build update query
+            if (status === 'REJECTED') {
+                await client.query(`
+                    UPDATE public.lab_specimens 
+                    SET status = $1, rejected_reason = $2,
+                        rejected_at = $3, rejected_by_user_id = $4,
+                        last_status_changed_at = $3, last_status_changed_by_user_id = $4
+                    WHERE id = $5`,
+                    [status, rejectedReason || null, now, userId || null, specimenId]
+                );
+            } else {
+                await client.query(`
+                    UPDATE public.lab_specimens 
+                    SET status = $1, 
+                        last_status_changed_at = $2, last_status_changed_by_user_id = $3
+                    WHERE id = $4`,
+                    [status, now, userId || null, specimenId]
+                );
+            }
+
+            // Insert history row
+            await client.query(`
+                INSERT INTO public.lab_specimen_status_history
+                    (specimen_id, old_status, new_status, changed_at, changed_by_user_id, reason)
+                VALUES ($1, $2, $3, $4, $5, $6)`,
+                [specimenId, oldStatus, status, now, userId || null, status === 'REJECTED' ? (rejectedReason || null) : null]
+            );
+
+            return { id: specimenId, status, rejected_reason: status === 'REJECTED' ? (rejectedReason || null) : null };
+        }, { userId: userId || 'system' });
     }
 };

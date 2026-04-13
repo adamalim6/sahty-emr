@@ -33,6 +33,9 @@ import smartValuesRoutes from './routes/smartValuesRoutes';
 import clinicalExamsRoutes from './routes/clinicalExamsRoutes';
 import limsRoutes from './routes/limsRoutes';
 import limsExecutionRoutes from './routes/limsExecutionRoutes';
+import limsReceptionRoutes from './routes/limsReceptionRoutes';
+import externalSystemRoutes from './routes/externalSystemRoutes';
+import hprimRoutes from './routes/hprimRoutes';
 import { authenticateToken, authenticateAnyToken } from './middleware/authMiddleware';
 import { requireModule } from './middleware/moduleMiddleware';
 import { startIdentitySyncWorker } from './workers/identitySyncWorker';
@@ -65,6 +68,7 @@ app.use('/api/super-admin', superAdminRoutes); // SuperAdmin auth handled intern
 
 // Protected Tenant Routes
 app.use('/api/settings', authenticateToken, settingsRoutes);
+app.use('/api', authenticateToken, externalSystemRoutes);
 app.use('/api/actes', authenticateAnyToken, actesRoutes);
 app.use('/api/dev', devRoutes);
 app.use('/api/global/products', globalProductRoutes);
@@ -115,6 +119,8 @@ app.use('/api/smart-values', authenticateToken, smartValuesRoutes);
 app.use('/api/patients/:patientId/clinical-exams', authenticateToken, clinicalExamsRoutes);
 app.use('/api/lims', authenticateToken, limsRoutes);
 app.use('/api/lims/execution', authenticateToken, limsExecutionRoutes);
+app.use('/api/lims/reception', authenticateToken, limsReceptionRoutes);
+app.use('/api/hprim', authenticateToken, hprimRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -155,5 +161,9 @@ app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     // startIdentitySyncWorker();
     // startAuthSyncWorker();
+
+    // Start HPRIM inbound worker
+    const { startHprimWorker } = require('./services/integrations/hprim/hprimWorker');
+    startHprimWorker();
 });
 // Trigger nodemon reload Sun Mar  8 01:17:19 +00 2026

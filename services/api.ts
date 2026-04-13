@@ -503,6 +503,21 @@ export const api = {
     deleteRoom: (id: string) => fetchJson<any>(`/settings/rooms/${id}`, {
         method: 'DELETE'
     }),
+
+    // ── Technical Unit Types (Plateaux Techniques) ──
+    getTechnicalUnitTypes: () => fetchJson<any[]>('/settings/technical-unit-types'),
+    createTechnicalUnitType: (data: any) => fetchJson<any>('/settings/technical-unit-types', {
+        method: 'POST',
+        body: JSON.stringify(data)
+    }),
+    updateTechnicalUnitType: (id: string, data: any) => fetchJson<any>(`/settings/technical-unit-types/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+    }),
+    deleteTechnicalUnitType: (id: string) => fetchJson<any>(`/settings/technical-unit-types/${id}`, {
+        method: 'DELETE'
+    }),
+
     getPricing: () => fetchJson<any[]>('/settings/pricing'),
     createPricing: (data: any) => fetchJson<any>('/settings/pricing', {
         method: 'POST',
@@ -720,7 +735,10 @@ export const api = {
         return fetchJson<any>(`/stock-transfers/catalog${query}`);
     },
 
-    getTransferHistory: (productId: string) => fetchJson<any[]>(`/stock-transfers/history/${productId}`),
+    getTransferHistory: (demandId: string, productId?: string) => {
+        const query = productId ? `?productId=${productId}` : '';
+        return fetchJson<any[]>(`/stock-transfers/demands/${demandId}/history${query}`);
+    },
 
     // Service locations for demand creation (accessible to EMR users)
     getServiceLocations: (serviceId: string) => fetchJson<StockLocation[]>(`/stock-transfers/service-locations?serviceId=${serviceId}`),
@@ -747,6 +765,11 @@ export const api = {
 
     getActiveReservationForDemand: (demandId: string) => fetchJson<any | null>(`/stock-reservations/active-for-demand/${demandId}`),
     
+    refreshStockReservationSession: (sessionId: string) => fetchJson<any>('/stock-reservations/refresh-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId })
+    }),
     commitStockReservationSession: (sessionId: string, relatedDemandId: string) => fetchJson<any>('/stock-reservations/commit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1124,9 +1147,8 @@ export const api = {
         body: JSON.stringify(payload)
     }),
 
-    signObservation: (id: string) => fetchJson<any>(`/observations/${id}/sign`, {
-        method: 'POST'
-    }),
+    signObservation: (id: string) =>
+        fetchJson<any>(`/observations/${id}/sign`, { method: 'POST' }),
 
     createObservationAddendum: (parentId: string, payload: any) => fetchJson<any>(`/observations/${parentId}/addendum`, {
         method: 'POST',
@@ -1134,7 +1156,11 @@ export const api = {
         body: JSON.stringify(payload)
     }),
 
-    // ==========================================
+    enterObservationInError: (id: string, reason?: string) =>
+        fetchJson<any>(`/observations/${id}/entered-in-error`, {
+            method: 'POST',
+            body: JSON.stringify({ reason })
+        }),
     // ADDICTOLOGIE
     // ==========================================
     getPatientAddictions: (tenantPatientId: string) => fetchJson<any[]>(`/addictions/patient/${tenantPatientId}`),
@@ -1214,6 +1240,129 @@ export const api = {
         fetchJson<any>('/lims/execution/surveillance/collections', {
             method: 'POST',
             body: JSON.stringify(payload)
+        }),
+
+    updateSpecimenStatus: (specimenId: string, status: string, rejectedReason?: string) =>
+        fetchJson<any>(`/lims/execution/specimens/${specimenId}/status`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status, rejected_reason: rejectedReason })
+        }),
+
+    // LIMS Reception
+    getSpecimenByBarcode: (barcode: string) =>
+        fetchJson<any>(`/lims/reception/specimens/${encodeURIComponent(barcode)}`),
+
+    receiveSpecimen: (specimenId: string) =>
+        fetchJson<any>('/lims/reception/receive', {
+            method: 'POST',
+            body: JSON.stringify({ specimenId })
+        }),
+
+    rejectSpecimen: (specimenId: string, reason: string) =>
+        fetchJson<any>('/lims/reception/reject', {
+            method: 'POST',
+            body: JSON.stringify({ specimenId, reason })
+        }),
+
+    markSpecimenInsufficient: (specimenId: string) =>
+        fetchJson<any>('/lims/reception/insufficient', {
+            method: 'POST',
+            body: JSON.stringify({ specimenId })
+        }),
+
+    // ── External Systems ─────────────────────────────────────────────
+
+    getExternalSystems: () =>
+        fetchJson<any[]>('/external-systems'),
+
+    createExternalSystem: (data: { code: string; label: string; is_active?: boolean }) =>
+        fetchJson<any>('/external-systems', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+
+    updateExternalSystem: (id: string, data: { code?: string; label?: string; is_active?: boolean }) =>
+        fetchJson<any>(`/external-systems/${id}`, {
+            method: 'PATCH',
+            body: JSON.stringify(data)
+        }),
+
+    deleteExternalSystem: (id: string) =>
+        fetchJson<any>(`/external-systems/${id}`, { method: 'DELETE' }),
+
+    // ── Global Act External Codes ────────────────────────────────────
+
+    getGlobalActExternalCodes: (filters?: { global_act_id?: string; external_system_id?: string }) => {
+        const params = new URLSearchParams();
+        if (filters?.global_act_id) params.set('global_act_id', filters.global_act_id);
+        if (filters?.external_system_id) params.set('external_system_id', filters.external_system_id);
+        const qs = params.toString();
+        return fetchJson<any[]>(`/global-act-external-codes${qs ? '?' + qs : ''}`);
+    },
+
+    createGlobalActExternalCode: (data: { global_act_id: string; external_system_id: string; external_code: string; is_active?: boolean }) =>
+        fetchJson<any>('/global-act-external-codes', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+
+    updateGlobalActExternalCode: (id: string, data: { external_code?: string; is_active?: boolean }) =>
+        fetchJson<any>(`/global-act-external-codes/${id}`, {
+            method: 'PATCH',
+            body: JSON.stringify(data)
+        }),
+
+    deleteGlobalActExternalCode: (id: string) =>
+        fetchJson<any>(`/global-act-external-codes/${id}`, { method: 'DELETE' }),
+
+    // ── ECG ──────────────────────────────────────────────────────────────────
+    getECGs: (patientId: string) =>
+        fetchJson<any[]>(`/emr/patients/${patientId}/ecg`),
+
+    createECG: (patientId: string, payload: any) =>
+        fetchJson<any>(`/emr/patients/${patientId}/ecg`, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        }),
+
+    updateECG: (patientId: string, ecgId: string, payload: any) =>
+        fetchJson<any>(`/emr/patients/${patientId}/ecg/${ecgId}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload)
+        }),
+
+    deleteECG: (patientId: string, ecgId: string) =>
+        fetchJson<any>(`/emr/patients/${patientId}/ecg/${ecgId}`, { method: 'DELETE' }),
+
+    // ── Echo ─────────────────────────────────────────────────────────────────
+    getEchos: (patientId: string) =>
+        fetchJson<any[]>(`/emr/patients/${patientId}/echo`),
+
+    createEcho: (patientId: string, payload: any) =>
+        fetchJson<any>(`/emr/patients/${patientId}/echo`, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        }),
+
+    updateEcho: (patientId: string, echoId: string, payload: any) =>
+        fetchJson<any>(`/emr/patients/${patientId}/echo/${echoId}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload)
+        }),
+
+    deleteEcho: (patientId: string, echoId: string) =>
+        fetchJson<any>(`/emr/patients/${patientId}/echo/${echoId}`, { method: 'DELETE' }),
+
+    enterECGInError: (patientId: string, ecgId: string, reason?: string) =>
+        fetchJson<any>(`/emr/patients/${patientId}/ecg/${ecgId}/entered-in-error`, {
+            method: 'POST',
+            body: JSON.stringify({ reason })
+        }),
+
+    enterEchoInError: (patientId: string, echoId: string, reason?: string) =>
+        fetchJson<any>(`/emr/patients/${patientId}/echo/${echoId}/entered-in-error`, {
+            method: 'POST',
+            body: JSON.stringify({ reason })
         })
 };
 

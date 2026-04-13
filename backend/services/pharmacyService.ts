@@ -99,7 +99,7 @@ export class PharmacyService {
                    COALESCE(cs.reserved_units, 0) as reserved_units,
                    COALESCE(cs.pending_return_units, 0) as pending_return_units,
                    (cs.qty_units - COALESCE(cs.reserved_units, 0) - COALESCE(cs.pending_return_units, 0)) as available_units,
-                   l.scope, l.service_id
+                   l.scope, l.service_id, l.name as location_name
             FROM current_stock cs
             JOIN locations l ON cs.location_id = l.location_id AND cs.tenant_id = l.tenant_id
             WHERE cs.tenant_id = $1 AND l.scope = $2 AND cs.qty_units > 0
@@ -130,6 +130,7 @@ export class PharmacyService {
             lot: row.lot,
             expiry: row.expiry,
             location: row.location,
+            locationName: row.location_name,
             qtyUnits: row.qty_units,
             reservedUnits: row.reserved_units || 0,
             pendingReturnUnits: row.pending_return_units || 0,
@@ -474,7 +475,7 @@ export class PharmacyService {
             const sql = `
                 INSERT INTO current_stock (tenant_id, product_id, lot, expiry, location_id, qty_units)
                 VALUES ($1, $2, $3, $4, $5, $6)
-                ON CONFLICT(tenant_id, product_id, lot, location_id) 
+                ON CONFLICT(tenant_id, product_id, lot, expiry, location_id) 
                 DO UPDATE SET qty_units = current_stock.qty_units + EXCLUDED.qty_units
             `;
             await this.run(tenantId, sql, [tenantId, productId, lot, expStr, location, deltaQty]);
@@ -1012,7 +1013,7 @@ export class PharmacyService {
                 status: p.status,
                 reference: p.reference, // Expose explicitly too
                 date: new Date(p.created_at),
-                createdBy: p.created_by || 'Système',
+                createdBy: [p.created_by_first_name, p.created_by_last_name].filter(Boolean).join(' ') || 'Système',
                 items: p.items.map((i: any) => ({
                     productId: i.product_id,
                     orderedQty: i.qty_ordered,
@@ -1025,14 +1026,14 @@ export class PharmacyService {
     }
 
     public async createPurchaseOrder(params: any): Promise<any> {
-        const { tenantId, supplierId, items, userId } = params;
+        const { tenantId, supplierId, items, userId, firstName, lastName } = params;
         const poRef = params.id; // The human readable ID (BC-...)
         const poId = uuidv4(); // The real DB UUID
         
         await this.run(tenantId, `
-            INSERT INTO purchase_orders (po_id, tenant_id, supplier_id, status, created_by, reference)
-            VALUES ($1, $2, $3, 'ORDERED', $4, $5)
-        `, [poId, tenantId, supplierId, userId, poRef]);
+            INSERT INTO purchase_orders (po_id, tenant_id, supplier_id, status, created_by, created_by_first_name, created_by_last_name, reference)
+            VALUES ($1, $2, $3, 'ORDERED', $4, $5, $6, $7)
+        `, [poId, tenantId, supplierId, userId || null, firstName || null, lastName || null, poRef]);
 
         for (const item of items) {
             await this.run(tenantId, `
@@ -1040,7 +1041,7 @@ export class PharmacyService {
                 VALUES ($1, $2, $3, $4, $5)
             `, [poId, tenantId, item.productId, item.orderedQty, item.unitPrice]);
         }
-        return { ...params, id: poRef || poId, status: 'ORDERED', createdBy: userId };
+        return { ...params, id: poRef || poId, status: 'ORDERED', createdBy: userId, createdByFirstName: firstName, createdByLastName: lastName };
     }
 
     public async getDeliveryNotes(tenantId: string): Promise<any[]> {
@@ -1146,14 +1147,14 @@ export class PharmacyService {
 
     public async processQuarantine(params: {
          tenantId: string,
-         noteId: string, // Delivery Note ID
+         noteId: string, // Delivery Note ID (may be human reference e.g. "458790")
          items: any[],   // Request items with batches/returns
-         processedBy: string
+         processedBy: string, // Username (display only)
+         userId?: string | null // Auth UUID for created_by
     }) {
-         const { tenantId, noteId, items, processedBy } = params;
+         const { tenantId, noteId, items, processedBy, userId } = params;
 
-         // 1. Get Delivery Note to find Supplier
-         // Resolve ID just in case
+         // 1. Resolve noteId to actual UUID if it's a human-readable reference
          let dbNoteId = noteId;
          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
          if (!uuidRegex.test(noteId)) {
@@ -1166,7 +1167,17 @@ export class PharmacyService {
          
          if (!note) throw new Error(`Delivery Note ${noteId} not found`);
 
-         // TODO: If note has a PO, we might want to check against it, but for now we trust the flow.
+         // 2. Look up QUARANTINE_DELIVERY system location UUID
+         const quarantineLocRows = await this.get<any>(tenantId, 
+             `SELECT location_id FROM locations WHERE tenant_id = $1 AND name = 'QUARANTINE_DELIVERY' AND scope = 'SYSTEM' AND status = 'ACTIVE' LIMIT 1`, 
+             [tenantId]
+         );
+         const quarantineLocationId = quarantineLocRows && quarantineLocRows.length > 0 ? quarantineLocRows[0].location_id : null;
+         if (!quarantineLocationId) {
+             console.error(`[processQuarantine] QUARANTINE_DELIVERY system location not found for tenant ${tenantId}`);
+             throw new Error('QUARANTINE_DELIVERY system location not found. Please contact administrator.');
+         }
+
          const supplierId = note.supplier_id || 'UNKNOWN';
 
          // Group Batches by Product to perform ONE WAC Update per Product
@@ -1195,9 +1206,6 @@ export class PharmacyService {
              }
 
              // --- WAC CALCULATION (Once per product) ---
-             // Only if we haven't processed this product in this loop yet 
-             // (Simple check: iterate Object.keys or use a Set map. Here we iterate Items which might repeat?
-             // Usually items are unique by product in payload. We assume uniqueness or handle idempotency.)
              
              // 1. Determine Unit Cost (Priority: PO Item ONLY)
              let unitCost = 0;
@@ -1206,7 +1214,6 @@ export class PharmacyService {
                  if (poItem) unitCost = Number(poItem.unit_price) || 0;
              }
              
-             // STRICT: If no PO or no Price, unitCost matches 0.
              if (unitCost === 0) {
                  console.warn(`[WAC] Warning: Zero cost for Injection. Product=${item.productId}, PO=${note.po_id}`);
              }
@@ -1243,20 +1250,20 @@ export class PharmacyService {
              for (const batch of productData.batches) {
                  const qty = Number(batch.quantity);
 
-                 // Inventory Movement
+                 // Inventory Movement (from_location_id = QUARANTINE_DELIVERY UUID, to_location_id = target location UUID)
                  const movementId = uuidv4();
                  await this.run(tenantId, `
                     INSERT INTO inventory_movements (
                         movement_id, tenant_id, product_id, lot, expiry, qty_units,
-                        from_location, to_location, document_type, document_id, created_by
+                        from_location_id, to_location_id, document_type, document_id, created_by
                     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                  `, [movementId, tenantId, item.productId, batch.batchNumber, batch.expiryDate, qty,
-                     'QUARANTINE', batch.locationId, 'DELIVERY_INJECTION', noteId, processedBy]);
+                     quarantineLocationId, batch.locationId, 'DELIVERY_INJECTION', dbNoteId, userId || null]);
 
                  // Update Stock
                  await this.upsertStock(tenantId, item.productId, batch.batchNumber, batch.expiryDate, batch.locationId, qty);
                  
-                 // Traceability Layer (With Cost)
+                 // Traceability Layer (With Cost) — uses dbNoteId (UUID)
                  await this.run(tenantId, `
                     INSERT INTO delivery_note_layers (
                         delivery_note_id, tenant_id, product_id, lot, expiry,
@@ -1266,12 +1273,10 @@ export class PharmacyService {
                      qty, qty, unitCost]);
              }
              
-             // Removed from batch loop to avoid double processing if items array has dupes (unlikely but safe) (Wait, I loop items, so I should be careful)
-             // Optimization: logic assumes items are unique by product ID.
              resultItems.push(item);
          }
          
-         // 5. Update Status
+         // Update Status
          await this.run(tenantId, `UPDATE delivery_notes SET status = 'PROCESSED' WHERE delivery_note_id = $1`, [dbNoteId]);
          
          return { success: true, id: noteId, items: resultItems, processedBy, processedDate: new Date() };

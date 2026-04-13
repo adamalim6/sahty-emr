@@ -671,7 +671,7 @@ export const limsRepository = {
     },
     async getUnits(tenantId: string) {
         return tenantTransaction(tenantId, async (client: PoolClient) => {
-            const res = await client.query(`SELECT id, code, display as libelle FROM reference.units WHERE actif = true ORDER BY display ASC`);
+            const res = await client.query(`SELECT id, code, display as libelle FROM reference.units WHERE is_active = true ORDER BY display ASC`);
             return res.rows;
         });
     },

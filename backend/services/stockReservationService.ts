@@ -503,10 +503,10 @@ class StockReservationService {
             const transferId = uuidv4();
             await client.query(`
                 INSERT INTO stock_transfers (
-                    id, tenant_id, demand_id, source_location_id, destination_location_id, 
+                    id, tenant_id, demand_id, 
                     status, validated_at, validated_by, stock_reservation_id
-                ) VALUES ($1, $2, $3, $4, $5, 'VALIDATED', NOW(), $6, $7)
-            `, [transferId, tenantId, demandId, sourceLocId, fallbackDestId, userId, header.reservation_id]);
+                ) VALUES ($1, $2, $3, 'VALIDATED', NOW(), $4, $5)
+            `, [transferId, tenantId, demandId, userId, header.reservation_id]);
 
             // ================================================================
             // 4️⃣ CREATE STOCK_TRANSFER_LINES (BEFORE stock mutation)
@@ -555,7 +555,7 @@ class StockReservationService {
                 await client.query(`
                     INSERT INTO current_stock (tenant_id, product_id, lot, expiry, location_id, qty_units)
                     VALUES ($1, $2, $3, $4, $5, $6)
-                    ON CONFLICT(tenant_id, product_id, lot, location_id) 
+                    ON CONFLICT(tenant_id, product_id, lot, expiry, location_id) 
                     DO UPDATE SET qty_units = current_stock.qty_units + EXCLUDED.qty_units
                 `, [tenantId, line.product_id, line.lot, line.expiry, destId, take]);
             }

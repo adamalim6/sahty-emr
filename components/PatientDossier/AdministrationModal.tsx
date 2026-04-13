@@ -873,8 +873,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                                                                                 group.is_collected = true;
                                                                                                 setBiologySuggestedSpecimens([...biologySuggestedSpecimens]);
 
-                                                                                                // Generate a unique barcode value
-                                                                                                const barcodeValue = result.labCollectionId ? result.labCollectionId.slice(0, 12).toUpperCase() : Date.now().toString();
+                                                                                                // Use the actual specimen barcode stored in the DB
+                                                                                                const barcodeValue = result.specimens?.[0]?.barcode || result.labCollectionId?.slice(0, 12).toUpperCase() || Date.now().toString();
 
                                                                                                 // Print via hidden iframe (stays in same window)
                                                                                                 const iframe = document.createElement('iframe');
@@ -1309,12 +1309,44 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 // -- Helper Component for History Item --
 const HistoryItem = ({ ev, onCancel, hideReaction = false }: { ev: any, onCancel: () => void, hideReaction?: boolean }) => {
     const isCancelled = ev.status === 'CANCELLED';
+    const [specimenStatuses, setSpecimenStatuses] = useState<Record<string, { status: string; rejected_reason?: string }>>({});
+    const [rejectingSpecimenId, setRejectingSpecimenId] = useState<string | null>(null);
+    const [rejectReason, setRejectReason] = useState('');
+    const [updatingSpecimenId, setUpdatingSpecimenId] = useState<string | null>(null);
     
     const actionLabels: Record<string, string> = {
         administered: 'Administré',
         refused: 'Refusé',
         started: 'Début',
         ended: 'Fin'
+    };
+
+    const getSpecimenStatus = (sp: any) => specimenStatuses[sp.specimen_id]?.status || sp.status || 'COLLECTED';
+    const getSpecimenReason = (sp: any) => specimenStatuses[sp.specimen_id]?.rejected_reason || sp.rejected_reason || '';
+
+    const handleSpecimenStatusChange = async (specimenId: string, newStatus: 'REJECTED' | 'INSUFFICIENT', reason?: string) => {
+        setUpdatingSpecimenId(specimenId);
+        try {
+            await api.updateSpecimenStatus(specimenId, newStatus, reason);
+            // Optimistic update
+            setSpecimenStatuses(prev => ({
+                ...prev,
+                [specimenId]: { status: newStatus, rejected_reason: reason }
+            }));
+            setRejectingSpecimenId(null);
+            setRejectReason('');
+        } catch (err: any) {
+            alert('Erreur: ' + err.message);
+        } finally {
+            setUpdatingSpecimenId(null);
+        }
+    };
+
+    const statusConfig: Record<string, { label: string; color: string; bgColor: string; borderColor: string }> = {
+        COLLECTED: { label: 'Prélevé', color: 'text-emerald-700', bgColor: 'bg-emerald-50', borderColor: 'border-emerald-200' },
+        RECEIVED: { label: 'Reçu au labo', color: 'text-blue-700', bgColor: 'bg-blue-50', borderColor: 'border-blue-200' },
+        REJECTED: { label: 'Rejeté', color: 'text-red-700', bgColor: 'bg-red-50', borderColor: 'border-red-200' },
+        INSUFFICIENT: { label: 'Insuffisant', color: 'text-amber-700', bgColor: 'bg-amber-50', borderColor: 'border-amber-200' }
     };
     
     const handlePrintSpecimens = () => {
@@ -1427,17 +1459,87 @@ const HistoryItem = ({ ev, onCancel, hideReaction = false }: { ev: any, onCancel
                         </button>
                     </div>
                     <div className="flex flex-col gap-1.5">
-                        {ev.lab_collection.specimens.map((sp: any, i: number) => (
-                            <div key={i} className="flex justify-between items-center bg-white border border-violet-100 rounded px-2 py-1 shadow-sm">
-                                <div className="flex items-center gap-2 overflow-hidden flex-1">
-                                    <div className="w-3 h-3 min-w-[12px] rounded-full shadow-inner ring-1 ring-white border border-gray-200" style={{ backgroundColor: sp.container_color || '#e2e8f0' }} />
-                                    <span className="text-[9px] font-bold text-gray-700 truncate">{sp.container_name || 'Tube Biologique'}</span>
+                        {ev.lab_collection.specimens.map((sp: any, i: number) => {
+                            const currentStatus = getSpecimenStatus(sp);
+                            const currentReason = getSpecimenReason(sp);
+                            const cfg = statusConfig[currentStatus] || statusConfig.COLLECTED;
+                            const isInvalidated = currentStatus === 'REJECTED' || currentStatus === 'INSUFFICIENT';
+                            const isReceived = currentStatus === 'RECEIVED';
+                            const canChangeStatus = !isInvalidated && !isReceived;
+                            const isUpdating = updatingSpecimenId === sp.specimen_id;
+
+                            return (
+                                <div key={i} className="bg-white border border-violet-100 rounded px-2 py-1.5 shadow-sm">
+                                    <div className="flex justify-between items-center">
+                                        <div className="flex items-center gap-2 overflow-hidden flex-1">
+                                            <div className="w-3 h-3 min-w-[12px] rounded-full shadow-inner ring-1 ring-white border border-gray-200" style={{ backgroundColor: sp.container_color || '#e2e8f0' }} />
+                                            <span className="text-[9px] font-bold text-gray-700 truncate">{sp.container_name || 'Tube Biologique'}</span>
+                                        </div>
+                                        <span className="text-[10px] font-mono font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded ml-2 whitespace-nowrap">
+                                            {sp.barcode}
+                                        </span>
+                                    </div>
+                                    {/* Status Badge */}
+                                    <div className="flex items-center justify-between mt-1.5">
+                                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${cfg.color} ${cfg.bgColor} ${cfg.borderColor}`}>
+                                            {cfg.label}
+                                        </span>
+                                        {/* Action Buttons */}
+                                        {canChangeStatus && !isUpdating && !rejectingSpecimenId && (
+                                            <div className="flex gap-1">
+                                                <button
+                                                    onClick={() => handleSpecimenStatusChange(sp.specimen_id, 'INSUFFICIENT')}
+                                                    className="text-[8px] font-bold text-amber-600 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded transition-colors"
+                                                >
+                                                    Insuffisant
+                                                </button>
+                                                <button
+                                                    onClick={() => { setRejectingSpecimenId(sp.specimen_id); setRejectReason(''); }}
+                                                    className="text-[8px] font-bold text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 border border-red-200 px-1.5 py-0.5 rounded transition-colors"
+                                                >
+                                                    Rejeté
+                                                </button>
+                                            </div>
+                                        )}
+                                        {isUpdating && (
+                                            <span className="text-[9px] text-gray-400 italic">Mise à jour...</span>
+                                        )}
+                                    </div>
+                                    {/* Inline Rejection Reason Input */}
+                                    {rejectingSpecimenId === sp.specimen_id && (
+                                        <div className="mt-1.5 flex items-center gap-1">
+                                            <input
+                                                type="text"
+                                                className="flex-1 text-[10px] border border-red-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-red-300"
+                                                placeholder="Motif du rejet (optionnel)..."
+                                                value={rejectReason}
+                                                onChange={(e) => setRejectReason(e.target.value)}
+                                                onKeyDown={(e) => { if (e.key === 'Enter') handleSpecimenStatusChange(sp.specimen_id, 'REJECTED', rejectReason); }}
+                                                autoFocus
+                                            />
+                                            <button
+                                                onClick={() => handleSpecimenStatusChange(sp.specimen_id, 'REJECTED', rejectReason)}
+                                                className="text-[9px] font-bold text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded transition-colors"
+                                            >
+                                                OK
+                                            </button>
+                                            <button
+                                                onClick={() => { setRejectingSpecimenId(null); setRejectReason(''); }}
+                                                className="text-[9px] font-bold text-gray-500 hover:text-gray-700 px-1 py-1"
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+                                    )}
+                                    {/* Rejection Reason Display */}
+                                    {currentStatus === 'REJECTED' && currentReason && (
+                                        <div className="text-[9px] text-red-600 italic mt-1 bg-red-50 rounded px-1.5 py-0.5 border-l-2 border-red-300">
+                                            Motif: {currentReason}
+                                        </div>
+                                    )}
                                 </div>
-                                <span className="text-[10px] font-mono font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded ml-2 whitespace-nowrap">
-                                    {sp.barcode}
-                                </span>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             )}

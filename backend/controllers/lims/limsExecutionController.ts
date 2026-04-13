@@ -109,5 +109,22 @@ export const limsExecutionController = {
         } catch (e: any) {
             res.status(500).json({ error: e.message });
         }
+    },
+
+    async updateSpecimenStatus(req: Request, res: Response) {
+        try {
+            const tenantId = (req as any).auth?.tenantId || (req as any).user?.tenant_id;
+            const specimenId = req.params.specimenId;
+            const { status, rejected_reason } = req.body;
+
+            if (!specimenId) return res.status(400).json({ error: 'specimenId is required' });
+            if (!status) return res.status(400).json({ error: 'status is required' });
+
+            const result = await limsExecutionService.updateSpecimenStatus(tenantId, specimenId, status, rejected_reason);
+            res.json(result);
+        } catch (e: any) {
+            console.error('updateSpecimenStatus Error:', e);
+            res.status(400).json({ error: e.message });
+        }
     }
 };

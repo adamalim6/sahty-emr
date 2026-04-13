@@ -10,6 +10,8 @@ export interface StockDemand {
     id: string; // id in DB
     tenant_id: string;
     service_id: string;
+    service_name?: string;
+    demand_ref?: string;
     status: 'DRAFT' | 'SUBMITTED' | 'PARTIALLY_FILLED' | 'FILLED' | 'CANCELLED' | 'REJECTED';
     priority: 'ROUTINE' | 'URGENT';
     requested_by?: string;
@@ -20,10 +22,11 @@ export interface StockDemand {
 export interface StockDemandLine {
     demand_id: string;
     product_id: string;
+    product_name?: string;
     qty_requested: number;
-    target_stock_location_id?: string; // Business intent: where requester wants stock to go
-    target_location_code?: string;     // Resolved location code for display
-    target_location_name?: string;     // Resolved location name for display
+    target_stock_location_id?: string;
+    target_location_code?: string;
+    target_location_name?: string;
 }
 
 export interface StockTransfer {
@@ -63,9 +66,9 @@ class StockTransferService {
 
         await tenantTransaction(tenantId, async (client) => {
             await client.query(`
-                INSERT INTO stock_demands (id, tenant_id, service_id, status, priority, requested_by, demand_ref)
-                VALUES ($1, $2, $3, 'SUBMITTED', $4, $5, $6)
-            `, [demandId, tenantId, demand.service_id, demand.priority || 'ROUTINE', demand.requested_by, demandRef]);
+                INSERT INTO stock_demands (id, tenant_id, service_id, status, priority, requested_by, demand_ref, requested_by_first_name, requested_by_last_name)
+                VALUES ($1, $2, $3, 'SUBMITTED', $4, $5, $6, $7, $8)
+            `, [demandId, tenantId, demand.service_id, demand.priority || 'ROUTINE', demand.requested_by, demandRef, (demand as any).requested_by_first_name || null, (demand as any).requested_by_last_name || null]);
 
             if (demand.items) {
                 for (const item of demand.items) {
@@ -99,27 +102,40 @@ class StockTransferService {
 
         const rows = await tenantQuery(tenantId, sql, params);
         
-        return rows.map(r => ({
-            id: r.id,
-            tenant_id: r.tenant_id,
-            service_id: r.service_id,
-            service_name: r.service_name, // Mapped field
-            demand_ref: r.demand_ref,     // Mapped field
-            status: r.status,
-            priority: r.priority,
-            requested_by: r.requested_by,
-            created_at: r.created_at
-        }));
+        return rows.map(r => {
+            const firstName = r.requested_by_first_name || '';
+            const lastName = r.requested_by_last_name || '';
+            const displayName = (firstName || lastName) ? `${firstName} ${lastName}`.trim() : r.requested_by;
+            return {
+                id: r.id,
+                tenant_id: r.tenant_id,
+                service_id: r.service_id,
+                service_name: r.service_name,
+                demand_ref: r.demand_ref,
+                status: r.status,
+                priority: r.priority,
+                requested_by: displayName,
+                created_at: r.created_at
+            };
+        });
     }
 
     async getDemandDetails(tenantId: string, demandId: string): Promise<StockDemand | null> {
         const rows = await tenantQuery(tenantId, 
-            `SELECT * FROM stock_demands WHERE id = $1 AND tenant_id = $2`, 
+            `SELECT d.*, s.name as service_name 
+             FROM stock_demands d
+             LEFT JOIN services s ON d.service_id = s.id
+             WHERE d.id = $1 AND d.tenant_id = $2`, 
             [demandId, tenantId]
         );
         
         if (rows.length === 0) return null;
         const row = rows[0];
+
+        // Build human-readable requester name
+        const firstName = row.requested_by_first_name || '';
+        const lastName = row.requested_by_last_name || '';
+        const displayName = (firstName || lastName) ? `${firstName} ${lastName}`.trim() : row.requested_by;
 
         // JOIN with locations to get target location name/code
         const items = await tenantQuery(tenantId, 
@@ -134,14 +150,17 @@ class StockTransferService {
             id: row.id,
             tenant_id: row.tenant_id,
             service_id: row.service_id,
+            service_name: row.service_name,
+            demand_ref: row.demand_ref,
             status: row.status,
             priority: row.priority,
-            requested_by: row.requested_by,
+            requested_by: displayName,
             created_at: row.created_at,
             items: items.map(i => ({
-            id: i.id,  // Critical: The demand line's own ID for FK references
+            id: i.id,
             demand_id: i.demand_id,
             product_id: i.product_id,
+            product_name: i.product_name,
             qty_requested: i.qty_requested,
             target_stock_location_id: i.target_stock_location_id,
             target_location_code: i.target_location_code,
@@ -164,11 +183,11 @@ class StockTransferService {
      */
     async claimDemand(tenantId: string, demandId: string, userId: string): Promise<void> {
         return tenantTransaction(tenantId, async (client) => {
-            // Join users to get name of claimer (columns are nom/prenom, not first_name/last_name)
+            // Join auth.users to get name of claimer
             const res = await client.query(`
-                SELECT sd.processing_status, sd.assigned_user_id, sd.claimed_at, u.username, u.nom, u.prenom
+                SELECT sd.processing_status, sd.assigned_user_id, sd.claimed_at, u.username, u.first_name, u.last_name
                 FROM stock_demands sd
-                LEFT JOIN users u ON u.id = sd.assigned_user_id
+                LEFT JOIN auth.users u ON u.user_id = sd.assigned_user_id
                 WHERE sd.id = $1::uuid AND sd.tenant_id = $2::uuid
                 FOR UPDATE OF sd
             `, [demandId, tenantId]);
@@ -182,8 +201,7 @@ class StockTransferService {
             if (processing_status === 'IN_PROGRESS') {
                 if (assigned_user_id !== userId) {
                     console.warn(`[ClaimDebug] CONFLICT! Assigned=${assigned_user_id} !== Requesting=${userId}`);
-                    // Resolve display name using nom/prenom
-                    const name = row.prenom ? `${row.prenom} ${row.nom || ''}`.trim() : (row.username || 'Utilisateur inconnu');
+                    const name = row.first_name ? `${row.first_name} ${row.last_name || ''}`.trim() : (row.username || 'Utilisateur inconnu');
                     
                     const error: any = new Error(`Demand is already being processed by ${name}`);
                     error.code = 'DEMAND_LOCKED';
@@ -324,7 +342,7 @@ class StockTransferService {
                 await client.query(`
                     INSERT INTO current_stock (tenant_id, product_id, lot, expiry, location_id, qty_units)
                     VALUES ($1, $2, $3, $4, $5, $6)
-                    ON CONFLICT(tenant_id, product_id, lot, location_id) 
+                    ON CONFLICT(tenant_id, product_id, lot, expiry, location_id) 
                     DO UPDATE SET qty_units = current_stock.qty_units + EXCLUDED.qty_units
                 `, [tenantId, line.productId, line.lot, line.expiry, destLocationId, line.qty]);
             }
@@ -481,7 +499,7 @@ class StockTransferService {
                 await client.query(`
                     INSERT INTO current_stock (tenant_id, product_id, lot, expiry, location_id, qty_units)
                     VALUES ($1, $2, $3, $4, $5, $6)
-                    ON CONFLICT(tenant_id, product_id, lot, location_id) 
+                    ON CONFLICT(tenant_id, product_id, lot, expiry, location_id) 
                     DO UPDATE SET qty_units = current_stock.qty_units + EXCLUDED.qty_units
                 `, [tenantId, line.product_id, line.lot, line.expiry, line.destination_location_id, line.qty_transferred]);
 
@@ -509,24 +527,34 @@ class StockTransferService {
         });
     }
 
-    async getTransferHistory(tenantId: string, productId: string): Promise<any[]> {
-        const sql = `
+    async getTransferHistory(tenantId: string, demandId: string, productId?: string): Promise<any[]> {
+        let sql = `
             SELECT 
                 stl.qty_transferred,
                 stl.lot,
+                to_char(stl.expiry, 'YYYY-MM-DD') as expiry,
                 st.validated_at as date,
                 st.id as transfer_id,
-                st.status
+                st.status,
+                sl.name as source_location_name,
+                dl.name as destination_location_name
             FROM stock_transfer_lines stl
             JOIN stock_transfers st ON st.id = stl.transfer_id
+            LEFT JOIN locations sl ON stl.source_location_id = sl.location_id
+            LEFT JOIN locations dl ON stl.destination_location_id = dl.location_id
             WHERE st.tenant_id = $1 
-            AND stl.product_id = $2
-            AND st.status = 'COMPLETED'
-            ORDER BY st.validated_at DESC
-            LIMIT 5
+            AND st.demand_id = $2
         `;
+        const params: any[] = [tenantId, demandId];
+
+        if (productId) {
+            sql += ` AND stl.product_id = $3`;
+            params.push(productId);
+        }
+
+        sql += ` ORDER BY st.validated_at DESC`;
         
-        return tenantQuery(tenantId, sql, [tenantId, productId]);
+        return tenantQuery(tenantId, sql, params);
     }
 }
 

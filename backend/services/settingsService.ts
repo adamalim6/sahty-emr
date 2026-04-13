@@ -276,6 +276,40 @@ export class SettingsService {
         await tenantQuery(tenantId, `UPDATE room_types SET is_active = false WHERE id = $1`, [id]);
     }
 
+    // --- TECHNICAL UNIT TYPES (Plateaux Techniques) ---
+
+    async getTechnicalUnitTypes(tenantId: string) {
+        const rows = await tenantQuery(tenantId,
+            `SELECT * FROM technical_unit_types WHERE is_active = true ORDER BY name`, []);
+        return rows.map(r => ({ id: r.id, name: r.name, code: r.code, description: r.description, icon: r.icon }));
+    }
+
+    async createTechnicalUnitType(tenantId: string, data: { name: string; code?: string; description?: string; icon?: string }) {
+        const rows = await tenantQuery(tenantId, `
+            INSERT INTO technical_unit_types (name, code, description, icon)
+            VALUES ($1, $2, $3, $4)
+            RETURNING *
+        `, [data.name, data.code || null, data.description || null, data.icon || null]);
+        const r = rows[0];
+        return { id: r.id, name: r.name, code: r.code, description: r.description, icon: r.icon };
+    }
+
+    async updateTechnicalUnitType(tenantId: string, id: string, data: { name: string; code?: string; description?: string; icon?: string }) {
+        const rows = await tenantQuery(tenantId, `
+            UPDATE technical_unit_types
+            SET name = $2, code = $3, description = $4, icon = $5, updated_at = NOW()
+            WHERE id = $1 AND is_active = true
+            RETURNING *
+        `, [id, data.name, data.code || null, data.description || null, data.icon || null]);
+        if (rows.length === 0) throw new Error('Technical unit type not found');
+        const r = rows[0];
+        return { id: r.id, name: r.name, code: r.code, description: r.description, icon: r.icon };
+    }
+
+    async deleteTechnicalUnitType(tenantId: string, id: string): Promise<void> {
+        await tenantQuery(tenantId, `UPDATE technical_unit_types SET is_active = false WHERE id = $1`, [id]);
+    }
+
     // --- SERVICE UNITS & ROOMS ---
     
     async getRooms(tenantId: string): Promise<Room[]> {

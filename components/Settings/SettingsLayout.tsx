@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { Users, LayoutGrid, BedDouble, DollarSign, LogOut, Shield } from 'lucide-react';
+import { Users, LayoutGrid, BedDouble, DollarSign, LogOut, Shield, Server, Link2, Cpu } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export const SettingsLayout: React.FC = () => {
@@ -32,6 +32,10 @@ export const SettingsLayout: React.FC = () => {
                         <BedDouble size={20} />
                         <span>Chambres</span>
                     </NavLink>
+                    <NavLink to="/settings/plateaux-techniques" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700 hover:text-white'}`}>
+                        <Cpu size={20} />
+                        <span>Plateaux Techniques</span>
+                    </NavLink>
                     <NavLink to="/settings/pricing" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700 hover:text-white'}`}>
                         <DollarSign size={20} />
                         <span>Actes & Prix</span>
@@ -44,6 +48,16 @@ export const SettingsLayout: React.FC = () => {
                         {/* Use FileText or similar. Importing from lucide-react should work if it's there. Just use a generic icon class for now since FileText isn't imported from lucide-react in this exact block, wait let's check top of file. */}
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
                         <span>Smart Phrases</span>
+                    </NavLink>
+                    
+                    <div className="pt-4 pb-2 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Intégrations</div>
+                    <NavLink to="/settings/external-systems" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700 hover:text-white'}`}>
+                        <Server size={20} />
+                        <span>Systèmes Externes</span>
+                    </NavLink>
+                    <NavLink to="/settings/act-external-codes" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700 hover:text-white'}`}>
+                        <Link2 size={20} />
+                        <span>Actes & Codes Externes</span>
                     </NavLink>
                 </nav>
 

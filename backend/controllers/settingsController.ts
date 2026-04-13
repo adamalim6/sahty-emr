@@ -236,6 +236,48 @@ export const deleteRoom = async (req: AuthRequest, res: Response) => {
     }
 };
 
+// --- Technical Unit Types (Plateaux Techniques) ---
+
+export const getTechnicalUnitTypes = async (req: AuthRequest, res: Response) => {
+    try {
+        const { tenantId } = getContext(req);
+        const types = await settingsService.getTechnicalUnitTypes(tenantId);
+        res.json(types);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const createTechnicalUnitType = async (req: AuthRequest, res: Response) => {
+    try {
+        const { tenantId } = getContext(req);
+        const created = await settingsService.createTechnicalUnitType(tenantId, req.body);
+        res.status(201).json(created);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const updateTechnicalUnitType = async (req: AuthRequest, res: Response) => {
+    try {
+        const { tenantId } = getContext(req);
+        const updated = await settingsService.updateTechnicalUnitType(tenantId, req.params.id, req.body);
+        res.json(updated);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+export const deleteTechnicalUnitType = async (req: AuthRequest, res: Response) => {
+    try {
+        const { tenantId } = getContext(req);
+        await settingsService.deleteTechnicalUnitType(tenantId, req.params.id);
+        res.json({ success: true });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 // --- Pricing ---
 export const getPricing = async (req: AuthRequest, res: Response) => {
     try {

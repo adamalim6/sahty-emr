@@ -153,4 +153,19 @@ router.post('/patients/:tenantPatientId/transfusions/bags', requireTenant, creat
 router.post('/transfusions/bags/:id/discard', requireTenant, discardBloodBag);
 router.get('/patients/:tenantPatientId/transfusions/timeline', requireTenant, getTransfusionTimeline);
 
+// --- ECG & Echo ---
+import { listECGs, createECG, updateECG, deleteECG, enterECGInError, listEchos, createEcho, updateEcho, deleteEcho, enterEchoInError } from '../controllers/ecgEchoController';
+
+router.get('/patients/:patientId/ecg',                   requireTenant, listECGs);
+router.post('/patients/:patientId/ecg',                  requireTenant, createECG);
+router.put('/patients/:patientId/ecg/:ecgId',            requireTenant, updateECG);
+router.delete('/patients/:patientId/ecg/:ecgId',         requireTenant, deleteECG);
+router.post('/patients/:patientId/ecg/:ecgId/entered-in-error', requireTenant, enterECGInError);
+
+router.get('/patients/:patientId/echo',                    requireTenant, listEchos);
+router.post('/patients/:patientId/echo',                   requireTenant, createEcho);
+router.put('/patients/:patientId/echo/:echoId',            requireTenant, updateEcho);
+router.delete('/patients/:patientId/echo/:echoId',         requireTenant, deleteEcho);
+router.post('/patients/:patientId/echo/:echoId/entered-in-error', requireTenant, enterEchoInError);
+
 export default router;

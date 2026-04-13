@@ -475,6 +475,7 @@ export const QuarantineManager: React.FC<QuarantineManagerProps> = ({
                                                          value={batch.locationId}
                                                          onChange={(e) => updateBatch(item.productId, idx, 'locationId', e.target.value)}
                                                       >
+                                                         <option value="">-- Emplacement --</option>
                                                          {locations.filter(l => l.scope === 'PHARMACY' && l.isActive !== false).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                                                       </select>
                                                    </div>

@@ -754,6 +754,7 @@ export class PrescriptionService {
 
         // ---------------------------------------------------------
         // UNIVERSAL WIPE FOR REFUSALS AND BOLUS
+        // Biology exemption: multiple collection attempts coexist
         // ---------------------------------------------------------
         if (internalActionType === 'refused' || internalActionType === 'administered') {
             const findExactQuery = `
@@ -770,13 +771,24 @@ export class PrescriptionService {
                 return this.getEventById(tenantId, exactRes[0].id);
             }
 
-            const wipeAllQuery = `
-                UPDATE administration_events
-                SET status = 'CANCELLED', cancellation_reason = 'Superseded by overriding state'
-                WHERE prescription_event_id = $1
-                  AND status = 'ACTIVE'
-            `;
-            await tenantQuery(tenantId, wipeAllQuery, [prescriptionEventId]);
+            // Biology exemption: do NOT cancel prior collection attempts
+            const biologyCheckRes = await tenantQuery<{is_biology: boolean}>(tenantId, `
+                SELECT p.prescription_type = 'biology' AS is_biology
+                FROM prescription_events pe
+                JOIN prescriptions p ON p.id = pe.prescription_id
+                WHERE pe.id = $1
+            `, [prescriptionEventId]);
+            const isBiology = biologyCheckRes.length > 0 && biologyCheckRes[0].is_biology;
+
+            if (!isBiology) {
+                const wipeAllQuery = `
+                    UPDATE administration_events
+                    SET status = 'CANCELLED', cancellation_reason = 'Superseded by overriding state'
+                    WHERE prescription_event_id = $1
+                      AND status = 'ACTIVE'
+                `;
+                await tenantQuery(tenantId, wipeAllQuery, [prescriptionEventId]);
+            }
             linkedEventId = null;
         }
 
@@ -1232,6 +1244,7 @@ export class PrescriptionService {
 
         // ---------------------------------------------------------
         // UNIVERSAL WIPE FOR REFUSALS AND BOLUS
+        // Biology exemption: multiple collection attempts coexist
         // ---------------------------------------------------------
         if (internalActionType === 'refused' || internalActionType === 'administered') {
             const findExactQuery = `
@@ -1248,13 +1261,24 @@ export class PrescriptionService {
                 return exactRes.rows[0];
             }
 
-            const wipeAllQuery = `
-                UPDATE administration_events
-                SET status = 'CANCELLED', cancellation_reason = 'Superseded by overriding state'
-                WHERE prescription_event_id = $1
-                  AND status = 'ACTIVE'
-            `;
-            await client.query(wipeAllQuery, [prescriptionEventId]);
+            // Biology exemption: do NOT cancel prior collection attempts
+            const biologyCheckRes = await client.query(`
+                SELECT p.prescription_type = 'biology' AS is_biology
+                FROM prescription_events pe
+                JOIN prescriptions p ON p.id = pe.prescription_id
+                WHERE pe.id = $1
+            `, [prescriptionEventId]);
+            const isBiology = biologyCheckRes.rows.length > 0 && biologyCheckRes.rows[0].is_biology;
+
+            if (!isBiology) {
+                const wipeAllQuery = `
+                    UPDATE administration_events
+                    SET status = 'CANCELLED', cancellation_reason = 'Superseded by overriding state'
+                    WHERE prescription_event_id = $1
+                      AND status = 'ACTIVE'
+                `;
+                await client.query(wipeAllQuery, [prescriptionEventId]);
+            }
             linkedEventId = null;
         }
 

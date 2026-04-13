@@ -1,23 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Edit2, Info, FileText, FilePlus, ShieldAlert } from 'lucide-react';
+import { Plus, Edit2, Info, FileText, FilePlus, ShieldAlert, AlertTriangle } from 'lucide-react';
 import { api } from '../../services/api';
 
 
 
 export interface ObservationRecord {
     id: string;
-    note_type: 'ADMISSION' | 'PROGRESS' | 'DISCHARGE' | 'CONSULT' | 'GENERAL';
+    note_type: 'ADMISSION' | 'PROGRESS' | 'DISCHARGE' | 'CONSULT' | 'GENERAL' | 'INTERP_ECG' | 'INTERP_ECHO';
     privacy_level: 'NORMAL' | 'SENSITIVE' | 'RESTRICTED';
     author_role: 'DOCTOR' | 'NURSE';
-    status: 'DRAFT' | 'SIGNED';
+    status: 'DRAFT' | 'SIGNED' | 'ENTERED_IN_ERROR';
     declared_time: string;
     created_at: string;
     author_first_name?: string;
     author_last_name?: string;
-    created_by: string; // uuid
+    created_by: string;
     parent_observation_id?: string;
     body_html: string;
     body_plain: string;
+    entered_in_error_by?: string;
+    entered_in_error_at?: string;
+    entered_in_error_reason?: string;
 }
 
 interface ObservationsProps {
@@ -162,13 +165,28 @@ export const Observations: React.FC<ObservationsProps> = ({ patientId, isActiveW
                     <div className="space-y-4">
                         {primaryNotes.map(note => {
                             const isDraft = note.status === 'DRAFT';
+                            const isEnteredInError = note.status === 'ENTERED_IN_ERROR';
                             const noteAddendums = addendums.filter(a => a.parent_observation_id === note.id);
                             const isExpanded = expandedNotes.has(note.id);
                             const previewText = note.body_plain.slice(0, 300) + (note.body_plain.length > 300 ? '...' : '');
                             const needsExpansion = note.body_plain.length > 300 || noteAddendums.length > 0;
 
                             return (
-                                <div key={note.id} className={`bg-white border rounded-xl shadow-sm overflow-hidden transition-all ${isDraft ? 'border-amber-300' : 'border-gray-200 hover:border-gray-300'}`}>
+                                <div key={note.id} className={`bg-white border rounded-xl shadow-sm overflow-hidden transition-all ${
+                                    isEnteredInError ? 'border-red-300 opacity-60' 
+                                    : isDraft ? 'border-amber-300' 
+                                    : 'border-gray-200 hover:border-gray-300'
+                                }`}>
+                                    {/* Entered in Error Banner */}
+                                    {isEnteredInError && (
+                                        <div className="bg-red-50 border-b border-red-200 px-4 py-2 flex items-center gap-2">
+                                            <ShieldAlert size={13} className="text-red-500 shrink-0" />
+                                            <span className="text-xs font-bold text-red-700 uppercase tracking-wide">Saisi par erreur</span>
+                                            {note.entered_in_error_reason && (
+                                                <span className="text-xs text-red-600 ml-1">— {note.entered_in_error_reason}</span>
+                                            )}
+                                        </div>
+                                    )}
                                     {/* Header */}
                                     <div className="px-4 py-3 bg-gray-50/50 border-b border-gray-100 flex justify-between items-start">
                                         <div className="flex items-start gap-3">
@@ -187,9 +205,14 @@ export const Observations: React.FC<ObservationsProps> = ({ patientId, isActiveW
                                                     <span className="text-xs text-gray-400">&bull;</span>
                                                     <span className="text-xs font-medium text-gray-500">{formatDateTime(note.declared_time)}</span>
                                                     {isDraft && <span className="text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">Brouillon</span>}
+                                                    {isEnteredInError && <span className="text-[10px] font-bold uppercase tracking-wide bg-red-100 text-red-700 px-1.5 py-0.5 rounded">Erreur</span>}
                                                 </div>
                                                 <div className="flex items-center gap-1.5">
-                                                    <span className="text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-600 border border-gray-200 px-1.5 py-0.5 rounded-sm">{note.note_type}</span>
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-600 border border-gray-200 px-1.5 py-0.5 rounded-sm">
+                                                        {note.note_type === 'INTERP_ECG' ? 'Interp. ECG'
+                                                          : note.note_type === 'INTERP_ECHO' ? 'Interp. Écho'
+                                                          : note.note_type}
+                                                    </span>
                                                     {note.privacy_level !== 'NORMAL' && <span className="text-[10px] uppercase font-bold text-rose-600 border border-rose-200 bg-rose-50 px-1.5 py-0.5 rounded-sm"><ShieldAlert size={10} className="inline mr-1 pb-[1px]"/>{note.privacy_level}</span>}
                                                 </div>
                                             </div>
@@ -199,13 +222,30 @@ export const Observations: React.FC<ObservationsProps> = ({ patientId, isActiveW
                                                 <button onClick={() => openEditDraft(note)} className="text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-md transition-colors flex items-center border border-blue-200">
                                                     <Edit2 size={12} className="mr-1.5"/> Reprendre
                                                 </button>
-                                            ) : (
+                                            ) : isEnteredInError ? null : (
                                                 <>
                                                     <button onClick={() => openViewOnly(note)} className="text-gray-400 hover:text-gray-700 bg-white border border-gray-200 px-2.5 py-1.5 rounded-md hover:bg-gray-50 transition-colors" title="Détails">
                                                         <Info size={14} />
                                                     </button>
-                                                    <button onClick={() => openAddendum(note)} className="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-md transition-colors flex items-center border border-indigo-200">
-                                                        <FilePlus size={12} className="mr-1.5"/> Addendum
+                                                    {/* Only offer addendum on non-auto notes */}
+                                                    {note.note_type !== 'INTERP_ECG' && note.note_type !== 'INTERP_ECHO' && (
+                                                        <button onClick={() => openAddendum(note)} className="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-md transition-colors flex items-center border border-indigo-200">
+                                                            <FilePlus size={12} className="mr-1.5"/> Addendum
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={async () => {
+                                                            const reason = window.prompt('Raison de la saisie par erreur (optionnel):') ?? undefined;
+                                                            if (reason === null) return; // cancelled
+                                                            try {
+                                                                await api.enterObservationInError(note.id, reason || undefined);
+                                                                loadObservations();
+                                                            } catch(e: any) { alert(e.message); }
+                                                        }}
+                                                        className="text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-md transition-colors flex items-center border border-red-200"
+                                                        title="Marquer comme saisi par erreur"
+                                                    >
+                                                        <AlertTriangle size={12} className="mr-1"/> Erreur
                                                     </button>
                                                 </>
                                             )}

@@ -2,9 +2,12 @@ import React, { useState } from 'react';
 import DemandBuilder from './DemandBuilder';
 import DemandList from './DemandList';
 import { Send, History, Boxes } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 
 const ServiceStockManager: React.FC = () => {
-    const [activeTab, setActiveTab] = useState<'request' | 'history'>('request');
+    const location = useLocation();
+    const initialTab = (location.state as any)?.tab === 'history' ? 'history' : 'request';
+    const [activeTab, setActiveTab] = useState<'request' | 'history'>(initialTab);
 
     return (
         <div className="space-y-6">

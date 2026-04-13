@@ -26,9 +26,15 @@ export const stockTransferController = {
     async createDemand(req: Request, res: Response) {
         try {
             const tenantId = getTenantId(req as any);
-            const userId = (req as any).user?.userId;
-            // Use authenticated user's ID instead of whatever is passed in body
-            const demandData = { ...req.body, requested_by: userId };
+            const userId = (req as any).auth?.userId || (req as any).user?.userId;
+            const firstName = (req as any).auth?.firstName || '';
+            const lastName = (req as any).auth?.lastName || '';
+            const demandData = { 
+                ...req.body, 
+                requested_by: userId,
+                requested_by_first_name: firstName,
+                requested_by_last_name: lastName
+            };
             const demandId = await stockTransferService.createDemand(tenantId, demandData);
             res.status(201).json({ id: demandId });
         } catch (error: any) {
@@ -79,7 +85,7 @@ export const stockTransferController = {
         try {
             const tenantId = getTenantId(req as any);
             const { demandId } = req.params;
-            const userId = (req as any).user?.userId;
+            const userId = (req as any).auth?.userId || (req as any).user?.userId;
             console.log(`[ClaimDemand] Request: tenant=${tenantId}, demand=${demandId}, user=${userId}`);
             await stockTransferService.claimDemand(tenantId, demandId, userId);
             console.log(`[ClaimDemand] Success: demand=${demandId}`);
@@ -154,8 +160,9 @@ export const stockTransferController = {
     async getTransferHistory(req: Request, res: Response) {
         try {
             const tenantId = getTenantId(req as any);
-            const { productId } = req.params;
-            const history = await stockTransferService.getTransferHistory(tenantId, productId);
+            const { demandId } = req.params;
+            const productId = req.query.productId as string | undefined;
+            const history = await stockTransferService.getTransferHistory(tenantId, demandId, productId);
             res.json(history);
         } catch (error: any) {
             console.error('Error fetching transfer history:', error);

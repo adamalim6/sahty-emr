@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { Settings, FolderTree, Layers, Beaker, LogOut, ChevronLeft, ChevronRight, Menu, UserPlus, Droplet } from 'lucide-react';
+import { Settings, FolderTree, Layers, Beaker, LogOut, ChevronLeft, ChevronRight, Menu, UserPlus, Droplet, ScanLine } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export const LIMSLayout = () => {
@@ -48,6 +48,15 @@ export const LIMSLayout = () => {
                     >
                         <Droplet size={18} className="shrink-0" />
                         <span className={`whitespace-nowrap overflow-hidden transition-all duration-300 ${isCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100 w-auto'}`}>Prélèvement</span>
+                    </NavLink>
+
+                    <NavLink 
+                        to="/lims/reception" 
+                        title="Réception"
+                        className={({isActive}) => `flex items-center space-x-3 py-2 rounded-lg transition-colors ${isCollapsed ? 'px-0 justify-center' : 'px-3'} ${isActive ? 'bg-emerald-50 text-emerald-700 font-medium' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}
+                    >
+                        <ScanLine size={18} className="shrink-0" />
+                        <span className={`whitespace-nowrap overflow-hidden transition-all duration-300 ${isCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100 w-auto'}`}>Réception</span>
                     </NavLink>
 
                     <NavLink 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import ReactDOM from 'react-dom';
 import { 
   Plus, 
   Activity, 
@@ -10,7 +11,6 @@ import {
   Save, 
   CalendarClock,
   AlertTriangle,
-  FileCheck,
   Stethoscope,
   Paperclip,
   Check,
@@ -21,8 +21,10 @@ import {
   ArrowRightLeft,
   Minimize2,
   Maximize2,
-  Filter
+  Loader2
 } from 'lucide-react';
+import { api } from '../../services/api';
+import { TipTapEditor, editorContentToPlainText } from './ObservationEditorPanel';
 
 // --- Types ECG ---
 
@@ -75,7 +77,10 @@ interface ECGRecord {
   comparison: boolean;
   
   doctor: string;
+  created_by_first_name?: string;
+  created_by_last_name?: string;
   hasAttachment: boolean;
+  recordStatus?: 'DRAFT' | 'VALIDATED' | 'ENTERED_IN_ERROR';
 }
 
 // --- Types ECHO ---
@@ -133,7 +138,10 @@ interface EchoRecord {
   // 9. Conclusion
   conclusion: string;
   doctor: string;
+  created_by_first_name?: string;
+  created_by_last_name?: string;
   hasAttachment: boolean;
+  recordStatus?: 'DRAFT' | 'VALIDATED' | 'ENTERED_IN_ERROR';
 }
 
 interface ValveStatus {
@@ -171,7 +179,8 @@ const INITIAL_ECG: ECGRecord = {
   conclusion: '',
   comparison: false,
   doctor: 'Dr. Alami',
-  hasAttachment: false
+  hasAttachment: false,
+  recordStatus: undefined
 };
 
 const INITIAL_VALVE: ValveStatus = { status: 'Normale', type: [], severity: 'Minime' };
@@ -207,7 +216,8 @@ const INITIAL_ECHO: EchoRecord = {
   autreAnomalie: '',
   conclusion: '',
   doctor: 'Dr. Alami',
-  hasAttachment: false
+  hasAttachment: false,
+  recordStatus: undefined
 };
 
 // --- Helper Components ---
@@ -639,26 +649,125 @@ const validateClinicalCoherence = (data: ECGRecord): ValidationResult => {
 };
 
 
+// ─── DB row → frontend shape converters ────────────────────────────────────
+
+function rowToECG(r: any): ECGRecord {
+  return {
+    id: r.id,
+    date: r.exam_date?.split('T')[0] ?? r.exam_date,
+    time: r.exam_time?.slice(0, 5) ?? '',
+    type: r.exam_type,
+    position: r.position,
+    speed: (String(r.speed_mm_s ?? 25) === '50' ? '50' : '25') as '25' | '50',
+    quality: r.quality,
+    rhythm: r.rhythm,
+    regularity: r.regularity,
+    pWave: r.p_wave,
+    rhythmDisorders: r.rhythm_disorders ?? ['Aucun'],
+    conductionDisorders: r.conduction_disorders ?? ['Aucun'],
+    repolarization: r.repolarization,
+    repolarizationDetails: r.repolarization_details ?? [],
+    ischemia: r.ischemia,
+    ischemiaType: r.ischemia_type ?? undefined,
+    ischemiaLoc: r.ischemia_locations ?? [],
+    fc: r.fc_bpm != null ? String(r.fc_bpm) : '',
+    pr: r.pr_ms != null ? String(r.pr_ms) : '',
+    qrs: r.qrs_ms != null ? String(r.qrs_ms) : '',
+    qt: r.qt_ms != null ? String(r.qt_ms) : '',
+    qtc: r.qtc_ms != null ? String(r.qtc_ms) : '',
+    axisP: r.axis_p_deg != null ? String(r.axis_p_deg) : '',
+    axisQRS: r.axis_qrs_deg != null ? String(r.axis_qrs_deg) : '',
+    axisT: r.axis_t_deg != null ? String(r.axis_t_deg) : '',
+    otherAnomalies: r.other_anomalies ?? '',
+    conclusion: r.conclusion_html ?? r.conclusion_plain ?? '',
+    comparison: false,
+    doctor: r.doctor ?? '',
+    created_by_first_name: r.created_by_first_name ?? undefined,
+    created_by_last_name: r.created_by_last_name ?? undefined,
+    hasAttachment: r.has_attachment ?? false,
+    recordStatus: r.status ?? 'VALIDATED',
+  };
+}
+
+function rowToEcho(r: any): EchoRecord {
+  return {
+    id: r.id,
+    date: r.exam_date?.split('T')[0] ?? r.exam_date,
+    time: r.exam_time?.slice(0, 5) ?? '',
+    type: r.exam_type,
+    modalities: r.modalities ?? [],
+    fevg: r.fevg_pct != null ? String(r.fevg_pct) : '',
+    gls: r.gls_pct != null ? String(r.gls_pct) : '',
+    mapse: r.mapse_mm != null ? String(r.mapse_mm) : '',
+    dtd_vg: r.dtd_vg_mm != null ? String(r.dtd_vg_mm) : '',
+    dtd_index: r.dtd_index_mm_m2 != null ? String(r.dtd_index_mm_m2) : '',
+    siv: r.siv_mm != null ? String(r.siv_mm) : '',
+    pp: r.pp_mm != null ? String(r.pp_mm) : '',
+    hvg: r.hvg,
+    troubleCinétique: r.trouble_cinetique ?? false,
+    segments: r.segments_cinetique ?? [],
+    tapse: r.tapse_mm != null ? String(r.tapse_mm) : '',
+    fonctionVD: r.fonction_vd,
+    surfaceVD: r.surface_vd_cm2 != null ? String(r.surface_vd_cm2) : '',
+    og_taille: r.og_taille,
+    od_taille: r.od_taille,
+    paps: r.paps_mmhg != null ? String(r.paps_mmhg) : '',
+    vci: r.vci,
+    valves: {
+      mitrale:    { status: r.valve_mitrale_status,    type: r.valve_mitrale_type ?? [],    severity: r.valve_mitrale_severity },
+      aortique:   { status: r.valve_aortique_status,   type: r.valve_aortique_type ?? [],   severity: r.valve_aortique_severity },
+      tricuspide: { status: r.valve_tricuspide_status, type: r.valve_tricuspide_type ?? [], severity: r.valve_tricuspide_severity },
+      pulmonaire: { status: r.valve_pulmonaire_status, type: r.valve_pulmonaire_type ?? [], severity: r.valve_pulmonaire_severity },
+    },
+    pericarde: r.pericarde,
+    thrombus: r.thrombus ?? false,
+    vegetation: r.vegetation ?? false,
+    autreAnomalie: r.autre_anomalie ?? '',
+    conclusion: r.conclusion_html ?? r.conclusion_plain ?? '',
+    doctor: r.doctor ?? '',
+    created_by_first_name: r.created_by_first_name ?? undefined,
+    created_by_last_name: r.created_by_last_name ?? undefined,
+    hasAttachment: r.has_attachment ?? false,
+    recordStatus: r.status ?? 'VALIDATED',
+  };
+}
+
 // --- Main Component ---
 
-export const ElectroEcho: React.FC = () => {
+interface ElectroEchoProps { patientId: string; }
+
+export const ElectroEcho: React.FC<ElectroEchoProps> = ({ patientId }) => {
   // ECG State
   const [ecgs, setEcgs] = useState<ECGRecord[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState<ECGRecord>(INITIAL_ECG);
   const [validation, setValidation] = useState<ValidationResult>({ errors: [], warnings: [] });
-  
+  const [savingECG, setSavingECG] = useState(false);
+
   // Echo State
   const [echos, setEchos] = useState<EchoRecord[]>([]);
   const [isEchoModalOpen, setIsEchoModalOpen] = useState(false);
   const [echoFormData, setEchoFormData] = useState<EchoRecord>(INITIAL_ECHO);
   const [echoValidation, setEchoValidation] = useState<ValidationResult>({ errors: [], warnings: [] });
-  
+  const [savingEcho, setSavingEcho] = useState(false);
+
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Load from backend on mount
+  useEffect(() => {
+    if (!patientId) return;
+    Promise.all([api.getECGs(patientId), api.getEchos(patientId)])
+      .then(([ecgRows, echoRows]) => {
+        setEcgs(ecgRows.map(rowToECG));
+        setEchos(echoRows.map(rowToEcho));
+      })
+      .catch(err => setLoadError(err.message));
+  }, [patientId]);
+
   // Combined Data Logic
   const sortedRecords = useMemo(() => {
     const ecgItems = ecgs.map(item => ({ ...item, entryType: 'ECG' as const }));
     const echoItems = echos.map(item => ({ ...item, entryType: 'ECHO' as const }));
-    
     return [...ecgItems, ...echoItems].sort((a, b) => {
       const dateA = new Date(`${a.date}T${a.time}`);
       const dateB = new Date(`${b.date}T${b.time}`);
@@ -705,18 +814,10 @@ export const ElectroEcho: React.FC = () => {
   // --- Echo Logic Helpers ---
   const handleEchoInputChange = (field: keyof EchoRecord, value: any) => {
     setEchoFormData(prev => {
-      // Clinical rules applied on change
       const d = { ...prev, [field]: value };
-      
-      // Rule: POCUS hides details
       if (field === 'type' && value === 'POCUS') {
-        d.modalities = [];
-        d.gls = '';
-        d.mapse = '';
-        d.dtd_index = '';
-        d.surfaceVD = '';
+        d.modalities = []; d.gls = ''; d.mapse = ''; d.dtd_index = ''; d.surfaceVD = '';
       }
-      
       return d;
     });
   };
@@ -724,80 +825,135 @@ export const ElectroEcho: React.FC = () => {
   const handleValveChange = (valve: keyof EchoRecord['valves'], key: keyof ValveStatus, value: any) => {
     setEchoFormData(prev => ({
       ...prev,
-      valves: {
-        ...prev.valves,
-        [valve]: { ...prev.valves[valve], [key]: value }
-      }
+      valves: { ...prev.valves, [valve]: { ...prev.valves[valve], [key]: value } }
     }));
   };
 
   const isEchoFieldHidden = (field: string) => {
-    if (echoFormData.type === 'POCUS') {
-      return ['gls', 'mapse', 'dtd_index', 'surfaceVD', 'strain'].includes(field);
-    }
+    if (echoFormData.type === 'POCUS') return ['gls', 'mapse', 'dtd_index', 'surfaceVD', 'strain'].includes(field);
     return false;
   };
 
-  // ----------------------------------------
+  useEffect(() => { if (isModalOpen) setValidation(validateClinicalCoherence(formData)); }, [formData, isModalOpen]);
+  useEffect(() => { if (isEchoModalOpen) setEchoValidation(validateEchoCoherence(echoFormData)); }, [echoFormData, isEchoModalOpen]);
 
-  useEffect(() => {
-    if (isModalOpen) setValidation(validateClinicalCoherence(formData));
-  }, [formData, isModalOpen]);
-  
-  useEffect(() => {
-    if (isEchoModalOpen) setEchoValidation(validateEchoCoherence(echoFormData));
-  }, [echoFormData, isEchoModalOpen]);
-
-  // SMART CHANGE HANDLER
   const handleInputChange = (field: keyof ECGRecord, value: any) => {
     setFormData(prev => applyClinicalRules(prev, field, value));
   };
 
-  const handleSave = () => {
-    if (validation.errors.length > 0) return;
-    if (formData.id) {
-       setEcgs(prev => prev.map(item => item.id === formData.id ? formData : item));
+  // ─── Save ECG (validate or draft) ────────────────────────────────────────
+  const saveECGInternal = async (asDraft: boolean) => {
+    if (!asDraft && validation.errors.length > 0) return;
+    setSavingECG(true);
+    try {
+      const conclusionHtml = formData.conclusion || '<p></p>';
+      const conclusionPlain = editorContentToPlainText(conclusionHtml);
+      const payload = { ...formData, conclusionHtml, conclusionPlain, status: asDraft ? 'DRAFT' : 'VALIDATED' };
+      if (formData.id) {
+        const updated = await api.updateECG(patientId, formData.id, payload);
+        setEcgs(prev => prev.map(e => e.id === formData.id ? rowToECG(updated) : e));
+      } else {
+        const created = await api.createECG(patientId, payload);
+        setEcgs(prev => [rowToECG(created), ...prev]);
+      }
+      setIsModalOpen(false);
+      setFormData(INITIAL_ECG);
+    } catch (err: any) {
+      alert('Erreur lors de la sauvegarde: ' + err.message);
+    } finally {
+      setSavingECG(false);
+    }
+  };
+
+  const handleSave = () => saveECGInternal(false);
+  const handleSaveDraftECG = () => saveECGInternal(true);
+
+  // ─── Save Echo (validate or draft) ─────────────────────────────────────
+  const saveEchoInternal = async (asDraft: boolean) => {
+    if (!asDraft && echoValidation.errors.length > 0) return;
+    setSavingEcho(true);
+    try {
+      const conclusionHtml = echoFormData.conclusion || '<p></p>';
+      const conclusionPlain = editorContentToPlainText(conclusionHtml);
+      const payload = { ...echoFormData, conclusionHtml, conclusionPlain, status: asDraft ? 'DRAFT' : 'VALIDATED' };
+      if (echoFormData.id) {
+        const updated = await api.updateEcho(patientId, echoFormData.id, payload);
+        setEchos(prev => prev.map(e => e.id === echoFormData.id ? rowToEcho(updated) : e));
+      } else {
+        const created = await api.createEcho(patientId, payload);
+        setEchos(prev => [rowToEcho(created), ...prev]);
+      }
+      setIsEchoModalOpen(false);
+      setEchoFormData(INITIAL_ECHO);
+    } catch (err: any) {
+      alert('Erreur lors de la sauvegarde: ' + err.message);
+    } finally {
+      setSavingEcho(false);
+    }
+  };
+
+  const handleSaveEcho = () => saveEchoInternal(false);
+  const handleSaveDraftEcho = () => saveEchoInternal(true);
+
+  // ─── Auto-save draft on close ──────────────────────────────────────────
+  const isECGFormDirty = useCallback(() => {
+    return formData.conclusion !== INITIAL_ECG.conclusion
+      || formData.fc !== INITIAL_ECG.fc
+      || formData.rhythm !== INITIAL_ECG.rhythm
+      || formData.type !== INITIAL_ECG.type
+      || formData.repolarization !== INITIAL_ECG.repolarization
+      || formData.ischemia !== INITIAL_ECG.ischemia
+      || !formData.rhythmDisorders.every((v, i) => v === INITIAL_ECG.rhythmDisorders[i])
+      || !formData.conductionDisorders.every((v, i) => v === INITIAL_ECG.conductionDisorders[i]);
+  }, [formData]);
+
+  const isEchoFormDirty = useCallback(() => {
+    return echoFormData.conclusion !== INITIAL_ECHO.conclusion
+      || echoFormData.fevg !== INITIAL_ECHO.fevg
+      || echoFormData.dtd_vg !== INITIAL_ECHO.dtd_vg
+      || echoFormData.tapse !== INITIAL_ECHO.tapse
+      || echoFormData.type !== INITIAL_ECHO.type
+      || echoFormData.fonctionVD !== INITIAL_ECHO.fonctionVD
+      || echoFormData.paps !== INITIAL_ECHO.paps;
+  }, [echoFormData]);
+
+  const handleCloseECGModal = async () => {
+    // If editing an existing record (already saved), or form has been modified → auto-save as draft
+    if (formData.id || isECGFormDirty()) {
+      await saveECGInternal(true);
     } else {
-       const newRecord = { ...formData, id: Date.now().toString() };
-       setEcgs(prev => [newRecord, ...prev]);
+      setIsModalOpen(false);
+      setFormData(INITIAL_ECG);
     }
-    setIsModalOpen(false);
-    setFormData(INITIAL_ECG);
   };
 
-  const handleSaveEcho = () => {
-    if (echoValidation.errors.length > 0) return;
-    if (echoFormData.id) {
-      setEchos(prev => prev.map(item => item.id === echoFormData.id ? echoFormData : item));
+  const handleCloseEchoModal = async () => {
+    if (echoFormData.id || isEchoFormDirty()) {
+      await saveEchoInternal(true);
     } else {
-      const newRecord = { ...echoFormData, id: Date.now().toString() };
-      setEchos(prev => [newRecord, ...prev]);
+      setIsEchoModalOpen(false);
+      setEchoFormData(INITIAL_ECHO);
     }
-    setIsEchoModalOpen(false);
-    setEchoFormData(INITIAL_ECHO);
   };
 
-  const handleEdit = (record: ECGRecord) => {
-     setFormData(record);
-     setIsModalOpen(true);
-  };
-  
-  const handleEditEcho = (record: EchoRecord) => {
-    setEchoFormData(record);
-    setIsEchoModalOpen(true);
+  const handleEdit = (record: ECGRecord) => { setFormData(record); setIsModalOpen(true); };
+  const handleEditEcho = (record: EchoRecord) => { setEchoFormData(record); setIsEchoModalOpen(true); };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer cet ECG ?')) return;
+    try {
+      await api.deleteECG(patientId, id);
+      setEcgs(prev => prev.filter(e => e.id !== id));
+    } catch (err: any) { alert('Erreur: ' + err.message); }
   };
 
-  const handleDelete = (id: string) => {
-     if (window.confirm("Êtes-vous sûr de vouloir supprimer cet ECG ?")) {
-        setEcgs(prev => prev.filter(e => e.id !== id));
-     }
+  const handleDeleteEcho = async (id: string) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer cet Écho ?')) return;
+    try {
+      await api.deleteEcho(patientId, id);
+      setEchos(prev => prev.filter(e => e.id !== id));
+    } catch (err: any) { alert('Erreur: ' + err.message); }
   };
-
-  const handleDeleteEcho = (id: string) => {
-    if (window.confirm("Êtes-vous sûr de vouloir supprimer cet Écho ?")) {
-       setEchos(prev => prev.filter(e => e.id !== id));
-    }
- };
 
   return (
     <div className="min-h-[500px] relative">
@@ -838,7 +994,7 @@ export const ElectroEcho: React.FC = () => {
               if (record.entryType === 'ECG') {
                 const ecg = record as ECGRecord;
                 return (
-                  <div key={`ecg-${ecg.id}`} className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col">
+                  <div key={`ecg-${ecg.id}`} className={`bg-white rounded-xl border shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col ${ecg.recordStatus === 'DRAFT' ? 'border-amber-200 border-dashed' : 'border-gray-200'}`}>
                       <div className="bg-gray-50 px-4 py-3 border-b border-gray-100 flex justify-between items-center">
                         <div className="flex items-center gap-3">
                             <div className={`p-2 rounded-lg ${ecg.ischemia === 'Presente' ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>
@@ -848,6 +1004,7 @@ export const ElectroEcho: React.FC = () => {
                                 <div className="flex items-center gap-2">
                                     <span className="font-bold text-gray-900 text-lg">{ecg.rhythm}</span>
                                     <span className="text-xs px-2 py-0.5 rounded-full bg-white border border-gray-200 text-gray-500 font-medium">{ecg.type}</span>
+                                    {ecg.recordStatus === 'DRAFT' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200 font-bold uppercase">Brouillon</span>}
                                 </div>
                                 <div className="text-xs text-gray-500 flex items-center gap-2">
                                     <span>{new Date(ecg.date).toLocaleDateString()} à {ecg.time}</span>
@@ -949,12 +1106,20 @@ export const ElectroEcho: React.FC = () => {
                             <FileText size={16} className="text-slate-400 mt-0.5 shrink-0" />
                             <div className="flex-1">
                                 <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Conclusion</span>
-                                <p className="text-sm text-slate-800 font-medium leading-relaxed">{ecg.conclusion || <span className="italic text-gray-400">...</span>}</p>
+                                {ecg.conclusion
+                                    ? <div className="text-sm text-slate-800 font-medium leading-relaxed prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: ecg.conclusion }} />
+                                    : <span className="italic text-gray-400">...</span>
+                                }
                             </div>
                         </div>
                         <div className="mt-3 pt-3 border-t border-gray-200 flex justify-between items-center text-xs">
                             <div className="flex items-center gap-3">
-                                <span className="bg-white border border-gray-200 px-2 py-0.5 rounded text-gray-600 font-medium flex items-center"><Stethoscope size={10} className="mr-1"/> Dr. {ecg.doctor}</span>
+                                {(ecg.created_by_first_name || ecg.created_by_last_name)
+                                    ? <span className="bg-white border border-gray-200 px-2 py-0.5 rounded text-gray-600 font-medium flex items-center"><Stethoscope size={10} className="mr-1"/> Dr. {ecg.created_by_last_name}</span>
+                                    : ecg.doctor
+                                        ? <span className="bg-white border border-gray-200 px-2 py-0.5 rounded text-gray-600 font-medium flex items-center"><Stethoscope size={10} className="mr-1"/> Dr. {ecg.doctor}</span>
+                                        : null
+                                }
                             </div>
                             <div className="flex items-center gap-2">
                             {ecg.hasAttachment && <span className="text-indigo-600 font-bold flex items-center cursor-pointer hover:underline bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 mr-2"><Paperclip size={10} className="mr-1"/> PDF</span>}
@@ -970,7 +1135,7 @@ export const ElectroEcho: React.FC = () => {
               } else {
                 const echo = record as EchoRecord;
                 return (
-                  <div key={`echo-${echo.id}`} className="bg-white rounded-xl border border-indigo-100 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col">
+                  <div key={`echo-${echo.id}`} className={`bg-white rounded-xl border shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col ${echo.recordStatus === 'DRAFT' ? 'border-amber-200 border-dashed' : 'border-indigo-100'}`}>
                     <div className="bg-indigo-50/50 px-4 py-3 border-b border-indigo-100 flex justify-between items-center">
                       <div className="flex items-center gap-3">
                           <div className="p-2 rounded-lg bg-indigo-100 text-indigo-600">
@@ -979,6 +1144,7 @@ export const ElectroEcho: React.FC = () => {
                           <div>
                               <div className="flex items-center gap-2">
                                   <span className="font-bold text-gray-900 text-lg">Echo {echo.type}</span>
+                                  {echo.recordStatus === 'DRAFT' && <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200 font-bold uppercase">Brouillon</span>}
                                   {parseFloat(echo.fevg) < 40 && <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 border border-red-200 font-bold">FEVG {echo.fevg}%</span>}
                               </div>
                               <div className="text-xs text-gray-500 flex items-center gap-2">
@@ -1026,12 +1192,20 @@ export const ElectroEcho: React.FC = () => {
                     </div>
                     
                     <div className="bg-slate-50 px-4 py-3 border-t border-indigo-100">
-                        <p className="text-sm text-slate-800 font-medium leading-relaxed mb-3">
+                        <div className="text-sm text-slate-800 font-medium leading-relaxed mb-3">
                             <span className="font-bold text-indigo-900 mr-2">Conclusion:</span>
-                            {echo.conclusion}
-                        </p>
+                            {echo.conclusion
+                                ? <span className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: echo.conclusion }} />
+                                : <span className="italic text-gray-400">...</span>
+                            }
+                        </div>
                         <div className="flex justify-between items-center text-xs border-t border-gray-200 pt-2">
-                            <span className="font-bold text-gray-500">Dr. {echo.doctor}</span>
+                            {(echo.created_by_first_name || echo.created_by_last_name)
+                                ? <span className="font-bold text-gray-500">Dr. {echo.created_by_last_name}</span>
+                                : echo.doctor
+                                    ? <span className="font-bold text-gray-500">Dr. {echo.doctor}</span>
+                                    : <div />
+                            }
                             <div className="flex items-center gap-1">
                               <button onClick={() => handleEditEcho(echo)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"><Pencil size={14} /></button>
                               <button onClick={() => handleDeleteEcho(echo.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"><Trash2 size={14} /></button>
@@ -1045,9 +1219,9 @@ export const ElectroEcho: React.FC = () => {
           </div>
       )}
 
-      {/* --- ECG MODAL --- */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-2 lg:p-4">
+      {/* --- ECG MODAL (Portal → escapes overflow/z-index ancestors) --- */}
+      {isModalOpen && ReactDOM.createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-2 lg:p-4">
           <div className="bg-gray-50 w-[98vw] lg:w-[95vw] h-[95vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
              {/* ... (Existing ECG Modal Content) ... */}
              <div className="bg-white border-b border-gray-200 px-4 py-3 shrink-0 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -1069,7 +1243,7 @@ export const ElectroEcho: React.FC = () => {
                  </div>
                </div>
                <div className="flex items-center gap-3">
-                 <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-800 p-1"><X size={24} /></button>
+                 <button onClick={handleCloseECGModal} className="text-gray-400 hover:text-gray-800 p-1"><X size={24} /></button>
                </div>
              </div>
 
@@ -1131,26 +1305,43 @@ export const ElectroEcho: React.FC = () => {
                      </div>
                      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col flex-1 min-h-[250px]">
                         <SectionTitle icon={FileText} title="Conclusion" colorClass="text-slate-800" compact />
-                        <textarea value={formData.conclusion} onChange={(e) => handleInputChange('conclusion', e.target.value)} className="w-full flex-1 rounded-lg p-3 text-sm focus:ring-2 focus:ring-emerald-500 border-gray-300 resize-none bg-yellow-50/30 text-gray-900 focus:bg-white transition-colors" placeholder="Rédigez votre conclusion..." />
+                        <div className="flex-1 border border-gray-200 rounded-lg overflow-hidden">
+                          <TipTapEditor
+                            content={formData.conclusion}
+                            onChange={(html) => handleInputChange('conclusion', html)}
+                            patientId={patientId}
+                            editable={true}
+                          />
+                        </div>
                      </div>
                   </div>
                 </div>
              </div>
              
-             <div className="bg-white border-t border-gray-200 px-6 py-4 flex justify-end items-center shrink-0 gap-3">
-                  <button onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Annuler</button>
-                  <button onClick={handleSave} disabled={validation.errors.length > 0} className={`px-8 py-2.5 text-sm font-bold text-white rounded-lg shadow-lg ${validation.errors.length > 0 ? 'bg-gray-400' : 'bg-slate-900 hover:bg-black'}`}>Valider</button>
+             <div className="bg-white border-t border-gray-200 px-6 py-4 flex justify-between items-center shrink-0">
+                  <button onClick={handleCloseECGModal} className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Annuler</button>
+                  <div className="flex gap-3">
+                    <button onClick={handleSaveDraftECG} disabled={savingECG} className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2">
+                      {savingECG && <Loader2 size={14} className="animate-spin" />}
+                      <Save size={14} />
+                      Brouillon
+                    </button>
+                    <button onClick={handleSave} disabled={validation.errors.length > 0 || savingECG} className={`px-8 py-2.5 text-sm font-bold text-white rounded-lg shadow-lg flex items-center gap-2 ${validation.errors.length > 0 || savingECG ? 'bg-gray-400' : 'bg-slate-900 hover:bg-black'}`}>
+                      {savingECG && <Loader2 size={14} className="animate-spin" />}
+                      Valider
+                    </button>
+                  </div>
              </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* --- ECHO MODAL --- */}
-      {isEchoModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-indigo-900/80 backdrop-blur-sm p-2 lg:p-4">
+      {/* --- ECHO MODAL (Portal) --- */}
+      {isEchoModalOpen && ReactDOM.createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-indigo-900/80 backdrop-blur-sm p-2 lg:p-4">
           <div className="bg-gray-50 w-[98vw] lg:w-[95vw] h-[95vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             
-            {/* Header */}
             <div className="bg-white border-b border-gray-200 px-4 py-3 shrink-0 flex flex-col md:flex-row items-center justify-between gap-4">
                <div className="flex items-center gap-4">
                  <div className="bg-indigo-600 p-1.5 rounded text-white"><Waves size={18} /></div>
@@ -1161,14 +1352,12 @@ export const ElectroEcho: React.FC = () => {
                    <input type="time" value={echoFormData.time} onChange={(e) => handleEchoInputChange('time', e.target.value)} className="bg-transparent border-none text-xs font-bold text-gray-700 w-16 p-0 focus:ring-0" />
                  </div>
                </div>
-               <button onClick={() => setIsEchoModalOpen(false)} className="text-gray-400 hover:text-gray-800"><X size={24}/></button>
+               <button onClick={handleCloseEchoModal} className="text-gray-400 hover:text-gray-800"><X size={24}/></button>
             </div>
 
-            {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto p-4 lg:p-6 bg-slate-50/50">
                <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
                  
-                 {/* Left Column (Type & VG) */}
                  <div className="lg:col-span-4 space-y-6">
                     <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                        <SectionTitle icon={ScanLine} title="Type d'examen" colorClass="text-indigo-600" />
@@ -1217,7 +1406,6 @@ export const ElectroEcho: React.FC = () => {
                     </div>
                  </div>
 
-                 {/* Middle Column (VD, Atria, Pressures) */}
                  <div className="lg:col-span-4 space-y-6">
                     <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                        <SectionTitle icon={Minimize2} title="Ventricule Droit" colorClass="text-blue-600" />
@@ -1256,7 +1444,6 @@ export const ElectroEcho: React.FC = () => {
                     </div>
                  </div>
 
-                 {/* Right Column (Valves & Conclusion) */}
                  <div className="lg:col-span-4 space-y-6">
                     <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                        <SectionTitle icon={Activity} title="Valves" colorClass="text-emerald-600" />
@@ -1289,12 +1476,14 @@ export const ElectroEcho: React.FC = () => {
 
                     <div className="bg-indigo-50 p-5 rounded-xl border border-indigo-100 shadow-sm flex flex-col h-[300px]">
                        <SectionTitle icon={FileText} title="Conclusion" colorClass="text-indigo-800" />
-                       <textarea 
-                          value={echoFormData.conclusion} 
-                          onChange={(e) => handleEchoInputChange('conclusion', e.target.value)}
-                          className="flex-1 w-full p-3 rounded-lg border-indigo-200 bg-white text-sm focus:ring-2 focus:ring-indigo-500 resize-none"
-                          placeholder="Synthèse de l'examen..."
-                       />
+                       <div className="flex-1 border border-indigo-200 rounded-lg overflow-hidden bg-white">
+                         <TipTapEditor
+                           content={echoFormData.conclusion}
+                           onChange={(html) => handleEchoInputChange('conclusion', html)}
+                           patientId={patientId}
+                           editable={true}
+                         />
+                       </div>
                        {echoValidation.errors.length > 0 && (
                           <div className="mt-3 bg-red-100 text-red-700 text-xs p-2 rounded border border-red-200 font-medium">
                              {echoValidation.errors[0]}
@@ -1306,14 +1495,24 @@ export const ElectroEcho: React.FC = () => {
                </div>
             </div>
 
-            {/* Footer */}
-            <div className="bg-white border-t border-gray-200 px-6 py-4 flex justify-end gap-3">
-               <button onClick={() => setIsEchoModalOpen(false)} className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Annuler</button>
-               <button onClick={handleSaveEcho} disabled={echoValidation.errors.length > 0} className={`px-8 py-2.5 text-sm font-bold text-white rounded-lg shadow-lg ${echoValidation.errors.length > 0 ? 'bg-gray-400' : 'bg-indigo-600 hover:bg-indigo-700'}`}>Valider</button>
+            <div className="bg-white border-t border-gray-200 px-6 py-4 flex justify-between items-center">
+               <button onClick={handleCloseEchoModal} className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Annuler</button>
+               <div className="flex gap-3">
+                 <button onClick={handleSaveDraftEcho} disabled={savingEcho} className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2">
+                   {savingEcho && <Loader2 size={14} className="animate-spin" />}
+                   <Save size={14} />
+                   Brouillon
+                 </button>
+                 <button onClick={handleSaveEcho} disabled={echoValidation.errors.length > 0 || savingEcho} className={`px-8 py-2.5 text-sm font-bold text-white rounded-lg shadow-lg flex items-center gap-2 ${echoValidation.errors.length > 0 || savingEcho ? 'bg-gray-400' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
+                   {savingEcho && <Loader2 size={14} className="animate-spin" />}
+                   Valider
+                 </button>
+               </div>
             </div>
 
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

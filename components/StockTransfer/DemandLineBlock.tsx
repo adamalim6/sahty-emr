@@ -7,12 +7,13 @@ import toast from 'react-hot-toast';
 interface DemandLineBlockProps {
     demandId: string;
     line: {
-        id: string;  // The demand line's own ID (PK in stock_demand_lines)
-        product_id: string; // The requested product
+        id: string;
+        product_id: string;
         qty_requested: number;
         destination_location_id?: string;
-        target_stock_location_id?: string;  // Intent: where requester wants stock
-        target_location_code?: string;      // Resolved code for display
+        target_stock_location_id?: string;
+        target_location_code?: string;
+        target_location_name?: string;
     };
     sessionId: string;
     cartItems: any[];
@@ -150,12 +151,15 @@ const DemandLineBlock: React.FC<DemandLineBlockProps> = ({ demandId, line, sessi
 
     const loadHistory = async () => {
         try {
-            const data = await api.getTransferHistory(line.product_id);
+            const data = await api.getTransferHistory(demandId, selectedProductId);
             setHistory(data.map((h: any) => ({
                 date: h.date,
                 qty: h.qty_transferred,
-                type: 'Transfert', 
-                product_name: productName // or fetch if needed
+                lot: h.lot,
+                expiry: h.expiry,
+                source: h.source_location_name,
+                destination: h.destination_location_name,
+                status: h.status
             })));
         } catch (e) {
             console.error("Failed to load history", e);
@@ -250,10 +254,10 @@ const DemandLineBlock: React.FC<DemandLineBlockProps> = ({ demandId, line, sessi
                     </div>
                     <div className="text-sm text-slate-500 font-mono">
                         DCI: {selectedProduct?.dci || 'N/A'} • Demandé: {line.qty_requested}
-                        {line.target_location_code && (
+                        {(line.target_location_name || line.target_location_code) && (
                             <span className="ml-2 inline-flex items-center gap-1">
                                 • <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-xs font-bold">
-                                    → {line.target_location_code}
+                                    → {line.target_location_name || line.target_location_code}
                                 </span>
                             </span>
                         )}
@@ -325,18 +329,28 @@ const DemandLineBlock: React.FC<DemandLineBlockProps> = ({ demandId, line, sessi
                     {/* Zone B: History */}
                     <div className="bg-white p-3 rounded border text-sm text-slate-600">
                         <div className="font-bold text-xs uppercase text-slate-400 mb-2 flex items-center gap-1">
-                            <History className="w-3 h-3" /> Historique Récent
+                            <History className="w-3 h-3" /> Historique de Transfert
                         </div>
                         {history.length === 0 ? (
                             <div className="text-slate-400 italic text-xs py-1">Aucun historique de transfert</div>
                         ) : (
-                            history.map((h, idx) => (
-                                <div key={idx} className="flex justify-between py-1 border-b last:border-0 border-slate-50">
-                                    <span>{new Date(h.date).toLocaleDateString()}</span>
-                                    <span>{h.type}</span>
-                                    <span className="font-mono">{h.qty}</span>
-                                </div>
-                            ))
+                            <div className="space-y-1">
+                                {history.map((h, idx) => (
+                                    <div key={idx} className="flex items-center justify-between py-1.5 px-2 border-b last:border-0 border-slate-100 hover:bg-slate-50 rounded text-xs">
+                                        <div className="flex items-center gap-3">
+                                            <span className="font-mono font-bold text-slate-700">Lot #{h.lot}</span>
+                                            {h.expiry && <span className="text-slate-400">Exp: {new Date(h.expiry).toLocaleDateString()}</span>}
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <span className="font-bold text-green-700">{h.qty} U</span>
+                                            <span className="text-slate-400">
+                                                {h.source || '?'} → {h.destination || '?'}
+                                            </span>
+                                            <span className="text-slate-400">{h.date ? new Date(h.date).toLocaleDateString() : ''}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         )}
                     </div>
 
@@ -438,7 +452,7 @@ const DemandLineBlock: React.FC<DemandLineBlockProps> = ({ demandId, line, sessi
                                                 <div className="flex items-center gap-2">
                                                     <div className="text-sm font-medium text-slate-600">
                                                         {formatQty(lot.qtyUnits || lot.qty_units)}
-                                                        <span className="text-xs text-slate-400 ml-1">({lot.location})</span>
+                                                        <span className="text-xs text-slate-400 ml-1">({lot.locationName || lot.location_name || lot.location})</span>
                                                     </div>
                                                     
                                                     {/* Preview Badge */}

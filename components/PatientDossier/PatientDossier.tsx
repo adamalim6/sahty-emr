@@ -351,7 +351,7 @@ export const PatientDossier: React.FC<PatientDossierProps> = ({ patientId, works
     { id: 'Escarres', label: 'Escarres', icon: Activity, component: <Escarres patientId={patient.id} sex={patient.gender} /> },
     { id: 'PrescriptionSortie', label: 'Prescription Externe', icon: LogOut, component: <PrescriptionSortie /> },
     { id: 'Observations', label: 'Observations', icon: FilePenLine, component: <Observations patientId={patient.id} /> },
-    { id: 'Electro', label: 'Electro & Echo', icon: Activity, component: <ElectroEcho /> },
+    { id: 'Electro', label: 'Electro & Echo', icon: Activity, component: <ElectroEcho patientId={patient.id} /> },
     { id: 'Transfusions', label: 'Transfusions', icon: Droplet, component: <Transfusions /> },
     { id: 'Interventions', label: 'Interventions', icon: Scissors, component: <Interventions /> },
     { id: 'Admissions', label: 'Admissions', icon: Bed, component: <Admissions /> },
