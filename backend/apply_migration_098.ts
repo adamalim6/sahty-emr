@@ -20,11 +20,11 @@ async function applyMigration() {
             await tPool.query('BEGIN');
             
             // 1. Add cached_value_type
-            await tPool.query(`ALTER TABLE reference.lab_analyte_contexts ADD COLUMN IF NOT EXISTS cached_value_type TEXT;`);
+            await tPool.query(`ALTER TABLE lab_analyte_contexts ADD COLUMN IF NOT EXISTS cached_value_type TEXT;`);
             
             // 2. Backfill
             const updateRes = await tPool.query(`
-                UPDATE reference.lab_analyte_contexts c
+                UPDATE lab_analyte_contexts c
                 SET cached_value_type = a.value_type
                 FROM reference.lab_analytes a
                 WHERE c.analyte_id = a.id AND c.cached_value_type IS NULL;
@@ -32,17 +32,17 @@ async function applyMigration() {
             console.log(`  -> Backfilled ${updateRes.rowCount} contexts.`);
             
             // 3. Verify
-            const nullCheck = await tPool.query(`SELECT count(id) as c FROM reference.lab_analyte_contexts WHERE cached_value_type IS NULL`);
+            const nullCheck = await tPool.query(`SELECT count(id) as c FROM lab_analyte_contexts WHERE cached_value_type IS NULL`);
             if (parseInt(nullCheck.rows[0].c) > 0) {
                 throw new Error("Backfill incomplete. Null cached_value_type found.");
             }
             
             // 4. Set NOT NULL
-            await tPool.query(`ALTER TABLE reference.lab_analyte_contexts ALTER COLUMN cached_value_type SET NOT NULL;`);
+            await tPool.query(`ALTER TABLE lab_analyte_contexts ALTER COLUMN cached_value_type SET NOT NULL;`);
             
             // 5. Drop constraint and rule_type column
-            await tPool.query(`ALTER TABLE reference.lab_reference_rules DROP CONSTRAINT IF EXISTS lab_reference_rules_rule_type_check;`);
-            await tPool.query(`ALTER TABLE reference.lab_reference_rules DROP COLUMN IF EXISTS rule_type CASCADE;`);
+            await tPool.query(`ALTER TABLE lab_reference_rules DROP CONSTRAINT IF EXISTS lab_reference_rules_rule_type_check;`);
+            await tPool.query(`ALTER TABLE lab_reference_rules DROP COLUMN IF EXISTS rule_type CASCADE;`);
             
             await tPool.query('COMMIT');
             console.log(`  -> Success for ${dbName}`);

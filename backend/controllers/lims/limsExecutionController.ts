@@ -40,7 +40,18 @@ export const limsExecutionController = {
         try {
             const tenantId = (req as any).auth?.tenantId || (req as any).user?.tenant_id;
             const admissionId = req.params.admissionId;
-            const result = await limsExecutionService.getCollectionRequirements(tenantId, admissionId);
+            const filter = (req.query.filter as string) === 'all' ? 'all' : 'pending';
+            const result = await limsExecutionService.getCollectionRequirements(tenantId, admissionId, filter);
+            res.json(result);
+        } catch (e: any) {
+            res.status(500).json({ error: e.message });
+        }
+    },
+
+    async getLabRequestCollectionDetail(req: Request, res: Response) {
+        try {
+            const tenantId = (req as any).auth?.tenantId || (req as any).user?.tenant_id;
+            const result = await limsExecutionService.getLabRequestCollectionDetail(tenantId, req.params.labRequestId);
             res.json(result);
         } catch (e: any) {
             res.status(500).json({ error: e.message });

@@ -12,8 +12,8 @@ async function main() {
         console.log("Fetching a random lab_analyte_context_id that has rules...");
         const ctxRes = await client.query(`
             SELECT p.analyte_context_id, p.id as profile_id, r.lower_numeric, r.upper_numeric 
-            FROM reference.lab_reference_rules r
-            JOIN reference.lab_reference_profiles p ON p.id = r.profile_id
+            FROM lab_reference_rules r
+            JOIN lab_reference_profiles p ON p.id = r.profile_id
             WHERE r.interpretation = 'NORMAL' AND r.lower_numeric IS NOT NULL AND r.upper_numeric IS NOT NULL
             LIMIT 1
         `);

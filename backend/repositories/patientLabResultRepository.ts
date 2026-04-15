@@ -50,7 +50,7 @@ export class PatientLabResultRepository {
                     COALESCE(plr.raw_specimen_type_text, lac.specimen_label) AS joined_specimen_label,
                     COALESCE(plr.raw_unit_text, lac.unit_label) AS joined_unit_label
              FROM public.patient_lab_results plr
-             LEFT JOIN reference.lab_analyte_contexts lac ON plr.lab_analyte_context_id = lac.id
+             LEFT JOIN lab_analyte_contexts lac ON plr.lab_analyte_context_id = lac.id
              WHERE plr.patient_lab_report_id = $1 AND plr.status = 'ACTIVE'
              ORDER BY plr.created_at ASC`,
             [reportId]

@@ -8,14 +8,14 @@ async function run() {
   try {
     console.log('Testing raw analyte_label ILIKE %plaqu%');
     let res1 = await client.query(`
-      SELECT analyte_label, actif FROM reference.lab_analyte_contexts 
+      SELECT analyte_label, actif FROM lab_analyte_contexts 
       WHERE analyte_label ILIKE $1
     `, ['%plaqu%']);
     console.log('Analytes matching plaqu:', res1.rows);
 
     console.log('Testing with actif IS NOT FALSE');
     let res2 = await client.query(`
-      SELECT analyte_label FROM reference.lab_analyte_contexts 
+      SELECT analyte_label FROM lab_analyte_contexts 
       WHERE actif IS NOT FALSE AND analyte_label ILIKE $1
     `, ['%plaqu%']);
     console.log('Analytes active matching plaqu:', res2.rows);

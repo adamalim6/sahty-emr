@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict dquCcj176YX7bXQQ7ZRz0z1vHQmw7s2viiQO9vE9hIOiy4NHhrTZeioKNufamyh
+-- baseline generated from tenant_ced91ced-fe46-45d1-8ead-b5d51bad5895 (2026-04-13)
 
 -- Dumped from database version 16.11 (Debian 16.11-1.pgdg13+1)
 -- Dumped by pg_dump version 16.11 (Debian 16.11-1.pgdg13+1)
@@ -18,817 +18,41 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
-ALTER TABLE IF EXISTS ONLY reference.sih_sous_familles DROP CONSTRAINT IF EXISTS sih_sous_familles_famille_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.observation_parameters DROP CONSTRAINT IF EXISTS observation_parameters_unit_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_reference_rules DROP CONSTRAINT IF EXISTS lab_reference_rules_profile_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_reference_rules DROP CONSTRAINT IF EXISTS lab_reference_rules_canonical_value_min_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_reference_rules DROP CONSTRAINT IF EXISTS lab_reference_rules_canonical_value_max_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_reference_rules DROP CONSTRAINT IF EXISTS lab_reference_rules_canonical_value_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_reference_profiles DROP CONSTRAINT IF EXISTS lab_reference_profiles_analyte_context_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_panels DROP CONSTRAINT IF EXISTS lab_panels_sub_section_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_panels DROP CONSTRAINT IF EXISTS lab_panels_sous_famille_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_panels DROP CONSTRAINT IF EXISTS lab_panels_section_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_panel_items DROP CONSTRAINT IF EXISTS lab_panel_items_panel_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_panel_items DROP CONSTRAINT IF EXISTS lab_panel_items_child_panel_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_panel_items DROP CONSTRAINT IF EXISTS lab_panel_items_child_global_act_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_analyte_units DROP CONSTRAINT IF EXISTS lab_analyte_units_unit_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_analyte_units DROP CONSTRAINT IF EXISTS lab_analyte_units_analyte_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_analyte_reference_ranges DROP CONSTRAINT IF EXISTS lab_analyte_reference_ranges_unit_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_analyte_reference_ranges DROP CONSTRAINT IF EXISTS lab_analyte_reference_ranges_specimen_type_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_analyte_reference_ranges DROP CONSTRAINT IF EXISTS lab_analyte_reference_ranges_method_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_analyte_reference_ranges DROP CONSTRAINT IF EXISTS lab_analyte_reference_ranges_analyte_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_analyte_external_codes DROP CONSTRAINT IF EXISTS lab_analyte_external_codes_analyte_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_analyte_contexts DROP CONSTRAINT IF EXISTS lab_analyte_contexts_unit_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_analyte_contexts DROP CONSTRAINT IF EXISTS lab_analyte_contexts_specimen_type_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_analyte_contexts DROP CONSTRAINT IF EXISTS lab_analyte_contexts_method_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_analyte_contexts DROP CONSTRAINT IF EXISTS lab_analyte_contexts_analyte_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_analyte_aliases DROP CONSTRAINT IF EXISTS lab_analyte_aliases_analyte_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_act_methods DROP CONSTRAINT IF EXISTS lab_act_methods_method_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_act_methods DROP CONSTRAINT IF EXISTS lab_act_methods_global_act_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_act_contexts DROP CONSTRAINT IF EXISTS lab_act_contexts_global_act_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_act_contexts DROP CONSTRAINT IF EXISTS lab_act_contexts_analyte_context_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_act_analytes DROP CONSTRAINT IF EXISTS lab_act_analytes_global_act_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_act_analytes DROP CONSTRAINT IF EXISTS lab_act_analytes_analyte_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.group_parameters DROP CONSTRAINT IF EXISTS group_parameters_parameter_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.group_parameters DROP CONSTRAINT IF EXISTS group_parameters_group_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.global_product_price_history DROP CONSTRAINT IF EXISTS global_product_price_history_product_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.global_actes DROP CONSTRAINT IF EXISTS global_actes_sous_famille_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.global_actes DROP CONSTRAINT IF EXISTS global_actes_lab_sub_section_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.global_actes DROP CONSTRAINT IF EXISTS global_actes_lab_section_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.global_actes DROP CONSTRAINT IF EXISTS global_actes_famille_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.flowsheet_groups DROP CONSTRAINT IF EXISTS flowsheet_groups_group_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.flowsheet_groups DROP CONSTRAINT IF EXISTS flowsheet_groups_flowsheet_id_fkey;
-ALTER TABLE IF EXISTS ONLY reference.global_products DROP CONSTRAINT IF EXISTS fk_tenant_global_products_presc_route;
-ALTER TABLE IF EXISTS ONLY reference.lab_specimen_container_types DROP CONSTRAINT IF EXISTS fk_specimen;
-ALTER TABLE IF EXISTS ONLY reference.lab_panels DROP CONSTRAINT IF EXISTS fk_ref_lab_panels_global_act;
-ALTER TABLE IF EXISTS ONLY reference.lab_act_specimen_containers DROP CONSTRAINT IF EXISTS fk_lab_act_spec_cont_unit;
-ALTER TABLE IF EXISTS ONLY reference.lab_act_specimen_containers DROP CONSTRAINT IF EXISTS fk_lab_act_spec_cont_specimen;
-ALTER TABLE IF EXISTS ONLY reference.lab_act_specimen_containers DROP CONSTRAINT IF EXISTS fk_lab_act_spec_cont_container;
-ALTER TABLE IF EXISTS ONLY reference.lab_act_specimen_containers DROP CONSTRAINT IF EXISTS fk_lab_act_spec_cont_act;
-ALTER TABLE IF EXISTS ONLY reference.global_products DROP CONSTRAINT IF EXISTS fk_global_products_care_category;
-ALTER TABLE IF EXISTS ONLY reference.global_dci DROP CONSTRAINT IF EXISTS fk_global_dci_care_category;
-ALTER TABLE IF EXISTS ONLY reference.lab_specimen_container_types DROP CONSTRAINT IF EXISTS fk_container;
-ALTER TABLE IF EXISTS ONLY reference.dci_synonyms DROP CONSTRAINT IF EXISTS dci_synonyms_dci_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.user_services DROP CONSTRAINT IF EXISTS user_services_user_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.user_services DROP CONSTRAINT IF EXISTS user_services_service_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.stock_transfers DROP CONSTRAINT IF EXISTS stock_transfers_demand_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.stock_transfer_lines DROP CONSTRAINT IF EXISTS stock_transfer_lines_transfer_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.stock_transfer_lines DROP CONSTRAINT IF EXISTS stock_transfer_lines_demand_line_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.stock_returns DROP CONSTRAINT IF EXISTS stock_returns_stock_reservation_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.stock_return_lines DROP CONSTRAINT IF EXISTS stock_return_lines_stock_reservation_line_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.stock_return_lines DROP CONSTRAINT IF EXISTS stock_return_lines_return_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.stock_reservation_lines DROP CONSTRAINT IF EXISTS stock_reservation_lines_reservation_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.stock_demand_lines DROP CONSTRAINT IF EXISTS stock_demand_lines_demand_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.smart_phrases DROP CONSTRAINT IF EXISTS smart_phrases_user_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.smart_phrases DROP CONSTRAINT IF EXISTS smart_phrases_created_by_fkey;
-ALTER TABLE IF EXISTS ONLY public.service_units DROP CONSTRAINT IF EXISTS service_units_service_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.rooms DROP CONSTRAINT IF EXISTS rooms_service_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.rooms DROP CONSTRAINT IF EXISTS rooms_room_type_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.return_receptions DROP CONSTRAINT IF EXISTS return_receptions_return_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.return_reception_lines DROP CONSTRAINT IF EXISTS return_reception_lines_return_line_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.return_reception_lines DROP CONSTRAINT IF EXISTS return_reception_lines_reception_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.return_decisions DROP CONSTRAINT IF EXISTS return_decisions_reception_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.return_decision_lines DROP CONSTRAINT IF EXISTS return_decision_lines_return_line_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.return_decision_lines DROP CONSTRAINT IF EXISTS return_decision_lines_destination_location_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.return_decision_lines DROP CONSTRAINT IF EXISTS return_decision_lines_decision_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.product_price_versions DROP CONSTRAINT IF EXISTS product_price_versions_product_supplier_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.prescriptions DROP CONSTRAINT IF EXISTS prescriptions_tenant_patient_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.prescriptions DROP CONSTRAINT IF EXISTS prescriptions_admission_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.prescription_events DROP CONSTRAINT IF EXISTS prescription_events_prescription_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.po_items DROP CONSTRAINT IF EXISTS po_items_po_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patients_tenant DROP CONSTRAINT IF EXISTS patients_tenant_merged_into_tenant_patient_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_tenant_merge_events DROP CONSTRAINT IF EXISTS patient_tenant_merge_events_target_tenant_patient_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_tenant_merge_events DROP CONSTRAINT IF EXISTS patient_tenant_merge_events_source_tenant_patient_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_stays DROP CONSTRAINT IF EXISTS patient_stays_tenant_patient_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_stays DROP CONSTRAINT IF EXISTS patient_stays_bed_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_stays DROP CONSTRAINT IF EXISTS patient_stays_admission_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_relationship_links DROP CONSTRAINT IF EXISTS patient_relationship_links_subject_tenant_patient_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_relationship_links DROP CONSTRAINT IF EXISTS patient_relationship_links_related_tenant_patient_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_observations DROP CONSTRAINT IF EXISTS patient_observations_tenant_patient_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_observations DROP CONSTRAINT IF EXISTS patient_observations_signed_by_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_observations DROP CONSTRAINT IF EXISTS patient_observations_parent_observation_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_observations DROP CONSTRAINT IF EXISTS patient_observations_created_by_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_lab_results DROP CONSTRAINT IF EXISTS patient_lab_results_unit_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_lab_results DROP CONSTRAINT IF EXISTS patient_lab_results_specimen_type_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_lab_results DROP CONSTRAINT IF EXISTS patient_lab_results_patient_lab_report_test_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_lab_results DROP CONSTRAINT IF EXISTS patient_lab_results_patient_lab_report_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_lab_results DROP CONSTRAINT IF EXISTS patient_lab_results_method_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_lab_results DROP CONSTRAINT IF EXISTS patient_lab_results_entered_in_error_by_user_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_lab_results DROP CONSTRAINT IF EXISTS patient_lab_results_analyte_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_lab_reports DROP CONSTRAINT IF EXISTS patient_lab_reports_uploaded_by_user_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_lab_reports DROP CONSTRAINT IF EXISTS patient_lab_reports_tenant_patient_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_lab_reports DROP CONSTRAINT IF EXISTS patient_lab_reports_structured_by_user_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_lab_reports DROP CONSTRAINT IF EXISTS patient_lab_reports_entered_in_error_by_user_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_lab_reports DROP CONSTRAINT IF EXISTS patient_lab_reports_admission_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_lab_report_tests DROP CONSTRAINT IF EXISTS patient_lab_report_tests_patient_lab_report_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_lab_report_tests DROP CONSTRAINT IF EXISTS patient_lab_report_tests_panel_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_lab_report_tests DROP CONSTRAINT IF EXISTS patient_lab_report_tests_global_act_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_lab_extraction_sessions DROP CONSTRAINT IF EXISTS patient_lab_extraction_sessions_patient_lab_report_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_identity_change DROP CONSTRAINT IF EXISTS patient_identity_change_tenant_patient_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_diagnoses DROP CONSTRAINT IF EXISTS patient_diagnoses_patient_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_allergy_manifestations DROP CONSTRAINT IF EXISTS patient_allergy_manifestations_patient_allergy_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_allergy_history DROP CONSTRAINT IF EXISTS patient_allergy_history_tenant_patient_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_allergy_history DROP CONSTRAINT IF EXISTS patient_allergy_history_patient_allergy_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_allergies DROP CONSTRAINT IF EXISTS patient_allergies_tenant_patient_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_allergies DROP CONSTRAINT IF EXISTS patient_allergies_allergen_dci_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.patient_addiction_history DROP CONSTRAINT IF EXISTS patient_addiction_history_addiction_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.lab_value_normalization DROP CONSTRAINT IF EXISTS lab_value_normalization_canonical_value_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.identity_ids DROP CONSTRAINT IF EXISTS identity_ids_tenant_patient_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.transfusion_reactions DROP CONSTRAINT IF EXISTS fk_transfusion_reactions_user;
-ALTER TABLE IF EXISTS ONLY public.transfusion_reactions DROP CONSTRAINT IF EXISTS fk_transfusion_reactions_event;
-ALTER TABLE IF EXISTS ONLY public.transfusion_checks DROP CONSTRAINT IF EXISTS fk_transfusion_checks_user;
-ALTER TABLE IF EXISTS ONLY public.transfusion_checks DROP CONSTRAINT IF EXISTS fk_transfusion_checks_event;
-ALTER TABLE IF EXISTS ONLY public.transfusion_blood_bags DROP CONSTRAINT IF EXISTS fk_transfusion_blood_bags_user;
-ALTER TABLE IF EXISTS ONLY public.surveillance_values_events DROP CONSTRAINT IF EXISTS fk_surv_events_parameter;
-ALTER TABLE IF EXISTS ONLY public.lab_specimen_requests DROP CONSTRAINT IF EXISTS fk_lsr_specimen;
-ALTER TABLE IF EXISTS ONLY public.lab_collection_specimens DROP CONSTRAINT IF EXISTS fk_lcs_specimen;
-ALTER TABLE IF EXISTS ONLY public.lab_collection_specimens DROP CONSTRAINT IF EXISTS fk_lcs_collection;
-ALTER TABLE IF EXISTS ONLY public.lab_requests DROP CONSTRAINT IF EXISTS fk_lab_requests_prescription_event;
-ALTER TABLE IF EXISTS ONLY public.lab_requests DROP CONSTRAINT IF EXISTS fk_lab_requests_patient;
-ALTER TABLE IF EXISTS ONLY public.lab_requests DROP CONSTRAINT IF EXISTS fk_lab_requests_admission;
-ALTER TABLE IF EXISTS ONLY public.lab_requests DROP CONSTRAINT IF EXISTS fk_lab_requests_act;
-ALTER TABLE IF EXISTS ONLY public.patient_lab_report_documents DROP CONSTRAINT IF EXISTS fk_lab_doc_report;
-ALTER TABLE IF EXISTS ONLY public.patient_lab_report_documents DROP CONSTRAINT IF EXISTS fk_lab_doc_document;
-ALTER TABLE IF EXISTS ONLY public.patient_lab_extraction_sessions DROP CONSTRAINT IF EXISTS fk_extraction_document;
-ALTER TABLE IF EXISTS ONLY public.clinical_exams DROP CONSTRAINT IF EXISTS fk_clinical_exams_patient;
-ALTER TABLE IF EXISTS ONLY public.administration_event_lab_collections DROP CONSTRAINT IF EXISTS fk_aelc_lab_collection;
-ALTER TABLE IF EXISTS ONLY public.administration_event_lab_collections DROP CONSTRAINT IF EXISTS fk_aelc_admin_event;
-ALTER TABLE IF EXISTS ONLY public.admission_acts DROP CONSTRAINT IF EXISTS fk_admission_acts_admission;
-ALTER TABLE IF EXISTS ONLY public.administration_events DROP CONSTRAINT IF EXISTS fk_admin_event_user;
-ALTER TABLE IF EXISTS ONLY public.administration_event_blood_bags DROP CONSTRAINT IF EXISTS fk_admin_event_blood_bags_event;
-ALTER TABLE IF EXISTS ONLY public.administration_event_blood_bags DROP CONSTRAINT IF EXISTS fk_admin_event_blood_bags_bag;
-ALTER TABLE IF EXISTS ONLY public.escarres DROP CONSTRAINT IF EXISTS escarres_tenant_patient_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.escarre_snapshots DROP CONSTRAINT IF EXISTS escarre_snapshots_escarre_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.coverages DROP CONSTRAINT IF EXISTS coverages_organisme_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.coverage_members DROP CONSTRAINT IF EXISTS coverage_members_tenant_patient_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.coverage_members DROP CONSTRAINT IF EXISTS coverage_members_coverage_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.beds DROP CONSTRAINT IF EXISTS beds_room_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.admissions DROP CONSTRAINT IF EXISTS admissions_tenant_patient_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.admissions DROP CONSTRAINT IF EXISTS admissions_responsible_service_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.admissions DROP CONSTRAINT IF EXISTS admissions_current_service_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.admissions DROP CONSTRAINT IF EXISTS admissions_attending_physician_user_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.admissions DROP CONSTRAINT IF EXISTS admissions_admitting_service_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.admission_coverages DROP CONSTRAINT IF EXISTS admission_coverages_admission_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.admission_coverage_members DROP CONSTRAINT IF EXISTS admission_coverage_members_admission_coverage_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.administration_events DROP CONSTRAINT IF EXISTS administration_events_prescription_event_id_fkey;
-ALTER TABLE IF EXISTS ONLY public.administration_event_pauses DROP CONSTRAINT IF EXISTS administration_event_pauses_administration_event_id_fkey;
-ALTER TABLE IF EXISTS ONLY auth.user_tenants DROP CONSTRAINT IF EXISTS user_tenants_user_id_fkey;
-ALTER TABLE IF EXISTS ONLY auth.credentials DROP CONSTRAINT IF EXISTS credentials_user_id_fkey;
-DROP TRIGGER IF EXISTS trg_surveillance_event_bucket ON public.surveillance_values_events;
-DROP TRIGGER IF EXISTS trg_recompute_bag_status_assoc ON public.administration_event_blood_bags;
-DROP TRIGGER IF EXISTS trg_recompute_bag_status ON public.administration_events;
-DROP TRIGGER IF EXISTS trg_prevent_system_location_deactivate ON public.locations;
-DROP TRIGGER IF EXISTS audit_prescriptions ON public.prescriptions;
-DROP TRIGGER IF EXISTS audit_prescription_events ON public.prescription_events;
-DROP TRIGGER IF EXISTS audit_patients_tenant ON public.patients_tenant;
-DROP TRIGGER IF EXISTS audit_log_no_update ON public.audit_log;
-DROP TRIGGER IF EXISTS audit_administration_events ON public.administration_events;
-DROP TRIGGER IF EXISTS trg_auth_sync_users_update ON auth.users;
-DROP TRIGGER IF EXISTS trg_auth_sync_users_insert ON auth.users;
-DROP TRIGGER IF EXISTS trg_auth_sync_users_delete ON auth.users;
-DROP TRIGGER IF EXISTS trg_auth_sync_user_tenants_update ON auth.user_tenants;
-DROP TRIGGER IF EXISTS trg_auth_sync_user_tenants_insert ON auth.user_tenants;
-DROP TRIGGER IF EXISTS trg_auth_sync_user_tenants_delete ON auth.user_tenants;
-DROP TRIGGER IF EXISTS trg_auth_sync_credentials_update ON auth.credentials;
-DROP TRIGGER IF EXISTS trg_auth_sync_credentials_insert ON auth.credentials;
-DROP TRIGGER IF EXISTS trg_auth_sync_credentials_delete ON auth.credentials;
-DROP INDEX IF EXISTS reference.uq_ref_lab_analyte_context;
-DROP INDEX IF EXISTS reference.uq_ref_context_default;
-DROP INDEX IF EXISTS reference.uq_ref_act_default_context;
-DROP INDEX IF EXISTS reference.uq_ref_act_context;
-DROP INDEX IF EXISTS reference.uq_lab_reference_profile_tenant;
-DROP INDEX IF EXISTS reference.uq_groups_sort_order;
-DROP INDEX IF EXISTS reference.uq_group_parameters_sort_order;
-DROP INDEX IF EXISTS reference.uq_flowsheets_sort_order;
-DROP INDEX IF EXISTS reference.uniq_default_container_per_specimen_tenant;
-DROP INDEX IF EXISTS reference.idx_tenant_global_products_default_presc_route;
-DROP INDEX IF EXISTS reference.idx_specimen_base_tenant;
-DROP INDEX IF EXISTS reference.idx_routes_sort_order_unique;
-DROP INDEX IF EXISTS reference.idx_routes_active_order;
-DROP INDEX IF EXISTS reference.idx_ref_suppliers_active;
-DROP INDEX IF EXISTS reference.idx_ref_products_sahty;
-DROP INDEX IF EXISTS reference.idx_ref_products_name;
-DROP INDEX IF EXISTS reference.idx_ref_products_active;
-DROP INDEX IF EXISTS reference.idx_ref_price_hist_product;
-DROP INDEX IF EXISTS reference.idx_ref_price_hist_dates;
-DROP INDEX IF EXISTS reference.idx_ref_lab_sub_sections_actif;
-DROP INDEX IF EXISTS reference.idx_ref_lab_sections_actif;
-DROP INDEX IF EXISTS reference.idx_ref_lab_panels_sub_section_id;
-DROP INDEX IF EXISTS reference.idx_ref_lab_panels_sous_famille_id;
-DROP INDEX IF EXISTS reference.idx_ref_lab_panels_section_id;
-DROP INDEX IF EXISTS reference.idx_ref_lab_panels_actif;
-DROP INDEX IF EXISTS reference.idx_ref_lab_panel_items_panel_id;
-DROP INDEX IF EXISTS reference.idx_ref_lab_panel_items_child_panel_id;
-DROP INDEX IF EXISTS reference.idx_ref_lab_panel_items_child_act_id;
-DROP INDEX IF EXISTS reference.idx_ref_lab_analytes_value_type;
-DROP INDEX IF EXISTS reference.idx_ref_lab_analytes_actif;
-DROP INDEX IF EXISTS reference.idx_ref_lab_analyte_units_default;
-DROP INDEX IF EXISTS reference.idx_ref_lab_analyte_units_canonical;
-DROP INDEX IF EXISTS reference.idx_ref_lab_analyte_units_analyte;
-DROP INDEX IF EXISTS reference.idx_ref_lab_analyte_ext_codes_sys_code;
-DROP INDEX IF EXISTS reference.idx_ref_lab_analyte_ext_codes_analyte_id;
-DROP INDEX IF EXISTS reference.idx_ref_lab_analyte_aliases_analyte_id;
-DROP INDEX IF EXISTS reference.idx_ref_lab_analyte_aliases_alias_text_lower;
-DROP INDEX IF EXISTS reference.idx_ref_lab_act_spec_cont_specimen_type_id;
-DROP INDEX IF EXISTS reference.idx_ref_lab_act_spec_cont_global_act_id;
-DROP INDEX IF EXISTS reference.idx_ref_lab_act_spec_cont_container_type_id;
-DROP INDEX IF EXISTS reference.idx_ref_lab_act_methods_default;
-DROP INDEX IF EXISTS reference.idx_ref_lab_act_analytes_global_act_id;
-DROP INDEX IF EXISTS reference.idx_ref_lab_act_analytes_analyte_id;
-DROP INDEX IF EXISTS reference.idx_ref_global_actes_lab_sub_section_id;
-DROP INDEX IF EXISTS reference.idx_ref_global_actes_lab_section_id;
-DROP INDEX IF EXISTS reference.idx_ref_emdn_parent;
-DROP INDEX IF EXISTS reference.idx_ref_dci_synonyms_dci_id;
-DROP INDEX IF EXISTS reference.idx_ref_dci_name;
-DROP INDEX IF EXISTS reference.idx_ref_dci_atc;
-DROP INDEX IF EXISTS reference.idx_ref_atc_parent;
-DROP INDEX IF EXISTS reference.idx_ref_atc_level;
-DROP INDEX IF EXISTS reference.idx_lab_sub_section_tree_sub;
-DROP INDEX IF EXISTS reference.idx_lab_sub_section_tree_section;
-DROP INDEX IF EXISTS reference.idx_lab_section_tree_sous_famille;
-DROP INDEX IF EXISTS reference.idx_lab_section_tree_section;
-DROP INDEX IF EXISTS reference.idx_lab_act_tax_sf;
-DROP INDEX IF EXISTS reference.idx_lab_act_tax_sec;
-DROP INDEX IF EXISTS reference.idx_lab_act_tax_act;
-DROP INDEX IF EXISTS reference.idx_lab_act_ctx_ctx;
-DROP INDEX IF EXISTS reference.idx_lab_act_ctx_act;
-DROP INDEX IF EXISTS reference.idx_groups_sort_order;
-DROP INDEX IF EXISTS reference.idx_global_products_care_category;
-DROP INDEX IF EXISTS reference.idx_global_dci_care_category;
-DROP INDEX IF EXISTS reference.idx_flowsheets_sort_order;
-DROP INDEX IF EXISTS reference.idx_care_categories_active_order;
-DROP INDEX IF EXISTS public.uq_lab_report_document_link;
-DROP INDEX IF EXISTS public.uniq_admission_number_tenant;
-DROP INDEX IF EXISTS public.smart_phrases_trigger_unique_ci;
-DROP INDEX IF EXISTS public.idx_user_services_user_id;
-DROP INDEX IF EXISTS public.idx_user_services_service_id;
-DROP INDEX IF EXISTS public.idx_user_roles_user_id;
-DROP INDEX IF EXISTS public.idx_user_roles_role_id;
-DROP INDEX IF EXISTS public.idx_unique_rel_patient;
-DROP INDEX IF EXISTS public.idx_unique_nid_per_tenant;
-DROP INDEX IF EXISTS public.idx_unique_mrn_per_tenant;
-DROP INDEX IF EXISTS public.idx_unique_coverage_member;
-DROP INDEX IF EXISTS public.idx_transfusion_reactions_event;
-DROP INDEX IF EXISTS public.idx_transfusion_reactions_date;
-DROP INDEX IF EXISTS public.idx_transfusion_reactions_admin_event_id;
-DROP INDEX IF EXISTS public.idx_transfusion_checks_event;
-DROP INDEX IF EXISTS public.idx_transfusion_checks_date;
-DROP INDEX IF EXISTS public.idx_transfusion_checks_admin_event_id;
-DROP INDEX IF EXISTS public.idx_transfusion_bags_tenant_bag;
-DROP INDEX IF EXISTS public.idx_transfusion_bags_status;
-DROP INDEX IF EXISTS public.idx_transfusion_bags_product;
-DROP INDEX IF EXISTS public.idx_transfusion_bags_patient_date;
-DROP INDEX IF EXISTS public.idx_transfer_tenant;
-DROP INDEX IF EXISTS public.idx_transfer_line_transfer;
-DROP INDEX IF EXISTS public.idx_transfer_idempotency;
-DROP INDEX IF EXISTS public.idx_transfer_demand;
-DROP INDEX IF EXISTS public.idx_surveillance_events_patient_time_param;
-DROP INDEX IF EXISTS public.idx_surveillance_buckets_patient;
-DROP INDEX IF EXISTS public.idx_surv_events_tenant_patient_bucket;
-DROP INDEX IF EXISTS public.idx_surv_events_tenant_patient;
-DROP INDEX IF EXISTS public.idx_surv_events_parameter;
-DROP INDEX IF EXISTS public.idx_surv_events_context_param_latest;
-DROP INDEX IF EXISTS public.idx_surv_events_context_id;
-DROP INDEX IF EXISTS public.idx_surv_buckets_tenant_patient_bucket;
-DROP INDEX IF EXISTS public.idx_su_service;
-DROP INDEX IF EXISTS public.idx_stock_returns_reference;
-DROP INDEX IF EXISTS public.idx_stock_lookup;
-DROP INDEX IF EXISTS public.idx_smart_phrases_trigger_search;
-DROP INDEX IF EXISTS public.idx_smart_phrases_trigger;
-DROP INDEX IF EXISTS public.idx_smart_phrases_scope;
-DROP INDEX IF EXISTS public.idx_smart_phrases_active_search;
-DROP INDEX IF EXISTS public.idx_services_tenant;
-DROP INDEX IF EXISTS public.idx_rx_tenant;
-DROP INDEX IF EXISTS public.idx_rx_status;
-DROP INDEX IF EXISTS public.idx_rx_events_tenant;
-DROP INDEX IF EXISTS public.idx_rx_events_status;
-DROP INDEX IF EXISTS public.idx_rx_events_prescription;
-DROP INDEX IF EXISTS public.idx_rx_admission;
-DROP INDEX IF EXISTS public.idx_rooms_service;
-DROP INDEX IF EXISTS public.idx_returns_tenant;
-DROP INDEX IF EXISTS public.idx_returns_status;
-DROP INDEX IF EXISTS public.idx_returns_service;
-DROP INDEX IF EXISTS public.idx_return_receptions_reference;
-DROP INDEX IF EXISTS public.idx_return_lines_return;
-DROP INDEX IF EXISTS public.idx_return_lines_product;
-DROP INDEX IF EXISTS public.idx_resline_tenant;
-DROP INDEX IF EXISTS public.idx_resline_reservation;
-DROP INDEX IF EXISTS public.idx_resline_lookup;
-DROP INDEX IF EXISTS public.idx_res_session_active;
-DROP INDEX IF EXISTS public.idx_res_session;
-DROP INDEX IF EXISTS public.idx_res_expires;
-DROP INDEX IF EXISTS public.idx_res_cleanup;
-DROP INDEX IF EXISTS public.idx_rel_links_subject;
-DROP INDEX IF EXISTS public.idx_rel_links_related;
-DROP INDEX IF EXISTS public.idx_receptions_return;
-DROP INDEX IF EXISTS public.idx_reception_lines_return_line;
-DROP INDEX IF EXISTS public.idx_reception_lines_reception;
-DROP INDEX IF EXISTS public.idx_ps_tenant;
-DROP INDEX IF EXISTS public.idx_ps_product;
-DROP INDEX IF EXISTS public.idx_price_ver_supp;
-DROP INDEX IF EXISTS public.idx_price_ver_active;
-DROP INDEX IF EXISTS public.idx_prescriptions_tenant_patient;
-DROP INDEX IF EXISTS public.idx_prescriptions_patient;
-DROP INDEX IF EXISTS public.idx_prescription_events_time;
-DROP INDEX IF EXISTS public.idx_prescription_events_patient_time;
-DROP INDEX IF EXISTS public.idx_prescription_events_lookup;
-DROP INDEX IF EXISTS public.idx_presc_events_by_admission_time;
-DROP INDEX IF EXISTS public.idx_poi_po;
-DROP INDEX IF EXISTS public.idx_po_tenant;
-DROP INDEX IF EXISTS public.idx_po_status;
-DROP INDEX IF EXISTS public.idx_patients_tenant_tenant;
-DROP INDEX IF EXISTS public.idx_patient_stays_bed;
-DROP INDEX IF EXISTS public.idx_patient_stays_admission;
-DROP INDEX IF EXISTS public.idx_patient_stays_active;
-DROP INDEX IF EXISTS public.idx_patient_observations_timeline;
-DROP INDEX IF EXISTS public.idx_patient_observations_status;
-DROP INDEX IF EXISTS public.idx_patient_observations_role;
-DROP INDEX IF EXISTS public.idx_patient_observations_parent_patient;
-DROP INDEX IF EXISTS public.idx_patient_observations_parent;
-DROP INDEX IF EXISTS public.idx_patient_observations_linked_allergy;
-DROP INDEX IF EXISTS public.idx_patient_observations_linked_admission;
-DROP INDEX IF EXISTS public.idx_patient_observations_linked_addiction;
-DROP INDEX IF EXISTS public.idx_patient_lab_results_unit;
-DROP INDEX IF EXISTS public.idx_patient_lab_results_test;
-DROP INDEX IF EXISTS public.idx_patient_lab_results_status;
-DROP INDEX IF EXISTS public.idx_patient_lab_results_report;
-DROP INDEX IF EXISTS public.idx_patient_lab_results_observed;
-DROP INDEX IF EXISTS public.idx_patient_lab_results_analyte_ctx;
-DROP INDEX IF EXISTS public.idx_patient_lab_results_analyte;
-DROP INDEX IF EXISTS public.idx_patient_lab_reports_uploaded_at;
-DROP INDEX IF EXISTS public.idx_patient_lab_reports_status;
-DROP INDEX IF EXISTS public.idx_patient_lab_reports_source_type;
-DROP INDEX IF EXISTS public.idx_patient_lab_reports_report_date;
-DROP INDEX IF EXISTS public.idx_patient_lab_reports_patient;
-DROP INDEX IF EXISTS public.idx_patient_lab_reports_admission;
-DROP INDEX IF EXISTS public.idx_patient_lab_report_tests_report;
-DROP INDEX IF EXISTS public.idx_patient_lab_report_tests_panel;
-DROP INDEX IF EXISTS public.idx_patient_lab_report_tests_global_act;
-DROP INDEX IF EXISTS public.idx_patient_lab_extraction_status;
-DROP INDEX IF EXISTS public.idx_patient_lab_extraction_started;
-DROP INDEX IF EXISTS public.idx_patient_lab_extraction_report;
-DROP INDEX IF EXISTS public.idx_patient_lab_extraction_doc;
-DROP INDEX IF EXISTS public.idx_patient_documents_type;
-DROP INDEX IF EXISTS public.idx_patient_documents_tenant;
-DROP INDEX IF EXISTS public.idx_patient_documents_patient;
-DROP INDEX IF EXISTS public.idx_patient_documents_checksum;
-DROP INDEX IF EXISTS public.idx_patient_diagnoses_patient_id_entered_at;
-DROP INDEX IF EXISTS public.idx_patient_diagnoses_foundation_uri;
-DROP INDEX IF EXISTS public.idx_patient_diagnoses_active;
-DROP INDEX IF EXISTS public.idx_patient_allergy_history_allergy;
-DROP INDEX IF EXISTS public.idx_patient_allergies_patient_dci;
-DROP INDEX IF EXISTS public.idx_patient_allergies_patient;
-DROP INDEX IF EXISTS public.idx_patient_active_allergies;
-DROP INDEX IF EXISTS public.idx_observations_addiction;
-DROP INDEX IF EXISTS public.idx_merge_events_tenant;
-DROP INDEX IF EXISTS public.idx_merge_events_target;
-DROP INDEX IF EXISTS public.idx_merge_events_source;
-DROP INDEX IF EXISTS public.idx_locations_tenant;
-DROP INDEX IF EXISTS public.idx_lab_value_normalization_lookup;
-DROP INDEX IF EXISTS public.idx_lab_specimens_barcode_unique;
-DROP INDEX IF EXISTS public.idx_lab_specimen_requests_specimen_id;
-DROP INDEX IF EXISTS public.idx_lab_specimen_requests_lab_request_id;
-DROP INDEX IF EXISTS public.idx_lab_requests_patient;
-DROP INDEX IF EXISTS public.idx_lab_requests_event;
-DROP INDEX IF EXISTS public.idx_lab_requests_admission;
-DROP INDEX IF EXISTS public.idx_lab_doc_report;
-DROP INDEX IF EXISTS public.idx_lab_doc_document;
-DROP INDEX IF EXISTS public.idx_lab_collections_tenant_patient_id;
-DROP INDEX IF EXISTS public.idx_lab_collections_admission_id;
-DROP INDEX IF EXISTS public.idx_lab_collection_specimens_specimen_id;
-DROP INDEX IF EXISTS public.idx_lab_collection_specimens_collection_id;
-DROP INDEX IF EXISTS public.idx_inv_tenant;
-DROP INDEX IF EXISTS public.idx_inv_product;
-DROP INDEX IF EXISTS public.idx_inv_doc;
-DROP INDEX IF EXISTS public.idx_identity_ids_patient;
-DROP INDEX IF EXISTS public.idx_identity_ids_lookup;
-DROP INDEX IF EXISTS public.idx_identity_change_patient;
-DROP INDEX IF EXISTS public.idx_escarres_patient;
-DROP INDEX IF EXISTS public.idx_escarres_created_at;
-DROP INDEX IF EXISTS public.idx_escarres_active;
-DROP INDEX IF EXISTS public.idx_escarre_snapshots_lookup;
-DROP INDEX IF EXISTS public.idx_dnl_product;
-DROP INDEX IF EXISTS public.idx_dnl_dn;
-DROP INDEX IF EXISTS public.idx_dni_dn;
-DROP INDEX IF EXISTS public.idx_dn_tenant;
-DROP INDEX IF EXISTS public.idx_dn_supplier;
-DROP INDEX IF EXISTS public.idx_demand_tenant;
-DROP INDEX IF EXISTS public.idx_demand_status;
-DROP INDEX IF EXISTS public.idx_demand_service;
-DROP INDEX IF EXISTS public.idx_demand_ref;
-DROP INDEX IF EXISTS public.idx_demand_line_demand;
-DROP INDEX IF EXISTS public.idx_decisions_reception;
-DROP INDEX IF EXISTS public.idx_decision_lines_return_line;
-DROP INDEX IF EXISTS public.idx_decision_lines_decision;
-DROP INDEX IF EXISTS public.idx_coverages_lookup;
-DROP INDEX IF EXISTS public.idx_coverage_history_member;
-DROP INDEX IF EXISTS public.idx_coverage_history_date;
-DROP INDEX IF EXISTS public.idx_coverage_history_coverage;
-DROP INDEX IF EXISTS public.idx_config_enabled;
-DROP INDEX IF EXISTS public.idx_clinical_exams_patient_status_date;
-DROP INDEX IF EXISTS public.idx_beds_status;
-DROP INDEX IF EXISTS public.idx_beds_room;
-DROP INDEX IF EXISTS public.idx_aebb_blood_bag;
-DROP INDEX IF EXISTS public.idx_admissions_tenant;
-DROP INDEX IF EXISTS public.idx_admission_acts_lab_request_id;
-DROP INDEX IF EXISTS public.idx_admission_acts_global_act_id;
-DROP INDEX IF EXISTS public.idx_admission_acts_admission_id;
-DROP INDEX IF EXISTS public.idx_admin_events_patient_start;
-DROP INDEX IF EXISTS public.idx_admin_events_patient_end;
-DROP INDEX IF EXISTS public.idx_admin_events_fluid;
-DROP INDEX IF EXISTS public.idx_admin_events_by_presc_event_time;
-DROP INDEX IF EXISTS public.idx_admin_event_status;
-DROP INDEX IF EXISTS public.idx_admin_event_lab_collections_collection_id;
-DROP INDEX IF EXISTS public.idx_admin_event_lab_collections_admin_event_id;
-DROP INDEX IF EXISTS public.idx_admin_event_blood_bags_unique;
-DROP INDEX IF EXISTS public.idx_admin_event_blood_bags_event;
-DROP INDEX IF EXISTS public.idx_admin_event_blood_bags_bag;
-DROP INDEX IF EXISTS public.idx_admin_event_action;
-DROP INDEX IF EXISTS public.idx_adm_mem_patient;
-DROP INDEX IF EXISTS public.idx_adm_mem_coverage;
-DROP INDEX IF EXISTS public.idx_adm_hist_date;
-DROP INDEX IF EXISTS public.idx_adm_hist_coverage;
-DROP INDEX IF EXISTS public.idx_adm_hist_admission;
-DROP INDEX IF EXISTS public.idx_adm_cov_order;
-DROP INDEX IF EXISTS public.idx_adm_cov_coverage;
-DROP INDEX IF EXISTS public.idx_adm_cov_admission;
-DROP INDEX IF EXISTS public.idx_addiction_patient;
-DROP INDEX IF EXISTS public.idx_addiction_history_addiction;
-DROP INDEX IF EXISTS identity_sync.idx_outbox_processing;
-DROP INDEX IF EXISTS identity_sync.idx_outbox_dedupe;
-DROP INDEX IF EXISTS identity_sync.idx_inbox_processing;
-DROP INDEX IF EXISTS identity_sync.idx_inbox_dedupe;
-DROP INDEX IF EXISTS auth_sync.idx_auth_outbox_unprocessed;
-DROP INDEX IF EXISTS auth_sync.idx_auth_inbox_unapplied;
-ALTER TABLE IF EXISTS ONLY reference.lab_sub_section_tree DROP CONSTRAINT IF EXISTS uq_sub_section_section;
-ALTER TABLE IF EXISTS ONLY reference.lab_section_tree DROP CONSTRAINT IF EXISTS uq_section_sous_famille;
-ALTER TABLE IF EXISTS ONLY reference.lab_act_taxonomy DROP CONSTRAINT IF EXISTS uq_act_id;
-ALTER TABLE IF EXISTS ONLY reference.lab_act_analyte_context DROP CONSTRAINT IF EXISTS uq_act_analyte_ctx;
-ALTER TABLE IF EXISTS ONLY reference.units DROP CONSTRAINT IF EXISTS units_pkey;
-ALTER TABLE IF EXISTS ONLY reference.units DROP CONSTRAINT IF EXISTS units_code_key;
-ALTER TABLE IF EXISTS ONLY reference.lab_specimen_container_types DROP CONSTRAINT IF EXISTS unique_specimen_container;
-ALTER TABLE IF EXISTS ONLY reference.sih_sous_familles DROP CONSTRAINT IF EXISTS sih_sous_familles_pkey;
-ALTER TABLE IF EXISTS ONLY reference.sih_sous_familles DROP CONSTRAINT IF EXISTS sih_sous_familles_famille_id_code_key;
-ALTER TABLE IF EXISTS ONLY reference.sih_familles DROP CONSTRAINT IF EXISTS sih_familles_pkey;
-ALTER TABLE IF EXISTS ONLY reference.sih_familles DROP CONSTRAINT IF EXISTS sih_familles_code_key;
-ALTER TABLE IF EXISTS ONLY reference.routes DROP CONSTRAINT IF EXISTS routes_pkey;
-ALTER TABLE IF EXISTS ONLY reference.routes DROP CONSTRAINT IF EXISTS routes_code_key;
-ALTER TABLE IF EXISTS ONLY reference.global_actes DROP CONSTRAINT IF EXISTS ref_global_actes_code_sih_key;
-ALTER TABLE IF EXISTS ONLY reference.organismes DROP CONSTRAINT IF EXISTS organismes_pkey;
-ALTER TABLE IF EXISTS ONLY reference.observation_parameters DROP CONSTRAINT IF EXISTS observation_parameters_pkey;
-ALTER TABLE IF EXISTS ONLY reference.observation_parameters DROP CONSTRAINT IF EXISTS observation_parameters_code_key;
-ALTER TABLE IF EXISTS ONLY reference.observation_groups DROP CONSTRAINT IF EXISTS observation_groups_pkey;
-ALTER TABLE IF EXISTS ONLY reference.observation_groups DROP CONSTRAINT IF EXISTS observation_groups_code_key;
-ALTER TABLE IF EXISTS ONLY reference.observation_flowsheets DROP CONSTRAINT IF EXISTS observation_flowsheets_pkey;
-ALTER TABLE IF EXISTS ONLY reference.observation_flowsheets DROP CONSTRAINT IF EXISTS observation_flowsheets_code_key;
-ALTER TABLE IF EXISTS ONLY reference.lab_sub_sections DROP CONSTRAINT IF EXISTS lab_sub_sections_pkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_sub_section_tree DROP CONSTRAINT IF EXISTS lab_sub_section_tree_pkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_specimen_types DROP CONSTRAINT IF EXISTS lab_specimen_types_pkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_specimen_types DROP CONSTRAINT IF EXISTS lab_specimen_types_code_key;
-ALTER TABLE IF EXISTS ONLY reference.lab_specimen_container_types DROP CONSTRAINT IF EXISTS lab_specimen_container_types_pkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_sections DROP CONSTRAINT IF EXISTS lab_sections_pkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_section_tree DROP CONSTRAINT IF EXISTS lab_section_tree_pkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_reference_rules DROP CONSTRAINT IF EXISTS lab_reference_rules_pkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_reference_profiles DROP CONSTRAINT IF EXISTS lab_reference_profiles_pkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_panels DROP CONSTRAINT IF EXISTS lab_panels_pkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_panels DROP CONSTRAINT IF EXISTS lab_panels_global_act_id_key;
-ALTER TABLE IF EXISTS ONLY reference.lab_panels DROP CONSTRAINT IF EXISTS lab_panels_code_key;
-ALTER TABLE IF EXISTS ONLY reference.lab_panel_items DROP CONSTRAINT IF EXISTS lab_panel_items_pkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_methods DROP CONSTRAINT IF EXISTS lab_methods_pkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_methods DROP CONSTRAINT IF EXISTS lab_methods_code_key;
-ALTER TABLE IF EXISTS ONLY reference.lab_container_types DROP CONSTRAINT IF EXISTS lab_container_types_pkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_container_types DROP CONSTRAINT IF EXISTS lab_container_types_code_key;
-ALTER TABLE IF EXISTS ONLY reference.lab_canonical_allowed_values DROP CONSTRAINT IF EXISTS lab_canonical_allowed_values_pkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_canonical_allowed_values DROP CONSTRAINT IF EXISTS lab_canonical_allowed_values_code_key;
-ALTER TABLE IF EXISTS ONLY reference.lab_analytes DROP CONSTRAINT IF EXISTS lab_analytes_pkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_analytes DROP CONSTRAINT IF EXISTS lab_analytes_code_key;
-ALTER TABLE IF EXISTS ONLY reference.lab_analyte_units DROP CONSTRAINT IF EXISTS lab_analyte_units_pkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_analyte_units DROP CONSTRAINT IF EXISTS lab_analyte_units_analyte_unit_key;
-ALTER TABLE IF EXISTS ONLY reference.lab_analyte_reference_ranges DROP CONSTRAINT IF EXISTS lab_analyte_reference_ranges_pkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_analyte_external_codes DROP CONSTRAINT IF EXISTS lab_analyte_external_codes_pkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_analyte_external_codes DROP CONSTRAINT IF EXISTS lab_analyte_ext_codes_analyte_sys_code_key;
-ALTER TABLE IF EXISTS ONLY reference.lab_analyte_contexts DROP CONSTRAINT IF EXISTS lab_analyte_contexts_pkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_analyte_aliases DROP CONSTRAINT IF EXISTS lab_analyte_aliases_pkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_analyte_aliases DROP CONSTRAINT IF EXISTS lab_analyte_aliases_analyte_alias_type_key;
-ALTER TABLE IF EXISTS ONLY reference.lab_act_taxonomy DROP CONSTRAINT IF EXISTS lab_act_taxonomy_pkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_act_specimen_containers DROP CONSTRAINT IF EXISTS lab_act_specimen_containers_pkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_act_specimen_containers DROP CONSTRAINT IF EXISTS lab_act_spec_cont_unique;
-ALTER TABLE IF EXISTS ONLY reference.lab_act_methods DROP CONSTRAINT IF EXISTS lab_act_methods_pkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_act_methods DROP CONSTRAINT IF EXISTS lab_act_methods_act_method_key;
-ALTER TABLE IF EXISTS ONLY reference.lab_act_contexts DROP CONSTRAINT IF EXISTS lab_act_contexts_pkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_act_analytes DROP CONSTRAINT IF EXISTS lab_act_analytes_pkey;
-ALTER TABLE IF EXISTS ONLY reference.lab_act_analytes DROP CONSTRAINT IF EXISTS lab_act_analytes_act_analyte_key;
-ALTER TABLE IF EXISTS ONLY reference.lab_act_analyte_context DROP CONSTRAINT IF EXISTS lab_act_analyte_context_pkey;
-ALTER TABLE IF EXISTS ONLY reference.identity_document_types DROP CONSTRAINT IF EXISTS identity_document_types_pkey;
-ALTER TABLE IF EXISTS ONLY reference.group_parameters DROP CONSTRAINT IF EXISTS group_parameters_pkey;
-ALTER TABLE IF EXISTS ONLY reference.global_suppliers DROP CONSTRAINT IF EXISTS global_suppliers_pkey;
-ALTER TABLE IF EXISTS ONLY reference.global_roles DROP CONSTRAINT IF EXISTS global_roles_pkey;
-ALTER TABLE IF EXISTS ONLY reference.global_products DROP CONSTRAINT IF EXISTS global_products_pkey;
-ALTER TABLE IF EXISTS ONLY reference.global_product_price_history DROP CONSTRAINT IF EXISTS global_product_price_history_pkey;
-ALTER TABLE IF EXISTS ONLY reference.global_emdn DROP CONSTRAINT IF EXISTS global_emdn_pkey;
-ALTER TABLE IF EXISTS ONLY reference.global_dci DROP CONSTRAINT IF EXISTS global_dci_pkey;
-ALTER TABLE IF EXISTS ONLY reference.global_atc DROP CONSTRAINT IF EXISTS global_atc_pkey;
-ALTER TABLE IF EXISTS ONLY reference.global_actes DROP CONSTRAINT IF EXISTS global_actes_pkey;
-ALTER TABLE IF EXISTS ONLY reference.flowsheet_groups DROP CONSTRAINT IF EXISTS flowsheet_groups_pkey;
-ALTER TABLE IF EXISTS ONLY reference.dci_synonyms DROP CONSTRAINT IF EXISTS dci_synonyms_pkey;
-ALTER TABLE IF EXISTS ONLY reference.countries DROP CONSTRAINT IF EXISTS countries_pkey;
-ALTER TABLE IF EXISTS ONLY reference.care_categories DROP CONSTRAINT IF EXISTS care_categories_pkey;
-ALTER TABLE IF EXISTS ONLY reference.care_categories DROP CONSTRAINT IF EXISTS care_categories_code_key;
-ALTER TABLE IF EXISTS ONLY public.user_services DROP CONSTRAINT IF EXISTS user_services_pkey;
-ALTER TABLE IF EXISTS ONLY public.user_roles DROP CONSTRAINT IF EXISTS user_roles_pkey;
-ALTER TABLE IF EXISTS ONLY public.lab_requests DROP CONSTRAINT IF EXISTS unique_lab_request_per_event;
-ALTER TABLE IF EXISTS ONLY public.transfusion_reactions DROP CONSTRAINT IF EXISTS transfusion_reactions_pkey;
-ALTER TABLE IF EXISTS ONLY public.transfusion_checks DROP CONSTRAINT IF EXISTS transfusion_checks_pkey;
-ALTER TABLE IF EXISTS ONLY public.transfusion_checks DROP CONSTRAINT IF EXISTS transfusion_checks_administration_event_id_key;
-ALTER TABLE IF EXISTS ONLY public.transfusion_blood_bags DROP CONSTRAINT IF EXISTS transfusion_blood_bags_pkey;
-ALTER TABLE IF EXISTS ONLY public.surveillance_values_events DROP CONSTRAINT IF EXISTS surveillance_values_events_pkey;
-ALTER TABLE IF EXISTS ONLY public.surveillance_hour_buckets DROP CONSTRAINT IF EXISTS surveillance_hour_buckets_tenant_id_tenant_patient_id_bucke_key;
-ALTER TABLE IF EXISTS ONLY public.surveillance_hour_buckets DROP CONSTRAINT IF EXISTS surveillance_hour_buckets_pkey;
-ALTER TABLE IF EXISTS ONLY public.suppliers DROP CONSTRAINT IF EXISTS suppliers_pkey;
-ALTER TABLE IF EXISTS ONLY public.stock_transfers DROP CONSTRAINT IF EXISTS stock_transfers_pkey;
-ALTER TABLE IF EXISTS ONLY public.stock_transfer_lines DROP CONSTRAINT IF EXISTS stock_transfer_lines_pkey;
-ALTER TABLE IF EXISTS ONLY public.stock_returns DROP CONSTRAINT IF EXISTS stock_returns_pkey;
-ALTER TABLE IF EXISTS ONLY public.stock_return_lines DROP CONSTRAINT IF EXISTS stock_return_lines_pkey;
-ALTER TABLE IF EXISTS ONLY public.stock_reservations DROP CONSTRAINT IF EXISTS stock_reservations_pkey;
-ALTER TABLE IF EXISTS ONLY public.stock_reservation_lines DROP CONSTRAINT IF EXISTS stock_reservation_lines_pkey;
-ALTER TABLE IF EXISTS ONLY public.stock_demands DROP CONSTRAINT IF EXISTS stock_demands_pkey;
-ALTER TABLE IF EXISTS ONLY public.stock_demand_lines DROP CONSTRAINT IF EXISTS stock_demand_lines_pkey;
-ALTER TABLE IF EXISTS ONLY public.smart_phrases DROP CONSTRAINT IF EXISTS smart_phrases_pkey;
-ALTER TABLE IF EXISTS ONLY public.services DROP CONSTRAINT IF EXISTS services_pkey;
-ALTER TABLE IF EXISTS ONLY public.service_units DROP CONSTRAINT IF EXISTS service_units_pkey;
-ALTER TABLE IF EXISTS ONLY public.rooms DROP CONSTRAINT IF EXISTS rooms_pkey;
-ALTER TABLE IF EXISTS ONLY public.room_types DROP CONSTRAINT IF EXISTS room_types_pkey;
-ALTER TABLE IF EXISTS ONLY public.return_receptions DROP CONSTRAINT IF EXISTS return_receptions_pkey;
-ALTER TABLE IF EXISTS ONLY public.return_reception_lines DROP CONSTRAINT IF EXISTS return_reception_lines_pkey;
-ALTER TABLE IF EXISTS ONLY public.return_decisions DROP CONSTRAINT IF EXISTS return_decisions_pkey;
-ALTER TABLE IF EXISTS ONLY public.return_decision_lines DROP CONSTRAINT IF EXISTS return_decision_lines_pkey;
-ALTER TABLE IF EXISTS ONLY public.reference_schema_version DROP CONSTRAINT IF EXISTS reference_schema_version_pkey;
-ALTER TABLE IF EXISTS ONLY public.purchase_orders DROP CONSTRAINT IF EXISTS purchase_orders_pkey;
-ALTER TABLE IF EXISTS ONLY public.product_wac DROP CONSTRAINT IF EXISTS product_wac_pkey;
-ALTER TABLE IF EXISTS ONLY public.product_suppliers DROP CONSTRAINT IF EXISTS product_suppliers_tenant_id_product_id_supplier_id_key;
-ALTER TABLE IF EXISTS ONLY public.product_suppliers DROP CONSTRAINT IF EXISTS product_suppliers_pkey;
-ALTER TABLE IF EXISTS ONLY public.product_price_versions DROP CONSTRAINT IF EXISTS product_price_versions_pkey;
-ALTER TABLE IF EXISTS ONLY public.product_configs DROP CONSTRAINT IF EXISTS product_configs_pkey;
-ALTER TABLE IF EXISTS ONLY public.prescriptions DROP CONSTRAINT IF EXISTS prescriptions_pkey;
-ALTER TABLE IF EXISTS ONLY public.prescription_events DROP CONSTRAINT IF EXISTS prescription_events_pkey;
-ALTER TABLE IF EXISTS ONLY public.po_items DROP CONSTRAINT IF EXISTS po_items_pkey;
-ALTER TABLE IF EXISTS ONLY public.patients_tenant DROP CONSTRAINT IF EXISTS patients_tenant_pkey;
-ALTER TABLE IF EXISTS ONLY public.patient_tenant_merge_events DROP CONSTRAINT IF EXISTS patient_tenant_merge_events_pkey;
-ALTER TABLE IF EXISTS ONLY public.patient_stays DROP CONSTRAINT IF EXISTS patient_stays_pkey;
-ALTER TABLE IF EXISTS ONLY public.patient_relationship_links DROP CONSTRAINT IF EXISTS patient_relationship_links_pkey;
-ALTER TABLE IF EXISTS ONLY public.patient_observations DROP CONSTRAINT IF EXISTS patient_observations_pkey;
-ALTER TABLE IF EXISTS ONLY public.patient_lab_results DROP CONSTRAINT IF EXISTS patient_lab_results_pkey;
-ALTER TABLE IF EXISTS ONLY public.patient_lab_reports DROP CONSTRAINT IF EXISTS patient_lab_reports_pkey;
-ALTER TABLE IF EXISTS ONLY public.patient_lab_report_tests DROP CONSTRAINT IF EXISTS patient_lab_report_tests_pkey;
-ALTER TABLE IF EXISTS ONLY public.patient_lab_report_documents DROP CONSTRAINT IF EXISTS patient_lab_report_documents_pkey;
-ALTER TABLE IF EXISTS ONLY public.patient_lab_extraction_sessions DROP CONSTRAINT IF EXISTS patient_lab_extraction_sessions_pkey;
-ALTER TABLE IF EXISTS ONLY public.patient_identity_change DROP CONSTRAINT IF EXISTS patient_identity_change_pkey;
-ALTER TABLE IF EXISTS ONLY public.patient_documents DROP CONSTRAINT IF EXISTS patient_documents_pkey;
-ALTER TABLE IF EXISTS ONLY public.patient_diagnoses DROP CONSTRAINT IF EXISTS patient_diagnoses_pkey;
-ALTER TABLE IF EXISTS ONLY public.patient_contacts DROP CONSTRAINT IF EXISTS patient_contacts_pkey;
-ALTER TABLE IF EXISTS ONLY public.patient_allergy_manifestations DROP CONSTRAINT IF EXISTS patient_allergy_manifestations_pkey;
-ALTER TABLE IF EXISTS ONLY public.patient_allergy_manifestations DROP CONSTRAINT IF EXISTS patient_allergy_manifestation_patient_allergy_id_manifestat_key;
-ALTER TABLE IF EXISTS ONLY public.patient_allergy_history DROP CONSTRAINT IF EXISTS patient_allergy_history_pkey;
-ALTER TABLE IF EXISTS ONLY public.patient_allergies DROP CONSTRAINT IF EXISTS patient_allergies_pkey;
-ALTER TABLE IF EXISTS ONLY public.patient_addresses DROP CONSTRAINT IF EXISTS patient_addresses_pkey;
-ALTER TABLE IF EXISTS ONLY public.patient_addictions DROP CONSTRAINT IF EXISTS patient_addictions_pkey;
-ALTER TABLE IF EXISTS ONLY public.patient_addiction_history DROP CONSTRAINT IF EXISTS patient_addiction_history_pkey;
-ALTER TABLE IF EXISTS ONLY public.medication_dispense_events DROP CONSTRAINT IF EXISTS medication_dispense_events_pkey;
-ALTER TABLE IF EXISTS ONLY public.locations DROP CONSTRAINT IF EXISTS locations_pkey;
-ALTER TABLE IF EXISTS ONLY public.lab_value_normalization DROP CONSTRAINT IF EXISTS lab_value_normalization_pkey;
-ALTER TABLE IF EXISTS ONLY public.lab_specimens DROP CONSTRAINT IF EXISTS lab_specimens_pkey;
-ALTER TABLE IF EXISTS ONLY public.lab_specimens DROP CONSTRAINT IF EXISTS lab_specimens_barcode_key;
-ALTER TABLE IF EXISTS ONLY public.lab_specimen_requests DROP CONSTRAINT IF EXISTS lab_specimen_requests_specimen_id_lab_request_id_key;
-ALTER TABLE IF EXISTS ONLY public.lab_specimen_requests DROP CONSTRAINT IF EXISTS lab_specimen_requests_pkey;
-ALTER TABLE IF EXISTS ONLY public.lab_requests DROP CONSTRAINT IF EXISTS lab_requests_pkey;
-ALTER TABLE IF EXISTS ONLY public.lab_collections DROP CONSTRAINT IF EXISTS lab_collections_pkey;
-ALTER TABLE IF EXISTS ONLY public.lab_collection_specimens DROP CONSTRAINT IF EXISTS lab_collection_specimens_pkey;
-ALTER TABLE IF EXISTS ONLY public.lab_collection_specimens DROP CONSTRAINT IF EXISTS lab_collection_specimens_lab_collection_id_specimen_id_key;
-ALTER TABLE IF EXISTS ONLY public.inventory_movements DROP CONSTRAINT IF EXISTS inventory_movements_pkey;
-ALTER TABLE IF EXISTS ONLY public.identity_ids DROP CONSTRAINT IF EXISTS identity_ids_pkey;
-ALTER TABLE IF EXISTS ONLY public.escarres DROP CONSTRAINT IF EXISTS escarres_pkey;
-ALTER TABLE IF EXISTS ONLY public.escarre_snapshots DROP CONSTRAINT IF EXISTS escarre_snapshots_pkey;
-ALTER TABLE IF EXISTS ONLY public.delivery_notes DROP CONSTRAINT IF EXISTS delivery_notes_pkey;
-ALTER TABLE IF EXISTS ONLY public.delivery_note_items DROP CONSTRAINT IF EXISTS delivery_note_items_pkey;
-ALTER TABLE IF EXISTS ONLY public.coverages DROP CONSTRAINT IF EXISTS coverages_pkey;
-ALTER TABLE IF EXISTS ONLY public.coverage_members DROP CONSTRAINT IF EXISTS coverage_members_pkey;
-ALTER TABLE IF EXISTS ONLY public.coverage_change_history DROP CONSTRAINT IF EXISTS coverage_change_history_pkey;
-ALTER TABLE IF EXISTS ONLY public.clinical_exams DROP CONSTRAINT IF EXISTS clinical_exams_pkey;
-ALTER TABLE IF EXISTS ONLY public.beds DROP CONSTRAINT IF EXISTS beds_room_id_label_key;
-ALTER TABLE IF EXISTS ONLY public.beds DROP CONSTRAINT IF EXISTS beds_pkey;
-ALTER TABLE IF EXISTS ONLY public.audit_log DROP CONSTRAINT IF EXISTS audit_log_pkey;
-ALTER TABLE IF EXISTS ONLY public.appointments DROP CONSTRAINT IF EXISTS appointments_pkey;
-ALTER TABLE IF EXISTS ONLY public.admissions DROP CONSTRAINT IF EXISTS admissions_pkey;
-ALTER TABLE IF EXISTS ONLY public.admission_coverages DROP CONSTRAINT IF EXISTS admission_coverages_pkey;
-ALTER TABLE IF EXISTS ONLY public.admission_coverage_members DROP CONSTRAINT IF EXISTS admission_coverage_members_pkey;
-ALTER TABLE IF EXISTS ONLY public.admission_coverage_change_history DROP CONSTRAINT IF EXISTS admission_coverage_change_history_pkey;
-ALTER TABLE IF EXISTS ONLY public.admission_acts DROP CONSTRAINT IF EXISTS admission_acts_pkey;
-ALTER TABLE IF EXISTS ONLY public.administration_events DROP CONSTRAINT IF EXISTS administration_events_pkey;
-ALTER TABLE IF EXISTS ONLY public.administration_event_pauses DROP CONSTRAINT IF EXISTS administration_event_pauses_pkey;
-ALTER TABLE IF EXISTS ONLY public.administration_event_lab_collections DROP CONSTRAINT IF EXISTS administration_event_lab_collections_pkey;
-ALTER TABLE IF EXISTS ONLY public.administration_event_lab_collections DROP CONSTRAINT IF EXISTS administration_event_lab_coll_administration_event_id_lab_c_key;
-ALTER TABLE IF EXISTS ONLY public.administration_event_blood_bags DROP CONSTRAINT IF EXISTS administration_event_blood_bags_pkey;
-ALTER TABLE IF EXISTS ONLY public.actes DROP CONSTRAINT IF EXISTS actes_pkey;
-ALTER TABLE IF EXISTS ONLY public._migration_issues DROP CONSTRAINT IF EXISTS _migration_issues_pkey;
-ALTER TABLE IF EXISTS ONLY identity_sync.outbox_events DROP CONSTRAINT IF EXISTS outbox_events_pkey;
-ALTER TABLE IF EXISTS ONLY identity_sync.inbox_events DROP CONSTRAINT IF EXISTS inbox_events_pkey;
-ALTER TABLE IF EXISTS ONLY auth_sync.sync_state DROP CONSTRAINT IF EXISTS sync_state_pkey;
-ALTER TABLE IF EXISTS ONLY auth_sync.outbox_events DROP CONSTRAINT IF EXISTS outbox_events_pkey;
-ALTER TABLE IF EXISTS ONLY auth_sync.inbox_events DROP CONSTRAINT IF EXISTS inbox_events_pkey;
-ALTER TABLE IF EXISTS ONLY auth.users DROP CONSTRAINT IF EXISTS users_username_key;
-ALTER TABLE IF EXISTS ONLY auth.users DROP CONSTRAINT IF EXISTS users_pkey;
-ALTER TABLE IF EXISTS ONLY auth.users DROP CONSTRAINT IF EXISTS users_inpe_key;
-ALTER TABLE IF EXISTS ONLY auth.user_tenants DROP CONSTRAINT IF EXISTS user_tenants_pkey;
-ALTER TABLE IF EXISTS ONLY auth.credentials DROP CONSTRAINT IF EXISTS credentials_user_id_key;
-ALTER TABLE IF EXISTS ONLY auth.credentials DROP CONSTRAINT IF EXISTS credentials_pkey;
-ALTER TABLE IF EXISTS ONLY auth.audit_log DROP CONSTRAINT IF EXISTS audit_log_pkey;
-DROP TABLE IF EXISTS reference.units;
-DROP TABLE IF EXISTS reference.sih_sous_familles;
-DROP TABLE IF EXISTS reference.sih_familles;
-DROP TABLE IF EXISTS reference.routes;
-DROP TABLE IF EXISTS reference.organismes;
-DROP TABLE IF EXISTS reference.observation_parameters;
-DROP TABLE IF EXISTS reference.observation_groups;
-DROP TABLE IF EXISTS reference.observation_flowsheets;
-DROP TABLE IF EXISTS reference.lab_sub_sections;
-DROP TABLE IF EXISTS reference.lab_sub_section_tree;
-DROP TABLE IF EXISTS reference.lab_specimen_types;
-DROP TABLE IF EXISTS reference.lab_specimen_container_types;
-DROP TABLE IF EXISTS reference.lab_sections;
-DROP TABLE IF EXISTS reference.lab_section_tree;
-DROP TABLE IF EXISTS reference.lab_reference_rules;
-DROP TABLE IF EXISTS reference.lab_reference_profiles;
-DROP TABLE IF EXISTS reference.lab_panels;
-DROP TABLE IF EXISTS reference.lab_panel_items;
-DROP TABLE IF EXISTS reference.lab_methods;
-DROP TABLE IF EXISTS reference.lab_container_types;
-DROP TABLE IF EXISTS reference.lab_canonical_allowed_values;
-DROP TABLE IF EXISTS reference.lab_analytes;
-DROP TABLE IF EXISTS reference.lab_analyte_units;
-DROP TABLE IF EXISTS reference.lab_analyte_reference_ranges;
-DROP TABLE IF EXISTS reference.lab_analyte_external_codes;
-DROP TABLE IF EXISTS reference.lab_analyte_contexts;
-DROP TABLE IF EXISTS reference.lab_analyte_aliases;
-DROP TABLE IF EXISTS reference.lab_act_taxonomy;
-DROP TABLE IF EXISTS reference.lab_act_specimen_containers;
-DROP TABLE IF EXISTS reference.lab_act_methods;
-DROP TABLE IF EXISTS reference.lab_act_contexts;
-DROP TABLE IF EXISTS reference.lab_act_analytes;
-DROP TABLE IF EXISTS reference.lab_act_analyte_context;
-DROP TABLE IF EXISTS reference.identity_document_types;
-DROP TABLE IF EXISTS reference.group_parameters;
-DROP TABLE IF EXISTS reference.global_suppliers;
-DROP TABLE IF EXISTS reference.global_roles;
-DROP TABLE IF EXISTS reference.global_products;
-DROP TABLE IF EXISTS reference.global_product_price_history;
-DROP TABLE IF EXISTS reference.global_emdn;
-DROP TABLE IF EXISTS reference.global_dci;
-DROP TABLE IF EXISTS reference.global_atc;
-DROP TABLE IF EXISTS reference.global_actes;
-DROP TABLE IF EXISTS reference.flowsheet_groups;
-DROP TABLE IF EXISTS reference.dci_synonyms;
-DROP TABLE IF EXISTS reference.countries;
-DROP TABLE IF EXISTS reference.care_categories;
-DROP TABLE IF EXISTS public.user_services;
-DROP TABLE IF EXISTS public.user_roles;
-DROP TABLE IF EXISTS public.transfusion_reactions;
-DROP TABLE IF EXISTS public.transfusion_checks;
-DROP TABLE IF EXISTS public.transfusion_blood_bags;
-DROP TABLE IF EXISTS public.surveillance_values_events;
-DROP TABLE IF EXISTS public.surveillance_hour_buckets;
-DROP TABLE IF EXISTS public.suppliers;
-DROP TABLE IF EXISTS public.stock_transfers;
-DROP TABLE IF EXISTS public.stock_transfer_lines;
-DROP TABLE IF EXISTS public.stock_returns;
-DROP TABLE IF EXISTS public.stock_return_lines;
-DROP TABLE IF EXISTS public.stock_reservations;
-DROP TABLE IF EXISTS public.stock_reservation_lines;
-DROP TABLE IF EXISTS public.stock_demands;
-DROP TABLE IF EXISTS public.stock_demand_lines;
-DROP TABLE IF EXISTS public.smart_phrases;
-DROP TABLE IF EXISTS public.services;
-DROP TABLE IF EXISTS public.service_units;
-DROP TABLE IF EXISTS public.rooms;
-DROP TABLE IF EXISTS public.room_types;
-DROP TABLE IF EXISTS public.return_receptions;
-DROP TABLE IF EXISTS public.return_reception_lines;
-DROP TABLE IF EXISTS public.return_decisions;
-DROP TABLE IF EXISTS public.return_decision_lines;
-DROP TABLE IF EXISTS public.reference_schema_version;
-DROP TABLE IF EXISTS public.purchase_orders;
-DROP TABLE IF EXISTS public.product_wac;
-DROP TABLE IF EXISTS public.product_suppliers;
-DROP TABLE IF EXISTS public.product_price_versions;
-DROP TABLE IF EXISTS public.product_configs;
-DROP TABLE IF EXISTS public.prescriptions;
-DROP TABLE IF EXISTS public.prescription_events;
-DROP TABLE IF EXISTS public.po_items;
-DROP TABLE IF EXISTS public.patients_tenant;
-DROP TABLE IF EXISTS public.patient_tenant_merge_events;
-DROP TABLE IF EXISTS public.patient_stays;
-DROP TABLE IF EXISTS public.patient_relationship_links;
-DROP TABLE IF EXISTS public.patient_observations;
-DROP TABLE IF EXISTS public.patient_lab_results;
-DROP TABLE IF EXISTS public.patient_lab_reports;
-DROP TABLE IF EXISTS public.patient_lab_report_tests;
-DROP TABLE IF EXISTS public.patient_lab_report_documents;
-DROP TABLE IF EXISTS public.patient_lab_extraction_sessions;
-DROP TABLE IF EXISTS public.patient_identity_change;
-DROP TABLE IF EXISTS public.patient_documents;
-DROP TABLE IF EXISTS public.patient_diagnoses;
-DROP TABLE IF EXISTS public.patient_contacts;
-DROP TABLE IF EXISTS public.patient_allergy_manifestations;
-DROP TABLE IF EXISTS public.patient_allergy_history;
-DROP TABLE IF EXISTS public.patient_allergies;
-DROP TABLE IF EXISTS public.patient_addresses;
-DROP TABLE IF EXISTS public.patient_addictions;
-DROP TABLE IF EXISTS public.patient_addiction_history;
-DROP TABLE IF EXISTS public.medication_dispense_events;
-DROP TABLE IF EXISTS public.locations;
-DROP TABLE IF EXISTS public.lab_value_normalization;
-DROP TABLE IF EXISTS public.lab_specimens;
-DROP TABLE IF EXISTS public.lab_specimen_requests;
-DROP TABLE IF EXISTS public.lab_requests;
-DROP TABLE IF EXISTS public.lab_collections;
-DROP TABLE IF EXISTS public.lab_collection_specimens;
-DROP TABLE IF EXISTS public.inventory_movements;
-DROP TABLE IF EXISTS public.identity_ids;
-DROP TABLE IF EXISTS public.escarres;
-DROP TABLE IF EXISTS public.escarre_snapshots;
-DROP TABLE IF EXISTS public.delivery_notes;
-DROP TABLE IF EXISTS public.delivery_note_layers;
-DROP TABLE IF EXISTS public.delivery_note_items;
-DROP TABLE IF EXISTS public.current_stock;
-DROP TABLE IF EXISTS public.coverages;
-DROP TABLE IF EXISTS public.coverage_members;
-DROP TABLE IF EXISTS public.coverage_change_history;
-DROP TABLE IF EXISTS public.clinical_exams;
-DROP TABLE IF EXISTS public.beds;
-DROP TABLE IF EXISTS public.audit_log;
-DROP TABLE IF EXISTS public.appointments;
-DROP TABLE IF EXISTS public.admissions;
-DROP SEQUENCE IF EXISTS public.admission_number_seq;
-DROP TABLE IF EXISTS public.admission_coverages;
-DROP TABLE IF EXISTS public.admission_coverage_members;
-DROP TABLE IF EXISTS public.admission_coverage_change_history;
-DROP TABLE IF EXISTS public.admission_acts;
-DROP TABLE IF EXISTS public.administration_events;
-DROP TABLE IF EXISTS public.administration_event_pauses;
-DROP TABLE IF EXISTS public.administration_event_lab_collections;
-DROP TABLE IF EXISTS public.administration_event_blood_bags;
-DROP TABLE IF EXISTS public.actes;
-DROP TABLE IF EXISTS public._migration_issues;
-DROP TABLE IF EXISTS identity_sync.outbox_events;
-DROP TABLE IF EXISTS identity_sync.inbox_events;
-DROP TABLE IF EXISTS auth_sync.sync_state;
-DROP TABLE IF EXISTS auth_sync.outbox_events;
-DROP TABLE IF EXISTS auth_sync.inbox_events;
-DROP TABLE IF EXISTS auth.users;
-DROP TABLE IF EXISTS auth.user_tenants;
-DROP TABLE IF EXISTS auth.credentials;
-DROP TABLE IF EXISTS auth.audit_log;
-DROP FUNCTION IF EXISTS public.update_updated_at_column();
-DROP FUNCTION IF EXISTS public.update_surveillance_hour_bucket();
-DROP FUNCTION IF EXISTS public.trigger_recompute_bag_status_assoc();
-DROP FUNCTION IF EXISTS public.trigger_recompute_bag_status();
-DROP FUNCTION IF EXISTS public.recompute_blood_bag_status(p_bag_id uuid);
-DROP FUNCTION IF EXISTS public.fn_prevent_system_location_deactivate();
-DROP FUNCTION IF EXISTS public.fn_generic_audit();
-DROP FUNCTION IF EXISTS public.fn_audit_no_update();
-DROP FUNCTION IF EXISTS auth_sync.emit_outbox_event();
-DROP TYPE IF EXISTS public.bed_status;
-DROP EXTENSION IF EXISTS btree_gist;
-DROP SCHEMA IF EXISTS reference;
-DROP SCHEMA IF EXISTS identity_sync;
-DROP SCHEMA IF EXISTS auth_sync;
-DROP SCHEMA IF EXISTS auth;
 --
--- Name: auth; Type: SCHEMA; Schema: -; Owner: -
+-- Name: auth; Type: SCHEMA; Schema: -; Owner: sahty
 --
 
 CREATE SCHEMA auth;
 
 
+ALTER SCHEMA auth OWNER TO sahty;
+
 --
--- Name: auth_sync; Type: SCHEMA; Schema: -; Owner: -
+-- Name: auth_sync; Type: SCHEMA; Schema: -; Owner: sahty
 --
 
 CREATE SCHEMA auth_sync;
 
 
+ALTER SCHEMA auth_sync OWNER TO sahty;
+
 --
--- Name: identity_sync; Type: SCHEMA; Schema: -; Owner: -
+-- Name: identity_sync; Type: SCHEMA; Schema: -; Owner: sahty
 --
 
 CREATE SCHEMA identity_sync;
 
 
+ALTER SCHEMA identity_sync OWNER TO sahty;
+
 --
--- Name: reference; Type: SCHEMA; Schema: -; Owner: -
+-- Name: reference; Type: SCHEMA; Schema: -; Owner: sahty
 --
 
 CREATE SCHEMA reference;
 
+
+ALTER SCHEMA reference OWNER TO sahty;
 
 --
 -- Name: btree_gist; Type: EXTENSION; Schema: -; Owner: -
@@ -838,14 +62,14 @@ CREATE EXTENSION IF NOT EXISTS btree_gist WITH SCHEMA public;
 
 
 --
--- Name: EXTENSION btree_gist; Type: COMMENT; Schema: -; Owner: -
+-- Name: EXTENSION btree_gist; Type: COMMENT; Schema: -; Owner: 
 --
 
-COMMENT ON EXTENSION btree_gist IS 'support for indexing common datatypes in GiST';
+-- COMMENT ON EXTENSION btree_gist IS 'support for indexing common datatypes in GiST';
 
 
 --
--- Name: bed_status; Type: TYPE; Schema: public; Owner: -
+-- Name: bed_status; Type: TYPE; Schema: public; Owner: sahty
 --
 
 CREATE TYPE public.bed_status AS ENUM (
@@ -855,8 +79,10 @@ CREATE TYPE public.bed_status AS ENUM (
 );
 
 
+ALTER TYPE public.bed_status OWNER TO sahty;
+
 --
--- Name: emit_outbox_event(); Type: FUNCTION; Schema: auth_sync; Owner: -
+-- Name: emit_outbox_event(); Type: FUNCTION; Schema: auth_sync; Owner: sahty
 --
 
 CREATE FUNCTION auth_sync.emit_outbox_event() RETURNS trigger
@@ -923,8 +149,10 @@ END;
 $$;
 
 
+ALTER FUNCTION auth_sync.emit_outbox_event() OWNER TO sahty;
+
 --
--- Name: fn_audit_no_update(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: fn_audit_no_update(); Type: FUNCTION; Schema: public; Owner: sahty
 --
 
 CREATE FUNCTION public.fn_audit_no_update() RETURNS trigger
@@ -937,8 +165,10 @@ END;
 $$;
 
 
+ALTER FUNCTION public.fn_audit_no_update() OWNER TO sahty;
+
 --
--- Name: fn_generic_audit(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: fn_generic_audit(); Type: FUNCTION; Schema: public; Owner: sahty
 --
 
 CREATE FUNCTION public.fn_generic_audit() RETURNS trigger
@@ -1031,8 +261,10 @@ END;
 $$;
 
 
+ALTER FUNCTION public.fn_generic_audit() OWNER TO sahty;
+
 --
--- Name: fn_prevent_system_location_deactivate(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: fn_prevent_system_location_deactivate(); Type: FUNCTION; Schema: public; Owner: sahty
 --
 
 CREATE FUNCTION public.fn_prevent_system_location_deactivate() RETURNS trigger
@@ -1047,8 +279,10 @@ END;
 $$;
 
 
+ALTER FUNCTION public.fn_prevent_system_location_deactivate() OWNER TO sahty;
+
 --
--- Name: recompute_blood_bag_status(uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: recompute_blood_bag_status(uuid); Type: FUNCTION; Schema: public; Owner: sahty
 --
 
 CREATE FUNCTION public.recompute_blood_bag_status(p_bag_id uuid) RETURNS void
@@ -1105,8 +339,10 @@ END;
 $$;
 
 
+ALTER FUNCTION public.recompute_blood_bag_status(p_bag_id uuid) OWNER TO sahty;
+
 --
--- Name: trigger_recompute_bag_status(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: trigger_recompute_bag_status(); Type: FUNCTION; Schema: public; Owner: sahty
 --
 
 CREATE FUNCTION public.trigger_recompute_bag_status() RETURNS trigger
@@ -1142,8 +378,10 @@ END;
 $$;
 
 
+ALTER FUNCTION public.trigger_recompute_bag_status() OWNER TO sahty;
+
 --
--- Name: trigger_recompute_bag_status_assoc(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: trigger_recompute_bag_status_assoc(); Type: FUNCTION; Schema: public; Owner: sahty
 --
 
 CREATE FUNCTION public.trigger_recompute_bag_status_assoc() RETURNS trigger
@@ -1161,8 +399,10 @@ END;
 $$;
 
 
+ALTER FUNCTION public.trigger_recompute_bag_status_assoc() OWNER TO sahty;
+
 --
--- Name: update_surveillance_hour_bucket(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: update_surveillance_hour_bucket(); Type: FUNCTION; Schema: public; Owner: sahty
 --
 
 CREATE FUNCTION public.update_surveillance_hour_bucket() RETURNS trigger
@@ -1202,8 +442,10 @@ END;
 $$;
 
 
+ALTER FUNCTION public.update_surveillance_hour_bucket() OWNER TO sahty;
+
 --
--- Name: update_updated_at_column(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: update_updated_at_column(); Type: FUNCTION; Schema: public; Owner: sahty
 --
 
 CREATE FUNCTION public.update_updated_at_column() RETURNS trigger
@@ -1216,12 +458,14 @@ END;
 $$;
 
 
+ALTER FUNCTION public.update_updated_at_column() OWNER TO sahty;
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
 
 --
--- Name: audit_log; Type: TABLE; Schema: auth; Owner: -
+-- Name: audit_log; Type: TABLE; Schema: auth; Owner: sahty
 --
 
 CREATE TABLE auth.audit_log (
@@ -1234,8 +478,10 @@ CREATE TABLE auth.audit_log (
 );
 
 
+ALTER TABLE auth.audit_log OWNER TO sahty;
+
 --
--- Name: credentials; Type: TABLE; Schema: auth; Owner: -
+-- Name: credentials; Type: TABLE; Schema: auth; Owner: sahty
 --
 
 CREATE TABLE auth.credentials (
@@ -1250,8 +496,10 @@ CREATE TABLE auth.credentials (
 );
 
 
+ALTER TABLE auth.credentials OWNER TO sahty;
+
 --
--- Name: user_tenants; Type: TABLE; Schema: auth; Owner: -
+-- Name: user_tenants; Type: TABLE; Schema: auth; Owner: sahty
 --
 
 CREATE TABLE auth.user_tenants (
@@ -1262,8 +510,10 @@ CREATE TABLE auth.user_tenants (
 );
 
 
+ALTER TABLE auth.user_tenants OWNER TO sahty;
+
 --
--- Name: users; Type: TABLE; Schema: auth; Owner: -
+-- Name: users; Type: TABLE; Schema: auth; Owner: sahty
 --
 
 CREATE TABLE auth.users (
@@ -1280,8 +530,10 @@ CREATE TABLE auth.users (
 );
 
 
+ALTER TABLE auth.users OWNER TO sahty;
+
 --
--- Name: inbox_events; Type: TABLE; Schema: auth_sync; Owner: -
+-- Name: inbox_events; Type: TABLE; Schema: auth_sync; Owner: sahty
 --
 
 CREATE TABLE auth_sync.inbox_events (
@@ -1296,8 +548,10 @@ CREATE TABLE auth_sync.inbox_events (
 );
 
 
+ALTER TABLE auth_sync.inbox_events OWNER TO sahty;
+
 --
--- Name: outbox_events; Type: TABLE; Schema: auth_sync; Owner: -
+-- Name: outbox_events; Type: TABLE; Schema: auth_sync; Owner: sahty
 --
 
 CREATE TABLE auth_sync.outbox_events (
@@ -1311,8 +565,10 @@ CREATE TABLE auth_sync.outbox_events (
 );
 
 
+ALTER TABLE auth_sync.outbox_events OWNER TO sahty;
+
 --
--- Name: sync_state; Type: TABLE; Schema: auth_sync; Owner: -
+-- Name: sync_state; Type: TABLE; Schema: auth_sync; Owner: sahty
 --
 
 CREATE TABLE auth_sync.sync_state (
@@ -1323,8 +579,10 @@ CREATE TABLE auth_sync.sync_state (
 );
 
 
+ALTER TABLE auth_sync.sync_state OWNER TO sahty;
+
 --
--- Name: inbox_events; Type: TABLE; Schema: identity_sync; Owner: -
+-- Name: inbox_events; Type: TABLE; Schema: identity_sync; Owner: sahty
 --
 
 CREATE TABLE identity_sync.inbox_events (
@@ -1339,8 +597,10 @@ CREATE TABLE identity_sync.inbox_events (
 );
 
 
+ALTER TABLE identity_sync.inbox_events OWNER TO sahty;
+
 --
--- Name: outbox_events; Type: TABLE; Schema: identity_sync; Owner: -
+-- Name: outbox_events; Type: TABLE; Schema: identity_sync; Owner: sahty
 --
 
 CREATE TABLE identity_sync.outbox_events (
@@ -1359,8 +619,10 @@ CREATE TABLE identity_sync.outbox_events (
 );
 
 
+ALTER TABLE identity_sync.outbox_events OWNER TO sahty;
+
 --
--- Name: _migration_issues; Type: TABLE; Schema: public; Owner: -
+-- Name: _migration_issues; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public._migration_issues (
@@ -1374,8 +636,10 @@ CREATE TABLE public._migration_issues (
 );
 
 
+ALTER TABLE public._migration_issues OWNER TO sahty;
+
 --
--- Name: actes; Type: TABLE; Schema: public; Owner: -
+-- Name: actes; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.actes (
@@ -1389,8 +653,10 @@ CREATE TABLE public.actes (
 );
 
 
+ALTER TABLE public.actes OWNER TO sahty;
+
 --
--- Name: administration_event_blood_bags; Type: TABLE; Schema: public; Owner: -
+-- Name: administration_event_blood_bags; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.administration_event_blood_bags (
@@ -1404,8 +670,10 @@ CREATE TABLE public.administration_event_blood_bags (
 );
 
 
+ALTER TABLE public.administration_event_blood_bags OWNER TO sahty;
+
 --
--- Name: administration_event_lab_collections; Type: TABLE; Schema: public; Owner: -
+-- Name: administration_event_lab_collections; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.administration_event_lab_collections (
@@ -1416,8 +684,10 @@ CREATE TABLE public.administration_event_lab_collections (
 );
 
 
+ALTER TABLE public.administration_event_lab_collections OWNER TO sahty;
+
 --
--- Name: administration_event_pauses; Type: TABLE; Schema: public; Owner: -
+-- Name: administration_event_pauses; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.administration_event_pauses (
@@ -1433,8 +703,10 @@ CREATE TABLE public.administration_event_pauses (
 );
 
 
+ALTER TABLE public.administration_event_pauses OWNER TO sahty;
+
 --
--- Name: administration_events; Type: TABLE; Schema: public; Owner: -
+-- Name: administration_events; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.administration_events (
@@ -1459,8 +731,10 @@ CREATE TABLE public.administration_events (
 );
 
 
+ALTER TABLE public.administration_events OWNER TO sahty;
+
 --
--- Name: admission_acts; Type: TABLE; Schema: public; Owner: -
+-- Name: admission_acts; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.admission_acts (
@@ -1476,8 +750,10 @@ CREATE TABLE public.admission_acts (
 );
 
 
+ALTER TABLE public.admission_acts OWNER TO sahty;
+
 --
--- Name: admission_coverage_change_history; Type: TABLE; Schema: public; Owner: -
+-- Name: admission_coverage_change_history; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.admission_coverage_change_history (
@@ -1498,8 +774,10 @@ CREATE TABLE public.admission_coverage_change_history (
 );
 
 
+ALTER TABLE public.admission_coverage_change_history OWNER TO sahty;
+
 --
--- Name: admission_coverage_members; Type: TABLE; Schema: public; Owner: -
+-- Name: admission_coverage_members; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.admission_coverage_members (
@@ -1517,8 +795,10 @@ CREATE TABLE public.admission_coverage_members (
 );
 
 
+ALTER TABLE public.admission_coverage_members OWNER TO sahty;
+
 --
--- Name: admission_coverages; Type: TABLE; Schema: public; Owner: -
+-- Name: admission_coverages; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.admission_coverages (
@@ -1541,8 +821,10 @@ CREATE TABLE public.admission_coverages (
 );
 
 
+ALTER TABLE public.admission_coverages OWNER TO sahty;
+
 --
--- Name: admission_number_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: admission_number_seq; Type: SEQUENCE; Schema: public; Owner: sahty
 --
 
 CREATE SEQUENCE public.admission_number_seq
@@ -1553,8 +835,10 @@ CREATE SEQUENCE public.admission_number_seq
     CACHE 1;
 
 
+ALTER SEQUENCE public.admission_number_seq OWNER TO sahty;
+
 --
--- Name: admissions; Type: TABLE; Schema: public; Owner: -
+-- Name: admissions; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.admissions (
@@ -1574,12 +858,15 @@ CREATE TABLE public.admissions (
     discharge_date timestamp with time zone,
     status text,
     currency text DEFAULT 'MAD'::text,
-    created_at timestamp with time zone DEFAULT now()
+    created_at timestamp with time zone DEFAULT now(),
+    auto_close_at timestamp with time zone
 );
 
 
+ALTER TABLE public.admissions OWNER TO sahty;
+
 --
--- Name: appointments; Type: TABLE; Schema: public; Owner: -
+-- Name: appointments; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.appointments (
@@ -1596,8 +883,10 @@ CREATE TABLE public.appointments (
 );
 
 
+ALTER TABLE public.appointments OWNER TO sahty;
+
 --
--- Name: audit_log; Type: TABLE; Schema: public; Owner: -
+-- Name: audit_log; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.audit_log (
@@ -1614,8 +903,10 @@ CREATE TABLE public.audit_log (
 );
 
 
+ALTER TABLE public.audit_log OWNER TO sahty;
+
 --
--- Name: beds; Type: TABLE; Schema: public; Owner: -
+-- Name: beds; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.beds (
@@ -1628,8 +919,10 @@ CREATE TABLE public.beds (
 );
 
 
+ALTER TABLE public.beds OWNER TO sahty;
+
 --
--- Name: clinical_exams; Type: TABLE; Schema: public; Owner: -
+-- Name: clinical_exams; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.clinical_exams (
@@ -1655,8 +948,10 @@ CREATE TABLE public.clinical_exams (
 );
 
 
+ALTER TABLE public.clinical_exams OWNER TO sahty;
+
 --
--- Name: coverage_change_history; Type: TABLE; Schema: public; Owner: -
+-- Name: coverage_change_history; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.coverage_change_history (
@@ -1675,8 +970,10 @@ CREATE TABLE public.coverage_change_history (
 );
 
 
+ALTER TABLE public.coverage_change_history OWNER TO sahty;
+
 --
--- Name: coverage_members; Type: TABLE; Schema: public; Owner: -
+-- Name: coverage_members; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.coverage_members (
@@ -1694,8 +991,10 @@ CREATE TABLE public.coverage_members (
 );
 
 
+ALTER TABLE public.coverage_members OWNER TO sahty;
+
 --
--- Name: coverages; Type: TABLE; Schema: public; Owner: -
+-- Name: coverages; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.coverages (
@@ -1719,8 +1018,10 @@ CREATE TABLE public.coverages (
 );
 
 
+ALTER TABLE public.coverages OWNER TO sahty;
+
 --
--- Name: current_stock; Type: TABLE; Schema: public; Owner: -
+-- Name: current_stock; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.current_stock (
@@ -1735,8 +1036,10 @@ CREATE TABLE public.current_stock (
 );
 
 
+ALTER TABLE public.current_stock OWNER TO sahty;
+
 --
--- Name: delivery_note_items; Type: TABLE; Schema: public; Owner: -
+-- Name: delivery_note_items; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.delivery_note_items (
@@ -1749,8 +1052,10 @@ CREATE TABLE public.delivery_note_items (
 );
 
 
+ALTER TABLE public.delivery_note_items OWNER TO sahty;
+
 --
--- Name: delivery_note_layers; Type: TABLE; Schema: public; Owner: -
+-- Name: delivery_note_layers; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.delivery_note_layers (
@@ -1765,8 +1070,10 @@ CREATE TABLE public.delivery_note_layers (
 );
 
 
+ALTER TABLE public.delivery_note_layers OWNER TO sahty;
+
 --
--- Name: delivery_notes; Type: TABLE; Schema: public; Owner: -
+-- Name: delivery_notes; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.delivery_notes (
@@ -1778,12 +1085,16 @@ CREATE TABLE public.delivery_notes (
     status text DEFAULT 'PENDING'::text,
     created_by text,
     created_at timestamp with time zone DEFAULT now(),
-    reference text
+    reference text,
+    created_by_first_name text,
+    created_by_last_name text
 );
 
 
+ALTER TABLE public.delivery_notes OWNER TO sahty;
+
 --
--- Name: escarre_snapshots; Type: TABLE; Schema: public; Owner: -
+-- Name: escarre_snapshots; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.escarre_snapshots (
@@ -1812,8 +1123,10 @@ CREATE TABLE public.escarre_snapshots (
 );
 
 
+ALTER TABLE public.escarre_snapshots OWNER TO sahty;
+
 --
--- Name: escarres; Type: TABLE; Schema: public; Owner: -
+-- Name: escarres; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.escarres (
@@ -1832,8 +1145,44 @@ CREATE TABLE public.escarres (
 );
 
 
+ALTER TABLE public.escarres OWNER TO sahty;
+
 --
--- Name: identity_ids; Type: TABLE; Schema: public; Owner: -
+-- Name: external_systems; Type: TABLE; Schema: public; Owner: sahty
+--
+
+CREATE TABLE public.external_systems (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    code text NOT NULL,
+    label text NOT NULL,
+    is_active boolean DEFAULT true,
+    created_at timestamp without time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.external_systems OWNER TO sahty;
+
+--
+-- Name: global_act_external_codes; Type: TABLE; Schema: public; Owner: sahty
+--
+
+CREATE TABLE public.global_act_external_codes (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    global_act_id uuid NOT NULL,
+    external_system_id uuid NOT NULL,
+    external_code text NOT NULL,
+    is_active boolean DEFAULT true,
+    valid_from timestamp without time zone,
+    valid_to timestamp without time zone,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.global_act_external_codes OWNER TO sahty;
+
+--
+-- Name: identity_ids; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.identity_ids (
@@ -1850,8 +1199,10 @@ CREATE TABLE public.identity_ids (
 );
 
 
+ALTER TABLE public.identity_ids OWNER TO sahty;
+
 --
--- Name: inventory_movements; Type: TABLE; Schema: public; Owner: -
+-- Name: inventory_movements; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.inventory_movements (
@@ -1870,8 +1221,28 @@ CREATE TABLE public.inventory_movements (
 );
 
 
+ALTER TABLE public.inventory_movements OWNER TO sahty;
+
 --
--- Name: lab_collection_specimens; Type: TABLE; Schema: public; Owner: -
+-- Name: lab_analyte_external_codes; Type: TABLE; Schema: public; Owner: sahty
+--
+
+CREATE TABLE public.lab_analyte_external_codes (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    analyte_id uuid NOT NULL,
+    external_system_id uuid NOT NULL,
+    external_code text NOT NULL,
+    external_label text,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.lab_analyte_external_codes OWNER TO sahty;
+
+--
+-- Name: lab_collection_specimens; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.lab_collection_specimens (
@@ -1881,8 +1252,10 @@ CREATE TABLE public.lab_collection_specimens (
 );
 
 
+ALTER TABLE public.lab_collection_specimens OWNER TO sahty;
+
 --
--- Name: lab_collections; Type: TABLE; Schema: public; Owner: -
+-- Name: lab_collections; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.lab_collections (
@@ -1895,8 +1268,55 @@ CREATE TABLE public.lab_collections (
 );
 
 
+ALTER TABLE public.lab_collections OWNER TO sahty;
+
 --
--- Name: lab_requests; Type: TABLE; Schema: public; Owner: -
+-- Name: lab_hprim_links; Type: TABLE; Schema: public; Owner: sahty
+--
+
+CREATE TABLE public.lab_hprim_links (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    hprim_message_id uuid NOT NULL,
+    lab_request_id uuid NOT NULL,
+    lab_specimen_id uuid,
+    hprim_order_id text NOT NULL,
+    hprim_sample_id text,
+    consumed_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.lab_hprim_links OWNER TO sahty;
+
+--
+-- Name: lab_hprim_messages; Type: TABLE; Schema: public; Owner: sahty
+--
+
+CREATE TABLE public.lab_hprim_messages (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    direction text NOT NULL,
+    message_type text NOT NULL,
+    file_name text NOT NULL,
+    file_path text NOT NULL,
+    ok_file_name text,
+    status text DEFAULT 'PENDING'::text NOT NULL,
+    payload_text text,
+    error_message text,
+    retry_count integer DEFAULT 0 NOT NULL,
+    max_retries integer DEFAULT 3 NOT NULL,
+    next_retry_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now(),
+    processed_at timestamp with time zone,
+    CONSTRAINT lab_hprim_messages_direction_check CHECK ((direction = ANY (ARRAY['OUTBOUND'::text, 'INBOUND'::text]))),
+    CONSTRAINT lab_hprim_messages_message_type_check CHECK ((message_type = ANY (ARRAY['ORM'::text, 'ORU'::text]))),
+    CONSTRAINT lab_hprim_messages_status_check CHECK ((status = ANY (ARRAY['PENDING'::text, 'WRITTEN'::text, 'PROCESSED'::text, 'ERROR'::text])))
+);
+
+
+ALTER TABLE public.lab_hprim_messages OWNER TO sahty;
+
+--
+-- Name: lab_requests; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.lab_requests (
@@ -1904,14 +1324,16 @@ CREATE TABLE public.lab_requests (
     tenant_patient_id uuid NOT NULL,
     admission_id uuid NOT NULL,
     global_act_id uuid NOT NULL,
-    prescription_event_id uuid NOT NULL,
+    prescription_event_id uuid,
     created_by_user_id uuid,
     created_at timestamp without time zone DEFAULT now()
 );
 
 
+ALTER TABLE public.lab_requests OWNER TO sahty;
+
 --
--- Name: lab_specimen_requests; Type: TABLE; Schema: public; Owner: -
+-- Name: lab_specimen_requests; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.lab_specimen_requests (
@@ -1921,21 +1343,69 @@ CREATE TABLE public.lab_specimen_requests (
 );
 
 
+ALTER TABLE public.lab_specimen_requests OWNER TO sahty;
+
 --
--- Name: lab_specimens; Type: TABLE; Schema: public; Owner: -
+-- Name: lab_specimen_status_history; Type: TABLE; Schema: public; Owner: sahty
+--
+
+CREATE TABLE public.lab_specimen_status_history (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    specimen_id uuid NOT NULL,
+    old_status text,
+    new_status text NOT NULL,
+    changed_at timestamp without time zone DEFAULT now() NOT NULL,
+    changed_by_user_id uuid,
+    reason text
+);
+
+
+ALTER TABLE public.lab_specimen_status_history OWNER TO sahty;
+
+--
+-- Name: lab_specimens; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.lab_specimens (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    lab_specimen_container_type_id uuid NOT NULL,
+    lab_act_specimen_container_id uuid NOT NULL,
     barcode text NOT NULL,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
-    created_by_user_id uuid
+    created_by_user_id uuid,
+    status text DEFAULT 'COLLECTED'::text NOT NULL,
+    rejected_reason text,
+    received_at timestamp without time zone,
+    received_by_user_id uuid,
+    rejected_at timestamp without time zone,
+    rejected_by_user_id uuid,
+    last_status_changed_at timestamp without time zone,
+    last_status_changed_by_user_id uuid,
+    CONSTRAINT lab_specimens_status_check CHECK ((status = ANY (ARRAY['COLLECTED'::text, 'RECEIVED'::text, 'REJECTED'::text, 'INSUFFICIENT'::text])))
 );
 
 
+ALTER TABLE public.lab_specimens OWNER TO sahty;
+
 --
--- Name: lab_value_normalization; Type: TABLE; Schema: public; Owner: -
+-- Name: lab_unit_external_codes; Type: TABLE; Schema: public; Owner: sahty
+--
+
+CREATE TABLE public.lab_unit_external_codes (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    unit_id uuid NOT NULL,
+    external_system_id uuid NOT NULL,
+    external_code text NOT NULL,
+    external_label text,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+ALTER TABLE public.lab_unit_external_codes OWNER TO sahty;
+
+--
+-- Name: lab_value_normalization; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.lab_value_normalization (
@@ -1949,8 +1419,10 @@ CREATE TABLE public.lab_value_normalization (
 );
 
 
+ALTER TABLE public.lab_value_normalization OWNER TO sahty;
+
 --
--- Name: locations; Type: TABLE; Schema: public; Owner: -
+-- Name: locations; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.locations (
@@ -1967,8 +1439,10 @@ CREATE TABLE public.locations (
 );
 
 
+ALTER TABLE public.locations OWNER TO sahty;
+
 --
--- Name: medication_dispense_events; Type: TABLE; Schema: public; Owner: -
+-- Name: medication_dispense_events; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.medication_dispense_events (
@@ -1985,8 +1459,10 @@ CREATE TABLE public.medication_dispense_events (
 );
 
 
+ALTER TABLE public.medication_dispense_events OWNER TO sahty;
+
 --
--- Name: patient_addiction_history; Type: TABLE; Schema: public; Owner: -
+-- Name: patient_addiction_history; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.patient_addiction_history (
@@ -2005,8 +1481,10 @@ CREATE TABLE public.patient_addiction_history (
 );
 
 
+ALTER TABLE public.patient_addiction_history OWNER TO sahty;
+
 --
--- Name: patient_addictions; Type: TABLE; Schema: public; Owner: -
+-- Name: patient_addictions; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.patient_addictions (
@@ -2027,8 +1505,10 @@ CREATE TABLE public.patient_addictions (
 );
 
 
+ALTER TABLE public.patient_addictions OWNER TO sahty;
+
 --
--- Name: patient_addresses; Type: TABLE; Schema: public; Owner: -
+-- Name: patient_addresses; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.patient_addresses (
@@ -2046,8 +1526,10 @@ CREATE TABLE public.patient_addresses (
 );
 
 
+ALTER TABLE public.patient_addresses OWNER TO sahty;
+
 --
--- Name: patient_allergies; Type: TABLE; Schema: public; Owner: -
+-- Name: patient_allergies; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.patient_allergies (
@@ -2071,8 +1553,10 @@ CREATE TABLE public.patient_allergies (
 );
 
 
+ALTER TABLE public.patient_allergies OWNER TO sahty;
+
 --
--- Name: patient_allergy_history; Type: TABLE; Schema: public; Owner: -
+-- Name: patient_allergy_history; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.patient_allergy_history (
@@ -2093,8 +1577,10 @@ CREATE TABLE public.patient_allergy_history (
 );
 
 
+ALTER TABLE public.patient_allergy_history OWNER TO sahty;
+
 --
--- Name: patient_allergy_manifestations; Type: TABLE; Schema: public; Owner: -
+-- Name: patient_allergy_manifestations; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.patient_allergy_manifestations (
@@ -2108,8 +1594,10 @@ CREATE TABLE public.patient_allergy_manifestations (
 );
 
 
+ALTER TABLE public.patient_allergy_manifestations OWNER TO sahty;
+
 --
--- Name: patient_contacts; Type: TABLE; Schema: public; Owner: -
+-- Name: patient_contacts; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.patient_contacts (
@@ -2121,8 +1609,10 @@ CREATE TABLE public.patient_contacts (
 );
 
 
+ALTER TABLE public.patient_contacts OWNER TO sahty;
+
 --
--- Name: patient_diagnoses; Type: TABLE; Schema: public; Owner: -
+-- Name: patient_diagnoses; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.patient_diagnoses (
@@ -2151,8 +1641,10 @@ CREATE TABLE public.patient_diagnoses (
 );
 
 
+ALTER TABLE public.patient_diagnoses OWNER TO sahty;
+
 --
--- Name: patient_documents; Type: TABLE; Schema: public; Owner: -
+-- Name: patient_documents; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.patient_documents (
@@ -2180,8 +1672,151 @@ CREATE TABLE public.patient_documents (
 );
 
 
+ALTER TABLE public.patient_documents OWNER TO sahty;
+
 --
--- Name: patient_identity_change; Type: TABLE; Schema: public; Owner: -
+-- Name: patient_ecg_records; Type: TABLE; Schema: public; Owner: sahty
+--
+
+CREATE TABLE public.patient_ecg_records (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    tenant_patient_id uuid NOT NULL,
+    linked_admission_id uuid,
+    exam_date date NOT NULL,
+    exam_time time without time zone NOT NULL,
+    exam_type text DEFAULT 'Repos'::text NOT NULL,
+    "position" text DEFAULT 'Decubitus'::text NOT NULL,
+    speed_mm_s smallint DEFAULT 25 NOT NULL,
+    quality text DEFAULT 'Bonne'::text NOT NULL,
+    rhythm text DEFAULT 'Sinusal'::text NOT NULL,
+    regularity text DEFAULT 'Regulier'::text NOT NULL,
+    p_wave text DEFAULT 'Presentes'::text NOT NULL,
+    rhythm_disorders text[] DEFAULT '{Aucun}'::text[] NOT NULL,
+    conduction_disorders text[] DEFAULT '{Aucun}'::text[] NOT NULL,
+    repolarization text DEFAULT 'Normal'::text NOT NULL,
+    repolarization_details text[] DEFAULT '{}'::text[] NOT NULL,
+    ischemia text DEFAULT 'Aucune'::text NOT NULL,
+    ischemia_type text,
+    ischemia_locations text[] DEFAULT '{}'::text[] NOT NULL,
+    fc_bpm smallint,
+    pr_ms smallint,
+    qrs_ms smallint,
+    qt_ms smallint,
+    qtc_ms smallint,
+    axis_p_deg smallint,
+    axis_qrs_deg smallint,
+    axis_t_deg smallint,
+    other_anomalies text,
+    conclusion_observation_id uuid,
+    doctor text,
+    has_attachment boolean DEFAULT false NOT NULL,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    status text DEFAULT 'DRAFT'::text NOT NULL,
+    entered_in_error_by uuid,
+    entered_in_error_at timestamp with time zone,
+    entered_in_error_reason text,
+    created_by_first_name text,
+    created_by_last_name text,
+    CONSTRAINT patient_ecg_records_exam_type_check CHECK ((exam_type = ANY (ARRAY['Repos'::text, 'Controle'::text, 'Effort'::text]))),
+    CONSTRAINT patient_ecg_records_ischemia_check CHECK ((ischemia = ANY (ARRAY['Aucune'::text, 'Presente'::text]))),
+    CONSTRAINT patient_ecg_records_ischemia_type_check CHECK (((ischemia_type IS NULL) OR (ischemia_type = ANY (ARRAY['Ischémie'::text, 'SCA ST+'::text, 'SCA ST-'::text, 'Infarctus ancien'::text])))),
+    CONSTRAINT patient_ecg_records_p_wave_check CHECK ((p_wave = ANY (ARRAY['Presentes'::text, 'Absentes'::text]))),
+    CONSTRAINT patient_ecg_records_position_check CHECK (("position" = ANY (ARRAY['Decubitus'::text, 'Assis'::text]))),
+    CONSTRAINT patient_ecg_records_quality_check CHECK ((quality = ANY (ARRAY['Bonne'::text, 'Artefacts'::text]))),
+    CONSTRAINT patient_ecg_records_regularity_check CHECK ((regularity = ANY (ARRAY['Regulier'::text, 'Irregulier'::text]))),
+    CONSTRAINT patient_ecg_records_repolarization_check CHECK ((repolarization = ANY (ARRAY['Normal'::text, 'Anomalie'::text]))),
+    CONSTRAINT patient_ecg_records_rhythm_check CHECK ((rhythm = ANY (ARRAY['Sinusal'::text, 'Atrial'::text, 'Jonctionnel'::text, 'Ventriculaire'::text]))),
+    CONSTRAINT patient_ecg_records_speed_mm_s_check CHECK ((speed_mm_s = ANY (ARRAY[25, 50]))),
+    CONSTRAINT patient_ecg_records_status_check CHECK ((status = ANY (ARRAY['DRAFT'::text, 'VALIDATED'::text, 'ENTERED_IN_ERROR'::text])))
+);
+
+
+ALTER TABLE public.patient_ecg_records OWNER TO sahty;
+
+--
+-- Name: patient_echo_records; Type: TABLE; Schema: public; Owner: sahty
+--
+
+CREATE TABLE public.patient_echo_records (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    tenant_patient_id uuid NOT NULL,
+    linked_admission_id uuid,
+    exam_date date NOT NULL,
+    exam_time time without time zone NOT NULL,
+    exam_type text DEFAULT 'ETT'::text NOT NULL,
+    modalities text[] DEFAULT '{}'::text[] NOT NULL,
+    fevg_pct numeric(5,2),
+    gls_pct numeric(5,2),
+    mapse_mm numeric(5,2),
+    dtd_vg_mm numeric(5,2),
+    dtd_index_mm_m2 numeric(5,2),
+    siv_mm numeric(5,2),
+    pp_mm numeric(5,2),
+    hvg text DEFAULT 'Absente'::text NOT NULL,
+    trouble_cinetique boolean DEFAULT false NOT NULL,
+    segments_cinetique text[] DEFAULT '{}'::text[] NOT NULL,
+    tapse_mm numeric(5,2),
+    fonction_vd text DEFAULT 'Normale'::text NOT NULL,
+    surface_vd_cm2 numeric(5,2),
+    og_taille text DEFAULT 'Normale'::text NOT NULL,
+    od_taille text DEFAULT 'Normale'::text NOT NULL,
+    paps_mmhg numeric(5,1),
+    vci text DEFAULT 'Normale'::text NOT NULL,
+    valve_mitrale_status text DEFAULT 'Normale'::text NOT NULL,
+    valve_mitrale_type text[] DEFAULT '{}'::text[] NOT NULL,
+    valve_mitrale_severity text DEFAULT 'Minime'::text NOT NULL,
+    valve_aortique_status text DEFAULT 'Normale'::text NOT NULL,
+    valve_aortique_type text[] DEFAULT '{}'::text[] NOT NULL,
+    valve_aortique_severity text DEFAULT 'Minime'::text NOT NULL,
+    valve_tricuspide_status text DEFAULT 'Normale'::text NOT NULL,
+    valve_tricuspide_type text[] DEFAULT '{}'::text[] NOT NULL,
+    valve_tricuspide_severity text DEFAULT 'Minime'::text NOT NULL,
+    valve_pulmonaire_status text DEFAULT 'Normale'::text NOT NULL,
+    valve_pulmonaire_type text[] DEFAULT '{}'::text[] NOT NULL,
+    valve_pulmonaire_severity text DEFAULT 'Minime'::text NOT NULL,
+    pericarde text DEFAULT 'Sec'::text NOT NULL,
+    thrombus boolean DEFAULT false NOT NULL,
+    vegetation boolean DEFAULT false NOT NULL,
+    autre_anomalie text,
+    conclusion_observation_id uuid,
+    doctor text,
+    has_attachment boolean DEFAULT false NOT NULL,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    status text DEFAULT 'DRAFT'::text NOT NULL,
+    entered_in_error_by uuid,
+    entered_in_error_at timestamp with time zone,
+    entered_in_error_reason text,
+    created_by_first_name text,
+    created_by_last_name text,
+    CONSTRAINT patient_echo_records_exam_type_check CHECK ((exam_type = ANY (ARRAY['ETT'::text, 'ETO'::text, 'Stress'::text, 'POCUS'::text]))),
+    CONSTRAINT patient_echo_records_fonction_vd_check CHECK ((fonction_vd = ANY (ARRAY['Normale'::text, 'Altérée'::text]))),
+    CONSTRAINT patient_echo_records_hvg_check CHECK ((hvg = ANY (ARRAY['Absente'::text, 'Modérée'::text, 'Sévère'::text]))),
+    CONSTRAINT patient_echo_records_od_taille_check CHECK ((od_taille = ANY (ARRAY['Normale'::text, 'Dilatée'::text]))),
+    CONSTRAINT patient_echo_records_og_taille_check CHECK ((og_taille = ANY (ARRAY['Normale'::text, 'Dilatée'::text]))),
+    CONSTRAINT patient_echo_records_pericarde_check CHECK ((pericarde = ANY (ARRAY['Sec'::text, 'Epanchement Minime'::text, 'Epanchement Modéré'::text, 'Epanchement Abondant'::text]))),
+    CONSTRAINT patient_echo_records_status_check CHECK ((status = ANY (ARRAY['DRAFT'::text, 'VALIDATED'::text, 'ENTERED_IN_ERROR'::text]))),
+    CONSTRAINT patient_echo_records_valve_aortique_severity_check CHECK ((valve_aortique_severity = ANY (ARRAY['Minime'::text, 'Modérée'::text, 'Sévère'::text]))),
+    CONSTRAINT patient_echo_records_valve_aortique_status_check CHECK ((valve_aortique_status = ANY (ARRAY['Normale'::text, 'Pathologique'::text]))),
+    CONSTRAINT patient_echo_records_valve_mitrale_severity_check CHECK ((valve_mitrale_severity = ANY (ARRAY['Minime'::text, 'Modérée'::text, 'Sévère'::text]))),
+    CONSTRAINT patient_echo_records_valve_mitrale_status_check CHECK ((valve_mitrale_status = ANY (ARRAY['Normale'::text, 'Pathologique'::text]))),
+    CONSTRAINT patient_echo_records_valve_pulmonaire_severity_check CHECK ((valve_pulmonaire_severity = ANY (ARRAY['Minime'::text, 'Modérée'::text, 'Sévère'::text]))),
+    CONSTRAINT patient_echo_records_valve_pulmonaire_status_check CHECK ((valve_pulmonaire_status = ANY (ARRAY['Normale'::text, 'Pathologique'::text]))),
+    CONSTRAINT patient_echo_records_valve_tricuspide_severity_check CHECK ((valve_tricuspide_severity = ANY (ARRAY['Minime'::text, 'Modérée'::text, 'Sévère'::text]))),
+    CONSTRAINT patient_echo_records_valve_tricuspide_status_check CHECK ((valve_tricuspide_status = ANY (ARRAY['Normale'::text, 'Pathologique'::text]))),
+    CONSTRAINT patient_echo_records_vci_check CHECK ((vci = ANY (ARRAY['Normale'::text, 'Dilatée'::text, 'Peu Collabable'::text])))
+);
+
+
+ALTER TABLE public.patient_echo_records OWNER TO sahty;
+
+--
+-- Name: patient_identity_change; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.patient_identity_change (
@@ -2198,8 +1833,10 @@ CREATE TABLE public.patient_identity_change (
 );
 
 
+ALTER TABLE public.patient_identity_change OWNER TO sahty;
+
 --
--- Name: patient_lab_extraction_sessions; Type: TABLE; Schema: public; Owner: -
+-- Name: patient_lab_extraction_sessions; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.patient_lab_extraction_sessions (
@@ -2219,8 +1856,10 @@ CREATE TABLE public.patient_lab_extraction_sessions (
 );
 
 
+ALTER TABLE public.patient_lab_extraction_sessions OWNER TO sahty;
+
 --
--- Name: patient_lab_report_documents; Type: TABLE; Schema: public; Owner: -
+-- Name: patient_lab_report_documents; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.patient_lab_report_documents (
@@ -2237,8 +1876,10 @@ CREATE TABLE public.patient_lab_report_documents (
 );
 
 
+ALTER TABLE public.patient_lab_report_documents OWNER TO sahty;
+
 --
--- Name: patient_lab_report_tests; Type: TABLE; Schema: public; Owner: -
+-- Name: patient_lab_report_tests; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.patient_lab_report_tests (
@@ -2254,8 +1895,10 @@ CREATE TABLE public.patient_lab_report_tests (
 );
 
 
+ALTER TABLE public.patient_lab_report_tests OWNER TO sahty;
+
 --
--- Name: patient_lab_reports; Type: TABLE; Schema: public; Owner: -
+-- Name: patient_lab_reports; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.patient_lab_reports (
@@ -2289,8 +1932,10 @@ CREATE TABLE public.patient_lab_reports (
 );
 
 
+ALTER TABLE public.patient_lab_reports OWNER TO sahty;
+
 --
--- Name: patient_lab_results; Type: TABLE; Schema: public; Owner: -
+-- Name: patient_lab_results; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.patient_lab_results (
@@ -2334,8 +1979,10 @@ CREATE TABLE public.patient_lab_results (
 );
 
 
+ALTER TABLE public.patient_lab_results OWNER TO sahty;
+
 --
--- Name: patient_observations; Type: TABLE; Schema: public; Owner: -
+-- Name: patient_observations; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.patient_observations (
@@ -2359,17 +2006,22 @@ CREATE TABLE public.patient_observations (
     body_plain text NOT NULL,
     author_first_name text NOT NULL,
     author_last_name text NOT NULL,
+    entered_in_error_by uuid,
+    entered_in_error_at timestamp with time zone,
+    entered_in_error_reason text,
     CONSTRAINT chk_no_self_parent CHECK (((parent_observation_id IS NULL) OR (parent_observation_id <> id))),
     CONSTRAINT patient_observations_author_role_check CHECK ((author_role = ANY (ARRAY['DOCTOR'::text, 'NURSE'::text]))),
     CONSTRAINT patient_observations_body_html_check CHECK ((length(body_html) < 200000)),
-    CONSTRAINT patient_observations_note_type_check CHECK ((note_type = ANY (ARRAY['ADMISSION'::text, 'PROGRESS'::text, 'DISCHARGE'::text, 'CONSULT'::text, 'GENERAL'::text]))),
+    CONSTRAINT patient_observations_note_type_check CHECK ((note_type = ANY (ARRAY['ADMISSION'::text, 'PROGRESS'::text, 'DISCHARGE'::text, 'CONSULT'::text, 'GENERAL'::text, 'INTERP_ECG'::text, 'INTERP_ECHO'::text]))),
     CONSTRAINT patient_observations_privacy_level_check CHECK ((privacy_level = ANY (ARRAY['NORMAL'::text, 'SENSITIVE'::text, 'RESTRICTED'::text]))),
-    CONSTRAINT patient_observations_status_check CHECK ((status = ANY (ARRAY['DRAFT'::text, 'SIGNED'::text])))
+    CONSTRAINT patient_observations_status_check CHECK ((status = ANY (ARRAY['DRAFT'::text, 'SIGNED'::text, 'ENTERED_IN_ERROR'::text])))
 );
 
 
+ALTER TABLE public.patient_observations OWNER TO sahty;
+
 --
--- Name: patient_relationship_links; Type: TABLE; Schema: public; Owner: -
+-- Name: patient_relationship_links; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.patient_relationship_links (
@@ -2395,8 +2047,10 @@ CREATE TABLE public.patient_relationship_links (
 );
 
 
+ALTER TABLE public.patient_relationship_links OWNER TO sahty;
+
 --
--- Name: patient_stays; Type: TABLE; Schema: public; Owner: -
+-- Name: patient_stays; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.patient_stays (
@@ -2410,8 +2064,10 @@ CREATE TABLE public.patient_stays (
 );
 
 
+ALTER TABLE public.patient_stays OWNER TO sahty;
+
 --
--- Name: patient_tenant_merge_events; Type: TABLE; Schema: public; Owner: -
+-- Name: patient_tenant_merge_events; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.patient_tenant_merge_events (
@@ -2425,8 +2081,10 @@ CREATE TABLE public.patient_tenant_merge_events (
 );
 
 
+ALTER TABLE public.patient_tenant_merge_events OWNER TO sahty;
+
 --
--- Name: patients_tenant; Type: TABLE; Schema: public; Owner: -
+-- Name: patients_tenant; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.patients_tenant (
@@ -2445,8 +2103,10 @@ CREATE TABLE public.patients_tenant (
 );
 
 
+ALTER TABLE public.patients_tenant OWNER TO sahty;
+
 --
--- Name: po_items; Type: TABLE; Schema: public; Owner: -
+-- Name: po_items; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.po_items (
@@ -2460,8 +2120,10 @@ CREATE TABLE public.po_items (
 );
 
 
+ALTER TABLE public.po_items OWNER TO sahty;
+
 --
--- Name: prescription_events; Type: TABLE; Schema: public; Owner: -
+-- Name: prescription_events; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.prescription_events (
@@ -2480,8 +2142,10 @@ CREATE TABLE public.prescription_events (
 );
 
 
+ALTER TABLE public.prescription_events OWNER TO sahty;
+
 --
--- Name: prescriptions; Type: TABLE; Schema: public; Owner: -
+-- Name: prescriptions; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.prescriptions (
@@ -2544,8 +2208,10 @@ CREATE TABLE public.prescriptions (
 );
 
 
+ALTER TABLE public.prescriptions OWNER TO sahty;
+
 --
--- Name: product_configs; Type: TABLE; Schema: public; Owner: -
+-- Name: product_configs; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.product_configs (
@@ -2560,8 +2226,10 @@ CREATE TABLE public.product_configs (
 );
 
 
+ALTER TABLE public.product_configs OWNER TO sahty;
+
 --
--- Name: product_price_versions; Type: TABLE; Schema: public; Owner: -
+-- Name: product_price_versions; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.product_price_versions (
@@ -2582,8 +2250,10 @@ CREATE TABLE public.product_price_versions (
 );
 
 
+ALTER TABLE public.product_price_versions OWNER TO sahty;
+
 --
--- Name: product_suppliers; Type: TABLE; Schema: public; Owner: -
+-- Name: product_suppliers; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.product_suppliers (
@@ -2598,8 +2268,10 @@ CREATE TABLE public.product_suppliers (
 );
 
 
+ALTER TABLE public.product_suppliers OWNER TO sahty;
+
 --
--- Name: product_wac; Type: TABLE; Schema: public; Owner: -
+-- Name: product_wac; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.product_wac (
@@ -2610,8 +2282,10 @@ CREATE TABLE public.product_wac (
 );
 
 
+ALTER TABLE public.product_wac OWNER TO sahty;
+
 --
--- Name: purchase_orders; Type: TABLE; Schema: public; Owner: -
+-- Name: purchase_orders; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.purchase_orders (
@@ -2622,12 +2296,16 @@ CREATE TABLE public.purchase_orders (
     created_by uuid,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
-    reference text
+    reference text,
+    created_by_first_name text,
+    created_by_last_name text
 );
 
 
+ALTER TABLE public.purchase_orders OWNER TO sahty;
+
 --
--- Name: reference_schema_version; Type: TABLE; Schema: public; Owner: -
+-- Name: reference_schema_version; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.reference_schema_version (
@@ -2638,8 +2316,10 @@ CREATE TABLE public.reference_schema_version (
 );
 
 
+ALTER TABLE public.reference_schema_version OWNER TO sahty;
+
 --
--- Name: return_decision_lines; Type: TABLE; Schema: public; Owner: -
+-- Name: return_decision_lines; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.return_decision_lines (
@@ -2652,8 +2332,10 @@ CREATE TABLE public.return_decision_lines (
 );
 
 
+ALTER TABLE public.return_decision_lines OWNER TO sahty;
+
 --
--- Name: return_decisions; Type: TABLE; Schema: public; Owner: -
+-- Name: return_decisions; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.return_decisions (
@@ -2664,8 +2346,10 @@ CREATE TABLE public.return_decisions (
 );
 
 
+ALTER TABLE public.return_decisions OWNER TO sahty;
+
 --
--- Name: return_reception_lines; Type: TABLE; Schema: public; Owner: -
+-- Name: return_reception_lines; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.return_reception_lines (
@@ -2676,8 +2360,10 @@ CREATE TABLE public.return_reception_lines (
 );
 
 
+ALTER TABLE public.return_reception_lines OWNER TO sahty;
+
 --
--- Name: return_receptions; Type: TABLE; Schema: public; Owner: -
+-- Name: return_receptions; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.return_receptions (
@@ -2690,8 +2376,10 @@ CREATE TABLE public.return_receptions (
 );
 
 
+ALTER TABLE public.return_receptions OWNER TO sahty;
+
 --
--- Name: room_types; Type: TABLE; Schema: public; Owner: -
+-- Name: room_types; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.room_types (
@@ -2705,8 +2393,10 @@ CREATE TABLE public.room_types (
 );
 
 
+ALTER TABLE public.room_types OWNER TO sahty;
+
 --
--- Name: rooms; Type: TABLE; Schema: public; Owner: -
+-- Name: rooms; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.rooms (
@@ -2720,8 +2410,10 @@ CREATE TABLE public.rooms (
 );
 
 
+ALTER TABLE public.rooms OWNER TO sahty;
+
 --
--- Name: service_units; Type: TABLE; Schema: public; Owner: -
+-- Name: service_units; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.service_units (
@@ -2733,8 +2425,10 @@ CREATE TABLE public.service_units (
 );
 
 
+ALTER TABLE public.service_units OWNER TO sahty;
+
 --
--- Name: services; Type: TABLE; Schema: public; Owner: -
+-- Name: services; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.services (
@@ -2746,8 +2440,10 @@ CREATE TABLE public.services (
 );
 
 
+ALTER TABLE public.services OWNER TO sahty;
+
 --
--- Name: smart_phrases; Type: TABLE; Schema: public; Owner: -
+-- Name: smart_phrases; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.smart_phrases (
@@ -2769,8 +2465,10 @@ CREATE TABLE public.smart_phrases (
 );
 
 
+ALTER TABLE public.smart_phrases OWNER TO sahty;
+
 --
--- Name: stock_demand_lines; Type: TABLE; Schema: public; Owner: -
+-- Name: stock_demand_lines; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.stock_demand_lines (
@@ -2786,8 +2484,10 @@ CREATE TABLE public.stock_demand_lines (
 );
 
 
+ALTER TABLE public.stock_demand_lines OWNER TO sahty;
+
 --
--- Name: stock_demands; Type: TABLE; Schema: public; Owner: -
+-- Name: stock_demands; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.stock_demands (
@@ -2799,12 +2499,19 @@ CREATE TABLE public.stock_demands (
     requested_by uuid,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
-    demand_ref text
+    demand_ref text,
+    requested_by_first_name text,
+    requested_by_last_name text,
+    processing_status text DEFAULT 'OPEN'::text,
+    assigned_user_id uuid,
+    claimed_at timestamp with time zone
 );
 
 
+ALTER TABLE public.stock_demands OWNER TO sahty;
+
 --
--- Name: stock_reservation_lines; Type: TABLE; Schema: public; Owner: -
+-- Name: stock_reservation_lines; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.stock_reservation_lines (
@@ -2822,8 +2529,10 @@ CREATE TABLE public.stock_reservation_lines (
 );
 
 
+ALTER TABLE public.stock_reservation_lines OWNER TO sahty;
+
 --
--- Name: stock_reservations; Type: TABLE; Schema: public; Owner: -
+-- Name: stock_reservations; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.stock_reservations (
@@ -2840,8 +2549,10 @@ CREATE TABLE public.stock_reservations (
 );
 
 
+ALTER TABLE public.stock_reservations OWNER TO sahty;
+
 --
--- Name: stock_return_lines; Type: TABLE; Schema: public; Owner: -
+-- Name: stock_return_lines; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.stock_return_lines (
@@ -2857,8 +2568,10 @@ CREATE TABLE public.stock_return_lines (
 );
 
 
+ALTER TABLE public.stock_return_lines OWNER TO sahty;
+
 --
--- Name: stock_returns; Type: TABLE; Schema: public; Owner: -
+-- Name: stock_returns; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.stock_returns (
@@ -2874,8 +2587,10 @@ CREATE TABLE public.stock_returns (
 );
 
 
+ALTER TABLE public.stock_returns OWNER TO sahty;
+
 --
--- Name: stock_transfer_lines; Type: TABLE; Schema: public; Owner: -
+-- Name: stock_transfer_lines; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.stock_transfer_lines (
@@ -2894,8 +2609,10 @@ CREATE TABLE public.stock_transfer_lines (
 );
 
 
+ALTER TABLE public.stock_transfer_lines OWNER TO sahty;
+
 --
--- Name: stock_transfers; Type: TABLE; Schema: public; Owner: -
+-- Name: stock_transfers; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.stock_transfers (
@@ -2911,8 +2628,10 @@ CREATE TABLE public.stock_transfers (
 );
 
 
+ALTER TABLE public.stock_transfers OWNER TO sahty;
+
 --
--- Name: suppliers; Type: TABLE; Schema: public; Owner: -
+-- Name: suppliers; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.suppliers (
@@ -2927,8 +2646,10 @@ CREATE TABLE public.suppliers (
 );
 
 
+ALTER TABLE public.suppliers OWNER TO sahty;
+
 --
--- Name: surveillance_hour_buckets; Type: TABLE; Schema: public; Owner: -
+-- Name: surveillance_hour_buckets; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.surveillance_hour_buckets (
@@ -2940,8 +2661,10 @@ CREATE TABLE public.surveillance_hour_buckets (
 );
 
 
+ALTER TABLE public.surveillance_hour_buckets OWNER TO sahty;
+
 --
--- Name: surveillance_values_events; Type: TABLE; Schema: public; Owner: -
+-- Name: surveillance_values_events; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.surveillance_values_events (
@@ -2966,8 +2689,10 @@ CREATE TABLE public.surveillance_values_events (
 );
 
 
+ALTER TABLE public.surveillance_values_events OWNER TO sahty;
+
 --
--- Name: transfusion_blood_bags; Type: TABLE; Schema: public; Owner: -
+-- Name: transfusion_blood_bags; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.transfusion_blood_bags (
@@ -2995,8 +2720,10 @@ CREATE TABLE public.transfusion_blood_bags (
 );
 
 
+ALTER TABLE public.transfusion_blood_bags OWNER TO sahty;
+
 --
--- Name: transfusion_checks; Type: TABLE; Schema: public; Owner: -
+-- Name: transfusion_checks; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.transfusion_checks (
@@ -3013,8 +2740,10 @@ CREATE TABLE public.transfusion_checks (
 );
 
 
+ALTER TABLE public.transfusion_checks OWNER TO sahty;
+
 --
--- Name: transfusion_reactions; Type: TABLE; Schema: public; Owner: -
+-- Name: transfusion_reactions; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.transfusion_reactions (
@@ -3030,8 +2759,10 @@ CREATE TABLE public.transfusion_reactions (
 );
 
 
+ALTER TABLE public.transfusion_reactions OWNER TO sahty;
+
 --
--- Name: user_roles; Type: TABLE; Schema: public; Owner: -
+-- Name: user_roles; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.user_roles (
@@ -3041,8 +2772,10 @@ CREATE TABLE public.user_roles (
 );
 
 
+ALTER TABLE public.user_roles OWNER TO sahty;
+
 --
--- Name: user_services; Type: TABLE; Schema: public; Owner: -
+-- Name: user_services; Type: TABLE; Schema: public; Owner: sahty
 --
 
 CREATE TABLE public.user_services (
@@ -3051,8 +2784,10 @@ CREATE TABLE public.user_services (
 );
 
 
+ALTER TABLE public.user_services OWNER TO sahty;
+
 --
--- Name: care_categories; Type: TABLE; Schema: reference; Owner: -
+-- Name: care_categories; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.care_categories (
@@ -3066,8 +2801,10 @@ CREATE TABLE reference.care_categories (
 );
 
 
+ALTER TABLE reference.care_categories OWNER TO sahty;
+
 --
--- Name: countries; Type: TABLE; Schema: reference; Owner: -
+-- Name: countries; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.countries (
@@ -3077,8 +2814,10 @@ CREATE TABLE reference.countries (
 );
 
 
+ALTER TABLE reference.countries OWNER TO sahty;
+
 --
--- Name: dci_synonyms; Type: TABLE; Schema: reference; Owner: -
+-- Name: dci_synonyms; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.dci_synonyms (
@@ -3089,8 +2828,10 @@ CREATE TABLE reference.dci_synonyms (
 );
 
 
+ALTER TABLE reference.dci_synonyms OWNER TO sahty;
+
 --
--- Name: flowsheet_groups; Type: TABLE; Schema: reference; Owner: -
+-- Name: flowsheet_groups; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.flowsheet_groups (
@@ -3100,8 +2841,10 @@ CREATE TABLE reference.flowsheet_groups (
 );
 
 
+ALTER TABLE reference.flowsheet_groups OWNER TO sahty;
+
 --
--- Name: global_actes; Type: TABLE; Schema: reference; Owner: -
+-- Name: global_actes; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.global_actes (
@@ -3141,8 +2884,10 @@ CREATE TABLE reference.global_actes (
 );
 
 
+ALTER TABLE reference.global_actes OWNER TO sahty;
+
 --
--- Name: global_atc; Type: TABLE; Schema: reference; Owner: -
+-- Name: global_atc; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.global_atc (
@@ -3154,8 +2899,10 @@ CREATE TABLE reference.global_atc (
 );
 
 
+ALTER TABLE reference.global_atc OWNER TO sahty;
+
 --
--- Name: global_dci; Type: TABLE; Schema: reference; Owner: -
+-- Name: global_dci; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.global_dci (
@@ -3168,8 +2915,10 @@ CREATE TABLE reference.global_dci (
 );
 
 
+ALTER TABLE reference.global_dci OWNER TO sahty;
+
 --
--- Name: global_emdn; Type: TABLE; Schema: reference; Owner: -
+-- Name: global_emdn; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.global_emdn (
@@ -3181,8 +2930,10 @@ CREATE TABLE reference.global_emdn (
 );
 
 
+ALTER TABLE reference.global_emdn OWNER TO sahty;
+
 --
--- Name: global_product_price_history; Type: TABLE; Schema: reference; Owner: -
+-- Name: global_product_price_history; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.global_product_price_history (
@@ -3197,8 +2948,10 @@ CREATE TABLE reference.global_product_price_history (
 );
 
 
+ALTER TABLE reference.global_product_price_history OWNER TO sahty;
+
 --
--- Name: global_products; Type: TABLE; Schema: reference; Owner: -
+-- Name: global_products; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.global_products (
@@ -3225,8 +2978,10 @@ CREATE TABLE reference.global_products (
 );
 
 
+ALTER TABLE reference.global_products OWNER TO sahty;
+
 --
--- Name: global_roles; Type: TABLE; Schema: reference; Owner: -
+-- Name: global_roles; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.global_roles (
@@ -3241,8 +2996,10 @@ CREATE TABLE reference.global_roles (
 );
 
 
+ALTER TABLE reference.global_roles OWNER TO sahty;
+
 --
--- Name: global_suppliers; Type: TABLE; Schema: reference; Owner: -
+-- Name: global_suppliers; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.global_suppliers (
@@ -3256,8 +3013,10 @@ CREATE TABLE reference.global_suppliers (
 );
 
 
+ALTER TABLE reference.global_suppliers OWNER TO sahty;
+
 --
--- Name: group_parameters; Type: TABLE; Schema: reference; Owner: -
+-- Name: group_parameters; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.group_parameters (
@@ -3267,8 +3026,10 @@ CREATE TABLE reference.group_parameters (
 );
 
 
+ALTER TABLE reference.group_parameters OWNER TO sahty;
+
 --
--- Name: identity_document_types; Type: TABLE; Schema: reference; Owner: -
+-- Name: identity_document_types; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.identity_document_types (
@@ -3280,11 +3041,13 @@ CREATE TABLE reference.identity_document_types (
 );
 
 
+ALTER TABLE reference.identity_document_types OWNER TO sahty;
+
 --
--- Name: lab_act_analyte_context; Type: TABLE; Schema: reference; Owner: -
+-- Name: lab_act_analyte_context; Type: TABLE; Schema: reference; Owner: sahty
 --
 
-CREATE TABLE reference.lab_act_analyte_context (
+CREATE TABLE public.lab_act_analyte_context (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     global_act_id uuid NOT NULL,
     analyte_context_id uuid NOT NULL,
@@ -3296,11 +3059,13 @@ CREATE TABLE reference.lab_act_analyte_context (
 );
 
 
+ALTER TABLE public.lab_act_analyte_context OWNER TO sahty;
+
 --
--- Name: lab_act_analytes; Type: TABLE; Schema: reference; Owner: -
+-- Name: lab_act_analytes; Type: TABLE; Schema: reference; Owner: sahty
 --
 
-CREATE TABLE reference.lab_act_analytes (
+CREATE TABLE public.lab_act_analytes (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     global_act_id uuid NOT NULL,
     analyte_id uuid NOT NULL,
@@ -3315,11 +3080,13 @@ CREATE TABLE reference.lab_act_analytes (
 );
 
 
+ALTER TABLE public.lab_act_analytes OWNER TO sahty;
+
 --
--- Name: lab_act_contexts; Type: TABLE; Schema: reference; Owner: -
+-- Name: lab_act_contexts; Type: TABLE; Schema: reference; Owner: sahty
 --
 
-CREATE TABLE reference.lab_act_contexts (
+CREATE TABLE public.lab_act_contexts (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     global_act_id uuid NOT NULL,
     analyte_context_id uuid NOT NULL,
@@ -3333,11 +3100,13 @@ CREATE TABLE reference.lab_act_contexts (
 );
 
 
+ALTER TABLE public.lab_act_contexts OWNER TO sahty;
+
 --
--- Name: lab_act_methods; Type: TABLE; Schema: reference; Owner: -
+-- Name: lab_act_methods; Type: TABLE; Schema: reference; Owner: sahty
 --
 
-CREATE TABLE reference.lab_act_methods (
+CREATE TABLE public.lab_act_methods (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     global_act_id uuid NOT NULL,
     method_id uuid NOT NULL,
@@ -3348,11 +3117,13 @@ CREATE TABLE reference.lab_act_methods (
 );
 
 
+ALTER TABLE public.lab_act_methods OWNER TO sahty;
+
 --
--- Name: lab_act_specimen_containers; Type: TABLE; Schema: reference; Owner: -
+-- Name: lab_act_specimen_containers; Type: TABLE; Schema: reference; Owner: sahty
 --
 
-CREATE TABLE reference.lab_act_specimen_containers (
+CREATE TABLE public.lab_act_specimen_containers (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     global_act_id uuid NOT NULL,
     specimen_type_id uuid NOT NULL,
@@ -3370,11 +3141,37 @@ CREATE TABLE reference.lab_act_specimen_containers (
 );
 
 
+ALTER TABLE public.lab_act_specimen_containers OWNER TO sahty;
+
 --
--- Name: lab_act_taxonomy; Type: TABLE; Schema: reference; Owner: -
+-- Name: lab_act_specimen_types; Type: TABLE; Schema: reference; Owner: sahty
 --
 
-CREATE TABLE reference.lab_act_taxonomy (
+CREATE TABLE public.lab_act_specimen_types (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    global_act_id uuid NOT NULL,
+    specimen_type_id uuid NOT NULL,
+    is_default boolean DEFAULT false NOT NULL,
+    is_required boolean DEFAULT true NOT NULL,
+    collection_instructions text,
+    min_volume numeric(12,3),
+    volume_unit text,
+    transport_conditions text,
+    stability_notes text,
+    actif boolean DEFAULT true NOT NULL,
+    sort_order integer DEFAULT 0 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.lab_act_specimen_types OWNER TO sahty;
+
+--
+-- Name: lab_act_taxonomy; Type: TABLE; Schema: reference; Owner: sahty
+--
+
+CREATE TABLE public.lab_act_taxonomy (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     act_id uuid NOT NULL,
     sous_famille_id uuid NOT NULL,
@@ -3386,11 +3183,13 @@ CREATE TABLE reference.lab_act_taxonomy (
 );
 
 
+ALTER TABLE public.lab_act_taxonomy OWNER TO sahty;
+
 --
--- Name: lab_analyte_aliases; Type: TABLE; Schema: reference; Owner: -
+-- Name: lab_analyte_aliases; Type: TABLE; Schema: reference; Owner: sahty
 --
 
-CREATE TABLE reference.lab_analyte_aliases (
+CREATE TABLE public.lab_analyte_aliases (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     analyte_id uuid NOT NULL,
     alias_text text NOT NULL,
@@ -3405,11 +3204,13 @@ CREATE TABLE reference.lab_analyte_aliases (
 );
 
 
+ALTER TABLE public.lab_analyte_aliases OWNER TO sahty;
+
 --
--- Name: lab_analyte_contexts; Type: TABLE; Schema: reference; Owner: -
+-- Name: lab_analyte_contexts; Type: TABLE; Schema: reference; Owner: sahty
 --
 
-CREATE TABLE reference.lab_analyte_contexts (
+CREATE TABLE public.lab_analyte_contexts (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     analyte_id uuid NOT NULL,
     specimen_type_id uuid NOT NULL,
@@ -3423,32 +3224,17 @@ CREATE TABLE reference.lab_analyte_contexts (
     actif boolean DEFAULT true,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
-    cached_value_type text NOT NULL
+    cached_value_type text
 );
 
 
---
--- Name: lab_analyte_external_codes; Type: TABLE; Schema: reference; Owner: -
---
-
-CREATE TABLE reference.lab_analyte_external_codes (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    analyte_id uuid NOT NULL,
-    coding_system text NOT NULL,
-    code text NOT NULL,
-    display_text text,
-    is_primary boolean DEFAULT false NOT NULL,
-    actif boolean DEFAULT true NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
+ALTER TABLE public.lab_analyte_contexts OWNER TO sahty;
 
 --
--- Name: lab_analyte_reference_ranges; Type: TABLE; Schema: reference; Owner: -
+-- Name: lab_analyte_reference_ranges; Type: TABLE; Schema: public; Owner: sahty
 --
 
-CREATE TABLE reference.lab_analyte_reference_ranges (
+CREATE TABLE public.lab_analyte_reference_ranges (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     analyte_id uuid NOT NULL,
     unit_id uuid NOT NULL,
@@ -3472,11 +3258,13 @@ CREATE TABLE reference.lab_analyte_reference_ranges (
 );
 
 
+ALTER TABLE public.lab_analyte_reference_ranges OWNER TO sahty;
+
 --
--- Name: lab_analyte_units; Type: TABLE; Schema: reference; Owner: -
+-- Name: lab_analyte_units; Type: TABLE; Schema: reference; Owner: sahty
 --
 
-CREATE TABLE reference.lab_analyte_units (
+CREATE TABLE public.lab_analyte_units (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     analyte_id uuid NOT NULL,
     unit_id uuid NOT NULL,
@@ -3490,8 +3278,10 @@ CREATE TABLE reference.lab_analyte_units (
 );
 
 
+ALTER TABLE public.lab_analyte_units OWNER TO sahty;
+
 --
--- Name: lab_analytes; Type: TABLE; Schema: reference; Owner: -
+-- Name: lab_analytes; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.lab_analytes (
@@ -3510,8 +3300,10 @@ CREATE TABLE reference.lab_analytes (
 );
 
 
+ALTER TABLE reference.lab_analytes OWNER TO sahty;
+
 --
--- Name: lab_canonical_allowed_values; Type: TABLE; Schema: reference; Owner: -
+-- Name: lab_canonical_allowed_values; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.lab_canonical_allowed_values (
@@ -3527,8 +3319,10 @@ CREATE TABLE reference.lab_canonical_allowed_values (
 );
 
 
+ALTER TABLE reference.lab_canonical_allowed_values OWNER TO sahty;
+
 --
--- Name: lab_container_types; Type: TABLE; Schema: reference; Owner: -
+-- Name: lab_container_types; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.lab_container_types (
@@ -3545,8 +3339,10 @@ CREATE TABLE reference.lab_container_types (
 );
 
 
+ALTER TABLE reference.lab_container_types OWNER TO sahty;
+
 --
--- Name: lab_methods; Type: TABLE; Schema: reference; Owner: -
+-- Name: lab_methods; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.lab_methods (
@@ -3561,11 +3357,13 @@ CREATE TABLE reference.lab_methods (
 );
 
 
+ALTER TABLE reference.lab_methods OWNER TO sahty;
+
 --
--- Name: lab_panel_items; Type: TABLE; Schema: reference; Owner: -
+-- Name: lab_panel_items; Type: TABLE; Schema: reference; Owner: sahty
 --
 
-CREATE TABLE reference.lab_panel_items (
+CREATE TABLE public.lab_panel_items (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     panel_id uuid NOT NULL,
     item_type text NOT NULL,
@@ -3585,11 +3383,13 @@ CREATE TABLE reference.lab_panel_items (
 );
 
 
+ALTER TABLE public.lab_panel_items OWNER TO sahty;
+
 --
--- Name: lab_panels; Type: TABLE; Schema: reference; Owner: -
+-- Name: lab_panels; Type: TABLE; Schema: reference; Owner: sahty
 --
 
-CREATE TABLE reference.lab_panels (
+CREATE TABLE public.lab_panels (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     sous_famille_id uuid NOT NULL,
     section_id uuid,
@@ -3607,11 +3407,13 @@ CREATE TABLE reference.lab_panels (
 );
 
 
+ALTER TABLE public.lab_panels OWNER TO sahty;
+
 --
--- Name: lab_reference_profiles; Type: TABLE; Schema: reference; Owner: -
+-- Name: lab_reference_profiles; Type: TABLE; Schema: reference; Owner: sahty
 --
 
-CREATE TABLE reference.lab_reference_profiles (
+CREATE TABLE public.lab_reference_profiles (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     analyte_context_id uuid NOT NULL,
     sex text,
@@ -3628,11 +3430,13 @@ CREATE TABLE reference.lab_reference_profiles (
 );
 
 
+ALTER TABLE public.lab_reference_profiles OWNER TO sahty;
+
 --
--- Name: lab_reference_rules; Type: TABLE; Schema: reference; Owner: -
+-- Name: lab_reference_rules; Type: TABLE; Schema: reference; Owner: sahty
 --
 
-CREATE TABLE reference.lab_reference_rules (
+CREATE TABLE public.lab_reference_rules (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     profile_id uuid NOT NULL,
     interpretation text NOT NULL,
@@ -3646,6 +3450,7 @@ CREATE TABLE reference.lab_reference_rules (
     canonical_value_max_id uuid,
     display_text text,
     reference_text text,
+    rule_type text DEFAULT 'RANGE'::text,
     actif boolean DEFAULT true NOT NULL,
     sort_order integer DEFAULT 0 NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
@@ -3654,11 +3459,13 @@ CREATE TABLE reference.lab_reference_rules (
 );
 
 
+ALTER TABLE public.lab_reference_rules OWNER TO sahty;
+
 --
--- Name: lab_section_tree; Type: TABLE; Schema: reference; Owner: -
+-- Name: lab_section_tree; Type: TABLE; Schema: reference; Owner: sahty
 --
 
-CREATE TABLE reference.lab_section_tree (
+CREATE TABLE public.lab_section_tree (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     section_id uuid NOT NULL,
     sous_famille_id uuid NOT NULL,
@@ -3669,8 +3476,10 @@ CREATE TABLE reference.lab_section_tree (
 );
 
 
+ALTER TABLE public.lab_section_tree OWNER TO sahty;
+
 --
--- Name: lab_sections; Type: TABLE; Schema: reference; Owner: -
+-- Name: lab_sections; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.lab_sections (
@@ -3685,24 +3494,10 @@ CREATE TABLE reference.lab_sections (
 );
 
 
---
--- Name: lab_specimen_container_types; Type: TABLE; Schema: reference; Owner: -
---
-
-CREATE TABLE reference.lab_specimen_container_types (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    specimen_type_id uuid NOT NULL,
-    container_type_id uuid NOT NULL,
-    is_default boolean DEFAULT false NOT NULL,
-    actif boolean DEFAULT true NOT NULL,
-    sort_order integer,
-    created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now()
-);
-
+ALTER TABLE reference.lab_sections OWNER TO sahty;
 
 --
--- Name: lab_specimen_types; Type: TABLE; Schema: reference; Owner: -
+-- Name: lab_specimen_types; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.lab_specimen_types (
@@ -3719,11 +3514,13 @@ CREATE TABLE reference.lab_specimen_types (
 );
 
 
+ALTER TABLE reference.lab_specimen_types OWNER TO sahty;
+
 --
--- Name: lab_sub_section_tree; Type: TABLE; Schema: reference; Owner: -
+-- Name: lab_sub_section_tree; Type: TABLE; Schema: reference; Owner: sahty
 --
 
-CREATE TABLE reference.lab_sub_section_tree (
+CREATE TABLE public.lab_sub_section_tree (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     sub_section_id uuid NOT NULL,
     section_id uuid NOT NULL,
@@ -3734,8 +3531,10 @@ CREATE TABLE reference.lab_sub_section_tree (
 );
 
 
+ALTER TABLE public.lab_sub_section_tree OWNER TO sahty;
+
 --
--- Name: lab_sub_sections; Type: TABLE; Schema: reference; Owner: -
+-- Name: lab_sub_sections; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.lab_sub_sections (
@@ -3750,8 +3549,10 @@ CREATE TABLE reference.lab_sub_sections (
 );
 
 
+ALTER TABLE reference.lab_sub_sections OWNER TO sahty;
+
 --
--- Name: observation_flowsheets; Type: TABLE; Schema: reference; Owner: -
+-- Name: observation_flowsheets; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.observation_flowsheets (
@@ -3765,8 +3566,10 @@ CREATE TABLE reference.observation_flowsheets (
 );
 
 
+ALTER TABLE reference.observation_flowsheets OWNER TO sahty;
+
 --
--- Name: observation_groups; Type: TABLE; Schema: reference; Owner: -
+-- Name: observation_groups; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.observation_groups (
@@ -3779,8 +3582,10 @@ CREATE TABLE reference.observation_groups (
 );
 
 
+ALTER TABLE reference.observation_groups OWNER TO sahty;
+
 --
--- Name: observation_parameters; Type: TABLE; Schema: reference; Owner: -
+-- Name: observation_parameters; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.observation_parameters (
@@ -3807,8 +3612,10 @@ CREATE TABLE reference.observation_parameters (
 );
 
 
+ALTER TABLE reference.observation_parameters OWNER TO sahty;
+
 --
--- Name: organismes; Type: TABLE; Schema: reference; Owner: -
+-- Name: organismes; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.organismes (
@@ -3822,8 +3629,10 @@ CREATE TABLE reference.organismes (
 );
 
 
+ALTER TABLE reference.organismes OWNER TO sahty;
+
 --
--- Name: routes; Type: TABLE; Schema: reference; Owner: -
+-- Name: routes; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.routes (
@@ -3838,8 +3647,10 @@ CREATE TABLE reference.routes (
 );
 
 
+ALTER TABLE reference.routes OWNER TO sahty;
+
 --
--- Name: sih_familles; Type: TABLE; Schema: reference; Owner: -
+-- Name: sih_familles; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.sih_familles (
@@ -3851,8 +3662,10 @@ CREATE TABLE reference.sih_familles (
 );
 
 
+ALTER TABLE reference.sih_familles OWNER TO sahty;
+
 --
--- Name: sih_sous_familles; Type: TABLE; Schema: reference; Owner: -
+-- Name: sih_sous_familles; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.sih_sous_familles (
@@ -3865,8 +3678,10 @@ CREATE TABLE reference.sih_sous_familles (
 );
 
 
+ALTER TABLE reference.sih_sous_familles OWNER TO sahty;
+
 --
--- Name: units; Type: TABLE; Schema: reference; Owner: -
+-- Name: units; Type: TABLE; Schema: reference; Owner: sahty
 --
 
 CREATE TABLE reference.units (
@@ -3882,8 +3697,10 @@ CREATE TABLE reference.units (
 );
 
 
+ALTER TABLE reference.units OWNER TO sahty;
+
 --
--- Name: audit_log audit_log_pkey; Type: CONSTRAINT; Schema: auth; Owner: -
+-- Name: audit_log audit_log_pkey; Type: CONSTRAINT; Schema: auth; Owner: sahty
 --
 
 ALTER TABLE ONLY auth.audit_log
@@ -3891,7 +3708,7 @@ ALTER TABLE ONLY auth.audit_log
 
 
 --
--- Name: credentials credentials_pkey; Type: CONSTRAINT; Schema: auth; Owner: -
+-- Name: credentials credentials_pkey; Type: CONSTRAINT; Schema: auth; Owner: sahty
 --
 
 ALTER TABLE ONLY auth.credentials
@@ -3899,7 +3716,7 @@ ALTER TABLE ONLY auth.credentials
 
 
 --
--- Name: credentials credentials_user_id_key; Type: CONSTRAINT; Schema: auth; Owner: -
+-- Name: credentials credentials_user_id_key; Type: CONSTRAINT; Schema: auth; Owner: sahty
 --
 
 ALTER TABLE ONLY auth.credentials
@@ -3907,7 +3724,7 @@ ALTER TABLE ONLY auth.credentials
 
 
 --
--- Name: user_tenants user_tenants_pkey; Type: CONSTRAINT; Schema: auth; Owner: -
+-- Name: user_tenants user_tenants_pkey; Type: CONSTRAINT; Schema: auth; Owner: sahty
 --
 
 ALTER TABLE ONLY auth.user_tenants
@@ -3915,7 +3732,7 @@ ALTER TABLE ONLY auth.user_tenants
 
 
 --
--- Name: users users_inpe_key; Type: CONSTRAINT; Schema: auth; Owner: -
+-- Name: users users_inpe_key; Type: CONSTRAINT; Schema: auth; Owner: sahty
 --
 
 ALTER TABLE ONLY auth.users
@@ -3923,7 +3740,7 @@ ALTER TABLE ONLY auth.users
 
 
 --
--- Name: users users_pkey; Type: CONSTRAINT; Schema: auth; Owner: -
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: auth; Owner: sahty
 --
 
 ALTER TABLE ONLY auth.users
@@ -3931,7 +3748,7 @@ ALTER TABLE ONLY auth.users
 
 
 --
--- Name: users users_username_key; Type: CONSTRAINT; Schema: auth; Owner: -
+-- Name: users users_username_key; Type: CONSTRAINT; Schema: auth; Owner: sahty
 --
 
 ALTER TABLE ONLY auth.users
@@ -3939,7 +3756,7 @@ ALTER TABLE ONLY auth.users
 
 
 --
--- Name: inbox_events inbox_events_pkey; Type: CONSTRAINT; Schema: auth_sync; Owner: -
+-- Name: inbox_events inbox_events_pkey; Type: CONSTRAINT; Schema: auth_sync; Owner: sahty
 --
 
 ALTER TABLE ONLY auth_sync.inbox_events
@@ -3947,7 +3764,7 @@ ALTER TABLE ONLY auth_sync.inbox_events
 
 
 --
--- Name: outbox_events outbox_events_pkey; Type: CONSTRAINT; Schema: auth_sync; Owner: -
+-- Name: outbox_events outbox_events_pkey; Type: CONSTRAINT; Schema: auth_sync; Owner: sahty
 --
 
 ALTER TABLE ONLY auth_sync.outbox_events
@@ -3955,7 +3772,7 @@ ALTER TABLE ONLY auth_sync.outbox_events
 
 
 --
--- Name: sync_state sync_state_pkey; Type: CONSTRAINT; Schema: auth_sync; Owner: -
+-- Name: sync_state sync_state_pkey; Type: CONSTRAINT; Schema: auth_sync; Owner: sahty
 --
 
 ALTER TABLE ONLY auth_sync.sync_state
@@ -3963,7 +3780,7 @@ ALTER TABLE ONLY auth_sync.sync_state
 
 
 --
--- Name: inbox_events inbox_events_pkey; Type: CONSTRAINT; Schema: identity_sync; Owner: -
+-- Name: inbox_events inbox_events_pkey; Type: CONSTRAINT; Schema: identity_sync; Owner: sahty
 --
 
 ALTER TABLE ONLY identity_sync.inbox_events
@@ -3971,7 +3788,7 @@ ALTER TABLE ONLY identity_sync.inbox_events
 
 
 --
--- Name: outbox_events outbox_events_pkey; Type: CONSTRAINT; Schema: identity_sync; Owner: -
+-- Name: outbox_events outbox_events_pkey; Type: CONSTRAINT; Schema: identity_sync; Owner: sahty
 --
 
 ALTER TABLE ONLY identity_sync.outbox_events
@@ -3979,7 +3796,7 @@ ALTER TABLE ONLY identity_sync.outbox_events
 
 
 --
--- Name: _migration_issues _migration_issues_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: _migration_issues _migration_issues_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public._migration_issues
@@ -3987,7 +3804,7 @@ ALTER TABLE ONLY public._migration_issues
 
 
 --
--- Name: actes actes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: actes actes_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.actes
@@ -3995,7 +3812,7 @@ ALTER TABLE ONLY public.actes
 
 
 --
--- Name: administration_event_blood_bags administration_event_blood_bags_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: administration_event_blood_bags administration_event_blood_bags_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.administration_event_blood_bags
@@ -4003,7 +3820,7 @@ ALTER TABLE ONLY public.administration_event_blood_bags
 
 
 --
--- Name: administration_event_lab_collections administration_event_lab_coll_administration_event_id_lab_c_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: administration_event_lab_collections administration_event_lab_coll_administration_event_id_lab_c_key; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.administration_event_lab_collections
@@ -4011,7 +3828,7 @@ ALTER TABLE ONLY public.administration_event_lab_collections
 
 
 --
--- Name: administration_event_lab_collections administration_event_lab_collections_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: administration_event_lab_collections administration_event_lab_collections_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.administration_event_lab_collections
@@ -4019,7 +3836,7 @@ ALTER TABLE ONLY public.administration_event_lab_collections
 
 
 --
--- Name: administration_event_pauses administration_event_pauses_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: administration_event_pauses administration_event_pauses_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.administration_event_pauses
@@ -4027,7 +3844,7 @@ ALTER TABLE ONLY public.administration_event_pauses
 
 
 --
--- Name: administration_events administration_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: administration_events administration_events_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.administration_events
@@ -4035,7 +3852,7 @@ ALTER TABLE ONLY public.administration_events
 
 
 --
--- Name: admission_acts admission_acts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: admission_acts admission_acts_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.admission_acts
@@ -4043,7 +3860,7 @@ ALTER TABLE ONLY public.admission_acts
 
 
 --
--- Name: admission_coverage_change_history admission_coverage_change_history_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: admission_coverage_change_history admission_coverage_change_history_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.admission_coverage_change_history
@@ -4051,7 +3868,7 @@ ALTER TABLE ONLY public.admission_coverage_change_history
 
 
 --
--- Name: admission_coverage_members admission_coverage_members_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: admission_coverage_members admission_coverage_members_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.admission_coverage_members
@@ -4059,7 +3876,7 @@ ALTER TABLE ONLY public.admission_coverage_members
 
 
 --
--- Name: admission_coverages admission_coverages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: admission_coverages admission_coverages_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.admission_coverages
@@ -4067,7 +3884,7 @@ ALTER TABLE ONLY public.admission_coverages
 
 
 --
--- Name: admissions admissions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: admissions admissions_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.admissions
@@ -4075,7 +3892,7 @@ ALTER TABLE ONLY public.admissions
 
 
 --
--- Name: appointments appointments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: appointments appointments_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.appointments
@@ -4083,7 +3900,7 @@ ALTER TABLE ONLY public.appointments
 
 
 --
--- Name: audit_log audit_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: audit_log audit_log_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.audit_log
@@ -4091,7 +3908,7 @@ ALTER TABLE ONLY public.audit_log
 
 
 --
--- Name: beds beds_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: beds beds_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.beds
@@ -4099,7 +3916,7 @@ ALTER TABLE ONLY public.beds
 
 
 --
--- Name: beds beds_room_id_label_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: beds beds_room_id_label_key; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.beds
@@ -4107,7 +3924,7 @@ ALTER TABLE ONLY public.beds
 
 
 --
--- Name: clinical_exams clinical_exams_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: clinical_exams clinical_exams_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.clinical_exams
@@ -4115,7 +3932,7 @@ ALTER TABLE ONLY public.clinical_exams
 
 
 --
--- Name: coverage_change_history coverage_change_history_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: coverage_change_history coverage_change_history_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.coverage_change_history
@@ -4123,7 +3940,7 @@ ALTER TABLE ONLY public.coverage_change_history
 
 
 --
--- Name: coverage_members coverage_members_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: coverage_members coverage_members_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.coverage_members
@@ -4131,7 +3948,7 @@ ALTER TABLE ONLY public.coverage_members
 
 
 --
--- Name: coverages coverages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: coverages coverages_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.coverages
@@ -4139,7 +3956,7 @@ ALTER TABLE ONLY public.coverages
 
 
 --
--- Name: delivery_note_items delivery_note_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: delivery_note_items delivery_note_items_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.delivery_note_items
@@ -4147,7 +3964,7 @@ ALTER TABLE ONLY public.delivery_note_items
 
 
 --
--- Name: delivery_notes delivery_notes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: delivery_notes delivery_notes_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.delivery_notes
@@ -4155,7 +3972,7 @@ ALTER TABLE ONLY public.delivery_notes
 
 
 --
--- Name: escarre_snapshots escarre_snapshots_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: escarre_snapshots escarre_snapshots_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.escarre_snapshots
@@ -4163,7 +3980,7 @@ ALTER TABLE ONLY public.escarre_snapshots
 
 
 --
--- Name: escarres escarres_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: escarres escarres_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.escarres
@@ -4171,7 +3988,31 @@ ALTER TABLE ONLY public.escarres
 
 
 --
--- Name: identity_ids identity_ids_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: external_systems external_systems_code_key; Type: CONSTRAINT; Schema: public; Owner: sahty
+--
+
+ALTER TABLE ONLY public.external_systems
+    ADD CONSTRAINT external_systems_code_key UNIQUE (code);
+
+
+--
+-- Name: external_systems external_systems_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
+--
+
+ALTER TABLE ONLY public.external_systems
+    ADD CONSTRAINT external_systems_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: global_act_external_codes global_act_external_codes_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
+--
+
+ALTER TABLE ONLY public.global_act_external_codes
+    ADD CONSTRAINT global_act_external_codes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: identity_ids identity_ids_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.identity_ids
@@ -4179,7 +4020,7 @@ ALTER TABLE ONLY public.identity_ids
 
 
 --
--- Name: inventory_movements inventory_movements_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: inventory_movements inventory_movements_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.inventory_movements
@@ -4187,7 +4028,15 @@ ALTER TABLE ONLY public.inventory_movements
 
 
 --
--- Name: lab_collection_specimens lab_collection_specimens_lab_collection_id_specimen_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: lab_analyte_external_codes lab_analyte_external_codes_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
+--
+
+ALTER TABLE ONLY public.lab_analyte_external_codes
+    ADD CONSTRAINT lab_analyte_external_codes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_collection_specimens lab_collection_specimens_lab_collection_id_specimen_id_key; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.lab_collection_specimens
@@ -4195,7 +4044,7 @@ ALTER TABLE ONLY public.lab_collection_specimens
 
 
 --
--- Name: lab_collection_specimens lab_collection_specimens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: lab_collection_specimens lab_collection_specimens_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.lab_collection_specimens
@@ -4203,7 +4052,7 @@ ALTER TABLE ONLY public.lab_collection_specimens
 
 
 --
--- Name: lab_collections lab_collections_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: lab_collections lab_collections_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.lab_collections
@@ -4211,7 +4060,23 @@ ALTER TABLE ONLY public.lab_collections
 
 
 --
--- Name: lab_requests lab_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: lab_hprim_links lab_hprim_links_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
+--
+
+ALTER TABLE ONLY public.lab_hprim_links
+    ADD CONSTRAINT lab_hprim_links_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_hprim_messages lab_hprim_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
+--
+
+ALTER TABLE ONLY public.lab_hprim_messages
+    ADD CONSTRAINT lab_hprim_messages_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_requests lab_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.lab_requests
@@ -4219,7 +4084,7 @@ ALTER TABLE ONLY public.lab_requests
 
 
 --
--- Name: lab_specimen_requests lab_specimen_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: lab_specimen_requests lab_specimen_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.lab_specimen_requests
@@ -4227,7 +4092,7 @@ ALTER TABLE ONLY public.lab_specimen_requests
 
 
 --
--- Name: lab_specimen_requests lab_specimen_requests_specimen_id_lab_request_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: lab_specimen_requests lab_specimen_requests_specimen_id_lab_request_id_key; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.lab_specimen_requests
@@ -4235,7 +4100,15 @@ ALTER TABLE ONLY public.lab_specimen_requests
 
 
 --
--- Name: lab_specimens lab_specimens_barcode_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: lab_specimen_status_history lab_specimen_status_history_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
+--
+
+ALTER TABLE ONLY public.lab_specimen_status_history
+    ADD CONSTRAINT lab_specimen_status_history_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_specimens lab_specimens_barcode_key; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.lab_specimens
@@ -4243,7 +4116,7 @@ ALTER TABLE ONLY public.lab_specimens
 
 
 --
--- Name: lab_specimens lab_specimens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: lab_specimens lab_specimens_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.lab_specimens
@@ -4251,7 +4124,15 @@ ALTER TABLE ONLY public.lab_specimens
 
 
 --
--- Name: lab_value_normalization lab_value_normalization_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: lab_unit_external_codes lab_unit_external_codes_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
+--
+
+ALTER TABLE ONLY public.lab_unit_external_codes
+    ADD CONSTRAINT lab_unit_external_codes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_value_normalization lab_value_normalization_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.lab_value_normalization
@@ -4259,7 +4140,7 @@ ALTER TABLE ONLY public.lab_value_normalization
 
 
 --
--- Name: locations locations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: locations locations_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.locations
@@ -4267,7 +4148,7 @@ ALTER TABLE ONLY public.locations
 
 
 --
--- Name: medication_dispense_events medication_dispense_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: medication_dispense_events medication_dispense_events_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.medication_dispense_events
@@ -4275,7 +4156,7 @@ ALTER TABLE ONLY public.medication_dispense_events
 
 
 --
--- Name: patient_addiction_history patient_addiction_history_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_addiction_history patient_addiction_history_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_addiction_history
@@ -4283,7 +4164,7 @@ ALTER TABLE ONLY public.patient_addiction_history
 
 
 --
--- Name: patient_addictions patient_addictions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_addictions patient_addictions_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_addictions
@@ -4291,7 +4172,7 @@ ALTER TABLE ONLY public.patient_addictions
 
 
 --
--- Name: patient_addresses patient_addresses_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_addresses patient_addresses_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_addresses
@@ -4299,7 +4180,7 @@ ALTER TABLE ONLY public.patient_addresses
 
 
 --
--- Name: patient_allergies patient_allergies_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_allergies patient_allergies_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_allergies
@@ -4307,7 +4188,7 @@ ALTER TABLE ONLY public.patient_allergies
 
 
 --
--- Name: patient_allergy_history patient_allergy_history_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_allergy_history patient_allergy_history_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_allergy_history
@@ -4315,7 +4196,7 @@ ALTER TABLE ONLY public.patient_allergy_history
 
 
 --
--- Name: patient_allergy_manifestations patient_allergy_manifestation_patient_allergy_id_manifestat_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_allergy_manifestations patient_allergy_manifestation_patient_allergy_id_manifestat_key; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_allergy_manifestations
@@ -4323,7 +4204,7 @@ ALTER TABLE ONLY public.patient_allergy_manifestations
 
 
 --
--- Name: patient_allergy_manifestations patient_allergy_manifestations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_allergy_manifestations patient_allergy_manifestations_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_allergy_manifestations
@@ -4331,7 +4212,7 @@ ALTER TABLE ONLY public.patient_allergy_manifestations
 
 
 --
--- Name: patient_contacts patient_contacts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_contacts patient_contacts_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_contacts
@@ -4339,7 +4220,7 @@ ALTER TABLE ONLY public.patient_contacts
 
 
 --
--- Name: patient_diagnoses patient_diagnoses_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_diagnoses patient_diagnoses_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_diagnoses
@@ -4347,7 +4228,7 @@ ALTER TABLE ONLY public.patient_diagnoses
 
 
 --
--- Name: patient_documents patient_documents_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_documents patient_documents_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_documents
@@ -4355,7 +4236,23 @@ ALTER TABLE ONLY public.patient_documents
 
 
 --
--- Name: patient_identity_change patient_identity_change_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_ecg_records patient_ecg_records_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
+--
+
+ALTER TABLE ONLY public.patient_ecg_records
+    ADD CONSTRAINT patient_ecg_records_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: patient_echo_records patient_echo_records_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
+--
+
+ALTER TABLE ONLY public.patient_echo_records
+    ADD CONSTRAINT patient_echo_records_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: patient_identity_change patient_identity_change_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_identity_change
@@ -4363,7 +4260,7 @@ ALTER TABLE ONLY public.patient_identity_change
 
 
 --
--- Name: patient_lab_extraction_sessions patient_lab_extraction_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_lab_extraction_sessions patient_lab_extraction_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_lab_extraction_sessions
@@ -4371,7 +4268,7 @@ ALTER TABLE ONLY public.patient_lab_extraction_sessions
 
 
 --
--- Name: patient_lab_report_documents patient_lab_report_documents_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_lab_report_documents patient_lab_report_documents_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_lab_report_documents
@@ -4379,7 +4276,7 @@ ALTER TABLE ONLY public.patient_lab_report_documents
 
 
 --
--- Name: patient_lab_report_tests patient_lab_report_tests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_lab_report_tests patient_lab_report_tests_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_lab_report_tests
@@ -4387,7 +4284,7 @@ ALTER TABLE ONLY public.patient_lab_report_tests
 
 
 --
--- Name: patient_lab_reports patient_lab_reports_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_lab_reports patient_lab_reports_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_lab_reports
@@ -4395,7 +4292,7 @@ ALTER TABLE ONLY public.patient_lab_reports
 
 
 --
--- Name: patient_lab_results patient_lab_results_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_lab_results patient_lab_results_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_lab_results
@@ -4403,7 +4300,7 @@ ALTER TABLE ONLY public.patient_lab_results
 
 
 --
--- Name: patient_observations patient_observations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_observations patient_observations_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_observations
@@ -4411,7 +4308,7 @@ ALTER TABLE ONLY public.patient_observations
 
 
 --
--- Name: patient_relationship_links patient_relationship_links_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_relationship_links patient_relationship_links_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_relationship_links
@@ -4419,7 +4316,7 @@ ALTER TABLE ONLY public.patient_relationship_links
 
 
 --
--- Name: patient_stays patient_stays_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_stays patient_stays_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_stays
@@ -4427,7 +4324,7 @@ ALTER TABLE ONLY public.patient_stays
 
 
 --
--- Name: patient_tenant_merge_events patient_tenant_merge_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_tenant_merge_events patient_tenant_merge_events_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_tenant_merge_events
@@ -4435,7 +4332,7 @@ ALTER TABLE ONLY public.patient_tenant_merge_events
 
 
 --
--- Name: patients_tenant patients_tenant_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: patients_tenant patients_tenant_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patients_tenant
@@ -4443,7 +4340,7 @@ ALTER TABLE ONLY public.patients_tenant
 
 
 --
--- Name: po_items po_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: po_items po_items_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.po_items
@@ -4451,7 +4348,7 @@ ALTER TABLE ONLY public.po_items
 
 
 --
--- Name: prescription_events prescription_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: prescription_events prescription_events_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.prescription_events
@@ -4459,7 +4356,7 @@ ALTER TABLE ONLY public.prescription_events
 
 
 --
--- Name: prescriptions prescriptions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: prescriptions prescriptions_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.prescriptions
@@ -4467,7 +4364,7 @@ ALTER TABLE ONLY public.prescriptions
 
 
 --
--- Name: product_configs product_configs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: product_configs product_configs_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.product_configs
@@ -4475,7 +4372,7 @@ ALTER TABLE ONLY public.product_configs
 
 
 --
--- Name: product_price_versions product_price_versions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: product_price_versions product_price_versions_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.product_price_versions
@@ -4483,7 +4380,7 @@ ALTER TABLE ONLY public.product_price_versions
 
 
 --
--- Name: product_suppliers product_suppliers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: product_suppliers product_suppliers_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.product_suppliers
@@ -4491,7 +4388,7 @@ ALTER TABLE ONLY public.product_suppliers
 
 
 --
--- Name: product_suppliers product_suppliers_tenant_id_product_id_supplier_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: product_suppliers product_suppliers_tenant_id_product_id_supplier_id_key; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.product_suppliers
@@ -4499,7 +4396,7 @@ ALTER TABLE ONLY public.product_suppliers
 
 
 --
--- Name: product_wac product_wac_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: product_wac product_wac_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.product_wac
@@ -4507,7 +4404,7 @@ ALTER TABLE ONLY public.product_wac
 
 
 --
--- Name: purchase_orders purchase_orders_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: purchase_orders purchase_orders_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.purchase_orders
@@ -4515,7 +4412,7 @@ ALTER TABLE ONLY public.purchase_orders
 
 
 --
--- Name: reference_schema_version reference_schema_version_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: reference_schema_version reference_schema_version_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.reference_schema_version
@@ -4523,7 +4420,7 @@ ALTER TABLE ONLY public.reference_schema_version
 
 
 --
--- Name: return_decision_lines return_decision_lines_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: return_decision_lines return_decision_lines_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.return_decision_lines
@@ -4531,7 +4428,7 @@ ALTER TABLE ONLY public.return_decision_lines
 
 
 --
--- Name: return_decisions return_decisions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: return_decisions return_decisions_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.return_decisions
@@ -4539,7 +4436,7 @@ ALTER TABLE ONLY public.return_decisions
 
 
 --
--- Name: return_reception_lines return_reception_lines_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: return_reception_lines return_reception_lines_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.return_reception_lines
@@ -4547,7 +4444,7 @@ ALTER TABLE ONLY public.return_reception_lines
 
 
 --
--- Name: return_receptions return_receptions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: return_receptions return_receptions_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.return_receptions
@@ -4555,7 +4452,7 @@ ALTER TABLE ONLY public.return_receptions
 
 
 --
--- Name: room_types room_types_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: room_types room_types_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.room_types
@@ -4563,7 +4460,7 @@ ALTER TABLE ONLY public.room_types
 
 
 --
--- Name: rooms rooms_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: rooms rooms_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.rooms
@@ -4571,7 +4468,7 @@ ALTER TABLE ONLY public.rooms
 
 
 --
--- Name: service_units service_units_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: service_units service_units_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.service_units
@@ -4579,7 +4476,7 @@ ALTER TABLE ONLY public.service_units
 
 
 --
--- Name: services services_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: services services_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.services
@@ -4587,7 +4484,7 @@ ALTER TABLE ONLY public.services
 
 
 --
--- Name: smart_phrases smart_phrases_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: smart_phrases smart_phrases_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.smart_phrases
@@ -4595,7 +4492,7 @@ ALTER TABLE ONLY public.smart_phrases
 
 
 --
--- Name: stock_demand_lines stock_demand_lines_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: stock_demand_lines stock_demand_lines_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.stock_demand_lines
@@ -4603,7 +4500,7 @@ ALTER TABLE ONLY public.stock_demand_lines
 
 
 --
--- Name: stock_demands stock_demands_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: stock_demands stock_demands_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.stock_demands
@@ -4611,7 +4508,7 @@ ALTER TABLE ONLY public.stock_demands
 
 
 --
--- Name: stock_reservation_lines stock_reservation_lines_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: stock_reservation_lines stock_reservation_lines_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.stock_reservation_lines
@@ -4619,7 +4516,7 @@ ALTER TABLE ONLY public.stock_reservation_lines
 
 
 --
--- Name: stock_reservations stock_reservations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: stock_reservations stock_reservations_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.stock_reservations
@@ -4627,7 +4524,7 @@ ALTER TABLE ONLY public.stock_reservations
 
 
 --
--- Name: stock_return_lines stock_return_lines_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: stock_return_lines stock_return_lines_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.stock_return_lines
@@ -4635,7 +4532,7 @@ ALTER TABLE ONLY public.stock_return_lines
 
 
 --
--- Name: stock_returns stock_returns_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: stock_returns stock_returns_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.stock_returns
@@ -4643,7 +4540,7 @@ ALTER TABLE ONLY public.stock_returns
 
 
 --
--- Name: stock_transfer_lines stock_transfer_lines_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: stock_transfer_lines stock_transfer_lines_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.stock_transfer_lines
@@ -4651,7 +4548,7 @@ ALTER TABLE ONLY public.stock_transfer_lines
 
 
 --
--- Name: stock_transfers stock_transfers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: stock_transfers stock_transfers_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.stock_transfers
@@ -4659,7 +4556,7 @@ ALTER TABLE ONLY public.stock_transfers
 
 
 --
--- Name: suppliers suppliers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: suppliers suppliers_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.suppliers
@@ -4667,7 +4564,7 @@ ALTER TABLE ONLY public.suppliers
 
 
 --
--- Name: surveillance_hour_buckets surveillance_hour_buckets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: surveillance_hour_buckets surveillance_hour_buckets_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.surveillance_hour_buckets
@@ -4675,7 +4572,7 @@ ALTER TABLE ONLY public.surveillance_hour_buckets
 
 
 --
--- Name: surveillance_hour_buckets surveillance_hour_buckets_tenant_id_tenant_patient_id_bucke_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: surveillance_hour_buckets surveillance_hour_buckets_tenant_id_tenant_patient_id_bucke_key; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.surveillance_hour_buckets
@@ -4683,7 +4580,7 @@ ALTER TABLE ONLY public.surveillance_hour_buckets
 
 
 --
--- Name: surveillance_values_events surveillance_values_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: surveillance_values_events surveillance_values_events_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.surveillance_values_events
@@ -4691,7 +4588,7 @@ ALTER TABLE ONLY public.surveillance_values_events
 
 
 --
--- Name: transfusion_blood_bags transfusion_blood_bags_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: transfusion_blood_bags transfusion_blood_bags_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.transfusion_blood_bags
@@ -4699,7 +4596,7 @@ ALTER TABLE ONLY public.transfusion_blood_bags
 
 
 --
--- Name: transfusion_checks transfusion_checks_administration_event_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: transfusion_checks transfusion_checks_administration_event_id_key; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.transfusion_checks
@@ -4707,7 +4604,7 @@ ALTER TABLE ONLY public.transfusion_checks
 
 
 --
--- Name: transfusion_checks transfusion_checks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: transfusion_checks transfusion_checks_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.transfusion_checks
@@ -4715,7 +4612,7 @@ ALTER TABLE ONLY public.transfusion_checks
 
 
 --
--- Name: transfusion_reactions transfusion_reactions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: transfusion_reactions transfusion_reactions_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.transfusion_reactions
@@ -4723,15 +4620,23 @@ ALTER TABLE ONLY public.transfusion_reactions
 
 
 --
--- Name: lab_requests unique_lab_request_per_event; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: global_act_external_codes unique_mapping; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
-ALTER TABLE ONLY public.lab_requests
-    ADD CONSTRAINT unique_lab_request_per_event UNIQUE (prescription_event_id);
+ALTER TABLE ONLY public.global_act_external_codes
+    ADD CONSTRAINT unique_mapping UNIQUE (global_act_id, external_system_id, external_code);
 
 
 --
--- Name: user_roles user_roles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: current_stock uq_current_stock_natural_key; Type: CONSTRAINT; Schema: public; Owner: sahty
+--
+
+ALTER TABLE ONLY public.current_stock
+    ADD CONSTRAINT uq_current_stock_natural_key UNIQUE (tenant_id, product_id, lot, expiry, location_id);
+
+
+--
+-- Name: user_roles user_roles_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.user_roles
@@ -4739,7 +4644,7 @@ ALTER TABLE ONLY public.user_roles
 
 
 --
--- Name: user_services user_services_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: user_services user_services_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.user_services
@@ -4747,7 +4652,7 @@ ALTER TABLE ONLY public.user_services
 
 
 --
--- Name: care_categories care_categories_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: care_categories care_categories_code_key; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.care_categories
@@ -4755,7 +4660,7 @@ ALTER TABLE ONLY reference.care_categories
 
 
 --
--- Name: care_categories care_categories_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: care_categories care_categories_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.care_categories
@@ -4763,7 +4668,7 @@ ALTER TABLE ONLY reference.care_categories
 
 
 --
--- Name: countries countries_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: countries countries_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.countries
@@ -4771,7 +4676,7 @@ ALTER TABLE ONLY reference.countries
 
 
 --
--- Name: dci_synonyms dci_synonyms_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: dci_synonyms dci_synonyms_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.dci_synonyms
@@ -4779,7 +4684,7 @@ ALTER TABLE ONLY reference.dci_synonyms
 
 
 --
--- Name: flowsheet_groups flowsheet_groups_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: flowsheet_groups flowsheet_groups_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.flowsheet_groups
@@ -4787,7 +4692,7 @@ ALTER TABLE ONLY reference.flowsheet_groups
 
 
 --
--- Name: global_actes global_actes_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: global_actes global_actes_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.global_actes
@@ -4795,7 +4700,7 @@ ALTER TABLE ONLY reference.global_actes
 
 
 --
--- Name: global_atc global_atc_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: global_atc global_atc_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.global_atc
@@ -4803,7 +4708,7 @@ ALTER TABLE ONLY reference.global_atc
 
 
 --
--- Name: global_dci global_dci_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: global_dci global_dci_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.global_dci
@@ -4811,7 +4716,7 @@ ALTER TABLE ONLY reference.global_dci
 
 
 --
--- Name: global_emdn global_emdn_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: global_emdn global_emdn_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.global_emdn
@@ -4819,7 +4724,7 @@ ALTER TABLE ONLY reference.global_emdn
 
 
 --
--- Name: global_product_price_history global_product_price_history_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: global_product_price_history global_product_price_history_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.global_product_price_history
@@ -4827,7 +4732,7 @@ ALTER TABLE ONLY reference.global_product_price_history
 
 
 --
--- Name: global_products global_products_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: global_products global_products_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.global_products
@@ -4835,7 +4740,7 @@ ALTER TABLE ONLY reference.global_products
 
 
 --
--- Name: global_roles global_roles_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: global_roles global_roles_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.global_roles
@@ -4843,7 +4748,7 @@ ALTER TABLE ONLY reference.global_roles
 
 
 --
--- Name: global_suppliers global_suppliers_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: global_suppliers global_suppliers_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.global_suppliers
@@ -4851,7 +4756,7 @@ ALTER TABLE ONLY reference.global_suppliers
 
 
 --
--- Name: group_parameters group_parameters_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: group_parameters group_parameters_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.group_parameters
@@ -4859,7 +4764,7 @@ ALTER TABLE ONLY reference.group_parameters
 
 
 --
--- Name: identity_document_types identity_document_types_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: identity_document_types identity_document_types_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.identity_document_types
@@ -4867,143 +4772,143 @@ ALTER TABLE ONLY reference.identity_document_types
 
 
 --
--- Name: lab_act_analyte_context lab_act_analyte_context_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_act_analyte_context lab_act_analyte_context_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_act_analyte_context
+ALTER TABLE ONLY public.lab_act_analyte_context
     ADD CONSTRAINT lab_act_analyte_context_pkey PRIMARY KEY (id);
 
 
 --
--- Name: lab_act_analytes lab_act_analytes_act_analyte_key; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_act_analytes lab_act_analytes_act_analyte_key; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_act_analytes
+ALTER TABLE ONLY public.lab_act_analytes
     ADD CONSTRAINT lab_act_analytes_act_analyte_key UNIQUE (global_act_id, analyte_id);
 
 
 --
--- Name: lab_act_analytes lab_act_analytes_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_act_analytes lab_act_analytes_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_act_analytes
+ALTER TABLE ONLY public.lab_act_analytes
     ADD CONSTRAINT lab_act_analytes_pkey PRIMARY KEY (id);
 
 
 --
--- Name: lab_act_contexts lab_act_contexts_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_act_contexts lab_act_contexts_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_act_contexts
+ALTER TABLE ONLY public.lab_act_contexts
     ADD CONSTRAINT lab_act_contexts_pkey PRIMARY KEY (id);
 
 
 --
--- Name: lab_act_methods lab_act_methods_act_method_key; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_act_methods lab_act_methods_act_method_key; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_act_methods
+ALTER TABLE ONLY public.lab_act_methods
     ADD CONSTRAINT lab_act_methods_act_method_key UNIQUE (global_act_id, method_id);
 
 
 --
--- Name: lab_act_methods lab_act_methods_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_act_methods lab_act_methods_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_act_methods
+ALTER TABLE ONLY public.lab_act_methods
     ADD CONSTRAINT lab_act_methods_pkey PRIMARY KEY (id);
 
 
 --
--- Name: lab_act_specimen_containers lab_act_spec_cont_unique; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_act_specimen_containers lab_act_spec_cont_unique; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_act_specimen_containers
+ALTER TABLE ONLY public.lab_act_specimen_containers
     ADD CONSTRAINT lab_act_spec_cont_unique UNIQUE (global_act_id, specimen_type_id, container_type_id);
 
 
 --
--- Name: lab_act_specimen_containers lab_act_specimen_containers_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_act_specimen_containers lab_act_specimen_containers_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_act_specimen_containers
+ALTER TABLE ONLY public.lab_act_specimen_containers
     ADD CONSTRAINT lab_act_specimen_containers_pkey PRIMARY KEY (id);
 
 
 --
--- Name: lab_act_taxonomy lab_act_taxonomy_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_act_specimen_types lab_act_specimen_types_act_specimen_key; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_act_taxonomy
+ALTER TABLE ONLY public.lab_act_specimen_types
+    ADD CONSTRAINT lab_act_specimen_types_act_specimen_key UNIQUE (global_act_id, specimen_type_id);
+
+
+--
+-- Name: lab_act_specimen_types lab_act_specimen_types_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
+--
+
+ALTER TABLE ONLY public.lab_act_specimen_types
+    ADD CONSTRAINT lab_act_specimen_types_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lab_act_taxonomy lab_act_taxonomy_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
+--
+
+ALTER TABLE ONLY public.lab_act_taxonomy
     ADD CONSTRAINT lab_act_taxonomy_pkey PRIMARY KEY (id);
 
 
 --
--- Name: lab_analyte_aliases lab_analyte_aliases_analyte_alias_type_key; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_analyte_aliases lab_analyte_aliases_analyte_alias_type_key; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_analyte_aliases
+ALTER TABLE ONLY public.lab_analyte_aliases
     ADD CONSTRAINT lab_analyte_aliases_analyte_alias_type_key UNIQUE (analyte_id, alias_text, alias_type);
 
 
 --
--- Name: lab_analyte_aliases lab_analyte_aliases_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_analyte_aliases lab_analyte_aliases_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_analyte_aliases
+ALTER TABLE ONLY public.lab_analyte_aliases
     ADD CONSTRAINT lab_analyte_aliases_pkey PRIMARY KEY (id);
 
 
 --
--- Name: lab_analyte_contexts lab_analyte_contexts_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_analyte_contexts lab_analyte_contexts_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_analyte_contexts
+ALTER TABLE ONLY public.lab_analyte_contexts
     ADD CONSTRAINT lab_analyte_contexts_pkey PRIMARY KEY (id);
 
 
 --
--- Name: lab_analyte_external_codes lab_analyte_ext_codes_analyte_sys_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_analyte_reference_ranges lab_analyte_reference_ranges_pkey; Type: CONSTRAINT; Schema: public; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_analyte_external_codes
-    ADD CONSTRAINT lab_analyte_ext_codes_analyte_sys_code_key UNIQUE (analyte_id, coding_system, code);
-
-
---
--- Name: lab_analyte_external_codes lab_analyte_external_codes_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
---
-
-ALTER TABLE ONLY reference.lab_analyte_external_codes
-    ADD CONSTRAINT lab_analyte_external_codes_pkey PRIMARY KEY (id);
-
-
---
--- Name: lab_analyte_reference_ranges lab_analyte_reference_ranges_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
---
-
-ALTER TABLE ONLY reference.lab_analyte_reference_ranges
+ALTER TABLE ONLY public.lab_analyte_reference_ranges
     ADD CONSTRAINT lab_analyte_reference_ranges_pkey PRIMARY KEY (id);
 
 
 --
--- Name: lab_analyte_units lab_analyte_units_analyte_unit_key; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_analyte_units lab_analyte_units_analyte_unit_key; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_analyte_units
+ALTER TABLE ONLY public.lab_analyte_units
     ADD CONSTRAINT lab_analyte_units_analyte_unit_key UNIQUE (analyte_id, unit_id);
 
 
 --
--- Name: lab_analyte_units lab_analyte_units_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_analyte_units lab_analyte_units_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_analyte_units
+ALTER TABLE ONLY public.lab_analyte_units
     ADD CONSTRAINT lab_analyte_units_pkey PRIMARY KEY (id);
 
 
 --
--- Name: lab_analytes lab_analytes_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_analytes lab_analytes_code_key; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.lab_analytes
@@ -5011,7 +4916,7 @@ ALTER TABLE ONLY reference.lab_analytes
 
 
 --
--- Name: lab_analytes lab_analytes_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_analytes lab_analytes_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.lab_analytes
@@ -5019,7 +4924,7 @@ ALTER TABLE ONLY reference.lab_analytes
 
 
 --
--- Name: lab_canonical_allowed_values lab_canonical_allowed_values_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_canonical_allowed_values lab_canonical_allowed_values_code_key; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.lab_canonical_allowed_values
@@ -5027,7 +4932,7 @@ ALTER TABLE ONLY reference.lab_canonical_allowed_values
 
 
 --
--- Name: lab_canonical_allowed_values lab_canonical_allowed_values_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_canonical_allowed_values lab_canonical_allowed_values_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.lab_canonical_allowed_values
@@ -5035,7 +4940,7 @@ ALTER TABLE ONLY reference.lab_canonical_allowed_values
 
 
 --
--- Name: lab_container_types lab_container_types_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_container_types lab_container_types_code_key; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.lab_container_types
@@ -5043,7 +4948,7 @@ ALTER TABLE ONLY reference.lab_container_types
 
 
 --
--- Name: lab_container_types lab_container_types_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_container_types lab_container_types_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.lab_container_types
@@ -5051,7 +4956,7 @@ ALTER TABLE ONLY reference.lab_container_types
 
 
 --
--- Name: lab_methods lab_methods_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_methods lab_methods_code_key; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.lab_methods
@@ -5059,7 +4964,7 @@ ALTER TABLE ONLY reference.lab_methods
 
 
 --
--- Name: lab_methods lab_methods_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_methods lab_methods_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.lab_methods
@@ -5067,63 +4972,63 @@ ALTER TABLE ONLY reference.lab_methods
 
 
 --
--- Name: lab_panel_items lab_panel_items_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_panel_items lab_panel_items_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_panel_items
+ALTER TABLE ONLY public.lab_panel_items
     ADD CONSTRAINT lab_panel_items_pkey PRIMARY KEY (id);
 
 
 --
--- Name: lab_panels lab_panels_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_panels lab_panels_code_key; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_panels
+ALTER TABLE ONLY public.lab_panels
     ADD CONSTRAINT lab_panels_code_key UNIQUE (code);
 
 
 --
--- Name: lab_panels lab_panels_global_act_id_key; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_panels lab_panels_global_act_id_key; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_panels
+ALTER TABLE ONLY public.lab_panels
     ADD CONSTRAINT lab_panels_global_act_id_key UNIQUE (global_act_id);
 
 
 --
--- Name: lab_panels lab_panels_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_panels lab_panels_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_panels
+ALTER TABLE ONLY public.lab_panels
     ADD CONSTRAINT lab_panels_pkey PRIMARY KEY (id);
 
 
 --
--- Name: lab_reference_profiles lab_reference_profiles_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_reference_profiles lab_reference_profiles_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_reference_profiles
+ALTER TABLE ONLY public.lab_reference_profiles
     ADD CONSTRAINT lab_reference_profiles_pkey PRIMARY KEY (id);
 
 
 --
--- Name: lab_reference_rules lab_reference_rules_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_reference_rules lab_reference_rules_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_reference_rules
+ALTER TABLE ONLY public.lab_reference_rules
     ADD CONSTRAINT lab_reference_rules_pkey PRIMARY KEY (id);
 
 
 --
--- Name: lab_section_tree lab_section_tree_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_section_tree lab_section_tree_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_section_tree
+ALTER TABLE ONLY public.lab_section_tree
     ADD CONSTRAINT lab_section_tree_pkey PRIMARY KEY (id);
 
 
 --
--- Name: lab_sections lab_sections_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_sections lab_sections_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.lab_sections
@@ -5131,15 +5036,7 @@ ALTER TABLE ONLY reference.lab_sections
 
 
 --
--- Name: lab_specimen_container_types lab_specimen_container_types_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
---
-
-ALTER TABLE ONLY reference.lab_specimen_container_types
-    ADD CONSTRAINT lab_specimen_container_types_pkey PRIMARY KEY (id);
-
-
---
--- Name: lab_specimen_types lab_specimen_types_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_specimen_types lab_specimen_types_code_key; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.lab_specimen_types
@@ -5147,7 +5044,7 @@ ALTER TABLE ONLY reference.lab_specimen_types
 
 
 --
--- Name: lab_specimen_types lab_specimen_types_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_specimen_types lab_specimen_types_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.lab_specimen_types
@@ -5155,15 +5052,15 @@ ALTER TABLE ONLY reference.lab_specimen_types
 
 
 --
--- Name: lab_sub_section_tree lab_sub_section_tree_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_sub_section_tree lab_sub_section_tree_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_sub_section_tree
+ALTER TABLE ONLY public.lab_sub_section_tree
     ADD CONSTRAINT lab_sub_section_tree_pkey PRIMARY KEY (id);
 
 
 --
--- Name: lab_sub_sections lab_sub_sections_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_sub_sections lab_sub_sections_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.lab_sub_sections
@@ -5171,7 +5068,7 @@ ALTER TABLE ONLY reference.lab_sub_sections
 
 
 --
--- Name: observation_flowsheets observation_flowsheets_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: observation_flowsheets observation_flowsheets_code_key; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.observation_flowsheets
@@ -5179,7 +5076,7 @@ ALTER TABLE ONLY reference.observation_flowsheets
 
 
 --
--- Name: observation_flowsheets observation_flowsheets_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: observation_flowsheets observation_flowsheets_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.observation_flowsheets
@@ -5187,7 +5084,7 @@ ALTER TABLE ONLY reference.observation_flowsheets
 
 
 --
--- Name: observation_groups observation_groups_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: observation_groups observation_groups_code_key; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.observation_groups
@@ -5195,7 +5092,7 @@ ALTER TABLE ONLY reference.observation_groups
 
 
 --
--- Name: observation_groups observation_groups_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: observation_groups observation_groups_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.observation_groups
@@ -5203,7 +5100,7 @@ ALTER TABLE ONLY reference.observation_groups
 
 
 --
--- Name: observation_parameters observation_parameters_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: observation_parameters observation_parameters_code_key; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.observation_parameters
@@ -5211,7 +5108,7 @@ ALTER TABLE ONLY reference.observation_parameters
 
 
 --
--- Name: observation_parameters observation_parameters_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: observation_parameters observation_parameters_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.observation_parameters
@@ -5219,7 +5116,7 @@ ALTER TABLE ONLY reference.observation_parameters
 
 
 --
--- Name: organismes organismes_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: organismes organismes_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.organismes
@@ -5227,7 +5124,7 @@ ALTER TABLE ONLY reference.organismes
 
 
 --
--- Name: global_actes ref_global_actes_code_sih_key; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: global_actes ref_global_actes_code_sih_key; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.global_actes
@@ -5235,7 +5132,7 @@ ALTER TABLE ONLY reference.global_actes
 
 
 --
--- Name: routes routes_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: routes routes_code_key; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.routes
@@ -5243,7 +5140,7 @@ ALTER TABLE ONLY reference.routes
 
 
 --
--- Name: routes routes_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: routes routes_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.routes
@@ -5251,7 +5148,7 @@ ALTER TABLE ONLY reference.routes
 
 
 --
--- Name: sih_familles sih_familles_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: sih_familles sih_familles_code_key; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.sih_familles
@@ -5259,7 +5156,7 @@ ALTER TABLE ONLY reference.sih_familles
 
 
 --
--- Name: sih_familles sih_familles_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: sih_familles sih_familles_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.sih_familles
@@ -5267,7 +5164,7 @@ ALTER TABLE ONLY reference.sih_familles
 
 
 --
--- Name: sih_sous_familles sih_sous_familles_famille_id_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: sih_sous_familles sih_sous_familles_famille_id_code_key; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.sih_sous_familles
@@ -5275,23 +5172,18 @@ ALTER TABLE ONLY reference.sih_sous_familles
 
 
 --
--- Name: sih_sous_familles sih_sous_familles_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: sih_sous_familles sih_sous_familles_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.sih_sous_familles
     ADD CONSTRAINT sih_sous_familles_pkey PRIMARY KEY (id);
 
 
---
--- Name: lab_specimen_container_types unique_specimen_container; Type: CONSTRAINT; Schema: reference; Owner: -
---
-
-ALTER TABLE ONLY reference.lab_specimen_container_types
-    ADD CONSTRAINT unique_specimen_container UNIQUE (specimen_type_id, container_type_id);
+-- lab_specimen_container_types removed
 
 
 --
--- Name: units units_code_key; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: units units_code_key; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.units
@@ -5299,7 +5191,7 @@ ALTER TABLE ONLY reference.units
 
 
 --
--- Name: units units_pkey; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: units units_pkey; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.units
@@ -5307,2041 +5199,2181 @@ ALTER TABLE ONLY reference.units
 
 
 --
--- Name: lab_act_analyte_context uq_act_analyte_ctx; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_act_analyte_context uq_act_analyte_ctx; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_act_analyte_context
+ALTER TABLE ONLY public.lab_act_analyte_context
     ADD CONSTRAINT uq_act_analyte_ctx UNIQUE (global_act_id, analyte_context_id);
 
 
 --
--- Name: lab_act_taxonomy uq_act_id; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_act_taxonomy uq_act_id; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_act_taxonomy
+ALTER TABLE ONLY public.lab_act_taxonomy
     ADD CONSTRAINT uq_act_id UNIQUE (act_id);
 
 
 --
--- Name: lab_section_tree uq_section_sous_famille; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_section_tree uq_section_sous_famille; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_section_tree
+ALTER TABLE ONLY public.lab_section_tree
     ADD CONSTRAINT uq_section_sous_famille UNIQUE (section_id, sous_famille_id);
 
 
 --
--- Name: lab_sub_section_tree uq_sub_section_section; Type: CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_sub_section_tree uq_sub_section_section; Type: CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_sub_section_tree
+ALTER TABLE ONLY public.lab_sub_section_tree
     ADD CONSTRAINT uq_sub_section_section UNIQUE (sub_section_id, section_id);
 
 
 --
--- Name: idx_auth_inbox_unapplied; Type: INDEX; Schema: auth_sync; Owner: -
+-- Name: idx_auth_inbox_unapplied; Type: INDEX; Schema: auth_sync; Owner: sahty
 --
 
 CREATE INDEX idx_auth_inbox_unapplied ON auth_sync.inbox_events USING btree (created_at) WHERE (applied_at IS NULL);
 
 
 --
--- Name: idx_auth_outbox_unprocessed; Type: INDEX; Schema: auth_sync; Owner: -
+-- Name: idx_auth_outbox_unprocessed; Type: INDEX; Schema: auth_sync; Owner: sahty
 --
 
 CREATE INDEX idx_auth_outbox_unprocessed ON auth_sync.outbox_events USING btree (created_at) WHERE (processed_at IS NULL);
 
 
 --
--- Name: idx_inbox_dedupe; Type: INDEX; Schema: identity_sync; Owner: -
+-- Name: idx_inbox_dedupe; Type: INDEX; Schema: identity_sync; Owner: sahty
 --
 
 CREATE UNIQUE INDEX idx_inbox_dedupe ON identity_sync.inbox_events USING btree (dedupe_key);
 
 
 --
--- Name: idx_inbox_processing; Type: INDEX; Schema: identity_sync; Owner: -
+-- Name: idx_inbox_processing; Type: INDEX; Schema: identity_sync; Owner: sahty
 --
 
 CREATE INDEX idx_inbox_processing ON identity_sync.inbox_events USING btree (status);
 
 
 --
--- Name: idx_outbox_dedupe; Type: INDEX; Schema: identity_sync; Owner: -
+-- Name: idx_outbox_dedupe; Type: INDEX; Schema: identity_sync; Owner: sahty
 --
 
 CREATE UNIQUE INDEX idx_outbox_dedupe ON identity_sync.outbox_events USING btree (dedupe_key);
 
 
 --
--- Name: idx_outbox_processing; Type: INDEX; Schema: identity_sync; Owner: -
+-- Name: idx_outbox_processing; Type: INDEX; Schema: identity_sync; Owner: sahty
 --
 
 CREATE INDEX idx_outbox_processing ON identity_sync.outbox_events USING btree (status, next_attempt_at);
 
 
 --
--- Name: idx_addiction_history_addiction; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_addiction_history_addiction; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_addiction_history_addiction ON public.patient_addiction_history USING btree (addiction_id);
 
 
 --
--- Name: idx_addiction_patient; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_addiction_patient; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_addiction_patient ON public.patient_addictions USING btree (tenant_patient_id);
 
 
 --
--- Name: idx_adm_cov_admission; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_adm_cov_admission; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_adm_cov_admission ON public.admission_coverages USING btree (tenant_id, admission_id);
 
 
 --
--- Name: idx_adm_cov_coverage; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_adm_cov_coverage; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_adm_cov_coverage ON public.admission_coverages USING btree (tenant_id, coverage_id);
 
 
 --
--- Name: idx_adm_cov_order; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_adm_cov_order; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE UNIQUE INDEX idx_adm_cov_order ON public.admission_coverages USING btree (tenant_id, admission_id, filing_order);
 
 
 --
--- Name: idx_adm_hist_admission; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_adm_hist_admission; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_adm_hist_admission ON public.admission_coverage_change_history USING btree (tenant_id, admission_id);
 
 
 --
--- Name: idx_adm_hist_coverage; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_adm_hist_coverage; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_adm_hist_coverage ON public.admission_coverage_change_history USING btree (tenant_id, admission_coverage_id);
 
 
 --
--- Name: idx_adm_hist_date; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_adm_hist_date; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_adm_hist_date ON public.admission_coverage_change_history USING btree (tenant_id, changed_at DESC);
 
 
 --
--- Name: idx_adm_mem_coverage; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_adm_mem_coverage; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_adm_mem_coverage ON public.admission_coverage_members USING btree (tenant_id, admission_coverage_id);
 
 
 --
--- Name: idx_adm_mem_patient; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_adm_mem_patient; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_adm_mem_patient ON public.admission_coverage_members USING btree (tenant_id, tenant_patient_id);
 
 
 --
--- Name: idx_admin_event_action; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_admin_event_action; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_admin_event_action ON public.administration_events USING btree (action_type);
 
 
 --
--- Name: idx_admin_event_blood_bags_bag; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_admin_event_blood_bags_bag; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_admin_event_blood_bags_bag ON public.administration_event_blood_bags USING btree (tenant_id, blood_bag_id);
 
 
 --
--- Name: idx_admin_event_blood_bags_event; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_admin_event_blood_bags_event; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_admin_event_blood_bags_event ON public.administration_event_blood_bags USING btree (tenant_id, administration_event_id);
 
 
 --
--- Name: idx_admin_event_blood_bags_unique; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_admin_event_blood_bags_unique; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE UNIQUE INDEX idx_admin_event_blood_bags_unique ON public.administration_event_blood_bags USING btree (tenant_id, administration_event_id, blood_bag_id);
 
 
 --
--- Name: idx_admin_event_lab_collections_admin_event_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_admin_event_lab_collections_admin_event_id; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_admin_event_lab_collections_admin_event_id ON public.administration_event_lab_collections USING btree (administration_event_id);
 
 
 --
--- Name: idx_admin_event_lab_collections_collection_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_admin_event_lab_collections_collection_id; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_admin_event_lab_collections_collection_id ON public.administration_event_lab_collections USING btree (lab_collection_id);
 
 
 --
--- Name: idx_admin_event_status; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_admin_event_status; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_admin_event_status ON public.administration_events USING btree (status);
 
 
 --
--- Name: idx_admin_events_by_presc_event_time; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_admin_events_by_presc_event_time; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_admin_events_by_presc_event_time ON public.administration_events USING btree (tenant_id, prescription_event_id, occurred_at);
 
 
 --
--- Name: idx_admin_events_fluid; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_admin_events_fluid; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_admin_events_fluid ON public.administration_events USING btree (tenant_patient_id, actual_end_at) WHERE (volume_administered_ml IS NOT NULL);
 
 
 --
--- Name: idx_admin_events_patient_end; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_admin_events_patient_end; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_admin_events_patient_end ON public.administration_events USING btree (tenant_patient_id, actual_end_at) WHERE (actual_end_at IS NOT NULL);
 
 
 --
--- Name: idx_admin_events_patient_start; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_admin_events_patient_start; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_admin_events_patient_start ON public.administration_events USING btree (tenant_patient_id, actual_start_at) WHERE (actual_start_at IS NOT NULL);
 
 
 --
--- Name: idx_admission_acts_admission_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_admission_acts_admission_id; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_admission_acts_admission_id ON public.admission_acts USING btree (admission_id);
 
 
 --
--- Name: idx_admission_acts_global_act_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_admission_acts_global_act_id; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_admission_acts_global_act_id ON public.admission_acts USING btree (global_act_id);
 
 
 --
--- Name: idx_admission_acts_lab_request_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_admission_acts_lab_request_id; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_admission_acts_lab_request_id ON public.admission_acts USING btree (lab_request_id);
 
 
 --
--- Name: idx_admissions_tenant; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_admissions_tenant; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_admissions_tenant ON public.admissions USING btree (tenant_id);
 
 
 --
--- Name: idx_aebb_blood_bag; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_aebb_blood_bag; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_aebb_blood_bag ON public.administration_event_blood_bags USING btree (blood_bag_id);
 
 
 --
--- Name: idx_beds_room; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_beds_room; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_beds_room ON public.beds USING btree (room_id);
 
 
 --
--- Name: idx_beds_status; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_beds_status; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_beds_status ON public.beds USING btree (status) WHERE (status = 'AVAILABLE'::public.bed_status);
 
 
 --
--- Name: idx_clinical_exams_patient_status_date; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_clinical_exams_patient_status_date; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_clinical_exams_patient_status_date ON public.clinical_exams USING btree (tenant_patient_id, status, observed_at DESC);
 
 
 --
--- Name: idx_config_enabled; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_config_enabled; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_config_enabled ON public.product_configs USING btree (tenant_id, is_enabled) WHERE (is_enabled = true);
 
 
 --
--- Name: idx_coverage_history_coverage; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_coverage_history_coverage; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_coverage_history_coverage ON public.coverage_change_history USING btree (tenant_id, coverage_id);
 
 
 --
--- Name: idx_coverage_history_date; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_coverage_history_date; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_coverage_history_date ON public.coverage_change_history USING btree (tenant_id, changed_at DESC);
 
 
 --
--- Name: idx_coverage_history_member; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_coverage_history_member; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_coverage_history_member ON public.coverage_change_history USING btree (tenant_id, coverage_member_id);
 
 
 --
--- Name: idx_coverages_lookup; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_coverages_lookup; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_coverages_lookup ON public.coverages USING btree (tenant_id, organisme_id, policy_number);
 
 
 --
--- Name: idx_decision_lines_decision; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_decision_lines_decision; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_decision_lines_decision ON public.return_decision_lines USING btree (decision_id);
 
 
 --
--- Name: idx_decision_lines_return_line; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_decision_lines_return_line; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_decision_lines_return_line ON public.return_decision_lines USING btree (return_line_id);
 
 
 --
--- Name: idx_decisions_reception; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_decisions_reception; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_decisions_reception ON public.return_decisions USING btree (reception_id);
 
 
 --
--- Name: idx_demand_line_demand; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_demand_line_demand; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_demand_line_demand ON public.stock_demand_lines USING btree (demand_id);
 
 
 --
--- Name: idx_demand_ref; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_demand_ref; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_demand_ref ON public.stock_demands USING btree (demand_ref);
 
 
 --
--- Name: idx_demand_service; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_demand_service; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_demand_service ON public.stock_demands USING btree (service_id);
 
 
 --
--- Name: idx_demand_status; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_demand_status; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_demand_status ON public.stock_demands USING btree (status);
 
 
 --
--- Name: idx_demand_tenant; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_demand_tenant; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_demand_tenant ON public.stock_demands USING btree (tenant_id);
 
 
 --
--- Name: idx_dn_supplier; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_dn_supplier; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_dn_supplier ON public.delivery_notes USING btree (supplier_id);
 
 
 --
--- Name: idx_dn_tenant; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_dn_tenant; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_dn_tenant ON public.delivery_notes USING btree (tenant_id);
 
 
 --
--- Name: idx_dni_dn; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_dni_dn; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_dni_dn ON public.delivery_note_items USING btree (delivery_note_id);
 
 
 --
--- Name: idx_dnl_dn; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_dnl_dn; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_dnl_dn ON public.delivery_note_layers USING btree (delivery_note_id);
 
 
 --
--- Name: idx_dnl_product; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_dnl_product; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_dnl_product ON public.delivery_note_layers USING btree (product_id);
 
 
 --
--- Name: idx_escarre_snapshots_lookup; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_ecg_records_patient; Type: INDEX; Schema: public; Owner: sahty
+--
+
+CREATE INDEX idx_ecg_records_patient ON public.patient_ecg_records USING btree (tenant_patient_id, exam_date DESC, exam_time DESC);
+
+
+--
+-- Name: idx_ecg_records_tenant; Type: INDEX; Schema: public; Owner: sahty
+--
+
+CREATE INDEX idx_ecg_records_tenant ON public.patient_ecg_records USING btree (tenant_id, tenant_patient_id);
+
+
+--
+-- Name: idx_echo_records_patient; Type: INDEX; Schema: public; Owner: sahty
+--
+
+CREATE INDEX idx_echo_records_patient ON public.patient_echo_records USING btree (tenant_patient_id, exam_date DESC, exam_time DESC);
+
+
+--
+-- Name: idx_echo_records_tenant; Type: INDEX; Schema: public; Owner: sahty
+--
+
+CREATE INDEX idx_echo_records_tenant ON public.patient_echo_records USING btree (tenant_id, tenant_patient_id);
+
+
+--
+-- Name: idx_escarre_snapshots_lookup; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_escarre_snapshots_lookup ON public.escarre_snapshots USING btree (tenant_id, escarre_id, recorded_at DESC);
 
 
 --
--- Name: idx_escarres_active; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_escarres_active; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_escarres_active ON public.escarres USING btree (tenant_id, tenant_patient_id, is_active);
 
 
 --
--- Name: idx_escarres_created_at; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_escarres_created_at; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_escarres_created_at ON public.escarres USING btree (tenant_id, created_at);
 
 
 --
--- Name: idx_escarres_patient; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_escarres_patient; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_escarres_patient ON public.escarres USING btree (tenant_id, tenant_patient_id);
 
 
 --
--- Name: idx_identity_change_patient; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_gact_external_codes_act; Type: INDEX; Schema: public; Owner: sahty
+--
+
+CREATE INDEX idx_gact_external_codes_act ON public.global_act_external_codes USING btree (global_act_id);
+
+
+--
+-- Name: idx_gact_external_codes_system; Type: INDEX; Schema: public; Owner: sahty
+--
+
+CREATE INDEX idx_gact_external_codes_system ON public.global_act_external_codes USING btree (external_system_id);
+
+
+--
+-- Name: idx_identity_change_patient; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_identity_change_patient ON public.patient_identity_change USING btree (tenant_id, tenant_patient_id);
 
 
 --
--- Name: idx_identity_ids_lookup; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_identity_ids_lookup; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_identity_ids_lookup ON public.identity_ids USING btree (tenant_id, identity_type_code, identity_value);
 
 
 --
--- Name: idx_identity_ids_patient; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_identity_ids_patient; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_identity_ids_patient ON public.identity_ids USING btree (tenant_id, tenant_patient_id);
 
 
 --
--- Name: idx_inv_doc; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_inv_doc; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_inv_doc ON public.inventory_movements USING btree (document_type, document_id);
 
 
 --
--- Name: idx_inv_product; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_inv_product; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_inv_product ON public.inventory_movements USING btree (product_id);
 
 
 --
--- Name: idx_inv_tenant; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_inv_tenant; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_inv_tenant ON public.inventory_movements USING btree (tenant_id);
 
 
 --
--- Name: idx_lab_collection_specimens_collection_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_lab_analyte_ext_codes_code; Type: INDEX; Schema: public; Owner: sahty
+--
+
+CREATE INDEX idx_lab_analyte_ext_codes_code ON public.lab_analyte_external_codes USING btree (external_code, external_system_id);
+
+
+--
+-- Name: idx_lab_analyte_ext_codes_system; Type: INDEX; Schema: public; Owner: sahty
+--
+
+CREATE INDEX idx_lab_analyte_ext_codes_system ON public.lab_analyte_external_codes USING btree (external_system_id);
+
+
+--
+-- Name: idx_lab_analyte_ext_codes_unique; Type: INDEX; Schema: public; Owner: sahty
+--
+
+CREATE UNIQUE INDEX idx_lab_analyte_ext_codes_unique ON public.lab_analyte_external_codes USING btree (analyte_id, external_system_id, external_code);
+
+
+--
+-- Name: idx_lab_collection_specimens_collection_id; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_lab_collection_specimens_collection_id ON public.lab_collection_specimens USING btree (lab_collection_id);
 
 
 --
--- Name: idx_lab_collection_specimens_specimen_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_lab_collection_specimens_specimen_id; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_lab_collection_specimens_specimen_id ON public.lab_collection_specimens USING btree (specimen_id);
 
 
 --
--- Name: idx_lab_collections_admission_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_lab_collections_admission_id; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_lab_collections_admission_id ON public.lab_collections USING btree (admission_id);
 
 
 --
--- Name: idx_lab_collections_tenant_patient_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_lab_collections_tenant_patient_id; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_lab_collections_tenant_patient_id ON public.lab_collections USING btree (tenant_patient_id);
 
 
 --
--- Name: idx_lab_doc_document; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_lab_doc_document; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_lab_doc_document ON public.patient_lab_report_documents USING btree (document_id);
 
 
 --
--- Name: idx_lab_doc_report; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_lab_doc_report; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_lab_doc_report ON public.patient_lab_report_documents USING btree (patient_lab_report_id);
 
 
 --
--- Name: idx_lab_requests_admission; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_lab_hprim_links_message; Type: INDEX; Schema: public; Owner: sahty
+--
+
+CREATE INDEX idx_lab_hprim_links_message ON public.lab_hprim_links USING btree (hprim_message_id);
+
+
+--
+-- Name: idx_lab_hprim_links_order_id; Type: INDEX; Schema: public; Owner: sahty
+--
+
+CREATE UNIQUE INDEX idx_lab_hprim_links_order_id ON public.lab_hprim_links USING btree (hprim_order_id);
+
+
+--
+-- Name: idx_lab_hprim_links_request; Type: INDEX; Schema: public; Owner: sahty
+--
+
+CREATE INDEX idx_lab_hprim_links_request ON public.lab_hprim_links USING btree (lab_request_id);
+
+
+--
+-- Name: idx_lab_hprim_messages_direction; Type: INDEX; Schema: public; Owner: sahty
+--
+
+CREATE INDEX idx_lab_hprim_messages_direction ON public.lab_hprim_messages USING btree (direction);
+
+
+--
+-- Name: idx_lab_hprim_messages_file_name; Type: INDEX; Schema: public; Owner: sahty
+--
+
+CREATE UNIQUE INDEX idx_lab_hprim_messages_file_name ON public.lab_hprim_messages USING btree (file_name);
+
+
+--
+-- Name: idx_lab_hprim_messages_message_type; Type: INDEX; Schema: public; Owner: sahty
+--
+
+CREATE INDEX idx_lab_hprim_messages_message_type ON public.lab_hprim_messages USING btree (message_type);
+
+
+--
+-- Name: idx_lab_hprim_messages_status; Type: INDEX; Schema: public; Owner: sahty
+--
+
+CREATE INDEX idx_lab_hprim_messages_status ON public.lab_hprim_messages USING btree (status);
+
+
+--
+-- Name: idx_lab_requests_admission; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_lab_requests_admission ON public.lab_requests USING btree (admission_id);
 
 
 --
--- Name: idx_lab_requests_event; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_lab_requests_event; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_lab_requests_event ON public.lab_requests USING btree (prescription_event_id);
 
 
 --
--- Name: idx_lab_requests_patient; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_lab_requests_patient; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_lab_requests_patient ON public.lab_requests USING btree (tenant_patient_id);
 
 
 --
--- Name: idx_lab_specimen_requests_lab_request_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_lab_specimen_requests_lab_request_id; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_lab_specimen_requests_lab_request_id ON public.lab_specimen_requests USING btree (lab_request_id);
 
 
 --
--- Name: idx_lab_specimen_requests_specimen_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_lab_specimen_requests_specimen_id; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_lab_specimen_requests_specimen_id ON public.lab_specimen_requests USING btree (specimen_id);
 
 
 --
--- Name: idx_lab_specimens_barcode_unique; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_lab_specimen_status_history_specimen_id; Type: INDEX; Schema: public; Owner: sahty
+--
+
+CREATE INDEX idx_lab_specimen_status_history_specimen_id ON public.lab_specimen_status_history USING btree (specimen_id);
+
+
+--
+-- Name: idx_lab_specimens_barcode_unique; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE UNIQUE INDEX idx_lab_specimens_barcode_unique ON public.lab_specimens USING btree (barcode);
 
 
 --
--- Name: idx_lab_value_normalization_lookup; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_lab_unit_ext_codes_code; Type: INDEX; Schema: public; Owner: sahty
+--
+
+CREATE INDEX idx_lab_unit_ext_codes_code ON public.lab_unit_external_codes USING btree (external_code, external_system_id);
+
+
+--
+-- Name: idx_lab_unit_ext_codes_system; Type: INDEX; Schema: public; Owner: sahty
+--
+
+CREATE INDEX idx_lab_unit_ext_codes_system ON public.lab_unit_external_codes USING btree (external_system_id);
+
+
+--
+-- Name: idx_lab_unit_ext_codes_unique; Type: INDEX; Schema: public; Owner: sahty
+--
+
+CREATE UNIQUE INDEX idx_lab_unit_ext_codes_unique ON public.lab_unit_external_codes USING btree (unit_id, external_system_id, external_code);
+
+
+--
+-- Name: idx_lab_value_normalization_lookup; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_lab_value_normalization_lookup ON public.lab_value_normalization USING btree (lower(raw_value));
 
 
 --
--- Name: idx_locations_tenant; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_locations_tenant; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_locations_tenant ON public.locations USING btree (tenant_id);
 
 
 --
--- Name: idx_merge_events_source; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_merge_events_source; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_merge_events_source ON public.patient_tenant_merge_events USING btree (source_tenant_patient_id);
 
 
 --
--- Name: idx_merge_events_target; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_merge_events_target; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_merge_events_target ON public.patient_tenant_merge_events USING btree (target_tenant_patient_id);
 
 
 --
--- Name: idx_merge_events_tenant; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_merge_events_tenant; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_merge_events_tenant ON public.patient_tenant_merge_events USING btree (tenant_id);
 
 
 --
--- Name: idx_observations_addiction; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_observations_addiction; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_observations_addiction ON public.patient_observations USING btree (linked_addiction_id);
 
 
 --
--- Name: idx_patient_active_allergies; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_active_allergies; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_active_allergies ON public.patient_allergies USING btree (tenant_patient_id) WHERE (status = 'ACTIVE'::text);
 
 
 --
--- Name: idx_patient_allergies_patient; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_allergies_patient; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_allergies_patient ON public.patient_allergies USING btree (tenant_patient_id, status);
 
 
 --
--- Name: idx_patient_allergies_patient_dci; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_allergies_patient_dci; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_allergies_patient_dci ON public.patient_allergies USING btree (tenant_patient_id, allergen_dci_id);
 
 
 --
--- Name: idx_patient_allergy_history_allergy; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_allergy_history_allergy; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_allergy_history_allergy ON public.patient_allergy_history USING btree (patient_allergy_id, created_at);
 
 
 --
--- Name: idx_patient_diagnoses_active; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_diagnoses_active; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_diagnoses_active ON public.patient_diagnoses USING btree (patient_id) WHERE (status = 'ACTIVE'::text);
 
 
 --
--- Name: idx_patient_diagnoses_foundation_uri; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_diagnoses_foundation_uri; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_diagnoses_foundation_uri ON public.patient_diagnoses USING btree (icd_foundation_uri);
 
 
 --
--- Name: idx_patient_diagnoses_patient_id_entered_at; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_diagnoses_patient_id_entered_at; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_diagnoses_patient_id_entered_at ON public.patient_diagnoses USING btree (patient_id, entered_at DESC);
 
 
 --
--- Name: idx_patient_documents_checksum; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_documents_checksum; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_documents_checksum ON public.patient_documents USING btree (checksum);
 
 
 --
--- Name: idx_patient_documents_patient; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_documents_patient; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_documents_patient ON public.patient_documents USING btree (tenant_patient_id);
 
 
 --
--- Name: idx_patient_documents_tenant; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_documents_tenant; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_documents_tenant ON public.patient_documents USING btree (tenant_id);
 
 
 --
--- Name: idx_patient_documents_type; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_documents_type; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_documents_type ON public.patient_documents USING btree (document_type);
 
 
 --
--- Name: idx_patient_lab_extraction_doc; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_lab_extraction_doc; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_lab_extraction_doc ON public.patient_lab_extraction_sessions USING btree (source_document_id);
 
 
 --
--- Name: idx_patient_lab_extraction_report; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_lab_extraction_report; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_lab_extraction_report ON public.patient_lab_extraction_sessions USING btree (patient_lab_report_id);
 
 
 --
--- Name: idx_patient_lab_extraction_started; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_lab_extraction_started; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_lab_extraction_started ON public.patient_lab_extraction_sessions USING btree (started_at);
 
 
 --
--- Name: idx_patient_lab_extraction_status; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_lab_extraction_status; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_lab_extraction_status ON public.patient_lab_extraction_sessions USING btree (status);
 
 
 --
--- Name: idx_patient_lab_report_tests_global_act; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_lab_report_tests_global_act; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_lab_report_tests_global_act ON public.patient_lab_report_tests USING btree (global_act_id);
 
 
 --
--- Name: idx_patient_lab_report_tests_panel; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_lab_report_tests_panel; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_lab_report_tests_panel ON public.patient_lab_report_tests USING btree (panel_id);
 
 
 --
--- Name: idx_patient_lab_report_tests_report; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_lab_report_tests_report; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_lab_report_tests_report ON public.patient_lab_report_tests USING btree (patient_lab_report_id);
 
 
 --
--- Name: idx_patient_lab_reports_admission; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_lab_reports_admission; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_lab_reports_admission ON public.patient_lab_reports USING btree (admission_id);
 
 
 --
--- Name: idx_patient_lab_reports_patient; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_lab_reports_patient; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_lab_reports_patient ON public.patient_lab_reports USING btree (tenant_patient_id);
 
 
 --
--- Name: idx_patient_lab_reports_report_date; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_lab_reports_report_date; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_lab_reports_report_date ON public.patient_lab_reports USING btree (report_date);
 
 
 --
--- Name: idx_patient_lab_reports_source_type; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_lab_reports_source_type; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_lab_reports_source_type ON public.patient_lab_reports USING btree (source_type);
 
 
 --
--- Name: idx_patient_lab_reports_status; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_lab_reports_status; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_lab_reports_status ON public.patient_lab_reports USING btree (status);
 
 
 --
--- Name: idx_patient_lab_reports_uploaded_at; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_lab_reports_uploaded_at; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_lab_reports_uploaded_at ON public.patient_lab_reports USING btree (uploaded_at);
 
 
 --
--- Name: idx_patient_lab_results_analyte; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_lab_results_analyte; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_lab_results_analyte ON public.patient_lab_results USING btree (analyte_id);
 
 
 --
--- Name: idx_patient_lab_results_analyte_ctx; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_lab_results_analyte_ctx; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_lab_results_analyte_ctx ON public.patient_lab_results USING btree (lab_analyte_context_id);
 
 
 --
--- Name: idx_patient_lab_results_observed; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_lab_results_observed; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_lab_results_observed ON public.patient_lab_results USING btree (observed_at);
 
 
 --
--- Name: idx_patient_lab_results_report; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_lab_results_report; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_lab_results_report ON public.patient_lab_results USING btree (patient_lab_report_id);
 
 
 --
--- Name: idx_patient_lab_results_status; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_lab_results_status; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_lab_results_status ON public.patient_lab_results USING btree (status);
 
 
 --
--- Name: idx_patient_lab_results_test; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_lab_results_test; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_lab_results_test ON public.patient_lab_results USING btree (patient_lab_report_test_id);
 
 
 --
--- Name: idx_patient_lab_results_unit; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_lab_results_unit; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_lab_results_unit ON public.patient_lab_results USING btree (unit_id);
 
 
 --
--- Name: idx_patient_observations_linked_addiction; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_observations_linked_addiction; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_observations_linked_addiction ON public.patient_observations USING btree (linked_addiction_id) WHERE (linked_addiction_id IS NOT NULL);
 
 
 --
--- Name: idx_patient_observations_linked_admission; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_observations_linked_admission; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_observations_linked_admission ON public.patient_observations USING btree (linked_admission_id) WHERE (linked_admission_id IS NOT NULL);
 
 
 --
--- Name: idx_patient_observations_linked_allergy; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_observations_linked_allergy; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_observations_linked_allergy ON public.patient_observations USING btree (linked_allergy_id) WHERE (linked_allergy_id IS NOT NULL);
 
 
 --
--- Name: idx_patient_observations_parent; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_observations_parent; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_observations_parent ON public.patient_observations USING btree (parent_observation_id) WHERE (parent_observation_id IS NOT NULL);
 
 
 --
--- Name: idx_patient_observations_parent_patient; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_observations_parent_patient; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_observations_parent_patient ON public.patient_observations USING btree (tenant_patient_id, parent_observation_id) WHERE (parent_observation_id IS NOT NULL);
 
 
 --
--- Name: idx_patient_observations_role; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_observations_role; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_observations_role ON public.patient_observations USING btree (tenant_patient_id, author_role, declared_time DESC);
 
 
 --
--- Name: idx_patient_observations_status; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_observations_status; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_observations_status ON public.patient_observations USING btree (tenant_patient_id, status, declared_time DESC);
 
 
 --
--- Name: idx_patient_observations_timeline; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_observations_timeline; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_observations_timeline ON public.patient_observations USING btree (tenant_patient_id, declared_time DESC, created_at DESC);
 
 
 --
--- Name: idx_patient_stays_active; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_stays_active; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_stays_active ON public.patient_stays USING btree (bed_id) WHERE (ended_at IS NULL);
 
 
 --
--- Name: idx_patient_stays_admission; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_stays_admission; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_stays_admission ON public.patient_stays USING btree (admission_id);
 
 
 --
--- Name: idx_patient_stays_bed; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patient_stays_bed; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patient_stays_bed ON public.patient_stays USING btree (bed_id);
 
 
 --
--- Name: idx_patients_tenant_tenant; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_patients_tenant_tenant; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_patients_tenant_tenant ON public.patients_tenant USING btree (tenant_id);
 
 
 --
--- Name: idx_po_status; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_po_status; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_po_status ON public.purchase_orders USING btree (status);
 
 
 --
--- Name: idx_po_tenant; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_po_tenant; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_po_tenant ON public.purchase_orders USING btree (tenant_id);
 
 
 --
--- Name: idx_poi_po; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_poi_po; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_poi_po ON public.po_items USING btree (po_id);
 
 
 --
--- Name: idx_presc_events_by_admission_time; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_presc_events_by_admission_time; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_presc_events_by_admission_time ON public.prescription_events USING btree (tenant_id, admission_id, scheduled_at);
 
 
 --
--- Name: idx_prescription_events_lookup; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_prescription_events_lookup; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_prescription_events_lookup ON public.prescription_events USING btree (tenant_id, prescription_id, scheduled_at);
 
 
 --
--- Name: idx_prescription_events_patient_time; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_prescription_events_patient_time; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_prescription_events_patient_time ON public.prescription_events USING btree (tenant_patient_id, scheduled_at);
 
 
 --
--- Name: idx_prescription_events_time; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_prescription_events_time; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_prescription_events_time ON public.prescription_events USING btree (tenant_id, scheduled_at);
 
 
 --
--- Name: idx_prescriptions_patient; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_prescriptions_patient; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_prescriptions_patient ON public.prescriptions USING btree (tenant_id, tenant_patient_id);
 
 
 --
--- Name: idx_prescriptions_tenant_patient; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_prescriptions_tenant_patient; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_prescriptions_tenant_patient ON public.prescriptions USING btree (tenant_patient_id);
 
 
 --
--- Name: idx_price_ver_active; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_price_ver_active; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_price_ver_active ON public.product_price_versions USING btree (product_supplier_id) WHERE (valid_to IS NULL);
 
 
 --
--- Name: idx_price_ver_supp; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_price_ver_supp; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_price_ver_supp ON public.product_price_versions USING btree (product_supplier_id);
 
 
 --
--- Name: idx_ps_product; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_ps_product; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_ps_product ON public.product_suppliers USING btree (product_id);
 
 
 --
--- Name: idx_ps_tenant; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_ps_tenant; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_ps_tenant ON public.product_suppliers USING btree (tenant_id);
 
 
 --
--- Name: idx_reception_lines_reception; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_reception_lines_reception; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_reception_lines_reception ON public.return_reception_lines USING btree (reception_id);
 
 
 --
--- Name: idx_reception_lines_return_line; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_reception_lines_return_line; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_reception_lines_return_line ON public.return_reception_lines USING btree (return_line_id);
 
 
 --
--- Name: idx_receptions_return; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_receptions_return; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_receptions_return ON public.return_receptions USING btree (return_id);
 
 
 --
--- Name: idx_rel_links_related; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_rel_links_related; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_rel_links_related ON public.patient_relationship_links USING btree (tenant_id, related_tenant_patient_id);
 
 
 --
--- Name: idx_rel_links_subject; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_rel_links_subject; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_rel_links_subject ON public.patient_relationship_links USING btree (tenant_id, subject_tenant_patient_id);
 
 
 --
--- Name: idx_res_cleanup; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_res_cleanup; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_res_cleanup ON public.stock_reservations USING btree (expires_at) WHERE (status = 'ACTIVE'::text);
 
 
 --
--- Name: idx_res_expires; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_res_expires; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_res_expires ON public.stock_reservations USING btree (status, expires_at) WHERE (status = 'ACTIVE'::text);
 
 
 --
--- Name: idx_res_session; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_res_session; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_res_session ON public.stock_reservations USING btree (tenant_id, session_id) WHERE (status = 'ACTIVE'::text);
 
 
 --
--- Name: idx_res_session_active; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_res_session_active; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_res_session_active ON public.stock_reservations USING btree (tenant_id, session_id) WHERE (status = 'ACTIVE'::text);
 
 
 --
--- Name: idx_resline_lookup; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_resline_lookup; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_resline_lookup ON public.stock_reservation_lines USING btree (product_id, lot, expiry, source_location_id);
 
 
 --
--- Name: idx_resline_reservation; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_resline_reservation; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_resline_reservation ON public.stock_reservation_lines USING btree (reservation_id);
 
 
 --
--- Name: idx_resline_tenant; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_resline_tenant; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_resline_tenant ON public.stock_reservation_lines USING btree (tenant_id);
 
 
 --
--- Name: idx_return_lines_product; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_return_lines_product; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_return_lines_product ON public.stock_return_lines USING btree (product_id);
 
 
 --
--- Name: idx_return_lines_return; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_return_lines_return; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_return_lines_return ON public.stock_return_lines USING btree (return_id);
 
 
 --
--- Name: idx_return_receptions_reference; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_return_receptions_reference; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_return_receptions_reference ON public.return_receptions USING btree (reception_reference);
 
 
 --
--- Name: idx_returns_service; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_returns_service; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_returns_service ON public.stock_returns USING btree (source_service_id);
 
 
 --
--- Name: idx_returns_status; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_returns_status; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_returns_status ON public.stock_returns USING btree (tenant_id, status);
 
 
 --
--- Name: idx_returns_tenant; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_returns_tenant; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_returns_tenant ON public.stock_returns USING btree (tenant_id);
 
 
 --
--- Name: idx_rooms_service; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_rooms_service; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_rooms_service ON public.rooms USING btree (service_id);
 
 
 --
--- Name: idx_rx_admission; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_rx_admission; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_rx_admission ON public.prescriptions USING btree (admission_id);
 
 
 --
--- Name: idx_rx_events_prescription; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_rx_events_prescription; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_rx_events_prescription ON public.prescription_events USING btree (prescription_id);
 
 
 --
--- Name: idx_rx_events_status; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_rx_events_status; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_rx_events_status ON public.prescription_events USING btree (tenant_id, status);
 
 
 --
--- Name: idx_rx_events_tenant; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_rx_events_tenant; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_rx_events_tenant ON public.prescription_events USING btree (tenant_id);
 
 
 --
--- Name: idx_rx_status; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_rx_status; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_rx_status ON public.prescriptions USING btree (tenant_id, status);
 
 
 --
--- Name: idx_rx_tenant; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_rx_tenant; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_rx_tenant ON public.prescriptions USING btree (tenant_id);
 
 
 --
--- Name: idx_services_tenant; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_services_tenant; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_services_tenant ON public.services USING btree (tenant_id);
 
 
 --
--- Name: idx_smart_phrases_active_search; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_smart_phrases_active_search; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_smart_phrases_active_search ON public.smart_phrases USING btree (trigger_search) WHERE (is_active = true);
 
 
 --
--- Name: idx_smart_phrases_scope; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_smart_phrases_scope; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_smart_phrases_scope ON public.smart_phrases USING btree (scope, tenant_id, user_id);
 
 
 --
--- Name: idx_smart_phrases_trigger; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_smart_phrases_trigger; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_smart_phrases_trigger ON public.smart_phrases USING btree (trigger);
 
 
 --
--- Name: idx_smart_phrases_trigger_search; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_smart_phrases_trigger_search; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_smart_phrases_trigger_search ON public.smart_phrases USING btree (trigger_search);
 
 
 --
--- Name: idx_stock_lookup; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_stock_lookup; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_stock_lookup ON public.current_stock USING btree (tenant_id, product_id, lot, expiry, location_id);
 
 
 --
--- Name: idx_stock_returns_reference; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_stock_returns_reference; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_stock_returns_reference ON public.stock_returns USING btree (return_reference);
 
 
 --
--- Name: idx_su_service; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_su_service; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_su_service ON public.service_units USING btree (service_id);
 
 
 --
--- Name: idx_surv_buckets_tenant_patient_bucket; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_surv_buckets_tenant_patient_bucket; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_surv_buckets_tenant_patient_bucket ON public.surveillance_hour_buckets USING btree (tenant_id, tenant_patient_id, bucket_start DESC);
 
 
 --
--- Name: idx_surv_events_context_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_surv_events_context_id; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_surv_events_context_id ON public.surveillance_values_events USING btree (context_id) WHERE (context_id IS NOT NULL);
 
 
 --
--- Name: idx_surv_events_context_param_latest; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_surv_events_context_param_latest; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_surv_events_context_param_latest ON public.surveillance_values_events USING btree (context_id, parameter_id, recorded_at DESC, id DESC) WHERE ((context_id IS NOT NULL) AND (source_context = 'clinical_exam'::text));
 
 
 --
--- Name: idx_surv_events_parameter; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_surv_events_parameter; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_surv_events_parameter ON public.surveillance_values_events USING btree (tenant_id, parameter_id, bucket_start DESC);
 
 
 --
--- Name: idx_surv_events_tenant_patient; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_surv_events_tenant_patient; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_surv_events_tenant_patient ON public.surveillance_values_events USING btree (tenant_id, tenant_patient_id, bucket_start DESC);
 
 
 --
--- Name: idx_surv_events_tenant_patient_bucket; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_surv_events_tenant_patient_bucket; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_surv_events_tenant_patient_bucket ON public.surveillance_values_events USING btree (tenant_id, tenant_patient_id, bucket_start DESC);
 
 
 --
--- Name: idx_surveillance_buckets_patient; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_surveillance_buckets_patient; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_surveillance_buckets_patient ON public.surveillance_hour_buckets USING btree (tenant_id, tenant_patient_id, bucket_start);
 
 
 --
--- Name: idx_surveillance_events_patient_time_param; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_surveillance_events_patient_time_param; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_surveillance_events_patient_time_param ON public.surveillance_values_events USING btree (tenant_patient_id, recorded_at, parameter_code);
 
 
 --
--- Name: idx_transfer_demand; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_transfer_demand; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_transfer_demand ON public.stock_transfers USING btree (demand_id);
 
 
 --
--- Name: idx_transfer_idempotency; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_transfer_idempotency; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_transfer_idempotency ON public.stock_transfers USING btree (tenant_id, client_request_id) WHERE (client_request_id IS NOT NULL);
 
 
 --
--- Name: idx_transfer_line_transfer; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_transfer_line_transfer; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_transfer_line_transfer ON public.stock_transfer_lines USING btree (transfer_id);
 
 
 --
--- Name: idx_transfer_tenant; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_transfer_tenant; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_transfer_tenant ON public.stock_transfers USING btree (tenant_id);
 
 
 --
--- Name: idx_transfusion_bags_patient_date; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_transfusion_bags_patient_date; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_transfusion_bags_patient_date ON public.transfusion_blood_bags USING btree (tenant_id, tenant_patient_id, received_at DESC);
 
 
 --
--- Name: idx_transfusion_bags_product; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_transfusion_bags_product; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_transfusion_bags_product ON public.transfusion_blood_bags USING btree (tenant_id, blood_product_code);
 
 
 --
--- Name: idx_transfusion_bags_status; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_transfusion_bags_status; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_transfusion_bags_status ON public.transfusion_blood_bags USING btree (tenant_id, status);
 
 
 --
--- Name: idx_transfusion_bags_tenant_bag; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_transfusion_bags_tenant_bag; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE UNIQUE INDEX idx_transfusion_bags_tenant_bag ON public.transfusion_blood_bags USING btree (tenant_id, bag_number);
 
 
 --
--- Name: idx_transfusion_checks_admin_event_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_transfusion_checks_admin_event_id; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_transfusion_checks_admin_event_id ON public.transfusion_checks USING btree (administration_event_id);
 
 
 --
--- Name: idx_transfusion_checks_date; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_transfusion_checks_date; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_transfusion_checks_date ON public.transfusion_checks USING btree (tenant_id, checked_at DESC);
 
 
 --
--- Name: idx_transfusion_checks_event; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_transfusion_checks_event; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_transfusion_checks_event ON public.transfusion_checks USING btree (tenant_id, administration_event_id);
 
 
 --
--- Name: idx_transfusion_reactions_admin_event_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_transfusion_reactions_admin_event_id; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_transfusion_reactions_admin_event_id ON public.transfusion_reactions USING btree (administration_event_id);
 
 
 --
--- Name: idx_transfusion_reactions_date; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_transfusion_reactions_date; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_transfusion_reactions_date ON public.transfusion_reactions USING btree (tenant_id, recorded_at DESC);
 
 
 --
--- Name: idx_transfusion_reactions_event; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_transfusion_reactions_event; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_transfusion_reactions_event ON public.transfusion_reactions USING btree (tenant_id, administration_event_id);
 
 
 --
--- Name: idx_unique_coverage_member; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_unique_active_admission_per_type; Type: INDEX; Schema: public; Owner: sahty
+--
+
+CREATE UNIQUE INDEX idx_unique_active_admission_per_type ON public.admissions USING btree (tenant_patient_id, admission_type) WHERE (status = 'En cours'::text);
+
+
+--
+-- Name: idx_unique_coverage_member; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE UNIQUE INDEX idx_unique_coverage_member ON public.coverage_members USING btree (coverage_id, tenant_patient_id);
 
 
 --
--- Name: idx_unique_mrn_per_tenant; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_unique_lab_request_per_event; Type: INDEX; Schema: public; Owner: sahty
+--
+
+CREATE UNIQUE INDEX idx_unique_lab_request_per_event ON public.lab_requests USING btree (prescription_event_id) WHERE (prescription_event_id IS NOT NULL);
+
+
+--
+-- Name: idx_unique_mrn_per_tenant; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE UNIQUE INDEX idx_unique_mrn_per_tenant ON public.identity_ids USING btree (tenant_id, identity_type_code, identity_value) WHERE ((identity_type_code = 'LOCAL_MRN'::text) AND (status = 'ACTIVE'::text));
 
 
 --
--- Name: idx_unique_nid_per_tenant; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_unique_nid_per_tenant; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE UNIQUE INDEX idx_unique_nid_per_tenant ON public.identity_ids USING btree (tenant_id, identity_type_code, identity_value, issuing_country_code) WHERE ((identity_type_code = ANY (ARRAY['NATIONAL_ID'::text, 'PASSPORT'::text, 'CIN'::text])) AND (status = 'ACTIVE'::text));
 
 
 --
--- Name: idx_unique_rel_patient; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_unique_rel_patient; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE UNIQUE INDEX idx_unique_rel_patient ON public.patient_relationship_links USING btree (tenant_id, subject_tenant_patient_id, related_tenant_patient_id, relationship_type_code) WHERE (related_tenant_patient_id IS NOT NULL);
 
 
 --
--- Name: idx_user_roles_role_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_user_roles_role_id; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_user_roles_role_id ON public.user_roles USING btree (role_id);
 
 
 --
--- Name: idx_user_roles_user_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_user_roles_user_id; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_user_roles_user_id ON public.user_roles USING btree (user_id);
 
 
 --
--- Name: idx_user_services_service_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_user_services_service_id; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_user_services_service_id ON public.user_services USING btree (service_id);
 
 
 --
--- Name: idx_user_services_user_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_user_services_user_id; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE INDEX idx_user_services_user_id ON public.user_services USING btree (user_id);
 
 
 --
--- Name: smart_phrases_trigger_unique_ci; Type: INDEX; Schema: public; Owner: -
+-- Name: smart_phrases_trigger_unique_ci; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE UNIQUE INDEX smart_phrases_trigger_unique_ci ON public.smart_phrases USING btree (tenant_id, lower(trigger));
 
 
 --
--- Name: uniq_admission_number_tenant; Type: INDEX; Schema: public; Owner: -
+-- Name: uniq_admission_number_tenant; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE UNIQUE INDEX uniq_admission_number_tenant ON public.admissions USING btree (tenant_id, admission_number) WHERE (admission_number IS NOT NULL);
 
 
 --
--- Name: uq_lab_report_document_link; Type: INDEX; Schema: public; Owner: -
+-- Name: uq_lab_report_document_link; Type: INDEX; Schema: public; Owner: sahty
 --
 
 CREATE UNIQUE INDEX uq_lab_report_document_link ON public.patient_lab_report_documents USING btree (patient_lab_report_id, document_id);
 
 
 --
--- Name: idx_care_categories_active_order; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_care_categories_active_order; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE INDEX idx_care_categories_active_order ON reference.care_categories USING btree (is_active, sort_order);
 
 
 --
--- Name: idx_flowsheets_sort_order; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_flowsheets_sort_order; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE INDEX idx_flowsheets_sort_order ON reference.observation_flowsheets USING btree (sort_order);
 
 
 --
--- Name: idx_global_dci_care_category; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_global_dci_care_category; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE INDEX idx_global_dci_care_category ON reference.global_dci USING btree (care_category_id);
 
 
 --
--- Name: idx_global_products_care_category; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_global_products_care_category; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE INDEX idx_global_products_care_category ON reference.global_products USING btree (care_category_id);
 
 
 --
--- Name: idx_groups_sort_order; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_groups_sort_order; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE INDEX idx_groups_sort_order ON reference.observation_groups USING btree (sort_order);
 
 
 --
--- Name: idx_lab_act_ctx_act; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_lab_act_ctx_act; Type: INDEX; Schema: reference; Owner: sahty
 --
 
-CREATE INDEX idx_lab_act_ctx_act ON reference.lab_act_analyte_context USING btree (global_act_id);
-
-
---
--- Name: idx_lab_act_ctx_ctx; Type: INDEX; Schema: reference; Owner: -
---
-
-CREATE INDEX idx_lab_act_ctx_ctx ON reference.lab_act_analyte_context USING btree (analyte_context_id);
+CREATE INDEX idx_lab_act_ctx_act ON public.lab_act_analyte_context USING btree (global_act_id);
 
 
 --
--- Name: idx_lab_act_tax_act; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_lab_act_ctx_ctx; Type: INDEX; Schema: reference; Owner: sahty
 --
 
-CREATE INDEX idx_lab_act_tax_act ON reference.lab_act_taxonomy USING btree (act_id);
-
-
---
--- Name: idx_lab_act_tax_sec; Type: INDEX; Schema: reference; Owner: -
---
-
-CREATE INDEX idx_lab_act_tax_sec ON reference.lab_act_taxonomy USING btree (section_id);
+CREATE INDEX idx_lab_act_ctx_ctx ON public.lab_act_analyte_context USING btree (analyte_context_id);
 
 
 --
--- Name: idx_lab_act_tax_sf; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_lab_act_tax_act; Type: INDEX; Schema: reference; Owner: sahty
 --
 
-CREATE INDEX idx_lab_act_tax_sf ON reference.lab_act_taxonomy USING btree (sous_famille_id);
-
-
---
--- Name: idx_lab_section_tree_section; Type: INDEX; Schema: reference; Owner: -
---
-
-CREATE INDEX idx_lab_section_tree_section ON reference.lab_section_tree USING btree (section_id);
+CREATE INDEX idx_lab_act_tax_act ON public.lab_act_taxonomy USING btree (act_id);
 
 
 --
--- Name: idx_lab_section_tree_sous_famille; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_lab_act_tax_sec; Type: INDEX; Schema: reference; Owner: sahty
 --
 
-CREATE INDEX idx_lab_section_tree_sous_famille ON reference.lab_section_tree USING btree (sous_famille_id);
-
-
---
--- Name: idx_lab_sub_section_tree_section; Type: INDEX; Schema: reference; Owner: -
---
-
-CREATE INDEX idx_lab_sub_section_tree_section ON reference.lab_sub_section_tree USING btree (section_id);
+CREATE INDEX idx_lab_act_tax_sec ON public.lab_act_taxonomy USING btree (section_id);
 
 
 --
--- Name: idx_lab_sub_section_tree_sub; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_lab_act_tax_sf; Type: INDEX; Schema: reference; Owner: sahty
 --
 
-CREATE INDEX idx_lab_sub_section_tree_sub ON reference.lab_sub_section_tree USING btree (sub_section_id);
+CREATE INDEX idx_lab_act_tax_sf ON public.lab_act_taxonomy USING btree (sous_famille_id);
 
 
 --
--- Name: idx_ref_atc_level; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_lab_section_tree_section; Type: INDEX; Schema: reference; Owner: sahty
+--
+
+CREATE INDEX idx_lab_section_tree_section ON public.lab_section_tree USING btree (section_id);
+
+
+--
+-- Name: idx_lab_section_tree_sous_famille; Type: INDEX; Schema: reference; Owner: sahty
+--
+
+CREATE INDEX idx_lab_section_tree_sous_famille ON public.lab_section_tree USING btree (sous_famille_id);
+
+
+--
+-- Name: idx_lab_sub_section_tree_section; Type: INDEX; Schema: reference; Owner: sahty
+--
+
+CREATE INDEX idx_lab_sub_section_tree_section ON public.lab_sub_section_tree USING btree (section_id);
+
+
+--
+-- Name: idx_lab_sub_section_tree_sub; Type: INDEX; Schema: reference; Owner: sahty
+--
+
+CREATE INDEX idx_lab_sub_section_tree_sub ON public.lab_sub_section_tree USING btree (sub_section_id);
+
+
+--
+-- Name: idx_ref_atc_level; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE INDEX idx_ref_atc_level ON reference.global_atc USING btree (level);
 
 
 --
--- Name: idx_ref_atc_parent; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_ref_atc_parent; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE INDEX idx_ref_atc_parent ON reference.global_atc USING btree (parent);
 
 
 --
--- Name: idx_ref_dci_atc; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_ref_dci_atc; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE INDEX idx_ref_dci_atc ON reference.global_dci USING btree (atc_code) WHERE (atc_code IS NOT NULL);
 
 
 --
--- Name: idx_ref_dci_name; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_ref_dci_name; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE INDEX idx_ref_dci_name ON reference.global_dci USING btree (name);
 
 
 --
--- Name: idx_ref_dci_synonyms_dci_id; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_ref_dci_synonyms_dci_id; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE INDEX idx_ref_dci_synonyms_dci_id ON reference.dci_synonyms USING btree (dci_id);
 
 
 --
--- Name: idx_ref_emdn_parent; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_ref_emdn_parent; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE INDEX idx_ref_emdn_parent ON reference.global_emdn USING btree (parent);
 
 
 --
--- Name: idx_ref_global_actes_lab_section_id; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_ref_global_actes_lab_section_id; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE INDEX idx_ref_global_actes_lab_section_id ON reference.global_actes USING btree (lab_section_id);
 
 
 --
--- Name: idx_ref_global_actes_lab_sub_section_id; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_ref_global_actes_lab_sub_section_id; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE INDEX idx_ref_global_actes_lab_sub_section_id ON reference.global_actes USING btree (lab_sub_section_id);
 
 
 --
--- Name: idx_ref_lab_act_analytes_analyte_id; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_ref_lab_act_analytes_analyte_id; Type: INDEX; Schema: reference; Owner: sahty
 --
 
-CREATE INDEX idx_ref_lab_act_analytes_analyte_id ON reference.lab_act_analytes USING btree (analyte_id);
-
-
---
--- Name: idx_ref_lab_act_analytes_global_act_id; Type: INDEX; Schema: reference; Owner: -
---
-
-CREATE INDEX idx_ref_lab_act_analytes_global_act_id ON reference.lab_act_analytes USING btree (global_act_id);
+CREATE INDEX idx_ref_lab_act_analytes_analyte_id ON public.lab_act_analytes USING btree (analyte_id);
 
 
 --
--- Name: idx_ref_lab_act_methods_default; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_ref_lab_act_analytes_global_act_id; Type: INDEX; Schema: reference; Owner: sahty
 --
 
-CREATE UNIQUE INDEX idx_ref_lab_act_methods_default ON reference.lab_act_methods USING btree (global_act_id) WHERE ((is_default = true) AND (actif = true));
-
-
---
--- Name: idx_ref_lab_act_spec_cont_container_type_id; Type: INDEX; Schema: reference; Owner: -
---
-
-CREATE INDEX idx_ref_lab_act_spec_cont_container_type_id ON reference.lab_act_specimen_containers USING btree (container_type_id);
+CREATE INDEX idx_ref_lab_act_analytes_global_act_id ON public.lab_act_analytes USING btree (global_act_id);
 
 
 --
--- Name: idx_ref_lab_act_spec_cont_global_act_id; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_ref_lab_act_methods_default; Type: INDEX; Schema: reference; Owner: sahty
 --
 
-CREATE INDEX idx_ref_lab_act_spec_cont_global_act_id ON reference.lab_act_specimen_containers USING btree (global_act_id);
-
-
---
--- Name: idx_ref_lab_act_spec_cont_specimen_type_id; Type: INDEX; Schema: reference; Owner: -
---
-
-CREATE INDEX idx_ref_lab_act_spec_cont_specimen_type_id ON reference.lab_act_specimen_containers USING btree (specimen_type_id);
+CREATE UNIQUE INDEX idx_ref_lab_act_methods_default ON public.lab_act_methods USING btree (global_act_id) WHERE ((is_default = true) AND (actif = true));
 
 
 --
--- Name: idx_ref_lab_analyte_aliases_alias_text_lower; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_ref_lab_act_spec_cont_container_type_id; Type: INDEX; Schema: reference; Owner: sahty
 --
 
-CREATE INDEX idx_ref_lab_analyte_aliases_alias_text_lower ON reference.lab_analyte_aliases USING btree (lower(alias_text));
-
-
---
--- Name: idx_ref_lab_analyte_aliases_analyte_id; Type: INDEX; Schema: reference; Owner: -
---
-
-CREATE INDEX idx_ref_lab_analyte_aliases_analyte_id ON reference.lab_analyte_aliases USING btree (analyte_id);
+CREATE INDEX idx_ref_lab_act_spec_cont_container_type_id ON public.lab_act_specimen_containers USING btree (container_type_id);
 
 
 --
--- Name: idx_ref_lab_analyte_ext_codes_analyte_id; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_ref_lab_act_spec_cont_global_act_id; Type: INDEX; Schema: reference; Owner: sahty
 --
 
-CREATE INDEX idx_ref_lab_analyte_ext_codes_analyte_id ON reference.lab_analyte_external_codes USING btree (analyte_id);
-
-
---
--- Name: idx_ref_lab_analyte_ext_codes_sys_code; Type: INDEX; Schema: reference; Owner: -
---
-
-CREATE INDEX idx_ref_lab_analyte_ext_codes_sys_code ON reference.lab_analyte_external_codes USING btree (coding_system, code);
+CREATE INDEX idx_ref_lab_act_spec_cont_global_act_id ON public.lab_act_specimen_containers USING btree (global_act_id);
 
 
 --
--- Name: idx_ref_lab_analyte_units_analyte; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_ref_lab_act_spec_cont_specimen_type_id; Type: INDEX; Schema: reference; Owner: sahty
 --
 
-CREATE INDEX idx_ref_lab_analyte_units_analyte ON reference.lab_analyte_units USING btree (analyte_id);
-
-
---
--- Name: idx_ref_lab_analyte_units_canonical; Type: INDEX; Schema: reference; Owner: -
---
-
-CREATE UNIQUE INDEX idx_ref_lab_analyte_units_canonical ON reference.lab_analyte_units USING btree (analyte_id) WHERE ((is_canonical = true) AND (actif = true));
+CREATE INDEX idx_ref_lab_act_spec_cont_specimen_type_id ON public.lab_act_specimen_containers USING btree (specimen_type_id);
 
 
 --
--- Name: idx_ref_lab_analyte_units_default; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_ref_lab_analyte_aliases_alias_text_lower; Type: INDEX; Schema: reference; Owner: sahty
 --
 
-CREATE UNIQUE INDEX idx_ref_lab_analyte_units_default ON reference.lab_analyte_units USING btree (analyte_id) WHERE ((is_default = true) AND (actif = true));
+CREATE INDEX idx_ref_lab_analyte_aliases_alias_text_lower ON public.lab_analyte_aliases USING btree (lower(alias_text));
 
 
 --
--- Name: idx_ref_lab_analytes_actif; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_ref_lab_analyte_aliases_analyte_id; Type: INDEX; Schema: reference; Owner: sahty
+--
+
+CREATE INDEX idx_ref_lab_analyte_aliases_analyte_id ON public.lab_analyte_aliases USING btree (analyte_id);
+
+
+--
+-- Name: idx_ref_lab_analyte_units_analyte; Type: INDEX; Schema: reference; Owner: sahty
+--
+
+CREATE INDEX idx_ref_lab_analyte_units_analyte ON public.lab_analyte_units USING btree (analyte_id);
+
+
+--
+-- Name: idx_ref_lab_analyte_units_canonical; Type: INDEX; Schema: reference; Owner: sahty
+--
+
+CREATE UNIQUE INDEX idx_ref_lab_analyte_units_canonical ON public.lab_analyte_units USING btree (analyte_id) WHERE ((is_canonical = true) AND (actif = true));
+
+
+--
+-- Name: idx_ref_lab_analyte_units_default; Type: INDEX; Schema: reference; Owner: sahty
+--
+
+CREATE UNIQUE INDEX idx_ref_lab_analyte_units_default ON public.lab_analyte_units USING btree (analyte_id) WHERE ((is_default = true) AND (actif = true));
+
+
+--
+-- Name: idx_ref_lab_analytes_actif; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE INDEX idx_ref_lab_analytes_actif ON reference.lab_analytes USING btree (actif);
 
 
 --
--- Name: idx_ref_lab_analytes_value_type; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_ref_lab_analytes_value_type; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE INDEX idx_ref_lab_analytes_value_type ON reference.lab_analytes USING btree (value_type);
 
 
 --
--- Name: idx_ref_lab_panel_items_child_act_id; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_ref_lab_panel_items_child_act_id; Type: INDEX; Schema: reference; Owner: sahty
 --
 
-CREATE INDEX idx_ref_lab_panel_items_child_act_id ON reference.lab_panel_items USING btree (child_global_act_id);
-
-
---
--- Name: idx_ref_lab_panel_items_child_panel_id; Type: INDEX; Schema: reference; Owner: -
---
-
-CREATE INDEX idx_ref_lab_panel_items_child_panel_id ON reference.lab_panel_items USING btree (child_panel_id);
+CREATE INDEX idx_ref_lab_panel_items_child_act_id ON public.lab_panel_items USING btree (child_global_act_id);
 
 
 --
--- Name: idx_ref_lab_panel_items_panel_id; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_ref_lab_panel_items_child_panel_id; Type: INDEX; Schema: reference; Owner: sahty
 --
 
-CREATE INDEX idx_ref_lab_panel_items_panel_id ON reference.lab_panel_items USING btree (panel_id);
-
-
---
--- Name: idx_ref_lab_panels_actif; Type: INDEX; Schema: reference; Owner: -
---
-
-CREATE INDEX idx_ref_lab_panels_actif ON reference.lab_panels USING btree (actif);
+CREATE INDEX idx_ref_lab_panel_items_child_panel_id ON public.lab_panel_items USING btree (child_panel_id);
 
 
 --
--- Name: idx_ref_lab_panels_section_id; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_ref_lab_panel_items_panel_id; Type: INDEX; Schema: reference; Owner: sahty
 --
 
-CREATE INDEX idx_ref_lab_panels_section_id ON reference.lab_panels USING btree (section_id);
-
-
---
--- Name: idx_ref_lab_panels_sous_famille_id; Type: INDEX; Schema: reference; Owner: -
---
-
-CREATE INDEX idx_ref_lab_panels_sous_famille_id ON reference.lab_panels USING btree (sous_famille_id);
+CREATE INDEX idx_ref_lab_panel_items_panel_id ON public.lab_panel_items USING btree (panel_id);
 
 
 --
--- Name: idx_ref_lab_panels_sub_section_id; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_ref_lab_panels_actif; Type: INDEX; Schema: reference; Owner: sahty
 --
 
-CREATE INDEX idx_ref_lab_panels_sub_section_id ON reference.lab_panels USING btree (sub_section_id);
+CREATE INDEX idx_ref_lab_panels_actif ON public.lab_panels USING btree (actif);
 
 
 --
--- Name: idx_ref_lab_sections_actif; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_ref_lab_panels_section_id; Type: INDEX; Schema: reference; Owner: sahty
+--
+
+CREATE INDEX idx_ref_lab_panels_section_id ON public.lab_panels USING btree (section_id);
+
+
+--
+-- Name: idx_ref_lab_panels_sous_famille_id; Type: INDEX; Schema: reference; Owner: sahty
+--
+
+CREATE INDEX idx_ref_lab_panels_sous_famille_id ON public.lab_panels USING btree (sous_famille_id);
+
+
+--
+-- Name: idx_ref_lab_panels_sub_section_id; Type: INDEX; Schema: reference; Owner: sahty
+--
+
+CREATE INDEX idx_ref_lab_panels_sub_section_id ON public.lab_panels USING btree (sub_section_id);
+
+
+--
+-- Name: idx_ref_lab_sections_actif; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE INDEX idx_ref_lab_sections_actif ON reference.lab_sections USING btree (actif);
 
 
 --
--- Name: idx_ref_lab_sub_sections_actif; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_ref_lab_sub_sections_actif; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE INDEX idx_ref_lab_sub_sections_actif ON reference.lab_sub_sections USING btree (actif);
 
 
 --
--- Name: idx_ref_price_hist_dates; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_ref_price_hist_dates; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE INDEX idx_ref_price_hist_dates ON reference.global_product_price_history USING btree (valid_from, valid_to);
 
 
 --
--- Name: idx_ref_price_hist_product; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_ref_price_hist_product; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE INDEX idx_ref_price_hist_product ON reference.global_product_price_history USING btree (product_id);
 
 
 --
--- Name: idx_ref_products_active; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_ref_products_active; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE INDEX idx_ref_products_active ON reference.global_products USING btree (is_active) WHERE (is_active = true);
 
 
 --
--- Name: idx_ref_products_name; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_ref_products_name; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE INDEX idx_ref_products_name ON reference.global_products USING btree (name);
 
 
 --
--- Name: idx_ref_products_sahty; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_ref_products_sahty; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE INDEX idx_ref_products_sahty ON reference.global_products USING btree (sahty_code) WHERE (sahty_code IS NOT NULL);
 
 
 --
--- Name: idx_ref_suppliers_active; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_ref_suppliers_active; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE INDEX idx_ref_suppliers_active ON reference.global_suppliers USING btree (is_active) WHERE (is_active = true);
 
 
 --
--- Name: idx_routes_active_order; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_routes_active_order; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE INDEX idx_routes_active_order ON reference.routes USING btree (is_active, sort_order);
 
 
 --
--- Name: idx_routes_sort_order_unique; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_routes_sort_order_unique; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE UNIQUE INDEX idx_routes_sort_order_unique ON reference.routes USING btree (sort_order);
 
 
 --
--- Name: idx_specimen_base_tenant; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_specimen_base_tenant; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE INDEX idx_specimen_base_tenant ON reference.lab_specimen_types USING btree (base_specimen);
 
 
 --
--- Name: idx_tenant_global_products_default_presc_route; Type: INDEX; Schema: reference; Owner: -
+-- Name: idx_tenant_global_products_default_presc_route; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE INDEX idx_tenant_global_products_default_presc_route ON reference.global_products USING btree (default_presc_route);
 
 
 --
--- Name: uniq_default_container_per_specimen_tenant; Type: INDEX; Schema: reference; Owner: -
+-- Name: uniq_default_container_per_specimen_tenant; Type: INDEX; Schema: reference; Owner: sahty
 --
 
-CREATE UNIQUE INDEX uniq_default_container_per_specimen_tenant ON reference.lab_specimen_container_types USING btree (specimen_type_id) WHERE (is_default = true);
+-- lab_specimen_container_types index removed
 
 
 --
--- Name: uq_flowsheets_sort_order; Type: INDEX; Schema: reference; Owner: -
+-- Name: uq_flowsheets_sort_order; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE UNIQUE INDEX uq_flowsheets_sort_order ON reference.observation_flowsheets USING btree (sort_order) WHERE (is_active = true);
 
 
 --
--- Name: uq_group_parameters_sort_order; Type: INDEX; Schema: reference; Owner: -
+-- Name: uq_group_parameters_sort_order; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE UNIQUE INDEX uq_group_parameters_sort_order ON reference.group_parameters USING btree (group_id, sort_order);
 
 
 --
--- Name: uq_groups_sort_order; Type: INDEX; Schema: reference; Owner: -
+-- Name: uq_groups_sort_order; Type: INDEX; Schema: reference; Owner: sahty
 --
 
 CREATE UNIQUE INDEX uq_groups_sort_order ON reference.observation_groups USING btree (sort_order);
 
 
 --
--- Name: uq_lab_reference_profile_tenant; Type: INDEX; Schema: reference; Owner: -
+-- Name: uq_lab_reference_profile_tenant; Type: INDEX; Schema: reference; Owner: sahty
 --
 
-CREATE UNIQUE INDEX uq_lab_reference_profile_tenant ON reference.lab_reference_profiles USING btree (analyte_context_id, COALESCE(sex, 'U'::text), COALESCE(age_min_days, '-1'::integer), COALESCE(age_max_days, '-1'::integer));
-
-
---
--- Name: uq_ref_act_context; Type: INDEX; Schema: reference; Owner: -
---
-
-CREATE UNIQUE INDEX uq_ref_act_context ON reference.lab_act_contexts USING btree (global_act_id, analyte_context_id);
+CREATE UNIQUE INDEX uq_lab_reference_profile_tenant ON public.lab_reference_profiles USING btree (analyte_context_id, COALESCE(sex, 'U'::text), COALESCE(age_min_days, '-1'::integer), COALESCE(age_max_days, '-1'::integer));
 
 
 --
--- Name: uq_ref_act_default_context; Type: INDEX; Schema: reference; Owner: -
+-- Name: uq_ref_act_context; Type: INDEX; Schema: reference; Owner: sahty
 --
 
-CREATE UNIQUE INDEX uq_ref_act_default_context ON reference.lab_act_contexts USING btree (global_act_id) WHERE (is_default = true);
-
-
---
--- Name: uq_ref_context_default; Type: INDEX; Schema: reference; Owner: -
---
-
-CREATE UNIQUE INDEX uq_ref_context_default ON reference.lab_analyte_contexts USING btree (analyte_id, specimen_type_id) WHERE (is_default = true);
+CREATE UNIQUE INDEX uq_ref_act_context ON public.lab_act_contexts USING btree (global_act_id, analyte_context_id);
 
 
 --
--- Name: uq_ref_lab_analyte_context; Type: INDEX; Schema: reference; Owner: -
+-- Name: uq_ref_act_default_context; Type: INDEX; Schema: reference; Owner: sahty
 --
 
-CREATE UNIQUE INDEX uq_ref_lab_analyte_context ON reference.lab_analyte_contexts USING btree (analyte_id, specimen_type_id, unit_id, COALESCE(method_id, '00000000-0000-0000-0000-000000000000'::uuid));
+CREATE UNIQUE INDEX uq_ref_act_default_context ON public.lab_act_contexts USING btree (global_act_id) WHERE (is_default = true);
 
 
 --
--- Name: credentials trg_auth_sync_credentials_delete; Type: TRIGGER; Schema: auth; Owner: -
+-- Name: uq_ref_context_default; Type: INDEX; Schema: reference; Owner: sahty
+--
+
+CREATE UNIQUE INDEX uq_ref_context_default ON public.lab_analyte_contexts USING btree (analyte_id, specimen_type_id) WHERE (is_default = true);
+
+
+--
+-- Name: uq_ref_lab_analyte_context; Type: INDEX; Schema: reference; Owner: sahty
+--
+
+CREATE UNIQUE INDEX uq_ref_lab_analyte_context ON public.lab_analyte_contexts USING btree (analyte_id, specimen_type_id, unit_id, COALESCE(method_id, '00000000-0000-0000-0000-000000000000'::uuid));
+
+
+--
+-- Name: credentials trg_auth_sync_credentials_delete; Type: TRIGGER; Schema: auth; Owner: sahty
 --
 
 CREATE TRIGGER trg_auth_sync_credentials_delete AFTER DELETE ON auth.credentials FOR EACH ROW EXECUTE FUNCTION auth_sync.emit_outbox_event();
 
 
 --
--- Name: credentials trg_auth_sync_credentials_insert; Type: TRIGGER; Schema: auth; Owner: -
+-- Name: credentials trg_auth_sync_credentials_insert; Type: TRIGGER; Schema: auth; Owner: sahty
 --
 
 CREATE TRIGGER trg_auth_sync_credentials_insert AFTER INSERT ON auth.credentials FOR EACH ROW EXECUTE FUNCTION auth_sync.emit_outbox_event();
 
 
 --
--- Name: credentials trg_auth_sync_credentials_update; Type: TRIGGER; Schema: auth; Owner: -
+-- Name: credentials trg_auth_sync_credentials_update; Type: TRIGGER; Schema: auth; Owner: sahty
 --
 
 CREATE TRIGGER trg_auth_sync_credentials_update AFTER UPDATE ON auth.credentials FOR EACH ROW EXECUTE FUNCTION auth_sync.emit_outbox_event();
 
 
 --
--- Name: user_tenants trg_auth_sync_user_tenants_delete; Type: TRIGGER; Schema: auth; Owner: -
+-- Name: user_tenants trg_auth_sync_user_tenants_delete; Type: TRIGGER; Schema: auth; Owner: sahty
 --
 
 CREATE TRIGGER trg_auth_sync_user_tenants_delete AFTER DELETE ON auth.user_tenants FOR EACH ROW EXECUTE FUNCTION auth_sync.emit_outbox_event();
 
 
 --
--- Name: user_tenants trg_auth_sync_user_tenants_insert; Type: TRIGGER; Schema: auth; Owner: -
+-- Name: user_tenants trg_auth_sync_user_tenants_insert; Type: TRIGGER; Schema: auth; Owner: sahty
 --
 
 CREATE TRIGGER trg_auth_sync_user_tenants_insert AFTER INSERT ON auth.user_tenants FOR EACH ROW EXECUTE FUNCTION auth_sync.emit_outbox_event();
 
 
 --
--- Name: user_tenants trg_auth_sync_user_tenants_update; Type: TRIGGER; Schema: auth; Owner: -
+-- Name: user_tenants trg_auth_sync_user_tenants_update; Type: TRIGGER; Schema: auth; Owner: sahty
 --
 
 CREATE TRIGGER trg_auth_sync_user_tenants_update AFTER UPDATE ON auth.user_tenants FOR EACH ROW EXECUTE FUNCTION auth_sync.emit_outbox_event();
 
 
 --
--- Name: users trg_auth_sync_users_delete; Type: TRIGGER; Schema: auth; Owner: -
+-- Name: users trg_auth_sync_users_delete; Type: TRIGGER; Schema: auth; Owner: sahty
 --
 
 CREATE TRIGGER trg_auth_sync_users_delete AFTER DELETE ON auth.users FOR EACH ROW EXECUTE FUNCTION auth_sync.emit_outbox_event();
 
 
 --
--- Name: users trg_auth_sync_users_insert; Type: TRIGGER; Schema: auth; Owner: -
+-- Name: users trg_auth_sync_users_insert; Type: TRIGGER; Schema: auth; Owner: sahty
 --
 
 CREATE TRIGGER trg_auth_sync_users_insert AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION auth_sync.emit_outbox_event();
 
 
 --
--- Name: users trg_auth_sync_users_update; Type: TRIGGER; Schema: auth; Owner: -
+-- Name: users trg_auth_sync_users_update; Type: TRIGGER; Schema: auth; Owner: sahty
 --
 
 CREATE TRIGGER trg_auth_sync_users_update AFTER UPDATE ON auth.users FOR EACH ROW EXECUTE FUNCTION auth_sync.emit_outbox_event();
 
 
 --
--- Name: administration_events audit_administration_events; Type: TRIGGER; Schema: public; Owner: -
+-- Name: administration_events audit_administration_events; Type: TRIGGER; Schema: public; Owner: sahty
 --
 
 CREATE TRIGGER audit_administration_events AFTER INSERT OR DELETE OR UPDATE ON public.administration_events FOR EACH ROW EXECUTE FUNCTION public.fn_generic_audit();
 
 
 --
--- Name: audit_log audit_log_no_update; Type: TRIGGER; Schema: public; Owner: -
+-- Name: audit_log audit_log_no_update; Type: TRIGGER; Schema: public; Owner: sahty
 --
 
 CREATE TRIGGER audit_log_no_update BEFORE DELETE OR UPDATE ON public.audit_log FOR EACH ROW EXECUTE FUNCTION public.fn_audit_no_update();
 
 
 --
--- Name: patients_tenant audit_patients_tenant; Type: TRIGGER; Schema: public; Owner: -
+-- Name: patients_tenant audit_patients_tenant; Type: TRIGGER; Schema: public; Owner: sahty
 --
 
 CREATE TRIGGER audit_patients_tenant AFTER INSERT OR DELETE OR UPDATE ON public.patients_tenant FOR EACH ROW EXECUTE FUNCTION public.fn_generic_audit();
 
 
 --
--- Name: prescription_events audit_prescription_events; Type: TRIGGER; Schema: public; Owner: -
+-- Name: prescription_events audit_prescription_events; Type: TRIGGER; Schema: public; Owner: sahty
 --
 
 CREATE TRIGGER audit_prescription_events AFTER INSERT OR DELETE OR UPDATE ON public.prescription_events FOR EACH ROW EXECUTE FUNCTION public.fn_generic_audit();
 
 
 --
--- Name: prescriptions audit_prescriptions; Type: TRIGGER; Schema: public; Owner: -
+-- Name: prescriptions audit_prescriptions; Type: TRIGGER; Schema: public; Owner: sahty
 --
 
 CREATE TRIGGER audit_prescriptions AFTER INSERT OR DELETE OR UPDATE ON public.prescriptions FOR EACH ROW EXECUTE FUNCTION public.fn_generic_audit();
 
 
 --
--- Name: locations trg_prevent_system_location_deactivate; Type: TRIGGER; Schema: public; Owner: -
+-- Name: locations trg_prevent_system_location_deactivate; Type: TRIGGER; Schema: public; Owner: sahty
 --
 
 CREATE TRIGGER trg_prevent_system_location_deactivate BEFORE UPDATE ON public.locations FOR EACH ROW EXECUTE FUNCTION public.fn_prevent_system_location_deactivate();
 
 
 --
--- Name: administration_events trg_recompute_bag_status; Type: TRIGGER; Schema: public; Owner: -
+-- Name: administration_events trg_recompute_bag_status; Type: TRIGGER; Schema: public; Owner: sahty
 --
 
 CREATE TRIGGER trg_recompute_bag_status AFTER INSERT OR DELETE OR UPDATE OF status ON public.administration_events FOR EACH ROW EXECUTE FUNCTION public.trigger_recompute_bag_status();
 
 
 --
--- Name: administration_event_blood_bags trg_recompute_bag_status_assoc; Type: TRIGGER; Schema: public; Owner: -
+-- Name: administration_event_blood_bags trg_recompute_bag_status_assoc; Type: TRIGGER; Schema: public; Owner: sahty
 --
 
 CREATE TRIGGER trg_recompute_bag_status_assoc AFTER INSERT OR DELETE OR UPDATE ON public.administration_event_blood_bags FOR EACH ROW EXECUTE FUNCTION public.trigger_recompute_bag_status_assoc();
 
 
 --
--- Name: surveillance_values_events trg_surveillance_event_bucket; Type: TRIGGER; Schema: public; Owner: -
+-- Name: surveillance_values_events trg_surveillance_event_bucket; Type: TRIGGER; Schema: public; Owner: sahty
 --
 
 CREATE TRIGGER trg_surveillance_event_bucket AFTER INSERT ON public.surveillance_values_events FOR EACH ROW EXECUTE FUNCTION public.update_surveillance_hour_bucket();
 
 
 --
--- Name: credentials credentials_user_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
+-- Name: credentials credentials_user_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: sahty
 --
 
 ALTER TABLE ONLY auth.credentials
@@ -7349,7 +7381,7 @@ ALTER TABLE ONLY auth.credentials
 
 
 --
--- Name: user_tenants user_tenants_user_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: -
+-- Name: user_tenants user_tenants_user_id_fkey; Type: FK CONSTRAINT; Schema: auth; Owner: sahty
 --
 
 ALTER TABLE ONLY auth.user_tenants
@@ -7357,7 +7389,7 @@ ALTER TABLE ONLY auth.user_tenants
 
 
 --
--- Name: administration_event_pauses administration_event_pauses_administration_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: administration_event_pauses administration_event_pauses_administration_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.administration_event_pauses
@@ -7365,7 +7397,7 @@ ALTER TABLE ONLY public.administration_event_pauses
 
 
 --
--- Name: administration_events administration_events_prescription_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: administration_events administration_events_prescription_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.administration_events
@@ -7373,7 +7405,7 @@ ALTER TABLE ONLY public.administration_events
 
 
 --
--- Name: admission_coverage_members admission_coverage_members_admission_coverage_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: admission_coverage_members admission_coverage_members_admission_coverage_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.admission_coverage_members
@@ -7381,7 +7413,7 @@ ALTER TABLE ONLY public.admission_coverage_members
 
 
 --
--- Name: admission_coverages admission_coverages_admission_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: admission_coverages admission_coverages_admission_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.admission_coverages
@@ -7389,7 +7421,7 @@ ALTER TABLE ONLY public.admission_coverages
 
 
 --
--- Name: admissions admissions_admitting_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: admissions admissions_admitting_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.admissions
@@ -7397,7 +7429,7 @@ ALTER TABLE ONLY public.admissions
 
 
 --
--- Name: admissions admissions_attending_physician_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: admissions admissions_attending_physician_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.admissions
@@ -7405,7 +7437,7 @@ ALTER TABLE ONLY public.admissions
 
 
 --
--- Name: admissions admissions_current_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: admissions admissions_current_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.admissions
@@ -7413,7 +7445,7 @@ ALTER TABLE ONLY public.admissions
 
 
 --
--- Name: admissions admissions_responsible_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: admissions admissions_responsible_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.admissions
@@ -7421,7 +7453,7 @@ ALTER TABLE ONLY public.admissions
 
 
 --
--- Name: admissions admissions_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: admissions admissions_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.admissions
@@ -7429,7 +7461,7 @@ ALTER TABLE ONLY public.admissions
 
 
 --
--- Name: beds beds_room_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: beds beds_room_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.beds
@@ -7437,7 +7469,7 @@ ALTER TABLE ONLY public.beds
 
 
 --
--- Name: coverage_members coverage_members_coverage_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: coverage_members coverage_members_coverage_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.coverage_members
@@ -7445,7 +7477,7 @@ ALTER TABLE ONLY public.coverage_members
 
 
 --
--- Name: coverage_members coverage_members_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: coverage_members coverage_members_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.coverage_members
@@ -7453,7 +7485,7 @@ ALTER TABLE ONLY public.coverage_members
 
 
 --
--- Name: coverages coverages_organisme_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: coverages coverages_organisme_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.coverages
@@ -7461,7 +7493,7 @@ ALTER TABLE ONLY public.coverages
 
 
 --
--- Name: escarre_snapshots escarre_snapshots_escarre_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: escarre_snapshots escarre_snapshots_escarre_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.escarre_snapshots
@@ -7469,7 +7501,7 @@ ALTER TABLE ONLY public.escarre_snapshots
 
 
 --
--- Name: escarres escarres_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: escarres escarres_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.escarres
@@ -7477,7 +7509,7 @@ ALTER TABLE ONLY public.escarres
 
 
 --
--- Name: administration_event_blood_bags fk_admin_event_blood_bags_bag; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: administration_event_blood_bags fk_admin_event_blood_bags_bag; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.administration_event_blood_bags
@@ -7485,7 +7517,7 @@ ALTER TABLE ONLY public.administration_event_blood_bags
 
 
 --
--- Name: administration_event_blood_bags fk_admin_event_blood_bags_event; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: administration_event_blood_bags fk_admin_event_blood_bags_event; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.administration_event_blood_bags
@@ -7493,7 +7525,7 @@ ALTER TABLE ONLY public.administration_event_blood_bags
 
 
 --
--- Name: administration_events fk_admin_event_user; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: administration_events fk_admin_event_user; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.administration_events
@@ -7501,7 +7533,7 @@ ALTER TABLE ONLY public.administration_events
 
 
 --
--- Name: admission_acts fk_admission_acts_admission; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: admission_acts fk_admission_acts_admission; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.admission_acts
@@ -7509,7 +7541,7 @@ ALTER TABLE ONLY public.admission_acts
 
 
 --
--- Name: administration_event_lab_collections fk_aelc_admin_event; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: administration_event_lab_collections fk_aelc_admin_event; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.administration_event_lab_collections
@@ -7517,7 +7549,7 @@ ALTER TABLE ONLY public.administration_event_lab_collections
 
 
 --
--- Name: administration_event_lab_collections fk_aelc_lab_collection; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: administration_event_lab_collections fk_aelc_lab_collection; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.administration_event_lab_collections
@@ -7525,7 +7557,7 @@ ALTER TABLE ONLY public.administration_event_lab_collections
 
 
 --
--- Name: clinical_exams fk_clinical_exams_patient; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: clinical_exams fk_clinical_exams_patient; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.clinical_exams
@@ -7533,7 +7565,15 @@ ALTER TABLE ONLY public.clinical_exams
 
 
 --
--- Name: patient_lab_extraction_sessions fk_extraction_document; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: global_act_external_codes fk_external_system; Type: FK CONSTRAINT; Schema: public; Owner: sahty
+--
+
+ALTER TABLE ONLY public.global_act_external_codes
+    ADD CONSTRAINT fk_external_system FOREIGN KEY (external_system_id) REFERENCES public.external_systems(id) ON DELETE CASCADE;
+
+
+--
+-- Name: patient_lab_extraction_sessions fk_extraction_document; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_lab_extraction_sessions
@@ -7541,7 +7581,15 @@ ALTER TABLE ONLY public.patient_lab_extraction_sessions
 
 
 --
--- Name: patient_lab_report_documents fk_lab_doc_document; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: global_act_external_codes fk_global_act; Type: FK CONSTRAINT; Schema: public; Owner: sahty
+--
+
+ALTER TABLE ONLY public.global_act_external_codes
+    ADD CONSTRAINT fk_global_act FOREIGN KEY (global_act_id) REFERENCES reference.global_actes(id) ON DELETE CASCADE;
+
+
+--
+-- Name: patient_lab_report_documents fk_lab_doc_document; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_lab_report_documents
@@ -7549,7 +7597,7 @@ ALTER TABLE ONLY public.patient_lab_report_documents
 
 
 --
--- Name: patient_lab_report_documents fk_lab_doc_report; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_lab_report_documents fk_lab_doc_report; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_lab_report_documents
@@ -7557,7 +7605,7 @@ ALTER TABLE ONLY public.patient_lab_report_documents
 
 
 --
--- Name: lab_requests fk_lab_requests_act; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: lab_requests fk_lab_requests_act; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.lab_requests
@@ -7565,7 +7613,7 @@ ALTER TABLE ONLY public.lab_requests
 
 
 --
--- Name: lab_requests fk_lab_requests_admission; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: lab_requests fk_lab_requests_admission; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.lab_requests
@@ -7573,7 +7621,7 @@ ALTER TABLE ONLY public.lab_requests
 
 
 --
--- Name: lab_requests fk_lab_requests_patient; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: lab_requests fk_lab_requests_patient; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.lab_requests
@@ -7581,7 +7629,7 @@ ALTER TABLE ONLY public.lab_requests
 
 
 --
--- Name: lab_requests fk_lab_requests_prescription_event; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: lab_requests fk_lab_requests_prescription_event; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.lab_requests
@@ -7589,7 +7637,15 @@ ALTER TABLE ONLY public.lab_requests
 
 
 --
--- Name: lab_collection_specimens fk_lcs_collection; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: lab_specimen_status_history fk_lab_specimen_status_history_specimen; Type: FK CONSTRAINT; Schema: public; Owner: sahty
+--
+
+ALTER TABLE ONLY public.lab_specimen_status_history
+    ADD CONSTRAINT fk_lab_specimen_status_history_specimen FOREIGN KEY (specimen_id) REFERENCES public.lab_specimens(id) ON DELETE CASCADE;
+
+
+--
+-- Name: lab_collection_specimens fk_lcs_collection; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.lab_collection_specimens
@@ -7597,7 +7653,7 @@ ALTER TABLE ONLY public.lab_collection_specimens
 
 
 --
--- Name: lab_collection_specimens fk_lcs_specimen; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: lab_collection_specimens fk_lcs_specimen; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.lab_collection_specimens
@@ -7605,7 +7661,7 @@ ALTER TABLE ONLY public.lab_collection_specimens
 
 
 --
--- Name: lab_specimen_requests fk_lsr_specimen; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: lab_specimen_requests fk_lsr_specimen; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.lab_specimen_requests
@@ -7613,7 +7669,7 @@ ALTER TABLE ONLY public.lab_specimen_requests
 
 
 --
--- Name: surveillance_values_events fk_surv_events_parameter; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: surveillance_values_events fk_surv_events_parameter; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.surveillance_values_events
@@ -7621,7 +7677,7 @@ ALTER TABLE ONLY public.surveillance_values_events
 
 
 --
--- Name: transfusion_blood_bags fk_transfusion_blood_bags_user; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: transfusion_blood_bags fk_transfusion_blood_bags_user; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.transfusion_blood_bags
@@ -7629,7 +7685,7 @@ ALTER TABLE ONLY public.transfusion_blood_bags
 
 
 --
--- Name: transfusion_checks fk_transfusion_checks_event; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: transfusion_checks fk_transfusion_checks_event; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.transfusion_checks
@@ -7637,7 +7693,7 @@ ALTER TABLE ONLY public.transfusion_checks
 
 
 --
--- Name: transfusion_checks fk_transfusion_checks_user; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: transfusion_checks fk_transfusion_checks_user; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.transfusion_checks
@@ -7645,7 +7701,7 @@ ALTER TABLE ONLY public.transfusion_checks
 
 
 --
--- Name: transfusion_reactions fk_transfusion_reactions_event; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: transfusion_reactions fk_transfusion_reactions_event; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.transfusion_reactions
@@ -7653,7 +7709,7 @@ ALTER TABLE ONLY public.transfusion_reactions
 
 
 --
--- Name: transfusion_reactions fk_transfusion_reactions_user; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: transfusion_reactions fk_transfusion_reactions_user; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.transfusion_reactions
@@ -7661,7 +7717,7 @@ ALTER TABLE ONLY public.transfusion_reactions
 
 
 --
--- Name: identity_ids identity_ids_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: identity_ids identity_ids_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.identity_ids
@@ -7669,7 +7725,47 @@ ALTER TABLE ONLY public.identity_ids
 
 
 --
--- Name: lab_value_normalization lab_value_normalization_canonical_value_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: lab_analyte_external_codes lab_analyte_external_codes_external_system_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
+--
+
+ALTER TABLE ONLY public.lab_analyte_external_codes
+    ADD CONSTRAINT lab_analyte_external_codes_external_system_id_fkey FOREIGN KEY (external_system_id) REFERENCES public.external_systems(id);
+
+
+--
+-- Name: lab_hprim_links lab_hprim_links_hprim_message_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
+--
+
+ALTER TABLE ONLY public.lab_hprim_links
+    ADD CONSTRAINT lab_hprim_links_hprim_message_id_fkey FOREIGN KEY (hprim_message_id) REFERENCES public.lab_hprim_messages(id);
+
+
+--
+-- Name: lab_hprim_links lab_hprim_links_lab_request_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
+--
+
+ALTER TABLE ONLY public.lab_hprim_links
+    ADD CONSTRAINT lab_hprim_links_lab_request_id_fkey FOREIGN KEY (lab_request_id) REFERENCES public.lab_requests(id);
+
+
+--
+-- Name: lab_hprim_links lab_hprim_links_lab_specimen_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
+--
+
+ALTER TABLE ONLY public.lab_hprim_links
+    ADD CONSTRAINT lab_hprim_links_lab_specimen_id_fkey FOREIGN KEY (lab_specimen_id) REFERENCES public.lab_specimens(id);
+
+
+--
+-- Name: lab_unit_external_codes lab_unit_external_codes_external_system_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
+--
+
+ALTER TABLE ONLY public.lab_unit_external_codes
+    ADD CONSTRAINT lab_unit_external_codes_external_system_id_fkey FOREIGN KEY (external_system_id) REFERENCES public.external_systems(id);
+
+
+--
+-- Name: lab_value_normalization lab_value_normalization_canonical_value_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.lab_value_normalization
@@ -7677,7 +7773,7 @@ ALTER TABLE ONLY public.lab_value_normalization
 
 
 --
--- Name: patient_addiction_history patient_addiction_history_addiction_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_addiction_history patient_addiction_history_addiction_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_addiction_history
@@ -7685,7 +7781,7 @@ ALTER TABLE ONLY public.patient_addiction_history
 
 
 --
--- Name: patient_allergies patient_allergies_allergen_dci_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_allergies patient_allergies_allergen_dci_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_allergies
@@ -7693,7 +7789,7 @@ ALTER TABLE ONLY public.patient_allergies
 
 
 --
--- Name: patient_allergies patient_allergies_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_allergies patient_allergies_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_allergies
@@ -7701,7 +7797,7 @@ ALTER TABLE ONLY public.patient_allergies
 
 
 --
--- Name: patient_allergy_history patient_allergy_history_patient_allergy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_allergy_history patient_allergy_history_patient_allergy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_allergy_history
@@ -7709,7 +7805,7 @@ ALTER TABLE ONLY public.patient_allergy_history
 
 
 --
--- Name: patient_allergy_history patient_allergy_history_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_allergy_history patient_allergy_history_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_allergy_history
@@ -7717,7 +7813,7 @@ ALTER TABLE ONLY public.patient_allergy_history
 
 
 --
--- Name: patient_allergy_manifestations patient_allergy_manifestations_patient_allergy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_allergy_manifestations patient_allergy_manifestations_patient_allergy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_allergy_manifestations
@@ -7725,7 +7821,7 @@ ALTER TABLE ONLY public.patient_allergy_manifestations
 
 
 --
--- Name: patient_diagnoses patient_diagnoses_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_diagnoses patient_diagnoses_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_diagnoses
@@ -7733,7 +7829,7 @@ ALTER TABLE ONLY public.patient_diagnoses
 
 
 --
--- Name: patient_identity_change patient_identity_change_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_identity_change patient_identity_change_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_identity_change
@@ -7741,7 +7837,7 @@ ALTER TABLE ONLY public.patient_identity_change
 
 
 --
--- Name: patient_lab_extraction_sessions patient_lab_extraction_sessions_patient_lab_report_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_lab_extraction_sessions patient_lab_extraction_sessions_patient_lab_report_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_lab_extraction_sessions
@@ -7749,7 +7845,7 @@ ALTER TABLE ONLY public.patient_lab_extraction_sessions
 
 
 --
--- Name: patient_lab_report_tests patient_lab_report_tests_global_act_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_lab_report_tests patient_lab_report_tests_global_act_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_lab_report_tests
@@ -7757,15 +7853,15 @@ ALTER TABLE ONLY public.patient_lab_report_tests
 
 
 --
--- Name: patient_lab_report_tests patient_lab_report_tests_panel_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_lab_report_tests patient_lab_report_tests_panel_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_lab_report_tests
-    ADD CONSTRAINT patient_lab_report_tests_panel_id_fkey FOREIGN KEY (panel_id) REFERENCES reference.lab_panels(id);
+    ADD CONSTRAINT patient_lab_report_tests_panel_id_fkey FOREIGN KEY (panel_id) REFERENCES public.lab_panels(id);
 
 
 --
--- Name: patient_lab_report_tests patient_lab_report_tests_patient_lab_report_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_lab_report_tests patient_lab_report_tests_patient_lab_report_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_lab_report_tests
@@ -7773,7 +7869,7 @@ ALTER TABLE ONLY public.patient_lab_report_tests
 
 
 --
--- Name: patient_lab_reports patient_lab_reports_admission_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_lab_reports patient_lab_reports_admission_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_lab_reports
@@ -7781,7 +7877,7 @@ ALTER TABLE ONLY public.patient_lab_reports
 
 
 --
--- Name: patient_lab_reports patient_lab_reports_entered_in_error_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_lab_reports patient_lab_reports_entered_in_error_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_lab_reports
@@ -7789,7 +7885,7 @@ ALTER TABLE ONLY public.patient_lab_reports
 
 
 --
--- Name: patient_lab_reports patient_lab_reports_structured_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_lab_reports patient_lab_reports_structured_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_lab_reports
@@ -7797,7 +7893,7 @@ ALTER TABLE ONLY public.patient_lab_reports
 
 
 --
--- Name: patient_lab_reports patient_lab_reports_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_lab_reports patient_lab_reports_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_lab_reports
@@ -7805,7 +7901,7 @@ ALTER TABLE ONLY public.patient_lab_reports
 
 
 --
--- Name: patient_lab_reports patient_lab_reports_uploaded_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_lab_reports patient_lab_reports_uploaded_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_lab_reports
@@ -7813,7 +7909,7 @@ ALTER TABLE ONLY public.patient_lab_reports
 
 
 --
--- Name: patient_lab_results patient_lab_results_analyte_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_lab_results patient_lab_results_analyte_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_lab_results
@@ -7821,7 +7917,7 @@ ALTER TABLE ONLY public.patient_lab_results
 
 
 --
--- Name: patient_lab_results patient_lab_results_entered_in_error_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_lab_results patient_lab_results_entered_in_error_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_lab_results
@@ -7829,7 +7925,7 @@ ALTER TABLE ONLY public.patient_lab_results
 
 
 --
--- Name: patient_lab_results patient_lab_results_method_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_lab_results patient_lab_results_method_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_lab_results
@@ -7837,7 +7933,7 @@ ALTER TABLE ONLY public.patient_lab_results
 
 
 --
--- Name: patient_lab_results patient_lab_results_patient_lab_report_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_lab_results patient_lab_results_patient_lab_report_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_lab_results
@@ -7845,7 +7941,7 @@ ALTER TABLE ONLY public.patient_lab_results
 
 
 --
--- Name: patient_lab_results patient_lab_results_patient_lab_report_test_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_lab_results patient_lab_results_patient_lab_report_test_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_lab_results
@@ -7853,7 +7949,7 @@ ALTER TABLE ONLY public.patient_lab_results
 
 
 --
--- Name: patient_lab_results patient_lab_results_specimen_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_lab_results patient_lab_results_specimen_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_lab_results
@@ -7861,7 +7957,7 @@ ALTER TABLE ONLY public.patient_lab_results
 
 
 --
--- Name: patient_lab_results patient_lab_results_unit_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_lab_results patient_lab_results_unit_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_lab_results
@@ -7869,7 +7965,7 @@ ALTER TABLE ONLY public.patient_lab_results
 
 
 --
--- Name: patient_observations patient_observations_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_observations patient_observations_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_observations
@@ -7877,7 +7973,7 @@ ALTER TABLE ONLY public.patient_observations
 
 
 --
--- Name: patient_observations patient_observations_parent_observation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_observations patient_observations_parent_observation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_observations
@@ -7885,7 +7981,7 @@ ALTER TABLE ONLY public.patient_observations
 
 
 --
--- Name: patient_observations patient_observations_signed_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_observations patient_observations_signed_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_observations
@@ -7893,7 +7989,7 @@ ALTER TABLE ONLY public.patient_observations
 
 
 --
--- Name: patient_observations patient_observations_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_observations patient_observations_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_observations
@@ -7901,7 +7997,7 @@ ALTER TABLE ONLY public.patient_observations
 
 
 --
--- Name: patient_relationship_links patient_relationship_links_related_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_relationship_links patient_relationship_links_related_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_relationship_links
@@ -7909,7 +8005,7 @@ ALTER TABLE ONLY public.patient_relationship_links
 
 
 --
--- Name: patient_relationship_links patient_relationship_links_subject_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_relationship_links patient_relationship_links_subject_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_relationship_links
@@ -7917,7 +8013,7 @@ ALTER TABLE ONLY public.patient_relationship_links
 
 
 --
--- Name: patient_stays patient_stays_admission_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_stays patient_stays_admission_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_stays
@@ -7925,7 +8021,7 @@ ALTER TABLE ONLY public.patient_stays
 
 
 --
--- Name: patient_stays patient_stays_bed_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_stays patient_stays_bed_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_stays
@@ -7933,7 +8029,7 @@ ALTER TABLE ONLY public.patient_stays
 
 
 --
--- Name: patient_stays patient_stays_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_stays patient_stays_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_stays
@@ -7941,7 +8037,7 @@ ALTER TABLE ONLY public.patient_stays
 
 
 --
--- Name: patient_tenant_merge_events patient_tenant_merge_events_source_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_tenant_merge_events patient_tenant_merge_events_source_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_tenant_merge_events
@@ -7949,7 +8045,7 @@ ALTER TABLE ONLY public.patient_tenant_merge_events
 
 
 --
--- Name: patient_tenant_merge_events patient_tenant_merge_events_target_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patient_tenant_merge_events patient_tenant_merge_events_target_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patient_tenant_merge_events
@@ -7957,7 +8053,7 @@ ALTER TABLE ONLY public.patient_tenant_merge_events
 
 
 --
--- Name: patients_tenant patients_tenant_merged_into_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: patients_tenant patients_tenant_merged_into_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.patients_tenant
@@ -7965,7 +8061,7 @@ ALTER TABLE ONLY public.patients_tenant
 
 
 --
--- Name: po_items po_items_po_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: po_items po_items_po_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.po_items
@@ -7973,7 +8069,7 @@ ALTER TABLE ONLY public.po_items
 
 
 --
--- Name: prescription_events prescription_events_prescription_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: prescription_events prescription_events_prescription_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.prescription_events
@@ -7981,7 +8077,7 @@ ALTER TABLE ONLY public.prescription_events
 
 
 --
--- Name: prescriptions prescriptions_admission_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: prescriptions prescriptions_admission_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.prescriptions
@@ -7989,7 +8085,7 @@ ALTER TABLE ONLY public.prescriptions
 
 
 --
--- Name: prescriptions prescriptions_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: prescriptions prescriptions_tenant_patient_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.prescriptions
@@ -7997,7 +8093,7 @@ ALTER TABLE ONLY public.prescriptions
 
 
 --
--- Name: product_price_versions product_price_versions_product_supplier_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: product_price_versions product_price_versions_product_supplier_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.product_price_versions
@@ -8005,7 +8101,7 @@ ALTER TABLE ONLY public.product_price_versions
 
 
 --
--- Name: return_decision_lines return_decision_lines_decision_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: return_decision_lines return_decision_lines_decision_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.return_decision_lines
@@ -8013,7 +8109,7 @@ ALTER TABLE ONLY public.return_decision_lines
 
 
 --
--- Name: return_decision_lines return_decision_lines_destination_location_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: return_decision_lines return_decision_lines_destination_location_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.return_decision_lines
@@ -8021,7 +8117,7 @@ ALTER TABLE ONLY public.return_decision_lines
 
 
 --
--- Name: return_decision_lines return_decision_lines_return_line_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: return_decision_lines return_decision_lines_return_line_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.return_decision_lines
@@ -8029,7 +8125,7 @@ ALTER TABLE ONLY public.return_decision_lines
 
 
 --
--- Name: return_decisions return_decisions_reception_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: return_decisions return_decisions_reception_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.return_decisions
@@ -8037,7 +8133,7 @@ ALTER TABLE ONLY public.return_decisions
 
 
 --
--- Name: return_reception_lines return_reception_lines_reception_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: return_reception_lines return_reception_lines_reception_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.return_reception_lines
@@ -8045,7 +8141,7 @@ ALTER TABLE ONLY public.return_reception_lines
 
 
 --
--- Name: return_reception_lines return_reception_lines_return_line_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: return_reception_lines return_reception_lines_return_line_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.return_reception_lines
@@ -8053,7 +8149,7 @@ ALTER TABLE ONLY public.return_reception_lines
 
 
 --
--- Name: return_receptions return_receptions_return_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: return_receptions return_receptions_return_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.return_receptions
@@ -8061,7 +8157,7 @@ ALTER TABLE ONLY public.return_receptions
 
 
 --
--- Name: rooms rooms_room_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: rooms rooms_room_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.rooms
@@ -8069,7 +8165,7 @@ ALTER TABLE ONLY public.rooms
 
 
 --
--- Name: rooms rooms_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: rooms rooms_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.rooms
@@ -8077,7 +8173,7 @@ ALTER TABLE ONLY public.rooms
 
 
 --
--- Name: service_units service_units_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: service_units service_units_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.service_units
@@ -8085,7 +8181,7 @@ ALTER TABLE ONLY public.service_units
 
 
 --
--- Name: smart_phrases smart_phrases_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: smart_phrases smart_phrases_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.smart_phrases
@@ -8093,7 +8189,7 @@ ALTER TABLE ONLY public.smart_phrases
 
 
 --
--- Name: smart_phrases smart_phrases_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: smart_phrases smart_phrases_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.smart_phrases
@@ -8101,7 +8197,7 @@ ALTER TABLE ONLY public.smart_phrases
 
 
 --
--- Name: stock_demand_lines stock_demand_lines_demand_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: stock_demand_lines stock_demand_lines_demand_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.stock_demand_lines
@@ -8109,7 +8205,7 @@ ALTER TABLE ONLY public.stock_demand_lines
 
 
 --
--- Name: stock_reservation_lines stock_reservation_lines_reservation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: stock_reservation_lines stock_reservation_lines_reservation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.stock_reservation_lines
@@ -8117,7 +8213,7 @@ ALTER TABLE ONLY public.stock_reservation_lines
 
 
 --
--- Name: stock_return_lines stock_return_lines_return_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: stock_return_lines stock_return_lines_return_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.stock_return_lines
@@ -8125,7 +8221,7 @@ ALTER TABLE ONLY public.stock_return_lines
 
 
 --
--- Name: stock_return_lines stock_return_lines_stock_reservation_line_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: stock_return_lines stock_return_lines_stock_reservation_line_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.stock_return_lines
@@ -8133,7 +8229,7 @@ ALTER TABLE ONLY public.stock_return_lines
 
 
 --
--- Name: stock_returns stock_returns_stock_reservation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: stock_returns stock_returns_stock_reservation_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.stock_returns
@@ -8141,7 +8237,7 @@ ALTER TABLE ONLY public.stock_returns
 
 
 --
--- Name: stock_transfer_lines stock_transfer_lines_demand_line_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: stock_transfer_lines stock_transfer_lines_demand_line_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.stock_transfer_lines
@@ -8149,7 +8245,7 @@ ALTER TABLE ONLY public.stock_transfer_lines
 
 
 --
--- Name: stock_transfer_lines stock_transfer_lines_transfer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: stock_transfer_lines stock_transfer_lines_transfer_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.stock_transfer_lines
@@ -8157,7 +8253,7 @@ ALTER TABLE ONLY public.stock_transfer_lines
 
 
 --
--- Name: stock_transfers stock_transfers_demand_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: stock_transfers stock_transfers_demand_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.stock_transfers
@@ -8165,7 +8261,7 @@ ALTER TABLE ONLY public.stock_transfers
 
 
 --
--- Name: user_services user_services_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: user_services user_services_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.user_services
@@ -8173,7 +8269,7 @@ ALTER TABLE ONLY public.user_services
 
 
 --
--- Name: user_services user_services_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: user_services user_services_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
 ALTER TABLE ONLY public.user_services
@@ -8181,23 +8277,18 @@ ALTER TABLE ONLY public.user_services
 
 
 --
--- Name: dci_synonyms dci_synonyms_dci_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: dci_synonyms dci_synonyms_dci_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.dci_synonyms
     ADD CONSTRAINT dci_synonyms_dci_id_fkey FOREIGN KEY (dci_id) REFERENCES reference.global_dci(id) ON DELETE CASCADE;
 
 
---
--- Name: lab_specimen_container_types fk_container; Type: FK CONSTRAINT; Schema: reference; Owner: -
---
-
-ALTER TABLE ONLY reference.lab_specimen_container_types
-    ADD CONSTRAINT fk_container FOREIGN KEY (container_type_id) REFERENCES reference.lab_container_types(id) ON DELETE RESTRICT;
+-- lab_specimen_container_types fk_container removed
 
 
 --
--- Name: global_dci fk_global_dci_care_category; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: global_dci fk_global_dci_care_category; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.global_dci
@@ -8205,7 +8296,7 @@ ALTER TABLE ONLY reference.global_dci
 
 
 --
--- Name: global_products fk_global_products_care_category; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: global_products fk_global_products_care_category; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.global_products
@@ -8213,55 +8304,50 @@ ALTER TABLE ONLY reference.global_products
 
 
 --
--- Name: lab_act_specimen_containers fk_lab_act_spec_cont_act; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_act_specimen_containers fk_lab_act_spec_cont_act; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_act_specimen_containers
+ALTER TABLE ONLY public.lab_act_specimen_containers
     ADD CONSTRAINT fk_lab_act_spec_cont_act FOREIGN KEY (global_act_id) REFERENCES reference.global_actes(id) ON DELETE CASCADE;
 
 
 --
--- Name: lab_act_specimen_containers fk_lab_act_spec_cont_container; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_act_specimen_containers fk_lab_act_spec_cont_container; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_act_specimen_containers
+ALTER TABLE ONLY public.lab_act_specimen_containers
     ADD CONSTRAINT fk_lab_act_spec_cont_container FOREIGN KEY (container_type_id) REFERENCES reference.lab_container_types(id) ON DELETE CASCADE;
 
 
 --
--- Name: lab_act_specimen_containers fk_lab_act_spec_cont_specimen; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_act_specimen_containers fk_lab_act_spec_cont_specimen; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_act_specimen_containers
+ALTER TABLE ONLY public.lab_act_specimen_containers
     ADD CONSTRAINT fk_lab_act_spec_cont_specimen FOREIGN KEY (specimen_type_id) REFERENCES reference.lab_specimen_types(id) ON DELETE CASCADE;
 
 
 --
--- Name: lab_act_specimen_containers fk_lab_act_spec_cont_unit; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_act_specimen_containers fk_lab_act_spec_cont_unit; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_act_specimen_containers
+ALTER TABLE ONLY public.lab_act_specimen_containers
     ADD CONSTRAINT fk_lab_act_spec_cont_unit FOREIGN KEY (volume_unit_id) REFERENCES reference.units(id) ON DELETE SET NULL;
 
 
 --
--- Name: lab_panels fk_ref_lab_panels_global_act; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_panels fk_ref_lab_panels_global_act; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_panels
+ALTER TABLE ONLY public.lab_panels
     ADD CONSTRAINT fk_ref_lab_panels_global_act FOREIGN KEY (global_act_id) REFERENCES reference.global_actes(id) ON DELETE RESTRICT;
 
 
---
--- Name: lab_specimen_container_types fk_specimen; Type: FK CONSTRAINT; Schema: reference; Owner: -
---
-
-ALTER TABLE ONLY reference.lab_specimen_container_types
-    ADD CONSTRAINT fk_specimen FOREIGN KEY (specimen_type_id) REFERENCES reference.lab_specimen_types(id) ON DELETE RESTRICT;
+-- lab_specimen_container_types fk_specimen removed
 
 
 --
--- Name: global_products fk_tenant_global_products_presc_route; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: global_products fk_tenant_global_products_presc_route; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.global_products
@@ -8269,7 +8355,7 @@ ALTER TABLE ONLY reference.global_products
 
 
 --
--- Name: flowsheet_groups flowsheet_groups_flowsheet_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: flowsheet_groups flowsheet_groups_flowsheet_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.flowsheet_groups
@@ -8277,7 +8363,7 @@ ALTER TABLE ONLY reference.flowsheet_groups
 
 
 --
--- Name: flowsheet_groups flowsheet_groups_group_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: flowsheet_groups flowsheet_groups_group_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.flowsheet_groups
@@ -8285,7 +8371,7 @@ ALTER TABLE ONLY reference.flowsheet_groups
 
 
 --
--- Name: global_actes global_actes_famille_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: global_actes global_actes_famille_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.global_actes
@@ -8293,7 +8379,7 @@ ALTER TABLE ONLY reference.global_actes
 
 
 --
--- Name: global_actes global_actes_lab_section_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: global_actes global_actes_lab_section_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.global_actes
@@ -8301,7 +8387,7 @@ ALTER TABLE ONLY reference.global_actes
 
 
 --
--- Name: global_actes global_actes_lab_sub_section_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: global_actes global_actes_lab_sub_section_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.global_actes
@@ -8309,7 +8395,7 @@ ALTER TABLE ONLY reference.global_actes
 
 
 --
--- Name: global_actes global_actes_sous_famille_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: global_actes global_actes_sous_famille_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.global_actes
@@ -8317,7 +8403,7 @@ ALTER TABLE ONLY reference.global_actes
 
 
 --
--- Name: global_product_price_history global_product_price_history_product_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: global_product_price_history global_product_price_history_product_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.global_product_price_history
@@ -8325,7 +8411,7 @@ ALTER TABLE ONLY reference.global_product_price_history
 
 
 --
--- Name: group_parameters group_parameters_group_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: group_parameters group_parameters_group_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.group_parameters
@@ -8333,7 +8419,7 @@ ALTER TABLE ONLY reference.group_parameters
 
 
 --
--- Name: group_parameters group_parameters_parameter_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: group_parameters group_parameters_parameter_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.group_parameters
@@ -8341,239 +8427,247 @@ ALTER TABLE ONLY reference.group_parameters
 
 
 --
--- Name: lab_act_analytes lab_act_analytes_analyte_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_act_analytes lab_act_analytes_analyte_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_act_analytes
+ALTER TABLE ONLY public.lab_act_analytes
     ADD CONSTRAINT lab_act_analytes_analyte_id_fkey FOREIGN KEY (analyte_id) REFERENCES reference.lab_analytes(id);
 
 
 --
--- Name: lab_act_analytes lab_act_analytes_global_act_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_act_analytes lab_act_analytes_global_act_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_act_analytes
+ALTER TABLE ONLY public.lab_act_analytes
     ADD CONSTRAINT lab_act_analytes_global_act_id_fkey FOREIGN KEY (global_act_id) REFERENCES reference.global_actes(id);
 
 
 --
--- Name: lab_act_contexts lab_act_contexts_analyte_context_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_act_contexts lab_act_contexts_analyte_context_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_act_contexts
-    ADD CONSTRAINT lab_act_contexts_analyte_context_id_fkey FOREIGN KEY (analyte_context_id) REFERENCES reference.lab_analyte_contexts(id);
+ALTER TABLE ONLY public.lab_act_contexts
+    ADD CONSTRAINT lab_act_contexts_analyte_context_id_fkey FOREIGN KEY (analyte_context_id) REFERENCES public.lab_analyte_contexts(id);
 
 
 --
--- Name: lab_act_contexts lab_act_contexts_global_act_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_act_contexts lab_act_contexts_global_act_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_act_contexts
+ALTER TABLE ONLY public.lab_act_contexts
     ADD CONSTRAINT lab_act_contexts_global_act_id_fkey FOREIGN KEY (global_act_id) REFERENCES reference.global_actes(id);
 
 
 --
--- Name: lab_act_methods lab_act_methods_global_act_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_act_methods lab_act_methods_global_act_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_act_methods
+ALTER TABLE ONLY public.lab_act_methods
     ADD CONSTRAINT lab_act_methods_global_act_id_fkey FOREIGN KEY (global_act_id) REFERENCES reference.global_actes(id);
 
 
 --
--- Name: lab_act_methods lab_act_methods_method_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_act_methods lab_act_methods_method_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_act_methods
+ALTER TABLE ONLY public.lab_act_methods
     ADD CONSTRAINT lab_act_methods_method_id_fkey FOREIGN KEY (method_id) REFERENCES reference.lab_methods(id);
 
 
 --
--- Name: lab_analyte_aliases lab_analyte_aliases_analyte_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_act_specimen_types lab_act_specimen_types_global_act_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_analyte_aliases
+ALTER TABLE ONLY public.lab_act_specimen_types
+    ADD CONSTRAINT lab_act_specimen_types_global_act_id_fkey FOREIGN KEY (global_act_id) REFERENCES reference.global_actes(id);
+
+
+--
+-- Name: lab_act_specimen_types lab_act_specimen_types_specimen_type_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
+--
+
+ALTER TABLE ONLY public.lab_act_specimen_types
+    ADD CONSTRAINT lab_act_specimen_types_specimen_type_id_fkey FOREIGN KEY (specimen_type_id) REFERENCES reference.lab_specimen_types(id);
+
+
+--
+-- Name: lab_analyte_aliases lab_analyte_aliases_analyte_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
+--
+
+ALTER TABLE ONLY public.lab_analyte_aliases
     ADD CONSTRAINT lab_analyte_aliases_analyte_id_fkey FOREIGN KEY (analyte_id) REFERENCES reference.lab_analytes(id);
 
 
 --
--- Name: lab_analyte_contexts lab_analyte_contexts_analyte_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_analyte_contexts lab_analyte_contexts_analyte_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_analyte_contexts
+ALTER TABLE ONLY public.lab_analyte_contexts
     ADD CONSTRAINT lab_analyte_contexts_analyte_id_fkey FOREIGN KEY (analyte_id) REFERENCES reference.lab_analytes(id);
 
 
 --
--- Name: lab_analyte_contexts lab_analyte_contexts_method_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_analyte_contexts lab_analyte_contexts_method_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_analyte_contexts
+ALTER TABLE ONLY public.lab_analyte_contexts
     ADD CONSTRAINT lab_analyte_contexts_method_id_fkey FOREIGN KEY (method_id) REFERENCES reference.lab_methods(id);
 
 
 --
--- Name: lab_analyte_contexts lab_analyte_contexts_specimen_type_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_analyte_contexts lab_analyte_contexts_specimen_type_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_analyte_contexts
+ALTER TABLE ONLY public.lab_analyte_contexts
     ADD CONSTRAINT lab_analyte_contexts_specimen_type_id_fkey FOREIGN KEY (specimen_type_id) REFERENCES reference.lab_specimen_types(id);
 
 
 --
--- Name: lab_analyte_contexts lab_analyte_contexts_unit_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_analyte_contexts lab_analyte_contexts_unit_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_analyte_contexts
+ALTER TABLE ONLY public.lab_analyte_contexts
     ADD CONSTRAINT lab_analyte_contexts_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES reference.units(id);
 
 
 --
--- Name: lab_analyte_external_codes lab_analyte_external_codes_analyte_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_analyte_reference_ranges lab_analyte_reference_ranges_analyte_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_analyte_external_codes
-    ADD CONSTRAINT lab_analyte_external_codes_analyte_id_fkey FOREIGN KEY (analyte_id) REFERENCES reference.lab_analytes(id);
-
-
---
--- Name: lab_analyte_reference_ranges lab_analyte_reference_ranges_analyte_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
---
-
-ALTER TABLE ONLY reference.lab_analyte_reference_ranges
+ALTER TABLE ONLY public.lab_analyte_reference_ranges
     ADD CONSTRAINT lab_analyte_reference_ranges_analyte_id_fkey FOREIGN KEY (analyte_id) REFERENCES reference.lab_analytes(id);
 
 
 --
--- Name: lab_analyte_reference_ranges lab_analyte_reference_ranges_method_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_analyte_reference_ranges lab_analyte_reference_ranges_method_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_analyte_reference_ranges
+ALTER TABLE ONLY public.lab_analyte_reference_ranges
     ADD CONSTRAINT lab_analyte_reference_ranges_method_id_fkey FOREIGN KEY (method_id) REFERENCES reference.lab_methods(id);
 
 
 --
--- Name: lab_analyte_reference_ranges lab_analyte_reference_ranges_specimen_type_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_analyte_reference_ranges lab_analyte_reference_ranges_specimen_type_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_analyte_reference_ranges
+ALTER TABLE ONLY public.lab_analyte_reference_ranges
     ADD CONSTRAINT lab_analyte_reference_ranges_specimen_type_id_fkey FOREIGN KEY (specimen_type_id) REFERENCES reference.lab_specimen_types(id);
 
 
 --
--- Name: lab_analyte_reference_ranges lab_analyte_reference_ranges_unit_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_analyte_reference_ranges lab_analyte_reference_ranges_unit_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_analyte_reference_ranges
+ALTER TABLE ONLY public.lab_analyte_reference_ranges
     ADD CONSTRAINT lab_analyte_reference_ranges_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES reference.units(id);
 
 
 --
--- Name: lab_analyte_units lab_analyte_units_analyte_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_analyte_units lab_analyte_units_analyte_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_analyte_units
+ALTER TABLE ONLY public.lab_analyte_units
     ADD CONSTRAINT lab_analyte_units_analyte_id_fkey FOREIGN KEY (analyte_id) REFERENCES reference.lab_analytes(id);
 
 
 --
--- Name: lab_analyte_units lab_analyte_units_unit_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_analyte_units lab_analyte_units_unit_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_analyte_units
+ALTER TABLE ONLY public.lab_analyte_units
     ADD CONSTRAINT lab_analyte_units_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES reference.units(id);
 
 
 --
--- Name: lab_panel_items lab_panel_items_child_global_act_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_panel_items lab_panel_items_child_global_act_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_panel_items
+ALTER TABLE ONLY public.lab_panel_items
     ADD CONSTRAINT lab_panel_items_child_global_act_id_fkey FOREIGN KEY (child_global_act_id) REFERENCES reference.global_actes(id);
 
 
 --
--- Name: lab_panel_items lab_panel_items_child_panel_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_panel_items lab_panel_items_child_panel_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_panel_items
-    ADD CONSTRAINT lab_panel_items_child_panel_id_fkey FOREIGN KEY (child_panel_id) REFERENCES reference.lab_panels(id);
-
-
---
--- Name: lab_panel_items lab_panel_items_panel_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
---
-
-ALTER TABLE ONLY reference.lab_panel_items
-    ADD CONSTRAINT lab_panel_items_panel_id_fkey FOREIGN KEY (panel_id) REFERENCES reference.lab_panels(id);
+ALTER TABLE ONLY public.lab_panel_items
+    ADD CONSTRAINT lab_panel_items_child_panel_id_fkey FOREIGN KEY (child_panel_id) REFERENCES public.lab_panels(id);
 
 
 --
--- Name: lab_panels lab_panels_section_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_panel_items lab_panel_items_panel_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_panels
+ALTER TABLE ONLY public.lab_panel_items
+    ADD CONSTRAINT lab_panel_items_panel_id_fkey FOREIGN KEY (panel_id) REFERENCES public.lab_panels(id);
+
+
+--
+-- Name: lab_panels lab_panels_section_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
+--
+
+ALTER TABLE ONLY public.lab_panels
     ADD CONSTRAINT lab_panels_section_id_fkey FOREIGN KEY (section_id) REFERENCES reference.lab_sections(id);
 
 
 --
--- Name: lab_panels lab_panels_sous_famille_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_panels lab_panels_sous_famille_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_panels
+ALTER TABLE ONLY public.lab_panels
     ADD CONSTRAINT lab_panels_sous_famille_id_fkey FOREIGN KEY (sous_famille_id) REFERENCES reference.sih_sous_familles(id);
 
 
 --
--- Name: lab_panels lab_panels_sub_section_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_panels lab_panels_sub_section_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_panels
+ALTER TABLE ONLY public.lab_panels
     ADD CONSTRAINT lab_panels_sub_section_id_fkey FOREIGN KEY (sub_section_id) REFERENCES reference.lab_sub_sections(id);
 
 
 --
--- Name: lab_reference_profiles lab_reference_profiles_analyte_context_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_reference_profiles lab_reference_profiles_analyte_context_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_reference_profiles
-    ADD CONSTRAINT lab_reference_profiles_analyte_context_id_fkey FOREIGN KEY (analyte_context_id) REFERENCES reference.lab_analyte_contexts(id);
+ALTER TABLE ONLY public.lab_reference_profiles
+    ADD CONSTRAINT lab_reference_profiles_analyte_context_id_fkey FOREIGN KEY (analyte_context_id) REFERENCES public.lab_analyte_contexts(id);
 
 
 --
--- Name: lab_reference_rules lab_reference_rules_canonical_value_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_reference_rules lab_reference_rules_canonical_value_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_reference_rules
+ALTER TABLE ONLY public.lab_reference_rules
     ADD CONSTRAINT lab_reference_rules_canonical_value_id_fkey FOREIGN KEY (canonical_value_id) REFERENCES reference.lab_canonical_allowed_values(id);
 
 
 --
--- Name: lab_reference_rules lab_reference_rules_canonical_value_max_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_reference_rules lab_reference_rules_canonical_value_max_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_reference_rules
+ALTER TABLE ONLY public.lab_reference_rules
     ADD CONSTRAINT lab_reference_rules_canonical_value_max_id_fkey FOREIGN KEY (canonical_value_max_id) REFERENCES reference.lab_canonical_allowed_values(id);
 
 
 --
--- Name: lab_reference_rules lab_reference_rules_canonical_value_min_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_reference_rules lab_reference_rules_canonical_value_min_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_reference_rules
+ALTER TABLE ONLY public.lab_reference_rules
     ADD CONSTRAINT lab_reference_rules_canonical_value_min_id_fkey FOREIGN KEY (canonical_value_min_id) REFERENCES reference.lab_canonical_allowed_values(id);
 
 
 --
--- Name: lab_reference_rules lab_reference_rules_profile_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: lab_reference_rules lab_reference_rules_profile_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
-ALTER TABLE ONLY reference.lab_reference_rules
-    ADD CONSTRAINT lab_reference_rules_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES reference.lab_reference_profiles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY public.lab_reference_rules
+    ADD CONSTRAINT lab_reference_rules_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.lab_reference_profiles(id) ON DELETE CASCADE;
 
 
 --
--- Name: observation_parameters observation_parameters_unit_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: observation_parameters observation_parameters_unit_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.observation_parameters
@@ -8581,7 +8675,7 @@ ALTER TABLE ONLY reference.observation_parameters
 
 
 --
--- Name: sih_sous_familles sih_sous_familles_famille_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: -
+-- Name: sih_sous_familles sih_sous_familles_famille_id_fkey; Type: FK CONSTRAINT; Schema: reference; Owner: sahty
 --
 
 ALTER TABLE ONLY reference.sih_sous_familles
@@ -8592,5 +8686,8 @@ ALTER TABLE ONLY reference.sih_sous_familles
 -- PostgreSQL database dump complete
 --
 
-\unrestrict dquCcj176YX7bXQQ7ZRz0z1vHQmw7s2viiQO9vE9hIOiy4NHhrTZeioKNufamyh
+-- Restore search_path for subsequent provisioning queries
+SET search_path = public, reference, auth, auth_sync, identity_sync;
+
+-- end of baseline
 

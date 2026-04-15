@@ -207,7 +207,8 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }),
-    
+    closeAdmission: (id: string) => fetchJson<Admission>(`/emr/admissions/${id}/close`, { method: 'PUT' }),
+
     // Patient Registration Refactor
     searchUniversal: (query: string) => fetchJson<any[]>(`/emr/patients/universal-search?query=${encodeURIComponent(query)}`),
     importGlobalPatient: (globalId: string) => fetchJson<{ tenantPatientId: string }>('/emr/patients/import', {
@@ -960,11 +961,13 @@ export const api = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             }),
+            closeAdmission: (id: string) => fetchJson<any>(`/lims/execution/admissions/${id}/close`, { method: 'PUT' }),
             getTenantOrganismes: () => fetchJson<any[]>('/lims/execution/reference/organismes'),
             getTenantCountries: () => fetchJson<any[]>('/lims/execution/reference/countries'),
             getTenantIdentityDocumentTypes: () => fetchJson<any[]>('/lims/execution/reference/identity-document-types'),
             getActiveWalkinAdmission: (patientId: string) => fetchJson<any>(`/lims/execution/admissions/active-walkin-by-patient/${patientId}`),
-            getCollectionRequirements: (admissionId: string) => fetchJson<any[]>(`/lims/execution/admissions/${admissionId}/collection-requirements`),
+            getCollectionRequirements: (admissionId: string, filter: 'pending' | 'all' = 'pending') => fetchJson<any[]>(`/lims/execution/admissions/${admissionId}/collection-requirements?filter=${filter}`),
+            getLabRequestCollectionDetail: (labRequestId: string) => fetchJson<any[]>(`/lims/execution/lab-requests/${labRequestId}/collection-detail`),
             executePrelevement: (data: any) => fetchJson<any>('/lims/execution/collections/prelever', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -992,6 +995,7 @@ export const api = {
         assignActContext: (id: string, data: any) => fetchJson<any>(`/lims/biology-acts/${id}/analyte-contexts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
         unassignActContext: (id: string, assignmentId: string) => fetchJson<any>(`/lims/biology-acts/${id}/analyte-contexts/${assignmentId}`, { method: 'DELETE' }),
         assignActSpecimenContainer: (id: string, data: any) => fetchJson<any>(`/lims/biology-acts/${id}/specimen-containers`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+        setActSpecimenContainerDefault: (id: string, containerId: string) => fetchJson<any>(`/lims/biology-acts/${id}/specimen-containers/${containerId}/default`, { method: 'PATCH' }),
         unassignActSpecimenContainer: (id: string, assignmentId: string) => fetchJson<any>(`/lims/biology-acts/${id}/specimen-containers/${assignmentId}`, { method: 'DELETE' }),
         assignActTaxonomy: (id: string, data: any) => fetchJson<any>(`/lims/biology-acts/${id}/taxonomy`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
     },

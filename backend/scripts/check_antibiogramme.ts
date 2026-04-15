@@ -19,7 +19,7 @@ async function run() {
 
       const res2 = await client.query(`
         SELECT COUNT(*)
-        FROM reference.lab_act_contexts
+        FROM lab_act_contexts
         WHERE global_act_id = ANY($1::uuid[])
       `, [[actId, actId2].filter(Boolean)]);
       console.log('Lab act contexts mapped to these acts:', res2.rows);

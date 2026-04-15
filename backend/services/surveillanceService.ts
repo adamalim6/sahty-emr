@@ -82,7 +82,7 @@ class SurveillanceService {
                                     SELECT jsonb_agg(jsonb_build_object(
                                         'specimen_id', ls.id,
                                         'barcode', ls.barcode,
-                                        'container_type', ls.lab_specimen_container_type_id,
+                                        'container_type', ls.lab_act_specimen_container_id,
                                         'container_color', ct.tube_color,
                                         'container_name', ct.libelle,
                                         'status', ls.status,
@@ -90,8 +90,8 @@ class SurveillanceService {
                                     ))
                                     FROM lab_collection_specimens lcs
                                     JOIN lab_specimens ls ON ls.id = lcs.specimen_id
-                                    LEFT JOIN reference.lab_specimen_container_types sct ON sct.id = ls.lab_specimen_container_type_id
-                                    LEFT JOIN reference.lab_container_types ct ON ct.id = sct.container_type_id
+                                    LEFT JOIN lab_act_specimen_containers lasc ON lasc.id = ls.lab_act_specimen_container_id
+                                    LEFT JOIN reference.lab_container_types ct ON ct.id = lasc.container_type_id
                                     WHERE lcs.lab_collection_id = lc.id
                                 )
                             )

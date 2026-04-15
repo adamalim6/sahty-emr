@@ -24,6 +24,9 @@ export const LimsCollectionPage: React.FC = () => {
     const [admission, setAdmission] = useState<any>(null);
     const [requirements, setRequirements] = useState<any[]>([]);
     const [isLoadingWorkspace, setIsLoadingWorkspace] = useState(false);
+    const [showAll, setShowAll] = useState(false);
+    const [expandedDetail, setExpandedDetail] = useState<string | null>(null);
+    const [detailData, setDetailData] = useState<any[]>([]);
 
     // Print State
     const [printSpecimenData, setPrintSpecimenData] = useState<any>(null);
@@ -68,11 +71,14 @@ export const LimsCollectionPage: React.FC = () => {
         }
     };
 
-    const loadWorkspace = async (patient: any) => {
+    const loadWorkspace = async (patient: any, filterOverride?: boolean) => {
+        const useFilter = filterOverride ?? showAll;
+        if (!patient) return;
         setSelectedPatient(patient);
         setIsLoadingWorkspace(true);
         setAdmission(null);
         setRequirements([]);
+        setExpandedDetail(null);
 
         try {
             const activeAdmission = await api.limsConfig.execution.getActiveWalkinAdmission(patient.id);
@@ -83,13 +89,35 @@ export const LimsCollectionPage: React.FC = () => {
             }
             setAdmission(activeAdmission);
 
-            const reqs = await api.limsConfig.execution.getCollectionRequirements(activeAdmission.id);
+            const reqs = await api.limsConfig.execution.getCollectionRequirements(activeAdmission.id, useFilter ? 'all' : 'pending');
             setRequirements(reqs);
         } catch (err) {
             console.error(err);
             toast.error("Erreur de chargement du dossier");
         } finally {
             setIsLoadingWorkspace(false);
+        }
+    };
+
+    const handleToggleFilter = () => {
+        const next = !showAll;
+        setShowAll(next);
+        if (selectedPatient) loadWorkspace(selectedPatient, next);
+    };
+
+    const loadRequestDetail = async (labRequestId: string) => {
+        if (expandedDetail === labRequestId) {
+            setExpandedDetail(null);
+            setDetailData([]);
+            return;
+        }
+        try {
+            const data = await api.limsConfig.execution.getLabRequestCollectionDetail(labRequestId);
+            setDetailData(data);
+            setExpandedDetail(labRequestId);
+        } catch (err) {
+            console.error(err);
+            toast.error("Erreur de chargement du détail");
         }
     };
 
@@ -274,19 +302,35 @@ export const LimsCollectionPage: React.FC = () => {
                                         <span className="flex items-center bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200"><Fingerprint size={12} className="mr-1"/>{selectedPatient.ipp}</span>
                                         <span>•</span>
                                         <span className="flex items-center"><Activity size={12} className="mr-1"/>{selectedPatient.sex || 'Inconnu'}</span>
-                                        <span>•</span>
-                                        <span className="flex items-center text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-100">{admission.admissionNumber || 'NDA Inconnu'}</span>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* subtle indicator */}
-                            <div className="flex flex-col items-end">
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Progression</span>
-                                <div className="flex items-center space-x-2">
-                                    <span className="text-2xl font-black text-slate-800">{getCompletedCount()}</span>
-                                    <span className="text-lg font-bold text-slate-400">/ {requirements.length}</span>
-                                    <span className="text-sm font-semibold text-slate-500 mt-1 ml-1">Tubes</span>
+                            <div className="flex items-center space-x-6">
+                                {/* Filter Toggle */}
+                                <div className="flex rounded-lg border border-slate-300 overflow-hidden text-xs font-bold uppercase tracking-wider">
+                                    <button
+                                        onClick={() => { if (showAll) handleToggleFilter(); }}
+                                        className={`px-3 py-1.5 transition-colors ${!showAll ? 'bg-rose-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+                                    >
+                                        Non prélevés
+                                    </button>
+                                    <button
+                                        onClick={() => { if (!showAll) handleToggleFilter(); }}
+                                        className={`px-3 py-1.5 transition-colors border-l border-slate-300 ${showAll ? 'bg-rose-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+                                    >
+                                        Tous
+                                    </button>
+                                </div>
+
+                                {/* Progress */}
+                                <div className="flex flex-col items-end">
+                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Progression</span>
+                                    <div className="flex items-center space-x-2">
+                                        <span className="text-2xl font-black text-slate-800">{getCompletedCount()}</span>
+                                        <span className="text-lg font-bold text-slate-400">/ {requirements.length}</span>
+                                        <span className="text-sm font-semibold text-slate-500 mt-1 ml-1">Tubes</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -294,54 +338,91 @@ export const LimsCollectionPage: React.FC = () => {
                         {/* RIGHT BODY: SPECIMEN ENGINE */}
                         <div className="flex-1 p-8 overflow-y-auto w-full custom-scrollbar">
                             <div className="max-w-4xl mx-auto">
-                                <div className="grid grid-cols-1 gap-6">
-                                    {requirements.map((req, i) => {
+                                {/* Group requirements by admission_id */}
+                                {(() => {
+                                    const admissionGroups = new Map<string, any[]>();
+                                    requirements.forEach(req => {
+                                        const key = req.admission_id || 'unknown';
+                                        if (!admissionGroups.has(key)) admissionGroups.set(key, []);
+                                        admissionGroups.get(key)!.push(req);
+                                    });
+                                    return Array.from(admissionGroups.entries()).map(([admId, reqs], gi) => (
+                                        <div key={admId} className={gi > 0 ? 'mt-8' : ''}>
+                                            {admissionGroups.size > 1 && (
+                                                <div className="flex items-center gap-3 mb-4">
+                                                    <div className="h-px flex-1 bg-slate-200" />
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-50 px-3 py-1 rounded-full border border-slate-200">
+                                                        Admission {admId.slice(0, 8)}
+                                                    </span>
+                                                    <div className="h-px flex-1 bg-slate-200" />
+                                                </div>
+                                            )}
+                                            <div className="grid grid-cols-1 gap-6">
+                                    {reqs.map((req, i) => {
                                         const isCollected = req.is_collected;
+                                        const isMisconfigured = !req.specimen_type_id || !req.container_type_id;
                                         const hexColor = req.container_color || '#cbd5e1';
 
                                         return (
-                                            <div 
-                                                key={i} 
+                                            <div
+                                                key={i}
                                                 className={`bg-white rounded-2xl border transition-all duration-300 overflow-hidden flex flex-col ${
-                                                    isCollected 
-                                                    ? 'border-emerald-200 shadow-sm opacity-70 scale-[0.99] pointer-events-none' 
+                                                    isMisconfigured
+                                                    ? 'border-amber-300 shadow-sm'
+                                                    : isCollected
+                                                    ? 'border-emerald-200 shadow-sm opacity-70 scale-[0.99] pointer-events-none'
                                                     : 'border-slate-200 shadow-md hover:shadow-lg hover:border-slate-300'
                                                 }`}
                                             >
                                                 {/* Card Header */}
-                                                <div className={`px-6 py-4 border-b flex items-center justify-between ${isCollected ? 'bg-emerald-50/50 border-emerald-100' : 'bg-slate-50/50 border-slate-100'}`}>
+                                                <div className={`px-6 py-4 border-b flex items-center justify-between ${isMisconfigured ? 'bg-amber-50 border-amber-200' : isCollected ? 'bg-emerald-50/50 border-emerald-100' : 'bg-slate-50/50 border-slate-100'}`}>
                                                     <div className="flex items-center space-x-4">
-                                                        <div 
-                                                            className="h-10 w-4 rounded-sm shadow-inner overflow-hidden border border-black/10 flex items-end justify-center pb-1"
-                                                            style={{ backgroundColor: hexColor }}
-                                                            title={req.container_label}
-                                                        >
-                                                            {/* Simulation of physical tube */}
-                                                        </div>
+                                                        {isMisconfigured ? (
+                                                            <div className="h-10 w-10 rounded-xl bg-amber-100 border border-amber-300 flex items-center justify-center">
+                                                                <AlertTriangle size={20} className="text-amber-600" />
+                                                            </div>
+                                                        ) : (
+                                                            <div
+                                                                className="h-10 w-4 rounded-sm shadow-inner overflow-hidden border border-black/10 flex items-end justify-center pb-1"
+                                                                style={{ backgroundColor: hexColor }}
+                                                                title={req.container_label}
+                                                            />
+                                                        )}
                                                         <div className="flex flex-col">
-                                                            <h3 className="font-black text-slate-800 text-lg flex items-center">
-                                                                <Archive size={18} className="mr-2 text-slate-400"/>
-                                                                {req.specimen_label}
-                                                            </h3>
-                                                            <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mt-0.5">{req.container_label}</p>
+                                                            {isMisconfigured ? (
+                                                                <>
+                                                                    <h3 className="font-black text-amber-800 text-sm">Configuration incomplète</h3>
+                                                                    <p className="text-xs text-amber-600 mt-0.5">Spécimen ou récipient non configuré. Veuillez contacter l'administrateur du laboratoire.</p>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <h3 className="font-black text-slate-800 text-lg flex items-center">
+                                                                        <Archive size={18} className="mr-2 text-slate-400"/>
+                                                                        {req.specimen_label}
+                                                                    </h3>
+                                                                    <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mt-0.5">{req.container_label}</p>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     </div>
 
-                                                    <button 
-                                                        onClick={() => !isCollected && handlePrelever(req)}
-                                                        disabled={isCollected}
-                                                        className={`flex items-center px-6 py-2.5 rounded-xl font-bold uppercase tracking-widest text-xs transition-all pointer-events-auto ${
-                                                            isCollected 
-                                                            ? 'bg-emerald-100 text-emerald-700' 
-                                                            : 'bg-rose-600 text-white hover:bg-rose-700 active:scale-95 shadow-lg shadow-rose-600/30'
-                                                        }`}
-                                                    >
-                                                        {isCollected ? (
-                                                            <><CheckCircle2 size={16} className="mr-2"/> Prélevé</>
-                                                        ) : (
-                                                            <><Printer size={16} className="mr-2"/> Prélever & Imprimer</>
-                                                        )}
-                                                    </button>
+                                                    {!isMisconfigured && (
+                                                        <button
+                                                            onClick={() => !isCollected && handlePrelever(req)}
+                                                            disabled={isCollected}
+                                                            className={`flex items-center px-6 py-2.5 rounded-xl font-bold uppercase tracking-widest text-xs transition-all pointer-events-auto ${
+                                                                isCollected
+                                                                ? 'bg-emerald-100 text-emerald-700'
+                                                                : 'bg-rose-600 text-white hover:bg-rose-700 active:scale-95 shadow-lg shadow-rose-600/30'
+                                                            }`}
+                                                        >
+                                                            {isCollected ? (
+                                                                <><CheckCircle2 size={16} className="mr-2"/> Prélevé</>
+                                                            ) : (
+                                                                <><Printer size={16} className="mr-2"/> Prélever & Imprimer</>
+                                                            )}
+                                                        </button>
+                                                    )}
                                                 </div>
 
                                                 {/* Card Body: Lab Requests linked */}
@@ -349,26 +430,59 @@ export const LimsCollectionPage: React.FC = () => {
                                                     <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 border-b border-slate-100 pb-2">
                                                         Actes couverts par ce tube ({req.lab_requests.length})
                                                     </div>
-                                                    <div className="flex flex-wrap gap-2">
+                                                    <div className="flex flex-col gap-1.5">
                                                         {req.lab_requests.map((lr: any, j: number) => (
-                                                            <span 
-                                                                key={j} 
-                                                                className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center ${
-                                                                    lr.is_collected 
-                                                                    ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
-                                                                    : 'bg-slate-100 text-slate-700 border border-slate-200'
-                                                                }`}
-                                                            >
-                                                                {lr.is_collected && <CheckCircle2 size={12} className="mr-1.5"/>}
-                                                                {lr.name}
-                                                            </span>
+                                                            <div key={j} className="flex flex-col">
+                                                                <div className="flex items-center justify-between">
+                                                                    <span
+                                                                        className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center ${
+                                                                            lr.is_collected
+                                                                            ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                                                                            : 'bg-slate-100 text-slate-700 border border-slate-200'
+                                                                        }`}
+                                                                    >
+                                                                        {lr.is_collected && <CheckCircle2 size={12} className="mr-1.5"/>}
+                                                                        {lr.name}
+                                                                        {lr.requested_at && (
+                                                                            <span className="ml-2 text-[10px] font-medium text-slate-400">
+                                                                                {new Date(lr.requested_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                                                            </span>
+                                                                        )}
+                                                                    </span>
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); loadRequestDetail(lr.id); }}
+                                                                        className="text-[10px] font-semibold text-blue-500 hover:text-blue-700 hover:underline ml-2 pointer-events-auto"
+                                                                    >
+                                                                        {expandedDetail === lr.id ? 'Masquer' : 'Détail'}
+                                                                    </button>
+                                                                </div>
+                                                                {expandedDetail === lr.id && detailData.length > 0 && (
+                                                                    <div className="ml-4 mt-1 mb-1 p-2 bg-slate-50 rounded border border-slate-200 text-[11px] text-slate-600 pointer-events-auto">
+                                                                        {detailData.map((d: any, k: number) => (
+                                                                            <div key={k} className="flex items-center gap-3 py-0.5">
+                                                                                <span className="font-mono text-slate-500">{d.barcode || '—'}</span>
+                                                                                <span className={`font-semibold ${d.specimen_status === 'COLLECTED' ? 'text-amber-600' : d.specimen_status === 'RECEIVED' ? 'text-emerald-600' : d.specimen_status === 'REJECTED' ? 'text-rose-600' : 'text-slate-400'}`}>
+                                                                                    {d.specimen_status || 'Non prélevé'}
+                                                                                </span>
+                                                                                {d.collected_at && <span className="text-slate-400">{new Date(d.collected_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>}
+                                                                                {d.collected_by && <span className="text-slate-400">par {d.collected_by}</span>}
+                                                                                {d.rejected_reason && <span className="text-rose-500 italic">{d.rejected_reason}</span>}
+                                                                            </div>
+                                                                        ))}
+                                                                        {detailData.every((d: any) => !d.specimen_id) && <span className="text-slate-400 italic">Aucun prélèvement enregistré</span>}
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         ))}
                                                     </div>
                                                 </div>
                                             </div>
                                         );
                                     })}
-                                </div>
+                                            </div>
+                                        </div>
+                                    ));
+                                })()}
 
                                 {requirements.length === 0 && (
                                     <div className="flex items-center justify-center p-12 text-slate-400">

@@ -11,8 +11,8 @@ export class LabReferenceRepository {
                 ac.id, ac.analyte_id, ac.specimen_type_id, ac.unit_id, ac.method_id,
                 ac.analyte_label, ac.specimen_label, ac.unit_label, ac.method_label,
                 ac.is_default, ac.actif
-            FROM reference.lab_analyte_contexts ac
-            JOIN reference.lab_act_contexts act_ctx ON act_ctx.analyte_context_id = ac.id
+            FROM lab_analyte_contexts ac
+            JOIN lab_act_contexts act_ctx ON act_ctx.analyte_context_id = ac.id
             WHERE act_ctx.global_act_id = ANY($1::uuid[]) AND ac.actif IS NOT FALSE AND act_ctx.actif IS NOT FALSE
             `,
             [globalActIds]
@@ -30,7 +30,7 @@ export class LabReferenceRepository {
                 id, analyte_id, specimen_type_id, unit_id, method_id,
                 analyte_label, specimen_label, unit_label, method_label,
                 is_default, actif
-            FROM reference.lab_analyte_contexts
+            FROM lab_analyte_contexts
             WHERE actif IS NOT FALSE AND (
                 analyte_label ILIKE $1 OR 
                 specimen_label ILIKE $1 
@@ -52,7 +52,7 @@ export class LabReferenceRepository {
                 id, analyte_id, specimen_type_id, unit_id, method_id,
                 analyte_label, specimen_label, unit_label, method_label,
                 is_default, actif
-            FROM reference.lab_analyte_contexts
+            FROM lab_analyte_contexts
             WHERE id = ANY($1::uuid[]) AND actif IS NOT FALSE
             `,
             [ids]
@@ -73,7 +73,7 @@ export class LabReferenceRepository {
                 lac.method_label, 
                 lac.unit_label, 
                 lac.specimen_label
-            FROM reference.lab_analyte_contexts lac
+            FROM lab_analyte_contexts lac
             WHERE lac.actif IS NOT FALSE
               AND lac.analyte_label ILIKE $1
 

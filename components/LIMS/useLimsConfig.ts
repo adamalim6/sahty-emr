@@ -86,8 +86,9 @@ export const useLimsConfigDictionaries = () => {
     const methods = useQuery({ queryKey: ['lims-dict', 'methods'], queryFn: () => api.limsConfig.getMethods() });
     const specimens = useQuery({ queryKey: ['lims-dict', 'specimens'], queryFn: () => api.limsConfig.getSpecimenTypes() });
     const containers = useQuery({ queryKey: ['lims-dict', 'containers'], queryFn: () => api.limsConfig.getContainers() });
-    const specimenContainerTypes = useQuery({ queryKey: ['lims-dict', 'specimen-container-types'], queryFn: () => api.limsConfig.getSpecimenContainerTypes() });
     const units = useQuery({ queryKey: ['lims-dict', 'units'], queryFn: () => api.limsConfig.getUnits() });
+    const sectionTree = useQuery({ queryKey: ['lims-dict', 'section-tree'], queryFn: () => api.limsConfig.getSectionTree() });
+    const subSectionTree = useQuery({ queryKey: ['lims-dict', 'sub-section-tree'], queryFn: () => api.limsConfig.getSubSectionTree() });
 
     return {
         sousFamilles: sousFamilles.data || [],
@@ -97,11 +98,12 @@ export const useLimsConfigDictionaries = () => {
         methods: methods.data || [],
         specimens: specimens.data || [],
         containers: containers.data || [],
-        specimenContainerTypes: specimenContainerTypes.data || [],
         units: units.data || [],
+        sectionTree: sectionTree.data || [],
+        subSectionTree: subSectionTree.data || [],
         isLoading: sousFamilles.isLoading || sections.isLoading || subSections.isLoading ||
-                   analytes.isLoading || methods.isLoading || specimens.isLoading || 
-                   containers.isLoading || specimenContainerTypes.isLoading || units.isLoading
+                   analytes.isLoading || methods.isLoading || specimens.isLoading ||
+                   containers.isLoading || units.isLoading
     };
 };
 
@@ -240,6 +242,17 @@ export const useAssignActSpecimenContainer = (actId: string) => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (data: any) => api.limsConfig.assignActSpecimenContainer(actId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['lims-config', 'biology-acts', actId] });
+            queryClient.invalidateQueries({ queryKey: ['lims-config', 'biology-acts'] });
+        }
+    });
+};
+
+export const useSetActSpecimenContainerDefault = (actId: string) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (containerId: string) => api.limsConfig.setActSpecimenContainerDefault(actId, containerId),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['lims-config', 'biology-acts', actId] });
             queryClient.invalidateQueries({ queryKey: ['lims-config', 'biology-acts'] });

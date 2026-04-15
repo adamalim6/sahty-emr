@@ -46,6 +46,7 @@ export const limsService = {
     assignActContext: (tenantId: string, actId: string, payload: any) => limsRepository.assignActContext(tenantId, actId, payload),
     unassignActContext: (tenantId: string, assignmentId: string) => limsRepository.unassignActContext(tenantId, assignmentId),
     assignActSpecimenContainer: (tenantId: string, actId: string, payload: any) => limsRepository.assignActSpecimenContainer(tenantId, actId, payload),
+    setActSpecimenContainerDefault: (tenantId: string, actId: string, containerId: string) => limsRepository.setActSpecimenContainerDefault(tenantId, actId, containerId),
     unassignActSpecimenContainer: (tenantId: string, assignmentId: string) => limsRepository.unassignActSpecimenContainer(tenantId, assignmentId),
     assignActTaxonomy: (tenantId: string, actId: string, payload: any) => limsRepository.assignActTaxonomy(tenantId, actId, payload),
 
@@ -56,7 +57,6 @@ export const limsService = {
     getMethods: (tenantId: string) => limsRepository.getMethods(tenantId),
     getSpecimenTypes: (tenantId: string) => limsRepository.getSpecimenTypes(tenantId),
     getContainers: (tenantId: string) => limsRepository.getContainers(tenantId),
-    getSpecimenContainerTypes: (tenantId: string) => limsRepository.getSpecimenContainerTypes(tenantId),
     getUnits: (tenantId: string) => limsRepository.getUnits(tenantId),
     getCanonicalValues: (tenantId: string, domain?: string) => limsRepository.getCanonicalValues(tenantId, domain)
 };

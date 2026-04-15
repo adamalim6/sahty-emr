@@ -26,7 +26,7 @@ export class ReferenceEvaluationEngine {
 
         // STEP 1 - Fetch context to safely determine the evaluation shape
         const contextRes = await client.query(`
-            SELECT cached_value_type FROM reference.lab_analyte_contexts WHERE id = $1
+            SELECT cached_value_type FROM lab_analyte_contexts WHERE id = $1
         `, [req.analyte_context_id]);
         
         if (contextRes.rows.length === 0) return null;
@@ -40,7 +40,7 @@ export class ReferenceEvaluationEngine {
 
         // STEP 2 - Fetch candidate profiles
         const profilesRes = await client.query(`
-            SELECT * FROM reference.lab_reference_profiles
+            SELECT * FROM lab_reference_profiles
             WHERE analyte_context_id = $1 AND actif = true
         `, [req.analyte_context_id]);
 
@@ -68,7 +68,7 @@ export class ReferenceEvaluationEngine {
 
         // STEP 4 - Fetch rules
         const rulesRes = await client.query(`
-            SELECT * FROM reference.lab_reference_rules
+            SELECT * FROM lab_reference_rules
             WHERE profile_id = $1 AND actif = true
             ORDER BY priority ASC
         `, [bestProfile.id]);

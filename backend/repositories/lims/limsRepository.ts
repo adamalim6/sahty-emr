@@ -14,7 +14,7 @@ export const limsRepository = {
                     m.code as method_code, m.libelle as method_libelle,
                     s.code as specimen_code, s.libelle as specimen_libelle,
                     u.code as unit_code, u.display as unit_libelle
-                FROM reference.lab_analyte_contexts c
+                FROM lab_analyte_contexts c
                 JOIN reference.lab_analytes a ON c.analyte_id = a.id
                 LEFT JOIN reference.lab_methods m ON c.method_id = m.id
                 LEFT JOIN reference.lab_specimen_types s ON c.specimen_type_id = s.id
@@ -42,7 +42,7 @@ export const limsRepository = {
             const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
 
             const query = `
-                INSERT INTO reference.lab_analyte_contexts (${columns}) 
+                INSERT INTO lab_analyte_contexts (${columns}) 
                 VALUES (${placeholders}) RETURNING *`;
             const res = await client.query(query, values);
             return res.rows[0];
@@ -63,7 +63,7 @@ export const limsRepository = {
             const keys = Object.keys(data);
             if (keys.length === 0) {
                 // If nothing to update, just return the current context
-                const res = await client.query(`SELECT * FROM reference.lab_analyte_contexts WHERE id = $1`, [id]);
+                const res = await client.query(`SELECT * FROM lab_analyte_contexts WHERE id = $1`, [id]);
                 return res.rows[0];
             }
 
@@ -71,7 +71,7 @@ export const limsRepository = {
             const values = [...Object.values(data), id];
 
             const query = `
-                UPDATE reference.lab_analyte_contexts 
+                UPDATE lab_analyte_contexts 
                 SET ${setClause}, updated_at = NOW() 
                 WHERE id = $${values.length} RETURNING *`;
             const res = await client.query(query, values);
@@ -81,7 +81,7 @@ export const limsRepository = {
 
     async setContextStatus(tenantId: string, id: string, actif: boolean) {
         return tenantTransaction(tenantId, async (client: PoolClient) => {
-            const query = `UPDATE reference.lab_analyte_contexts SET actif = $1, updated_at = NOW() WHERE id = $2 RETURNING *`;
+            const query = `UPDATE lab_analyte_contexts SET actif = $1, updated_at = NOW() WHERE id = $2 RETURNING *`;
             const res = await client.query(query, [actif, id]);
             return res.rows[0];
         });
@@ -93,7 +93,7 @@ export const limsRepository = {
     async getReferenceProfiles(tenantId: string, contextId: string) {
         return tenantTransaction(tenantId, async (client: PoolClient) => {
             const query = `
-                SELECT * FROM reference.lab_reference_profiles 
+                SELECT * FROM lab_reference_profiles 
                 WHERE analyte_context_id = $1 
                 ORDER BY sort_order ASC, created_at ASC
             `;
@@ -113,7 +113,7 @@ export const limsRepository = {
             if (data.actif !== false) {
                 const overlapQuery = `
                     SELECT 1
-                    FROM reference.lab_reference_profiles
+                    FROM lab_reference_profiles
                     WHERE analyte_context_id = $1
                     AND sex = $2
                     AND actif = true
@@ -138,7 +138,7 @@ export const limsRepository = {
             const values = Object.values(data);
             const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
 
-            const query = `INSERT INTO reference.lab_reference_profiles (${columns}) VALUES (${placeholders}) RETURNING *`;
+            const query = `INSERT INTO lab_reference_profiles (${columns}) VALUES (${placeholders}) RETURNING *`;
             const res = await client.query(query, values);
             return res.rows[0];
         });
@@ -151,7 +151,7 @@ export const limsRepository = {
             delete data.name;
             delete data.label;
 
-            const currentQ = await client.query(`SELECT * FROM reference.lab_reference_profiles WHERE id = $1`, [id]);
+            const currentQ = await client.query(`SELECT * FROM lab_reference_profiles WHERE id = $1`, [id]);
             const currentProfile = currentQ.rows[0];
             if (!currentProfile) throw new Error("Profile not found");
 
@@ -160,7 +160,7 @@ export const limsRepository = {
             if (intendedState.actif === true) {
                 const overlapQuery = `
                     SELECT 1
-                    FROM reference.lab_reference_profiles
+                    FROM lab_reference_profiles
                     WHERE analyte_context_id = $1
                     AND sex = $2
                     AND actif = true
@@ -190,7 +190,7 @@ export const limsRepository = {
             const setClause = keys.map((k, i) => `${k} = $${i + 1}`).join(', ');
             const values = [...Object.values(data), id];
 
-            const query = `UPDATE reference.lab_reference_profiles SET ${setClause}, updated_at = NOW() WHERE id = $${values.length} RETURNING *`;
+            const query = `UPDATE lab_reference_profiles SET ${setClause}, updated_at = NOW() WHERE id = $${values.length} RETURNING *`;
             const res = await client.query(query, values);
             return res.rows[0];
         });
@@ -198,7 +198,7 @@ export const limsRepository = {
 
     async setProfileStatus(tenantId: string, id: string, actif: boolean) {
         return tenantTransaction(tenantId, async (client: PoolClient) => {
-            const query = `UPDATE reference.lab_reference_profiles SET actif = $1, updated_at = NOW() WHERE id = $2 RETURNING *`;
+            const query = `UPDATE lab_reference_profiles SET actif = $1, updated_at = NOW() WHERE id = $2 RETURNING *`;
             const res = await client.query(query, [actif, id]);
             return res.rows[0];
         });
@@ -210,7 +210,7 @@ export const limsRepository = {
     async getReferenceRules(tenantId: string, profileId: string) {
         return tenantTransaction(tenantId, async (client: PoolClient) => {
             const query = `
-                SELECT * FROM reference.lab_reference_rules 
+                SELECT * FROM lab_reference_rules 
                 WHERE profile_id = $1 
                 ORDER BY priority ASC, sort_order ASC
             `;
@@ -224,8 +224,8 @@ export const limsRepository = {
             // STEP 1: Fetch parent cached_value_type
             const profileRes = await client.query(`
                 SELECT c.cached_value_type 
-                FROM reference.lab_reference_profiles p 
-                JOIN reference.lab_analyte_contexts c ON p.analyte_context_id = c.id
+                FROM lab_reference_profiles p 
+                JOIN lab_analyte_contexts c ON p.analyte_context_id = c.id
                 WHERE p.id = $1
             `, [data.profile_id]);
             
@@ -280,7 +280,7 @@ export const limsRepository = {
             const values = Object.values(data);
             const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
 
-            const query = `INSERT INTO reference.lab_reference_rules (${columns}) VALUES (${placeholders}) RETURNING *`;
+            const query = `INSERT INTO lab_reference_rules (${columns}) VALUES (${placeholders}) RETURNING *`;
             const res = await client.query(query, values);
             return res.rows[0];
         });
@@ -289,7 +289,7 @@ export const limsRepository = {
     async updateReferenceRule(tenantId: string, id: string, data: any) {
         return tenantTransaction(tenantId, async (client: PoolClient) => {
             // Retrieve current rule to get profile_id and existing state
-            const currentRuleRes = await client.query(`SELECT * FROM reference.lab_reference_rules WHERE id = $1`, [id]);
+            const currentRuleRes = await client.query(`SELECT * FROM lab_reference_rules WHERE id = $1`, [id]);
             if (currentRuleRes.rows.length === 0) throw new Error("Rule not found");
             const currentRule = currentRuleRes.rows[0];
             const profileId = data.profile_id || currentRule.profile_id;
@@ -297,8 +297,8 @@ export const limsRepository = {
             // Fetch parent cached_value_type
             const profileRes = await client.query(`
                 SELECT c.cached_value_type 
-                FROM reference.lab_reference_profiles p 
-                JOIN reference.lab_analyte_contexts c ON p.analyte_context_id = c.id
+                FROM lab_reference_profiles p 
+                JOIN lab_analyte_contexts c ON p.analyte_context_id = c.id
                 WHERE p.id = $1
             `, [profileId]);
             
@@ -357,14 +357,14 @@ export const limsRepository = {
 
             const keys = Object.keys(data);
             if (keys.length === 0) {
-                 const res = await client.query(`SELECT * FROM reference.lab_reference_rules WHERE id = $1`, [id]);
+                 const res = await client.query(`SELECT * FROM lab_reference_rules WHERE id = $1`, [id]);
                  return res.rows[0];
             }
             
             const setClause = keys.map((k, i) => `${k} = $${i + 1}`).join(', ');
             const values = [...Object.values(data), id];
 
-            const query = `UPDATE reference.lab_reference_rules SET ${setClause}, updated_at = NOW() WHERE id = $${values.length} RETURNING *`;
+            const query = `UPDATE lab_reference_rules SET ${setClause}, updated_at = NOW() WHERE id = $${values.length} RETURNING *`;
             const res = await client.query(query, values);
             return res.rows[0];
         });
@@ -372,7 +372,7 @@ export const limsRepository = {
 
     async setRuleStatus(tenantId: string, id: string, actif: boolean) {
         return tenantTransaction(tenantId, async (client: PoolClient) => {
-            const query = `UPDATE reference.lab_reference_rules SET actif = $1, updated_at = NOW() WHERE id = $2 RETURNING *`;
+            const query = `UPDATE lab_reference_rules SET actif = $1, updated_at = NOW() WHERE id = $2 RETURNING *`;
             const res = await client.query(query, [actif, id]);
             return res.rows[0];
         });
@@ -388,7 +388,7 @@ export const limsRepository = {
                     t.*, 
                     s.code as section_code, s.libelle as section_label,
                     sf.code as sous_famille_code, sf.libelle as sous_famille_label
-                FROM reference.lab_section_tree t
+                FROM lab_section_tree t
                 JOIN reference.lab_sections s ON t.section_id = s.id
                 JOIN reference.sih_sous_familles sf ON t.sous_famille_id = sf.id
                 ORDER BY t.sort_order ASC, s.code ASC
@@ -401,7 +401,7 @@ export const limsRepository = {
     async createSectionTree(tenantId: string, data: any) {
         return tenantTransaction(tenantId, async (client: PoolClient) => {
             const query = `
-                INSERT INTO reference.lab_section_tree (sous_famille_id, section_id, sort_order, actif) 
+                INSERT INTO lab_section_tree (sous_famille_id, section_id, sort_order, actif) 
                 VALUES ($1, $2, $3, $4) RETURNING *`;
             const res = await client.query(query, [data.sous_famille_id, data.section_id, data.sort_order || 0, data.actif ?? true]);
             return res.rows[0];
@@ -410,7 +410,7 @@ export const limsRepository = {
 
     async setSectionTreeStatus(tenantId: string, id: string, actif: boolean) {
         return tenantTransaction(tenantId, async (client: PoolClient) => {
-            const query = `UPDATE reference.lab_section_tree SET actif = $1, updated_at = NOW() WHERE id = $2 RETURNING *`;
+            const query = `UPDATE lab_section_tree SET actif = $1, updated_at = NOW() WHERE id = $2 RETURNING *`;
             const res = await client.query(query, [actif, id]);
             return res.rows[0];
         });
@@ -418,7 +418,7 @@ export const limsRepository = {
 
     async updateSectionTreeOrder(tenantId: string, id: string, sortOrder: number) {
         return tenantTransaction(tenantId, async (client: PoolClient) => {
-            const query = `UPDATE reference.lab_section_tree SET sort_order = $1, updated_at = NOW() WHERE id = $2 RETURNING *`;
+            const query = `UPDATE lab_section_tree SET sort_order = $1, updated_at = NOW() WHERE id = $2 RETURNING *`;
             const res = await client.query(query, [sortOrder, id]);
             return res.rows[0];
         });
@@ -427,7 +427,7 @@ export const limsRepository = {
     async updateSectionTree(tenantId: string, id: string, data: any) {
         return tenantTransaction(tenantId, async (client: PoolClient) => {
             const query = `
-                UPDATE reference.lab_section_tree 
+                UPDATE lab_section_tree 
                 SET sous_famille_id = $1, section_id = $2, sort_order = $3, actif = $4, updated_at = NOW() 
                 WHERE id = $5 RETURNING *`;
             const res = await client.query(query, [data.sous_famille_id, data.section_id, data.sort_order || 0, data.actif ?? true, id]);
@@ -445,7 +445,7 @@ export const limsRepository = {
                     t.*, 
                     ss.code as sub_section_code, ss.libelle as sub_section_label,
                     s.code as section_code, s.libelle as section_label
-                FROM reference.lab_sub_section_tree t
+                FROM lab_sub_section_tree t
                 JOIN reference.lab_sub_sections ss ON t.sub_section_id = ss.id
                 JOIN reference.lab_sections s ON t.section_id = s.id
                 ORDER BY t.sort_order ASC, ss.code ASC
@@ -458,7 +458,7 @@ export const limsRepository = {
     async createSubSectionTree(tenantId: string, data: any) {
         return tenantTransaction(tenantId, async (client: PoolClient) => {
             const query = `
-                INSERT INTO reference.lab_sub_section_tree (section_id, sub_section_id, sort_order, actif) 
+                INSERT INTO lab_sub_section_tree (section_id, sub_section_id, sort_order, actif) 
                 VALUES ($1, $2, $3, $4) RETURNING *`;
             const res = await client.query(query, [data.section_id, data.sub_section_id, data.sort_order || 0, data.actif ?? true]);
             return res.rows[0];
@@ -467,7 +467,7 @@ export const limsRepository = {
 
     async setSubSectionTreeStatus(tenantId: string, id: string, actif: boolean) {
         return tenantTransaction(tenantId, async (client: PoolClient) => {
-            const query = `UPDATE reference.lab_sub_section_tree SET actif = $1, updated_at = NOW() WHERE id = $2 RETURNING *`;
+            const query = `UPDATE lab_sub_section_tree SET actif = $1, updated_at = NOW() WHERE id = $2 RETURNING *`;
             const res = await client.query(query, [actif, id]);
             return res.rows[0];
         });
@@ -475,7 +475,7 @@ export const limsRepository = {
 
     async updateSubSectionTreeOrder(tenantId: string, id: string, sortOrder: number) {
         return tenantTransaction(tenantId, async (client: PoolClient) => {
-            const query = `UPDATE reference.lab_sub_section_tree SET sort_order = $1, updated_at = NOW() WHERE id = $2 RETURNING *`;
+            const query = `UPDATE lab_sub_section_tree SET sort_order = $1, updated_at = NOW() WHERE id = $2 RETURNING *`;
             const res = await client.query(query, [sortOrder, id]);
             return res.rows[0];
         });
@@ -484,7 +484,7 @@ export const limsRepository = {
     async updateSubSectionTree(tenantId: string, id: string, data: any) {
         return tenantTransaction(tenantId, async (client: PoolClient) => {
             const query = `
-                UPDATE reference.lab_sub_section_tree 
+                UPDATE lab_sub_section_tree 
                 SET section_id = $1, sub_section_id = $2, sort_order = $3, actif = $4, updated_at = NOW() 
                 WHERE id = $5 RETURNING *`;
             const res = await client.query(query, [data.section_id, data.sub_section_id, data.sort_order || 0, data.actif ?? true, id]);
@@ -505,13 +505,13 @@ export const limsRepository = {
 
                   (
                     SELECT COUNT(*) 
-                    FROM reference.lab_act_contexts lac
+                    FROM lab_act_contexts lac
                     WHERE lac.global_act_id = a.id
                   ) AS context_count,
 
                   (
                     SELECT COUNT(*) 
-                    FROM reference.lab_act_specimen_containers lst
+                    FROM lab_act_specimen_containers lst
                     WHERE lst.global_act_id = a.id
                   ) AS specimen_count
 
@@ -534,7 +534,7 @@ export const limsRepository = {
             // Taxonomy Assignment
             const taxQ = await client.query(`
                 SELECT t.*, sf.libelle as sous_famille_label, s.libelle as section_label, ss.libelle as sub_section_label
-                FROM reference.lab_act_taxonomy t
+                FROM lab_act_taxonomy t
                 LEFT JOIN reference.sih_sous_familles sf ON t.sous_famille_id = sf.id
                 LEFT JOIN reference.lab_sections s ON t.section_id = s.id
                 LEFT JOIN reference.lab_sub_sections ss ON t.sub_section_id = ss.id
@@ -544,8 +544,8 @@ export const limsRepository = {
             // Context Assignments
             const paramQ = await client.query(`
                 SELECT ac.*, c.analyte_label, c.method_label, c.specimen_label, c.unit_label
-                FROM reference.lab_act_contexts ac
-                JOIN reference.lab_analyte_contexts c ON ac.analyte_context_id = c.id
+                FROM lab_act_contexts ac
+                JOIN lab_analyte_contexts c ON ac.analyte_context_id = c.id
                 WHERE ac.global_act_id = $1 AND ac.actif = true
                 ORDER BY ac.sort_order ASC
             `, [actId]);
@@ -553,12 +553,14 @@ export const limsRepository = {
             // Specimen/Container Assignments
             const specQ = await client.query(`
                 SELECT ast.*, st.libelle as specimen_label,
-                       ct.libelle as container_label, ct.tube_color as container_color
-                FROM reference.lab_act_specimen_containers ast
+                       ct.libelle as container_label, ct.tube_color as container_color,
+                       u.display as volume_unit_display
+                FROM lab_act_specimen_containers ast
                 JOIN reference.lab_specimen_types st ON ast.specimen_type_id = st.id
                 JOIN reference.lab_container_types ct ON ast.container_type_id = ct.id
+                LEFT JOIN reference.units u ON ast.volume_unit_id = u.id
                 WHERE ast.global_act_id = $1
-                ORDER BY ast.sort_order ASC
+                ORDER BY ast.is_default DESC, ast.sort_order ASC
             `, [actId]);
 
             return {
@@ -573,7 +575,7 @@ export const limsRepository = {
     async assignActTaxonomy(tenantId: string, actId: string, data: any) {
         return tenantTransaction(tenantId, async (client: PoolClient) => {
             const query = `
-                INSERT INTO reference.lab_act_taxonomy (act_id, sous_famille_id, section_id, sub_section_id, actif)
+                INSERT INTO lab_act_taxonomy (act_id, sous_famille_id, section_id, sub_section_id, actif)
                 VALUES ($1, $2, $3, $4, $5)
                 ON CONFLICT (act_id) DO UPDATE 
                 SET sous_famille_id = EXCLUDED.sous_famille_id,
@@ -593,7 +595,7 @@ export const limsRepository = {
     async assignActContext(tenantId: string, actId: string, data: any) {
         return tenantTransaction(tenantId, async (client: PoolClient) => {
             const query = `
-                INSERT INTO reference.lab_act_contexts (global_act_id, analyte_context_id, is_default, actif, sort_order)
+                INSERT INTO lab_act_contexts (global_act_id, analyte_context_id, is_default, actif, sort_order)
                 VALUES ($1, $2, $3, $4, $5) RETURNING *
             `;
             const res = await client.query(query, [
@@ -605,27 +607,61 @@ export const limsRepository = {
 
     async unassignActContext(tenantId: string, assignmentId: string) {
         return tenantTransaction(tenantId, async (client: PoolClient) => {
-            await client.query(`DELETE FROM reference.lab_act_contexts WHERE id = $1`, [assignmentId]);
+            await client.query(`DELETE FROM lab_act_contexts WHERE id = $1`, [assignmentId]);
             return { success: true };
         });
     },
 
     async assignActSpecimenContainer(tenantId: string, actId: string, data: any) {
         return tenantTransaction(tenantId, async (client: PoolClient) => {
-            const query = `
-                INSERT INTO reference.lab_act_specimen_containers (global_act_id, specimen_type_id, container_type_id, min_volume, is_default, is_required, actif, sort_order)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *
-            `;
-            const res = await client.query(query, [
-                actId, data.specimen_type_id, data.container_type_id, data.min_volume || null, data.is_default || false, data.is_required ?? true, data.actif ?? true, data.sort_order || 0
+            // Check how many existing containers this act has
+            const countRes = await client.query(
+                `SELECT COUNT(*)::int as cnt FROM lab_act_specimen_containers WHERE global_act_id = $1`, [actId]
+            );
+            const existingCount = countRes.rows[0].cnt;
+            // Auto-default if this is the first container for this act
+            const isDefault = existingCount === 0 ? true : (data.is_default || false);
+
+            const res = await client.query(`
+                INSERT INTO lab_act_specimen_containers
+                    (global_act_id, specimen_type_id, container_type_id, min_volume, volume_unit_id, volume_unit_label, is_default, is_required, actif, sort_order)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *
+            `, [
+                actId, data.specimen_type_id, data.container_type_id,
+                data.min_volume || null, data.volume_unit_id || null, data.volume_unit_label || null,
+                isDefault, data.is_required ?? true, data.actif ?? true, data.sort_order || 0
             ]);
             return res.rows[0];
         });
     },
 
+    async setActSpecimenContainerDefault(tenantId: string, actId: string, containerId: string) {
+        return tenantTransaction(tenantId, async (client: PoolClient) => {
+            // Unset all defaults for this act
+            await client.query(`UPDATE lab_act_specimen_containers SET is_default = false WHERE global_act_id = $1`, [actId]);
+            // Set the chosen one
+            await client.query(`UPDATE lab_act_specimen_containers SET is_default = true WHERE id = $1 AND global_act_id = $2`, [containerId, actId]);
+            return { success: true };
+        });
+    },
+
     async unassignActSpecimenContainer(tenantId: string, assignmentId: string) {
         return tenantTransaction(tenantId, async (client: PoolClient) => {
-            await client.query(`DELETE FROM reference.lab_act_specimen_containers WHERE id = $1`, [assignmentId]);
+            // Get act_id before deleting so we can fix defaults
+            const row = await client.query(`SELECT global_act_id FROM lab_act_specimen_containers WHERE id = $1`, [assignmentId]);
+            await client.query(`DELETE FROM lab_act_specimen_containers WHERE id = $1`, [assignmentId]);
+            // If we deleted the default, promote the first remaining one
+            if (row.rows[0]) {
+                const actId = row.rows[0].global_act_id;
+                const remaining = await client.query(
+                    `SELECT id FROM lab_act_specimen_containers WHERE global_act_id = $1 AND is_default = true`, [actId]
+                );
+                if (remaining.rows.length === 0) {
+                    await client.query(
+                        `UPDATE lab_act_specimen_containers SET is_default = true WHERE id = (SELECT id FROM lab_act_specimen_containers WHERE global_act_id = $1 ORDER BY sort_order ASC LIMIT 1)`, [actId]
+                    );
+                }
+            }
             return { success: true };
         });
     },
@@ -635,7 +671,13 @@ export const limsRepository = {
     // ==========================================
     async getSousFamilles(tenantId: string) {
         return tenantTransaction(tenantId, async (client: PoolClient) => {
-            const res = await client.query(`SELECT id, code, libelle FROM reference.sih_sous_familles WHERE actif = true ORDER BY code ASC`);
+            const res = await client.query(`
+                SELECT sf.id, sf.code, sf.libelle
+                FROM reference.sih_sous_familles sf
+                JOIN reference.sih_familles f ON sf.famille_id = f.id
+                WHERE sf.actif = true AND f.code = 'BIOLOGIE'
+                ORDER BY sf.libelle ASC
+            `);
             return res.rows;
         });
     },
@@ -681,12 +723,7 @@ export const limsRepository = {
             return res.rows;
         });
     },
-    async getSpecimenContainerTypes(tenantId: string) {
-        return tenantTransaction(tenantId, async (client: PoolClient) => {
-            const res = await client.query(`SELECT id, specimen_type_id, container_type_id, is_default FROM reference.lab_specimen_container_types WHERE actif = true`);
-            return res.rows;
-        });
-    },
+    // lab_specimen_container_types removed — use lab_act_specimen_containers instead
 
     // ==========================================
     // *** CANONICAL VALUES ***

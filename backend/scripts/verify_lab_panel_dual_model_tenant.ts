@@ -50,7 +50,7 @@ async function verifyTenant() {
 
         // Test missing global_act_id
         try {
-            await client.query(`INSERT INTO reference.lab_panels (sous_famille_id, code, libelle) VALUES ('${sousFamRes.rows[0].id}', 'VD_PNL_ERR', 'Err Panel');`);
+            await client.query(`INSERT INTO lab_panels (sous_famille_id, code, libelle) VALUES ('${sousFamRes.rows[0].id}', 'VD_PNL_ERR', 'Err Panel');`);
             console.error("❌ INSERT lab_panels without global_act_id succeeded (expected to fail).");
             passed = false;
         } catch (e: any) {
@@ -63,10 +63,10 @@ async function verifyTenant() {
         }
 
         // Test uniqueness
-        const p1Res = await client.query(`INSERT INTO reference.lab_panels (sous_famille_id, code, libelle, global_act_id) VALUES ('${sousFamRes.rows[0].id}', 'VD_PNL1', 'Panel 1', '${act1Id}') RETURNING id;`);
+        const p1Res = await client.query(`INSERT INTO lab_panels (sous_famille_id, code, libelle, global_act_id) VALUES ('${sousFamRes.rows[0].id}', 'VD_PNL1', 'Panel 1', '${act1Id}') RETURNING id;`);
         
         try {
-            await client.query(`INSERT INTO reference.lab_panels (sous_famille_id, code, libelle, global_act_id) VALUES ('${sousFamRes.rows[0].id}', 'VD_PNL2', 'Panel 2', '${act1Id}') RETURNING id;`);
+            await client.query(`INSERT INTO lab_panels (sous_famille_id, code, libelle, global_act_id) VALUES ('${sousFamRes.rows[0].id}', 'VD_PNL2', 'Panel 2', '${act1Id}') RETURNING id;`);
             console.error("❌ INSERT two lab_panels with SAME global_act_id succeeded (expected to fail).");
             passed = false;
         } catch (e: any) {
@@ -80,7 +80,7 @@ async function verifyTenant() {
 
         // Test strict composition
         try {
-            await client.query(`INSERT INTO reference.lab_panel_items (panel_id, item_type, child_panel_id) VALUES ('${p1Res.rows[0].id}', 'ACT', '${p1Res.rows[0].id}');`);
+            await client.query(`INSERT INTO lab_panel_items (panel_id, item_type, child_panel_id) VALUES ('${p1Res.rows[0].id}', 'ACT', '${p1Res.rows[0].id}');`);
             console.error("❌ INSERT ACT item_type with child_panel_id succeeded (expected to fail).");
             passed = false;
         } catch (e: any) {
@@ -93,7 +93,7 @@ async function verifyTenant() {
         }
 
         try {
-            await client.query(`INSERT INTO reference.lab_panel_items (panel_id, item_type, child_global_act_id) VALUES ('${p1Res.rows[0].id}', 'PANEL', '${act2Id}');`);
+            await client.query(`INSERT INTO lab_panel_items (panel_id, item_type, child_global_act_id) VALUES ('${p1Res.rows[0].id}', 'PANEL', '${act2Id}');`);
             console.error("❌ INSERT PANEL item_type with child_global_act_id succeeded (expected to fail).");
             passed = false;
         } catch (e: any) {
@@ -106,7 +106,7 @@ async function verifyTenant() {
         }
         
         // Cleanup dummy
-        await client.query(`DELETE FROM reference.lab_panels WHERE global_act_id = '${act1Id}'`);
+        await client.query(`DELETE FROM lab_panels WHERE global_act_id = '${act1Id}'`);
         await client.query(`DELETE FROM reference.global_actes WHERE id IN ('${act1Id}', '${act2Id}')`);
         await client.query(`DELETE FROM reference.sih_sous_familles WHERE id = '${sousFamRes.rows[0].id}'`);
         await client.query(`DELETE FROM reference.sih_familles WHERE id = '${famRes.rows[0].id}'`);

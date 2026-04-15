@@ -10,6 +10,7 @@ router.post('/lab-requests', limsExecutionController.submitLabRequests);
 // Specimen Collection & Execution
 router.get('/admissions/active-walkin-by-patient/:patientId', limsExecutionController.getActiveWalkinAdmission);
 router.get('/admissions/:admissionId/collection-requirements', limsExecutionController.getCollectionRequirements);
+router.get('/lab-requests/:labRequestId/collection-detail', limsExecutionController.getLabRequestCollectionDetail);
 router.post('/collections/prelever', limsExecutionController.executePrelevement);
 router.post('/print-barcode', limsExecutionController.printBarcode);
 
@@ -29,6 +30,7 @@ router.get('/coverages/search', emrController.searchCoverages);
 
 router.get('/admissions', emrController.getAdmissions);
 router.post('/admissions', emrController.createAdmission);
+router.put('/admissions/:id/close', emrController.closeAdmission);
 router.get('/admissions/by-patient/:patientId', emrController.getAdmissionsByPatient);
 
 // Reference Data

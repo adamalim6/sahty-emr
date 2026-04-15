@@ -20,7 +20,7 @@ async function checkMigrationSafety() {
         try {
             const query = `
                 SELECT id, canonical_value_id, canonical_value_min_id, canonical_value_max_id 
-                FROM reference.lab_reference_rules
+                FROM lab_reference_rules
                 WHERE canonical_value_id IN (
                     SELECT id FROM reference.lab_canonical_allowed_values WHERE code = ANY($1)
                 ) OR canonical_value_min_id IN (

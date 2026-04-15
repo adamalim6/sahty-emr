@@ -38,6 +38,7 @@ router.post('/biology-acts/:id/analyte-contexts', limsController.assignActContex
 router.delete('/biology-acts/:id/analyte-contexts/:assignmentId', limsController.unassignActContext);
 
 router.post('/biology-acts/:id/specimen-containers', limsController.assignActSpecimenContainer);
+router.patch('/biology-acts/:id/specimen-containers/:containerId/default', limsController.setActSpecimenContainerDefault);
 router.delete('/biology-acts/:id/specimen-containers/:assignmentId', limsController.unassignActSpecimenContainer);
 
 router.put('/biology-acts/:id/taxonomy', limsController.assignActTaxonomy);
@@ -50,7 +51,6 @@ router.get('/dictionaries/analytes', limsController.getAnalytes);
 router.get('/dictionaries/methods', limsController.getMethods);
 router.get('/dictionaries/specimens', limsController.getSpecimenTypes);
 router.get('/dictionaries/containers', limsController.getContainers);
-router.get('/dictionaries/specimen-container-types', limsController.getSpecimenContainerTypes);
 router.get('/dictionaries/units', limsController.getUnits);
 router.get('/canonical-values', limsController.getCanonicalValues);
 

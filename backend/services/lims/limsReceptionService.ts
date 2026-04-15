@@ -39,9 +39,9 @@ export const limsReceptionService = {
             JOIN public.patients_tenant tp ON tp.tenant_patient_id = lc.tenant_patient_id
             LEFT JOIN public.identity_ids iid ON iid.tenant_patient_id = tp.tenant_patient_id 
                 AND iid.identity_type_code = 'LOCAL_MRN' AND iid.is_primary = true
-            LEFT JOIN reference.lab_specimen_container_types lsct ON lsct.id = ls.lab_specimen_container_type_id
-            LEFT JOIN reference.lab_container_types rct ON rct.id = lsct.container_type_id
-            LEFT JOIN reference.lab_specimen_types rst ON rst.id = lsct.specimen_type_id
+            LEFT JOIN lab_act_specimen_containers lasc ON lasc.id = ls.lab_act_specimen_container_id
+            LEFT JOIN reference.lab_container_types rct ON rct.id = lasc.container_type_id
+            LEFT JOIN reference.lab_specimen_types rst ON rst.id = lasc.specimen_type_id
             WHERE ls.barcode = $1
             LIMIT 1
         `, [normalizedBarcode]);

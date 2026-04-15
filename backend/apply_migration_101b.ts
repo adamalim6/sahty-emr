@@ -18,7 +18,7 @@ async function applyMigration() {
             await tPool.query('BEGIN');
             
             await tPool.query(`
-                CREATE TABLE IF NOT EXISTS reference.lab_act_analyte_context (
+                CREATE TABLE IF NOT EXISTS lab_act_analyte_context (
                     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                     global_act_id UUID NOT NULL,
                     analyte_context_id UUID NOT NULL,
@@ -30,8 +30,8 @@ async function applyMigration() {
                     CONSTRAINT uq_act_analyte_ctx UNIQUE (global_act_id, analyte_context_id)
                 );
 
-                CREATE INDEX IF NOT EXISTS idx_lab_act_ctx_act ON reference.lab_act_analyte_context(global_act_id);
-                CREATE INDEX IF NOT EXISTS idx_lab_act_ctx_ctx ON reference.lab_act_analyte_context(analyte_context_id);
+                CREATE INDEX IF NOT EXISTS idx_lab_act_ctx_act ON lab_act_analyte_context(global_act_id);
+                CREATE INDEX IF NOT EXISTS idx_lab_act_ctx_ctx ON lab_act_analyte_context(analyte_context_id);
             `);
             
             await tPool.query('COMMIT');

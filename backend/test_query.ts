@@ -17,7 +17,7 @@ async function run() {
         
         console.log("ACT ID:", actId);
         
-        const q1 = await tPool.query(`SELECT * FROM reference.lab_act_specimen_types WHERE global_act_id = $1`, [actId]);
+        const q1 = await tPool.query(`SELECT * FROM lab_act_specimen_types WHERE global_act_id = $1`, [actId]);
         console.log("Raw mapping rows:", q1.rows);
 
         if (q1.rows.length > 0) {

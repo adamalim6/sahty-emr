@@ -15,7 +15,7 @@ async function run() {
                 lac.method_label, 
                 lac.unit_label, 
                 lac.specimen_label
-            FROM reference.lab_analyte_contexts lac
+            FROM lab_analyte_contexts lac
             WHERE lac.actif IS NOT FALSE
               AND lac.analyte_label ILIKE $1
 

@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
-import { 
-    useLimsBiologyActs, 
+import {
+    useLimsBiologyActs,
     useLimsBiologyActDetails,
     useLimsContexts,
     useLimsConfigDictionaries,
     useAssignActContext,
     useUnassignActContext,
     useAssignActSpecimenContainer,
+    useSetActSpecimenContainerDefault,
     useUnassignActSpecimenContainer,
     useAssignActTaxonomy
 } from './useLimsConfig';
-import { Beaker, Search, ChevronDown, ChevronRight, CheckCircle2, Link as LinkIcon, Save, Settings2 } from 'lucide-react';
+import { Beaker, Search, ChevronDown, ChevronRight, CheckCircle2, Link as LinkIcon, Save, Settings2, Star } from 'lucide-react';
 
 import { SearchableSelect } from '../ui/SearchableSelect';
 
@@ -20,41 +21,29 @@ import { SearchableSelect } from '../ui/SearchableSelect';
 const BiologyActEditor = ({ actId, onClose }: { actId: string, onClose: () => void }) => {
     const { data: actDetails, isLoading: isActLoading } = useLimsBiologyActDetails(actId);
     const { data: allContexts = [], isLoading: isCtxLoading } = useLimsContexts();
-    const { sousFamilles, sections, subSections, specimens, containers, specimenContainerTypes, isLoading: isDictLoading } = useLimsConfigDictionaries();
+    const { sousFamilles, sections, subSections, specimens, containers, units, sectionTree, subSectionTree, isLoading: isDictLoading } = useLimsConfigDictionaries();
 
     const taxonomyMutation = useAssignActTaxonomy(actId);
     const assignCtxMutation = useAssignActContext(actId);
     const unassignCtxMutation = useUnassignActContext(actId);
     const assignSpecMutation = useAssignActSpecimenContainer(actId);
+    const setDefaultSpecMutation = useSetActSpecimenContainerDefault(actId);
     const unassignSpecMutation = useUnassignActSpecimenContainer(actId);
 
     const [taxData, setTaxData] = useState({ sous_famille_id: '', section_id: '', sub_section_id: '' });
     const [pendingContextId, setPendingContextId] = useState('');
     const [pendingSpecimenId, setPendingSpecimenId] = useState('');
     const [pendingContainerId, setPendingContainerId] = useState('');
-
-    // Prepopulate default container when specimen changes
-    React.useEffect(() => {
-        if (pendingSpecimenId) {
-            const defaults = specimenContainerTypes.filter((sct: any) => sct.specimen_type_id === pendingSpecimenId);
-            const defaultType = defaults.find((d: any) => d.is_default) || defaults[0];
-            if (defaultType) {
-                setPendingContainerId(defaultType.container_type_id);
-            } else {
-                setPendingContainerId('');
-            }
-        } else {
-            setPendingContainerId('');
-        }
-    }, [pendingSpecimenId, specimenContainerTypes]);
+    const [pendingMinVolume, setPendingMinVolume] = useState('');
+    const [pendingVolumeUnitId, setPendingVolumeUnitId] = useState('');
 
     // Sync taxonomic data on load
     React.useEffect(() => {
-        if (actDetails) {
+        if (actDetails?.taxonomy) {
             setTaxData({
-                sous_famille_id: actDetails.sous_famille_id || '',
-                section_id: actDetails.section_id || '',
-                sub_section_id: actDetails.sub_section_id || ''
+                sous_famille_id: actDetails.taxonomy.sous_famille_id || '',
+                section_id: actDetails.taxonomy.section_id || '',
+                sub_section_id: actDetails.taxonomy.sub_section_id || ''
             });
         }
     }, [actDetails]);
@@ -63,27 +52,63 @@ const BiologyActEditor = ({ actId, onClose }: { actId: string, onClose: () => vo
         return <div className="p-6 text-center text-sm text-slate-400">Synchronisation des détails de l'acte...</div>;
     }
 
+    // === TAXONOMY CASCADE LOGIC ===
+    // Forward only: parent selection restricts child options
+    // Discipline -> filters Sections, Section -> filters Sub-sections
+    // Parents are never restricted — reverse cascade only auto-fills values
+    const filteredSousFamilles = sousFamilles;
+    const filteredSections = taxData.sous_famille_id
+        ? sections.filter((s: any) => {
+            const validIds = new Set(sectionTree.filter((t: any) => t.sous_famille_id === taxData.sous_famille_id && t.actif).map((t: any) => t.section_id));
+            return validIds.has(s.id);
+        })
+        : sections;
+    const filteredSubSections = taxData.section_id
+        ? subSections.filter((ss: any) => {
+            const validIds = new Set(subSectionTree.filter((t: any) => t.section_id === taxData.section_id && t.actif).map((t: any) => t.sub_section_id));
+            return validIds.has(ss.id);
+        })
+        : subSections;
+
+    const handleTaxChange = (field: string, value: string) => {
+        const next = { ...taxData, [field]: value };
+        if (field === 'sous_famille_id') {
+            // Forward: reset section & sub-section if they're no longer valid
+            if (value) {
+                const validSections = new Set(sectionTree.filter((t: any) => t.sous_famille_id === value && t.actif).map((t: any) => t.section_id));
+                if (!validSections.has(next.section_id)) { next.section_id = ''; next.sub_section_id = ''; }
+            }
+        } else if (field === 'section_id') {
+            // Forward: reset sub-section if no longer valid
+            if (value) {
+                const validSubs = new Set(subSectionTree.filter((t: any) => t.section_id === value && t.actif).map((t: any) => t.sub_section_id));
+                if (!validSubs.has(next.sub_section_id)) next.sub_section_id = '';
+                // Reverse: auto-set discipline if only one matches
+                const matchingSFs = sectionTree.filter((t: any) => t.section_id === value && t.actif);
+                if (matchingSFs.length === 1 && !next.sous_famille_id) next.sous_famille_id = matchingSFs[0].sous_famille_id;
+            }
+        } else if (field === 'sub_section_id') {
+            // Reverse: auto-set section if only one matches
+            if (value) {
+                const matchingSecs = subSectionTree.filter((t: any) => t.sub_section_id === value && t.actif);
+                if (matchingSecs.length === 1 && !next.section_id) {
+                    next.section_id = matchingSecs[0].section_id;
+                    // And cascade further: auto-set discipline
+                    const matchingSFs = sectionTree.filter((t: any) => t.section_id === next.section_id && t.actif);
+                    if (matchingSFs.length === 1 && !next.sous_famille_id) next.sous_famille_id = matchingSFs[0].sous_famille_id;
+                }
+            }
+        }
+        setTaxData(next);
+    };
+
     const { contexts = [], specimens: specimenTypes = [] } = actDetails || {};
     const unassignedContexts = allContexts.filter(c => !contexts.some((assigned: any) => assigned.analyte_context_id === c.id));
-    // Now we can assign multiple combinations, but generally let's allow all specimens. 
-    // Just map specimenOptions.
     const specimenOptions = specimens.map((s: any) => ({
         value: s.id,
         label: s.libelle,
         searchValue: s.libelle
     }));
-
-    const allowedContainerOptions = pendingSpecimenId 
-        ? specimenContainerTypes.filter((sct: any) => sct.specimen_type_id === pendingSpecimenId)
-            .map((sct: any) => {
-                const c = containers.find(cont => cont.id === sct.container_type_id);
-                return {
-                    value: sct.container_type_id,
-                    label: c ? c.libelle : 'Inconnu',
-                    searchValue: c ? c.libelle : 'Inconnu'
-                };
-            })
-        : [];
 
     const handleSaveTaxonomy = async () => {
         await taxonomyMutation.mutateAsync({
@@ -112,28 +137,28 @@ const BiologyActEditor = ({ actId, onClose }: { actId: string, onClose: () => vo
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
                         <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Discipline (Sous-famille)</label>
-                        <SearchableSelect 
-                            options={[{ label: 'Non assignée', value: '' }, ...sousFamilles.map(sf => ({ label: sf.libelle, value: sf.id }))]}
+                        <SearchableSelect
+                            options={[{ label: 'Non assignée', value: '' }, ...filteredSousFamilles.map(sf => ({ label: sf.libelle, value: sf.id }))]}
                             value={taxData.sous_famille_id}
-                            onChange={v => setTaxData({...taxData, sous_famille_id: v})}
+                            onChange={v => handleTaxChange('sous_famille_id', v)}
                             placeholder="Choisir une discipline..."
                         />
                     </div>
                     <div>
                         <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Chapitre (Section)</label>
-                        <SearchableSelect 
-                            options={[{ label: 'Non assigné', value: '' }, ...sections.map(s => ({ label: s.libelle, value: s.id }))]}
+                        <SearchableSelect
+                            options={[{ label: 'Non assigné', value: '' }, ...filteredSections.map(s => ({ label: s.libelle, value: s.id }))]}
                             value={taxData.section_id}
-                            onChange={v => setTaxData({...taxData, section_id: v})}
+                            onChange={v => handleTaxChange('section_id', v)}
                             placeholder="Choisir un chapitre..."
                         />
                     </div>
                     <div>
                         <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Sous-chapitre</label>
-                        <SearchableSelect 
-                            options={[{ label: 'Non assigné', value: '' }, ...subSections.map(ss => ({ label: ss.libelle, value: ss.id }))]}
+                        <SearchableSelect
+                            options={[{ label: 'Non assigné', value: '' }, ...filteredSubSections.map(ss => ({ label: ss.libelle, value: ss.id }))]}
                             value={taxData.sub_section_id}
-                            onChange={v => setTaxData({...taxData, sub_section_id: v})}
+                            onChange={v => handleTaxChange('sub_section_id', v)}
                             placeholder="Choisir un sous-chapitre..."
                         />
                     </div>
@@ -205,23 +230,37 @@ const BiologyActEditor = ({ actId, onClose }: { actId: string, onClose: () => vo
                     <span className="flex items-center"><LinkIcon className="w-4 h-4 mr-2 text-amber-500" /> Types de Prélèvement</span>
                     <span className="text-xs bg-slate-100 px-2 py-0.5 rounded-full text-slate-600 font-medium">{specimenTypes.length} liés</span>
                 </h4>
-                
+
                 <div className="max-h-64 overflow-y-auto mb-4 border rounded border-slate-100">
                     <table className="w-full text-xs text-left">
                         <tbody className="divide-y divide-slate-100">
                             {specimenTypes.map((st: any) => (
-                                <tr key={st.id} className="hover:bg-slate-50 transition-colors">
+                                <tr key={st.id} className={`hover:bg-slate-50 transition-colors ${st.is_default ? 'bg-amber-50/50' : ''}`}>
                                     <td className="px-3 py-2">
-                                        <div className="font-medium text-slate-700">{st.specimen_label}</div>
-                                        {st.container_label && (
-                                            <div className="flex items-center text-[11px] text-slate-500 mt-0.5">
-                                                <div 
-                                                    className="w-2.5 h-2.5 rounded-full mr-1.5 border border-slate-300 shadow-sm"
-                                                    style={{ backgroundColor: st.container_color !== 'AUCUNE' ? st.container_color : '#ffffff' }}
-                                                />
-                                                {st.container_label}
+                                        <div className="flex items-center gap-1.5">
+                                            <button
+                                                onClick={() => setDefaultSpecMutation.mutate(st.id)}
+                                                title={st.is_default ? 'Par défaut' : 'Définir par défaut'}
+                                                className={`shrink-0 ${st.is_default ? 'text-amber-500' : 'text-slate-300 hover:text-amber-400'} transition-colors`}
+                                            >
+                                                <Star className="w-3.5 h-3.5" fill={st.is_default ? 'currentColor' : 'none'} />
+                                            </button>
+                                            <div>
+                                                <div className="font-medium text-slate-700">{st.specimen_label}</div>
+                                                <div className="flex items-center text-[11px] text-slate-500 mt-0.5">
+                                                    <div
+                                                        className="w-2.5 h-2.5 rounded-full mr-1.5 border border-slate-300 shadow-sm"
+                                                        style={{ backgroundColor: st.container_color !== 'AUCUNE' ? st.container_color : '#ffffff' }}
+                                                    />
+                                                    {st.container_label}
+                                                    {st.min_volume && (
+                                                        <span className="ml-2 text-slate-400">
+                                                            {st.min_volume} {st.volume_unit_label || st.volume_unit_display || ''}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
-                                        )}
+                                        </div>
                                     </td>
                                     <td className="px-3 py-2 text-right align-middle">
                                         <button onClick={() => unassignSpecMutation.mutate(st.id)} className="text-rose-600 hover:bg-rose-50 px-2 py-1 rounded transition-colors">Retirer</button>
@@ -238,28 +277,52 @@ const BiologyActEditor = ({ actId, onClose }: { actId: string, onClose: () => vo
                     <div className="flex flex-col space-y-2 w-full overflow-visible">
                         <div className="flex space-x-2">
                             <div className="flex-1 min-w-0">
-                                <SearchableSelect 
+                                <SearchableSelect
                                     options={specimenOptions}
                                     value={pendingSpecimenId}
                                     onChange={setPendingSpecimenId}
-                                    placeholder="Sélectionner un type de prélèvement..."
+                                    placeholder="Type de prélèvement..."
                                 />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <SearchableSelect 
-                                    options={allowedContainerOptions}
+                                <SearchableSelect
+                                    options={containers.map((c: any) => ({ value: c.id, label: c.libelle, searchValue: c.libelle }))}
                                     value={pendingContainerId}
                                     onChange={setPendingContainerId}
-                                    placeholder={pendingSpecimenId ? "Sélectionner un récipient..." : "Choisissez d'abord un prélèvement"}
-                                    disabled={!pendingSpecimenId || allowedContainerOptions.length === 0}
+                                    placeholder="Récipient..."
                                 />
                             </div>
-                            <button 
+                        </div>
+                        <div className="flex space-x-2 items-center">
+                            <input
+                                type="number"
+                                value={pendingMinVolume}
+                                onChange={e => setPendingMinVolume(e.target.value)}
+                                placeholder="Vol. min"
+                                className="w-20 px-2 py-1.5 text-xs border border-slate-200 rounded focus:ring-1 focus:ring-blue-400 focus:border-blue-400 outline-none"
+                            />
+                            <div className="w-28 min-w-0">
+                                <SearchableSelect
+                                    options={units.map((u: any) => ({ value: u.id, label: u.libelle, searchValue: u.libelle }))}
+                                    value={pendingVolumeUnitId}
+                                    onChange={setPendingVolumeUnitId}
+                                    placeholder="Unité..."
+                                />
+                            </div>
+                            <button
                                 onClick={() => {
                                     if (pendingSpecimenId && pendingContainerId) {
-                                        assignSpecMutation.mutate({ specimen_type_id: pendingSpecimenId, container_type_id: pendingContainerId, is_required: true });
-                                        setPendingSpecimenId('');
-                                        setPendingContainerId('');
+                                        const unitObj = units.find((u: any) => u.id === pendingVolumeUnitId);
+                                        assignSpecMutation.mutate({
+                                            specimen_type_id: pendingSpecimenId,
+                                            container_type_id: pendingContainerId,
+                                            min_volume: pendingMinVolume ? parseFloat(pendingMinVolume) : null,
+                                            volume_unit_id: pendingVolumeUnitId || null,
+                                            volume_unit_label: unitObj?.libelle || null,
+                                            is_required: true
+                                        });
+                                        setPendingSpecimenId(''); setPendingContainerId('');
+                                        setPendingMinVolume(''); setPendingVolumeUnitId('');
                                     }
                                 }}
                                 disabled={!pendingSpecimenId || !pendingContainerId || assignSpecMutation.isPending}

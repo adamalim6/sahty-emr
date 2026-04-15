@@ -112,8 +112,12 @@ export const limsController = {
         try { res.status(201).json(await limsService.assignActSpecimenContainer(((req as any).auth?.tenantId || (req as any).user?.tenant_id), req.params.id, req.body)); } 
         catch (e: any) { res.status(400).json({ error: e.message }); }
     },
+    async setActSpecimenContainerDefault(req: Request, res: Response) {
+        try { res.json(await limsService.setActSpecimenContainerDefault(((req as any).auth?.tenantId || (req as any).user?.tenant_id), req.params.id, req.params.containerId)); }
+        catch (e: any) { res.status(400).json({ error: e.message }); }
+    },
     async unassignActSpecimenContainer(req: Request, res: Response) {
-        try { res.json(await limsService.unassignActSpecimenContainer(((req as any).auth?.tenantId || (req as any).user?.tenant_id), req.params.assignmentId)); } 
+        try { res.json(await limsService.unassignActSpecimenContainer(((req as any).auth?.tenantId || (req as any).user?.tenant_id), req.params.assignmentId)); }
         catch (e: any) { res.status(400).json({ error: e.message }); }
     },
     async assignActTaxonomy(req: Request, res: Response) {
@@ -149,10 +153,7 @@ export const limsController = {
         try { res.json(await limsService.getContainers(((req as any).auth?.tenantId || (req as any).user?.tenant_id))); } 
         catch (e: any) { res.status(400).json({ error: e.message }); }
     },
-    async getSpecimenContainerTypes(req: Request, res: Response) {
-        try { res.json(await limsService.getSpecimenContainerTypes(((req as any).auth?.tenantId || (req as any).user?.tenant_id))); } 
-        catch (e: any) { res.status(400).json({ error: e.message }); }
-    },
+    // getSpecimenContainerTypes removed — table deleted, use lab_act_specimen_containers
     async getUnits(req: Request, res: Response) {
         try { res.json(await limsService.getUnits(((req as any).auth?.tenantId || (req as any).user?.tenant_id))); } 
         catch (e: any) { res.status(400).json({ error: e.message }); }

@@ -76,10 +76,21 @@ export const limsExecutionService = {
     /**
      * Reusable grouping logic used by both LIMS reception and ICU Surveillance.
      */
-    async _buildCollectionRequirementsGroups(tenantId: string, joinConditionSQL: string, values: any[]) {
+    async _buildCollectionRequirementsGroups(tenantId: string, joinConditionSQL: string, values: any[], filter: 'pending' | 'all' = 'pending') {
+        // When filter=pending, exclude lab_requests already linked to a non-rejected specimen
+        const pendingFilter = filter === 'pending'
+            ? `AND NOT EXISTS (
+                    SELECT 1 FROM public.lab_specimen_requests lsr2
+                    JOIN public.lab_specimens s2 ON s2.id = lsr2.specimen_id
+                    WHERE lsr2.lab_request_id = lr.id AND s2.status != 'REJECTED'
+               )`
+            : '';
+
         const rows = await tenantQuery(tenantId, `
-            SELECT 
+            SELECT
                lr.id as lab_request_id,
+               lr.admission_id,
+               lr.created_at as requested_at,
                pe.id as prescription_event_id,
                ga.libelle_sih as lab_request_name,
                lasc.specimen_type_id,
@@ -87,35 +98,34 @@ export const limsExecutionService = {
                lasc.container_type_id,
                lct.libelle as container_label,
                lct.tube_color as container_color,
-               lsct.id as target_lsct_id,
+               COALESCE(lasc.id, lr.global_act_id) as target_lsct_id,
                lsr.id as existing_link_id
             FROM public.lab_requests lr
             LEFT JOIN public.prescription_events pe ON pe.id = lr.prescription_event_id
             JOIN reference.global_actes ga ON ga.id = lr.global_act_id
-            JOIN reference.lab_act_specimen_containers lasc 
+            LEFT JOIN lab_act_specimen_containers lasc
                  ON lasc.global_act_id = lr.global_act_id AND lasc.actif = true
-            JOIN reference.lab_specimen_types lst ON lst.id = lasc.specimen_type_id
-            JOIN reference.lab_container_types lct ON lct.id = lasc.container_type_id
-            JOIN reference.lab_specimen_container_types lsct 
-                 ON lsct.specimen_type_id = lasc.specimen_type_id 
-                 AND lsct.container_type_id = lasc.container_type_id
-            LEFT JOIN public.lab_specimen_requests lsr 
-                 ON lsr.lab_request_id = lr.id 
-                 AND EXISTS (
-                    SELECT 1 FROM public.lab_specimens s 
-                    WHERE s.id = lsr.specimen_id 
-                    AND s.lab_specimen_container_type_id = lsct.id
-                 )
+            LEFT JOIN reference.lab_specimen_types lst ON lst.id = lasc.specimen_type_id
+            LEFT JOIN reference.lab_container_types lct ON lct.id = lasc.container_type_id
+            LEFT JOIN public.lab_specimen_requests lsr
+                 ON lsr.lab_request_id = lr.id
+                 AND (lasc.id IS NULL OR EXISTS (
+                    SELECT 1 FROM public.lab_specimens s
+                    WHERE s.id = lsr.specimen_id
+                    AND s.lab_act_specimen_container_id = lasc.id
+                 ))
             ${joinConditionSQL}
-            ORDER BY lasc.sort_order ASC
+            ${pendingFilter}
+            ORDER BY lr.admission_id, lasc.sort_order ASC NULLS LAST
         `, values);
 
-        // Aggregate by [specimen_type_id + container_type_id]
+        // Aggregate by [admission_id + specimen_type_id + container_type_id]
         const map = new Map<string, any>();
         rows.forEach((r: any) => {
-            const key = `${r.specimen_type_id}_${r.container_type_id}`;
+            const key = `${r.admission_id}_${r.specimen_type_id}_${r.container_type_id}`;
             if (!map.has(key)) {
                 map.set(key, {
+                    admission_id: r.admission_id,
                     specimen_type_id: r.specimen_type_id,
                     container_type_id: r.container_type_id,
                     target_lsct_id: r.target_lsct_id,
@@ -123,7 +133,7 @@ export const limsExecutionService = {
                     container_label: r.container_label,
                     container_color: r.container_color,
                     lab_requests: [],
-                    is_collected: true, // Will flip to false if we find an uncollected one
+                    is_collected: true,
                 });
             }
 
@@ -132,6 +142,7 @@ export const limsExecutionService = {
                 id: r.lab_request_id,
                 prescription_event_id: r.prescription_event_id,
                 name: r.lab_request_name,
+                requested_at: r.requested_at,
                 is_collected: !!r.existing_link_id
             });
             if (!r.existing_link_id) group.is_collected = false;
@@ -143,12 +154,45 @@ export const limsExecutionService = {
     /**
      * Resolves the required physical specimens and their linked acts for a walk-in admission.
      */
-    async getCollectionRequirements(tenantId: string, admissionId: string) {
+    async getCollectionRequirements(tenantId: string, admissionId: string, filter: 'pending' | 'all' = 'pending') {
         return this._buildCollectionRequirementsGroups(
-            tenantId, 
-            "WHERE lr.admission_id = $1 AND (pe.status = 'ACTIVE' OR lr.prescription_event_id IS NULL)", 
-            [admissionId]
+            tenantId,
+            "WHERE lr.admission_id = $1 AND (pe.status = 'ACTIVE' OR lr.prescription_event_id IS NULL)",
+            [admissionId],
+            filter
         );
+    },
+
+    /**
+     * Get full collection detail for a specific lab_request (4-hop trace).
+     */
+    async getLabRequestCollectionDetail(tenantId: string, labRequestId: string) {
+        const rows = await tenantQuery(tenantId, `
+            SELECT
+                lr.id as lab_request_id,
+                lr.created_at as requested_at,
+                ga.libelle_sih as act_name,
+                s.id as specimen_id,
+                s.barcode,
+                s.status as specimen_status,
+                s.created_at as collected_at,
+                s.received_at,
+                s.rejected_at,
+                s.rejected_reason,
+                lc.id as collection_id,
+                lc.collected_at as collection_date,
+                au.display_name as collected_by
+            FROM public.lab_requests lr
+            JOIN reference.global_actes ga ON ga.id = lr.global_act_id
+            LEFT JOIN public.lab_specimen_requests lsr ON lsr.lab_request_id = lr.id
+            LEFT JOIN public.lab_specimens s ON s.id = lsr.specimen_id
+            LEFT JOIN public.lab_collection_specimens lcs ON lcs.specimen_id = s.id
+            LEFT JOIN public.lab_collections lc ON lc.id = lcs.lab_collection_id
+            LEFT JOIN auth.users au ON au.user_id = lc.collected_by_user_id
+            WHERE lr.id = $1
+            ORDER BY s.created_at DESC
+        `, [labRequestId]);
+        return rows;
     },
 
     async getSurveillanceCandidates(tenantId: string, prescriptionEventId: string) {
@@ -222,8 +266,8 @@ export const limsExecutionService = {
                 JOIN lab_collections lc ON lc.id = aelc.lab_collection_id
                 JOIN lab_collection_specimens lcs ON lcs.lab_collection_id = lc.id
                 JOIN lab_specimens ls ON ls.id = lcs.specimen_id
-                LEFT JOIN reference.lab_specimen_container_types sct ON sct.id = ls.lab_specimen_container_type_id
-                LEFT JOIN reference.lab_container_types ct ON ct.id = sct.container_type_id
+                LEFT JOIN lab_act_specimen_containers lasc2 ON lasc2.id = ls.lab_act_specimen_container_id
+                LEFT JOIN reference.lab_container_types ct ON ct.id = lasc2.container_type_id
                 WHERE ae.prescription_event_id = ANY($1)
                   AND ae.status = 'ACTIVE'
                 ORDER BY ae.occurred_at DESC
@@ -282,12 +326,9 @@ export const limsExecutionService = {
         const acts = lrResult.rows.map((r: any) => r.global_act_id);
         const reqMap = new Map<string, { labRequestIds: string[] }>();
         const reqGroupRows = await client.query(`
-            SELECT lr.id as req_id, lasc.id as lasc_id, lsct.id as lsct_id
+            SELECT lr.id as req_id, lasc.id as lasc_id, lasc.id as lsct_id
             FROM public.lab_requests lr
-            JOIN reference.lab_act_specimen_containers lasc ON lasc.global_act_id = lr.global_act_id AND lasc.actif = true
-            JOIN reference.lab_specimen_container_types lsct 
-                 ON lsct.specimen_type_id = lasc.specimen_type_id 
-                 AND lsct.container_type_id = lasc.container_type_id
+            JOIN lab_act_specimen_containers lasc ON lasc.global_act_id = lr.global_act_id AND lasc.actif = true
             WHERE lr.prescription_event_id = ANY($1)
         `, [prescriptionEventIds]);
 
@@ -304,7 +345,7 @@ export const limsExecutionService = {
             // 2. Create Specimen
             await client.query(`
                 INSERT INTO lab_specimens (
-                    id, lab_specimen_container_type_id, barcode, created_at, created_by_user_id
+                    id, lab_act_specimen_container_id, barcode, created_at, created_by_user_id
                 ) VALUES ($1, $2, $3, NOW(), $4)
             `, [specimenId, targetLsctId, barcode, userId]);
 
@@ -377,12 +418,9 @@ export const limsExecutionService = {
             const acts = lrResult.rows.map(r => r.global_act_id);
             const reqMap = new Map<string, { labRequestIds: string[] }>();
             const reqGroupRows = await client.query(`
-                SELECT lr.id as req_id, lasc.id as lasc_id, lsct.id as lsct_id
+                SELECT lr.id as req_id, lasc.id as lasc_id, lasc.id as lsct_id
                 FROM public.lab_requests lr
-                JOIN reference.lab_act_specimen_containers lasc ON lasc.global_act_id = lr.global_act_id AND lasc.actif = true
-                JOIN reference.lab_specimen_container_types lsct 
-                     ON lsct.specimen_type_id = lasc.specimen_type_id 
-                     AND lsct.container_type_id = lasc.container_type_id
+                JOIN lab_act_specimen_containers lasc ON lasc.global_act_id = lr.global_act_id AND lasc.actif = true
                 WHERE lr.prescription_event_id = ANY($1)
             `, [payload.selected_prescription_event_ids]);
 
@@ -401,7 +439,7 @@ export const limsExecutionService = {
                 // 2. Create Specimen
                 await client.query(`
                     INSERT INTO lab_specimens (
-                        id, lab_specimen_container_type_id, barcode, created_at, created_by_user_id
+                        id, lab_act_specimen_container_id, barcode, created_at, created_by_user_id
                     ) VALUES ($1, $2, $3, NOW(), $4)
                 `, [specimenId, targetLsctId, barcode, userId]);
 
@@ -481,7 +519,7 @@ export const limsExecutionService = {
             // STEP 2: Create Specimen physical entity
             const barcode = generateSpecimenBarcode();
             const newSpec = await client.query(`
-                INSERT INTO public.lab_specimens (lab_specimen_container_type_id, barcode, created_by_user_id)
+                INSERT INTO public.lab_specimens (lab_act_specimen_container_id, barcode, created_by_user_id)
                 VALUES ($1, $2, $3)
                 RETURNING id
             `, [params.targetLsctId, barcode, userId]);

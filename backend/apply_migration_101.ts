@@ -18,7 +18,7 @@ async function applyMigration() {
             await tPool.query('BEGIN');
             
             await tPool.query(`
-                CREATE TABLE IF NOT EXISTS reference.lab_act_taxonomy (
+                CREATE TABLE IF NOT EXISTS lab_act_taxonomy (
                     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                     act_id UUID NOT NULL,
                     sous_famille_id UUID NOT NULL,
@@ -32,11 +32,11 @@ async function applyMigration() {
                 );
 
                 -- We drop "aktif" just in case it registered due to my typo line in previous runs
-                ALTER TABLE reference.lab_act_taxonomy DROP COLUMN IF EXISTS aktif;
+                ALTER TABLE lab_act_taxonomy DROP COLUMN IF EXISTS aktif;
 
-                CREATE INDEX IF NOT EXISTS idx_lab_act_tax_act ON reference.lab_act_taxonomy(act_id);
-                CREATE INDEX IF NOT EXISTS idx_lab_act_tax_sf ON reference.lab_act_taxonomy(sous_famille_id);
-                CREATE INDEX IF NOT EXISTS idx_lab_act_tax_sec ON reference.lab_act_taxonomy(section_id);
+                CREATE INDEX IF NOT EXISTS idx_lab_act_tax_act ON lab_act_taxonomy(act_id);
+                CREATE INDEX IF NOT EXISTS idx_lab_act_tax_sf ON lab_act_taxonomy(sous_famille_id);
+                CREATE INDEX IF NOT EXISTS idx_lab_act_tax_sec ON lab_act_taxonomy(section_id);
             `);
             
             await tPool.query('COMMIT');

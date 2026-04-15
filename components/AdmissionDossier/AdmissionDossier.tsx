@@ -79,7 +79,9 @@ export const AdmissionDossier: React.FC<{ mode?: 'emr' | 'lims' }> = ({ mode = '
 
     setIsClosing(true);
     try {
-      const updatedAdmission = await api.closeAdmission(id);
+      const updatedAdmission = mode === 'lims'
+        ? await api.limsConfig.execution.closeAdmission(id)
+        : await api.closeAdmission(id);
       setAdmission(updatedAdmission);
       setShowCloseModal(false);
     } catch (error) {

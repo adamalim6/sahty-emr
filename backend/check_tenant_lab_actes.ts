@@ -31,13 +31,13 @@ async function main() {
 
     const res = await tPool.query(`
       SELECT COUNT(lp.id) as unmapped
-      FROM reference.lab_panels lp
-      LEFT JOIN reference.lab_panel_items lpi ON lpi.panel_id = lp.id
+      FROM lab_panels lp
+      LEFT JOIN lab_panel_items lpi ON lpi.panel_id = lp.id
       WHERE lpi.panel_id IS NULL;
     `);
     console.log("Global Biology Acts without any analyte contexts mapped to them:", res.rows[0].unmapped);
     
-    const total = await tPool.query(`SELECT COUNT(*) FROM reference.lab_panels`);
+    const total = await tPool.query(`SELECT COUNT(*) FROM lab_panels`);
     console.log("Total biology acts (lab_panels) in tenant:", total.rows[0].count);
 
     await tPool.end();

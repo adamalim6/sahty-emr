@@ -77,7 +77,7 @@ export const hprimMappingService = {
         // First try public.lab_analyte_external_codes
         const rows = await tenantQuery<any>(tenantId, `
             SELECT laec.analyte_id,
-                   (SELECT lac.id FROM reference.lab_analyte_contexts lac 
+                   (SELECT lac.id FROM lab_analyte_contexts lac 
                     WHERE lac.analyte_id = laec.analyte_id AND lac.is_default = true AND lac.actif = true 
                     LIMIT 1) as lab_analyte_context_id
             FROM public.lab_analyte_external_codes laec
@@ -93,7 +93,7 @@ export const hprimMappingService = {
         // Fallback: try matching directly on reference.lab_analytes.code
         const fallback = await tenantQuery<any>(tenantId, `
             SELECT la.id as analyte_id,
-                   (SELECT lac.id FROM reference.lab_analyte_contexts lac 
+                   (SELECT lac.id FROM lab_analyte_contexts lac 
                     WHERE lac.analyte_id = la.id AND lac.is_default = true AND lac.actif = true 
                     LIMIT 1) as lab_analyte_context_id
             FROM reference.lab_analytes la
