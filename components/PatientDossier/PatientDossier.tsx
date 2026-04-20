@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { MOCK_PATIENTS, calculateAge, generateIPP } from '../../constants';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { api } from '../../services/api';
+import toast from 'react-hot-toast';
 import { Gender, Patient } from '../../types';
 import {
   ArrowLeft,
@@ -54,6 +55,8 @@ import {
   ChevronDown,
   Hash
 } from 'lucide-react';
+
+import { PatientIdentityForm } from '../PatientIdentityForm';
 
 // Import Tabs
 import { Antecedants } from './Antecedants';
@@ -147,8 +150,9 @@ export const PatientDossier: React.FC<PatientDossierProps> = ({ patientId, works
   const [allPatients, setAllPatients] = useState<Patient[]>([]);
 
   const [activeTab, setActiveTab] = useState<string>('Antecedants');
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [formData, setFormData] = useState<Partial<Patient>>({});
+  const [showEditPanel, setShowEditPanel] = useState(false);
+  const [editPanelTab, setEditPanelTab] = useState<'edit' | 'history'>('edit');
+  const [changeHistory, setChangeHistory] = useState<any[]>([]);
 
   const { updateWorkspaceLabel, sidebarState, setSidebarState, openUtilityTab } = useWorkspace();
 
@@ -239,15 +243,25 @@ export const PatientDossier: React.FC<PatientDossierProps> = ({ patientId, works
     const fetchPatientData = async () => {
       setIsLoading(true);
       try {
-        const patients = await api.getPatients();
+        // Kick off the list (kept for dropdowns / cross-patient lookups) in parallel with
+        // the detail fetch, but rely on getPatient for this patient's full state —
+        // the list endpoint returns coverages: [] by design.
+        const [patients, detail] = await Promise.all([
+          api.getPatients().catch(() => [] as any[]),
+          api.getPatient(id as string).catch(() => null),
+        ]);
         setAllPatients(patients);
-        const found = patients.find(p => p.id === id);
 
-        if (found) {
-          setPatient(found);
+        if (detail) {
+          setPatient(detail as any);
         } else {
-          const mockFound = MOCK_PATIENTS.find(p => p.id === id);
-          setPatient(mockFound);
+          const found = (patients as any[]).find(p => p.id === id);
+          if (found) {
+            setPatient(found);
+          } else {
+            const mockFound = MOCK_PATIENTS.find(p => p.id === id);
+            setPatient(mockFound);
+          }
         }
       } catch (error) {
         console.error("Failed to fetch patient:", error);
@@ -279,63 +293,20 @@ export const PatientDossier: React.FC<PatientDossierProps> = ({ patientId, works
 
   const isFemale = patient.gender === Gender.Female;
 
-  const handleOpenEdit = () => {
-    setFormData({
-      ...patient,
-      insurance: patient.insurance || { mainOrg: '', relationship: 'Lui-même', registrationNumber: '' },
-      emergencyContacts: (patient.emergencyContacts && patient.emergencyContacts.length > 0) ? patient.emergencyContacts : [{ name: '', relationship: 'Père', phone: '' }],
-      guardian: patient.guardian || { firstName: '', lastName: '', phone: '', relationship: 'Père', idType: 'CIN', idNumber: '', address: '', habilitation: '' }
-    });
-    setIsEditModalOpen(true);
+  const handleOpenEdit = () => { setShowEditPanel(true); setEditPanelTab('edit'); };
+
+  const loadChangeHistory = async () => {
+    if (!patient?.id) return;
+    try {
+      const data = await api.getPatientChangeHistory(patient.id);
+      setChangeHistory(data);
+    } catch (e) { console.error(e); }
   };
 
-  const handleSaveEdit = () => {
-    if (!formData.firstName || !formData.lastName || !formData.dateOfBirth) {
-      alert("Veuillez remplir les champs obligatoires (Nom, Prénom, Date de naissance)");
-      return;
-    }
-
-    // --- CHECK FOR DUPLICATE CIN/ID (Excluding current patient) ---
-    if (formData.cin) {
-      const duplicate = allPatients.find(p =>
-        p.id !== patient.id &&
-        p.cin?.toLowerCase() === formData.cin?.toLowerCase()
-      );
-
-      if (duplicate) {
-        alert(`ERREUR : Ce numéro de pièce d'identité (${formData.cin}) est déjà attribué au patient ${duplicate.lastName} ${duplicate.firstName} (IPP: ${duplicate.ipp}). Modification bloquée.`);
-        return;
-      }
-    }
-
-    setPatient({ ...patient, ...formData as Patient });
-    setIsEditModalOpen(false);
+  const FIELD_LABELS: Record<string, string> = {
+    first_name: 'Prénom', last_name: 'Nom', dob: 'Date de naissance', sex: 'Sexe',
+    'identity_ids.CIN': 'CIN', 'identity_ids.PASSPORT': 'Passeport', 'identity_ids.SEJOUR': 'Carte de séjour',
   };
-
-  const handleInsuranceChange = (field: string, value: string) => {
-    const finalValue = field === 'registrationNumber' ? formatPhoneNumber(value) : value;
-    setFormData(prev => ({
-      ...prev,
-      insurance: { ...(prev.insurance || { mainOrg: '', relationship: 'Lui-même' }), [field]: finalValue }
-    }));
-  };
-
-  const handleGuardianChange = (field: string, value: string) => {
-    const finalValue = field === 'phone' ? formatPhoneNumber(value) : value;
-    setFormData(prev => ({
-      ...prev,
-      guardian: { ...(prev.guardian || { firstName: '', lastName: '', phone: '', relationship: 'Père', idType: 'CIN', idNumber: '', address: '', habilitation: '' }), [field]: finalValue }
-    }));
-  };
-
-  const handleEmergencyChange = (index: number, field: string, value: string) => {
-    const contacts = [...(formData.emergencyContacts || [])];
-    const finalValue = field === 'phone' ? formatPhoneNumber(value) : value;
-    contacts[index] = { ...contacts[index], [field]: finalValue };
-    setFormData({ ...formData, emergencyContacts: contacts });
-  };
-
-  const isMinor = formData.dateOfBirth ? calculateAge(formData.dateOfBirth) < 18 : false;
 
   const tabs = [
     { id: 'Antecedants', label: 'Antécédants', icon: Archive, component: <Antecedants /> },
@@ -354,7 +325,7 @@ export const PatientDossier: React.FC<PatientDossierProps> = ({ patientId, works
     { id: 'Electro', label: 'Electro & Echo', icon: Activity, component: <ElectroEcho patientId={patient.id} /> },
     { id: 'Transfusions', label: 'Transfusions', icon: Droplet, component: <Transfusions /> },
     { id: 'Interventions', label: 'Interventions', icon: Scissors, component: <Interventions /> },
-    { id: 'Admissions', label: 'Admissions', icon: Bed, component: <Admissions /> },
+    { id: 'Admissions', label: 'Admissions', icon: Bed, component: <Admissions patientId={patient.id} /> },
   ];
 
   return (
@@ -387,8 +358,8 @@ export const PatientDossier: React.FC<PatientDossierProps> = ({ patientId, works
                 <div className="h-4 w-px bg-gray-300"></div>
 
                 <div className="flex items-center space-x-4 text-[12px] text-gray-600 font-medium whitespace-nowrap overflow-hidden">
-                  <span className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 border border-slate-200">IPP: {patient.ipp}</span>
-                  <span className="flex items-center"><Calendar size={14} className="mr-1 text-gray-400" />{calculateAge(patient.dateOfBirth)} ans</span>
+                  <button onClick={() => { navigator.clipboard.writeText(patient.ipp); toast.success('IPP copié'); }} title="Cliquer pour copier" className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 border border-slate-200 hover:bg-slate-200 hover:text-slate-700 transition-colors cursor-pointer">IPP: {patient.ipp}</button>
+                  <span className="flex items-center"><Calendar size={14} className="mr-1 text-gray-400" />{calculateAge(patient.dateOfBirth)} ans{patient.dateOfBirth ? ` (${new Date(patient.dateOfBirth).toLocaleDateString('fr-FR')})` : ''}</span>
                   <span className="flex items-center"><Activity size={14} className="mr-1 text-gray-400" />{patient.gender}</span>
                   {patient.cin && <span className="flex items-center"><IdCard size={14} className="mr-1 text-gray-400" />{patient.cin}</span>}
                 </div>
@@ -406,7 +377,7 @@ export const PatientDossier: React.FC<PatientDossierProps> = ({ patientId, works
                   return (
                     <button
                       key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
+                      onClick={() => { setActiveTab(tab.id); setShowEditPanel(false); }}
                       className={`
                         flex items-center whitespace-nowrap py-3.5 border-b-2 font-black uppercase text-[11px] tracking-widest transition-all duration-200 group
                         ${isActive
@@ -491,6 +462,7 @@ export const PatientDossier: React.FC<PatientDossierProps> = ({ patientId, works
         
         {/* Main Chart Content */}
         <div className="flex-1 flex flex-col min-h-0 min-w-0 relative overflow-hidden transition-all duration-300">
+
           {tabs.map(tab => {
             const isHeavyFlex = tab.id === 'Surveillance' || tab.id === 'Observations';
             const isCurrentTab = activeTab === tab.id;
@@ -547,139 +519,74 @@ export const PatientDossier: React.FC<PatientDossierProps> = ({ patientId, works
              openUtilityTab('ws-utility-templates', 'Mes Modèles', '/templates', payload);
           }}
         />
+
+        {/* RIGHT DRAWER: Patient Edit — overlays tab content */}
+        {showEditPanel && (
+          <div className="absolute top-0 right-0 bottom-0 w-[85%] z-30 bg-white flex flex-col shadow-2xl border-l border-slate-200 animate-in slide-in-from-right duration-200">
+            {/* Drawer header with tabs */}
+            <div className="bg-slate-50 border-b border-slate-200 shrink-0">
+              <div className="px-4 py-2 flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wide">{patient.lastName} {patient.firstName}</span>
+                <button onClick={() => setShowEditPanel(false)} className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded"><X size={16} /></button>
+              </div>
+              <div className="flex px-4 gap-1">
+                <button onClick={() => setEditPanelTab('edit')}
+                  className={`px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide border-b-2 transition-colors ${editPanelTab === 'edit' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
+                  <Pencil size={12} className="inline mr-1.5 -mt-0.5" />Modifier
+                </button>
+                <button onClick={() => { setEditPanelTab('history'); loadChangeHistory(); }}
+                  className={`px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide border-b-2 transition-colors ${editPanelTab === 'history' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
+                  <History size={12} className="inline mr-1.5 -mt-0.5" />Historique
+                </button>
+              </div>
+            </div>
+
+            {/* Drawer content */}
+            {editPanelTab === 'edit' ? (
+              <PatientIdentityForm
+                initialData={patient}
+                defaultStatus={patient.identityStatus || 'PROVISIONAL'}
+                hideSearch
+                onSubmit={async (patientId) => {
+                  try {
+                    const updated = await api.getPatient(patientId);
+                    setPatient(updated);
+                    setShowEditPanel(false);
+                  } catch (e) { console.error(e); }
+                }}
+                onCancel={() => setShowEditPanel(false)}
+              />
+            ) : (
+              <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                {changeHistory.length === 0 ? (
+                  <div className="text-center py-12 text-slate-400">
+                    <History size={28} className="mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">Aucune modification enregistrée</p>
+                  </div>
+                ) : changeHistory.map((c: any, i: number) => (
+                  <div key={i} className="bg-slate-50 rounded-lg border border-slate-200 p-3 flex items-start gap-3">
+                    <div className="w-2 h-2 rounded-full bg-blue-400 mt-1.5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-semibold text-slate-700">{FIELD_LABELS[c.field_path] || c.field_path}</span>
+                        <span className="text-[10px] text-slate-400">{new Date(c.changed_at).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                        {c.changed_by_name && <span className="text-[10px] text-slate-400">par {c.changed_by_name}</span>}
+                        <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${c.change_source === 'USER_EDIT' ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>{c.change_source}</span>
+                      </div>
+                      <div className="mt-1 text-xs text-slate-600">
+                        {c.old_value && <span className="line-through text-red-400 mr-2">{c.old_value}</span>}
+                        {c.new_value && <span className="text-emerald-600 font-medium">{c.new_value}</span>}
+                        {!c.old_value && !c.new_value && <span className="text-slate-300 italic">-</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* --- EDIT PATIENT MODAL --- */}
-      {isEditModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-[2rem] shadow-2xl overflow-hidden flex flex-col w-full max-w-6xl h-[92vh] animate-in zoom-in-95 duration-300">
-
-            <div className="px-8 py-6 flex justify-between items-center text-white relative overflow-hidden bg-gradient-to-r from-indigo-700 to-indigo-800">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
-              <div className="flex items-center space-x-5 relative z-10">
-                <div className="p-3.5 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 shadow-inner">
-                  <ShieldCheck size={28} />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-black tracking-tight leading-tight uppercase">Modification Dossier Patient</h3>
-                  <div className="flex items-center mt-1 space-x-3">
-                    <div className="flex items-center space-x-1.5 bg-white/20 px-2.5 py-1 rounded-lg border border-white/10 backdrop-blur-sm">
-                      <Fingerprint size={12} className="text-white/60" />
-                      <span className="text-[11px] font-black uppercase tracking-widest text-white">IPP: {formData.ipp}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <button onClick={() => setIsEditModalOpen(false)} className="p-3 hover:bg-white/10 rounded-2xl transition-all border border-transparent hover:border-white/10 active:scale-95"><X size={26} /></button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto bg-slate-50/50 p-8 space-y-8">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <CardSection title="1. Informations Patient" icon={User}>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <InputField label="IPP (Auto-généré)" disabled value={formData.ipp} icon={Fingerprint} />
-                    <GenderToggle value={formData.gender as Gender} onChange={(g) => setFormData({ ...formData, gender: g })} />
-                    <InputField label="Nom" required value={formData.lastName} onChange={(e: any) => setFormData({ ...formData, lastName: e.target.value.toUpperCase() })} />
-                    <InputField label="Prénom" required value={formData.firstName} onChange={(e: any) => setFormData({ ...formData, firstName: e.target.value })} />
-                    <InputField label="Date de Naissance" required type="date" value={formData.dateOfBirth} onChange={(e: any) => setFormData({ ...formData, dateOfBirth: e.target.value })} icon={Calendar} />
-                    <InputField label="Numéro de Téléphone" value={formData.phone} onChange={(e: any) => setFormData({ ...formData, phone: formatPhoneNumber(e.target.value) })} icon={Phone} />
-                    <div className="sm:col-span-2"><InputField label="Adresse E-mail" value={formData.email} onChange={(e: any) => setFormData({ ...formData, email: e.target.value })} icon={Mail} /></div>
-                    <div className="grid grid-cols-2 gap-5 sm:col-span-2">
-                      <SelectField label="Nature Identité" options={["CIN", "Passeport", "Carte de séjour"]} value="CIN" required />
-                      <InputField label="N° Pièce Identité" required value={formData.cin} onChange={(e: any) => setFormData({ ...formData, cin: e.target.value })} placeholder="Ex: AB123456" />
-                    </div>
-                    <InputField label="Profession" value={formData.profession} onChange={(e: any) => setFormData({ ...formData, profession: e.target.value })} icon={Briefcase} />
-                    <div className="flex flex-col space-y-1.5 text-left">
-                      <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Groupe Sanguin</label>
-                      <select value={formData.bloodGroup} onChange={(e: any) => setFormData({ ...formData, bloodGroup: e.target.value })} className="bg-white border border-slate-200 rounded-xl py-2.5 px-4 text-sm font-bold text-red-600 outline-none focus:ring-4 focus:ring-emerald-500/10">
-                        <option value="">Inconnu</option>
-                        <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
-                        <option>AB+</option><option>AB-</option><option>O+</option><option>O-</option>
-                      </select>
-                    </div>
-                  </div>
-                </CardSection>
-
-                <div className="space-y-8">
-                  <CardSection title="2. Contacts d'urgence" icon={Users} colorClass="text-indigo-600" bgClass="bg-indigo-50" action={<button onClick={() => setFormData({ ...formData, emergencyContacts: [...(formData.emergencyContacts || []), { name: '', relationship: 'Ami(e)', phone: '' }] })} className="bg-indigo-600 text-white px-3 py-1 rounded-lg text-xs font-bold">+ Ajouter</button>}>
-                    <div className="space-y-6">
-                      {formData.emergencyContacts?.map((contact, index) => (
-                        <div key={index} className="p-4 bg-slate-50 border border-slate-200 rounded-xl relative">
-                          <div className="flex justify-between items-center mb-4">
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-white px-2 py-0.5 rounded">Contact #{index + 1}</span>
-                            {/* SÉCURITÉ : Empêcher la suppression du dernier contact d'urgence */}
-                            {formData.emergencyContacts!.length > 1 && (
-                              <button onClick={() => setFormData({ ...formData, emergencyContacts: formData.emergencyContacts?.filter((_, idx) => idx !== index) })} className="text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
-                            )}
-                          </div>
-                          <div className="grid grid-cols-1 gap-4">
-                            <InputField label="Nom complet" value={contact.name} onChange={(e: any) => handleEmergencyChange(index, 'name', e.target.value)} />
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <SelectField label="Relation" options={['Père', 'Mère', 'Frère', 'Soeur', 'Ami(e)', 'Conjoint']} value={contact.relationship} onChange={(e: any) => handleEmergencyChange(index, 'relationship', e.target.value)} />
-                              <InputField label="Tél" value={contact.phone} onChange={(e: any) => handleEmergencyChange(index, 'phone', e.target.value)} icon={Phone} />
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardSection>
-
-                  {isMinor && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
-                      <div className="flex items-center space-x-3 mb-5">
-                        <div className="p-2 bg-amber-500 text-white rounded-lg"><Baby size={20} /></div>
-                        <h4 className="font-bold text-amber-900 text-sm uppercase tracking-tight text-left">3. Tuteur Légal (Patient Mineur)</h4>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <InputField label="Nom" required value={formData.guardian?.lastName} onChange={(e: any) => handleGuardianChange('lastName', e.target.value.toUpperCase())} />
-                        <InputField label="Prénom" required value={formData.guardian?.firstName} onChange={(e: any) => handleGuardianChange('firstName', e.target.value)} />
-                        <SelectField label="Lien de parenté" required options={['Père', 'Mère', 'Oncle', 'Frère', 'Soeur', 'Tuteur légal']} value={formData.guardian?.relationship} onChange={(e: any) => handleGuardianChange('relationship', e.target.value)} />
-                        <InputField label="Téléphone" icon={Phone} value={formData.guardian?.phone} onChange={(e: any) => handleGuardianChange('phone', formatPhoneNumber(e.target.value))} />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <CardSection title="4. Localisation & Nationalité" icon={MapPin} colorClass="text-blue-600" bgClass="bg-blue-50">
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-5">
-                  <SelectField label="Pays" required options={['Maroc', 'France', 'Espagne', 'Sénégal', 'USA']} value={formData.country} onChange={(e: any) => setFormData({ ...formData, country: e.target.value })} icon={Globe} />
-                  <InputField label="Ville" required value={formData.city} onChange={(e: any) => setFormData({ ...formData, city: e.target.value })} icon={MapPin} />
-                  <InputField label="Code Postal" value={formData.zipCode} onChange={(e: any) => setFormData({ ...formData, zipCode: e.target.value })} />
-                  <SelectField label="Nationalité" required options={['Marocaine', 'Française', 'Espagnole', 'Sénégalaise']} value={formData.nationality} onChange={(e: any) => setFormData({ ...formData, nationality: e.target.value })} icon={Flag} />
-                  <div className="sm:col-span-4"><InputField label="Adresse Actuelle" required value={formData.address} onChange={(e: any) => setFormData({ ...formData, address: e.target.value })} icon={MapPin} /></div>
-                </div>
-              </CardSection>
-
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden text-left">
-                <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50">
-                  <div className="flex items-center space-x-3"><div className="p-2 bg-violet-50 text-violet-600 rounded-lg"><CreditCard size={18} /></div><h4 className="font-bold text-slate-800 text-sm uppercase tracking-tight">5. Informations Assurance</h4></div>
-                  <label onClick={() => setFormData({ ...formData, isPayant: !formData.isPayant })} className={`flex items-center justify-between sm:justify-start space-x-4 cursor-pointer px-4 py-2 rounded-xl border transition-all ${formData.isPayant ? 'bg-emerald-50 border-emerald-500 shadow-sm' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${formData.isPayant ? 'text-emerald-700' : 'text-slate-500'}`}>Patient Payant (Direct)</span>
-                    <div className={`w-6 h-6 rounded-lg border-2 transition-all flex items-center justify-center ${formData.isPayant ? 'bg-white border-emerald-500 text-emerald-600' : 'bg-white border-slate-300 text-transparent'}`}><Check size={16} strokeWidth={4} /></div>
-                  </label>
-                </div>
-                <div className={`p-6 transition-opacity duration-300 ${formData.isPayant ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
-                  {!formData.isPayant ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                      <SelectField label="Organisme Principal" options={['CNSS', 'CNOPS', 'AXA', 'WAFA', 'CIMR']} value={formData.insurance?.mainOrg} onChange={(e: any) => handleInsuranceChange('mainOrg', e.target.value)} required icon={Building2} />
-                      <div className="grid grid-cols-2 gap-4">
-                        <SelectField label="Lien Assuré" options={['Lui-même', 'Conjoint', 'Enfant', 'Père', 'Mère']} value={formData.insurance?.relationship} onChange={(e: any) => handleInsuranceChange('relationship', e.target.value)} required />
-                        <InputField label="N° Immatriculation" value={formData.insurance?.registrationNumber} onChange={(e: any) => handleInsuranceChange('registrationNumber', e.target.value)} placeholder="N° Matricule..." icon={Hash} />
-                      </div>
-                    </div>
-                  ) : <div className="flex flex-col items-center justify-center py-6 text-slate-400"><ShieldCheck size={32} className="mb-2 opacity-20" /><p className="text-sm italic">Mode paiement direct activé.</p></div>}
-                </div>
-              </div>
-            </div>
-
-            <div className="px-8 py-5 bg-white border-t border-slate-100 flex justify-end items-center space-x-4">
-              <button onClick={() => setIsEditModalOpen(false)} className="px-6 py-2.5 text-slate-400 font-bold hover:text-slate-600 uppercase text-xs tracking-widest">Annuler</button>
-              <button onClick={handleSaveEdit} className="px-10 py-3 bg-indigo-600 text-white rounded-xl font-black uppercase text-xs tracking-[0.2em] hover:bg-indigo-700 shadow-xl shadow-indigo-600/30 flex items-center active:scale-95 transition-all"><CheckCircle2 size={18} className="mr-3" /> Enregistrer les modifications</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

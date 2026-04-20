@@ -96,11 +96,12 @@ export class PatientTenantService {
         const pt = rows[0];
 
         // 2. Parallel Fetch
-        const [ids, contacts, addresses, relationships] = await Promise.all([
+        const [ids, contacts, addresses, relationships, coverages] = await Promise.all([
             this.getIdentifiers(tenantId, resolvedId),
             this.getContacts(tenantId, resolvedId),
             this.getAddresses(tenantId, resolvedId),
-            this.getRelationships(tenantId, resolvedId)
+            this.getRelationships(tenantId, resolvedId),
+            this.getCoverages(tenantId, resolvedId)
         ]);
 
         const mrnObj = ids.find(i => i.identityTypeCode === 'LOCAL_MRN');
@@ -125,7 +126,7 @@ export class PatientTenantService {
             identifiers: ids,
             contacts,
             addresses,
-            coverages: [], // Coverages are now admission-level (admission_coverages)    
+            coverages,
             relationships
         };
     }
@@ -180,8 +181,39 @@ export class PatientTenantService {
         }
     }
 
-    // patient_coverages removed — coverages are now linked at admission level (admission_coverages)
-    // Coverage selection happens during admission creation, not patient registration.
+    // Patient-level coverages: a coverage + coverage_member pair captures the patient's
+    // known insurance. Admission-level coverage (admission_coverages) is a separate concept —
+    // snapshotted at admission time, potentially from patient-level coverage.
+    private async getCoverages(tenantId: string, patientId: string): Promise<any[]> {
+        try {
+            const rows = await tenantQuery(tenantId, `
+                SELECT
+                    c.coverage_id,
+                    c.organisme_id,
+                    c.policy_number,
+                    c.status,
+                    cm.coverage_member_id,
+                    cm.relationship_to_subscriber_code
+                FROM coverage_members cm
+                JOIN coverages c ON c.coverage_id = cm.coverage_id
+                WHERE cm.tenant_id = $1 AND cm.tenant_patient_id = $2
+                ORDER BY c.created_at DESC
+            `, [tenantId, patientId]);
+
+            return rows.map(r => ({
+                coverageId: r.coverage_id,
+                organismeId: r.organisme_id,
+                policyNumber: r.policy_number,
+                status: r.status,
+                members: [{
+                    coverageMemberId: r.coverage_member_id,
+                    relationshipToSubscriberCode: r.relationship_to_subscriber_code
+                }]
+            }));
+        } catch (e) {
+            return [];
+        }
+    }
 
     private async getRelationships(tenantId: string, patientId: string): Promise<PatientRelationshipLink[]> {
         const rows = await tenantQuery(tenantId, `
@@ -377,38 +409,21 @@ export class PatientTenantService {
                     // A. Create New Coverage if not existing
                     if (!coverageId) {
                         coverageId = uuidv4();
-                        
-                        if (isSelf) {
-                            // Patient IS the subscriber
-                            await client.query(`
-                                INSERT INTO coverages (
-                                    coverage_id, tenant_id, organisme_id, policy_number, status,
-                                    subscriber_tenant_patient_id
-                                ) VALUES ($1, $2, $3, $4, 'ACTIVE', $5)
-                            `, [coverageId, tenantId, cov.insuranceOrgId, cov.policyNumber, patientId]);
-                        } else if (cov.subscriber?.tenantPatientId) {
-                            // Subscriber is another existing patient
-                            await client.query(`
-                                INSERT INTO coverages (
-                                    coverage_id, tenant_id, organisme_id, policy_number, status,
-                                    subscriber_tenant_patient_id
-                                ) VALUES ($1, $2, $3, $4, 'ACTIVE', $5)
-                            `, [coverageId, tenantId, cov.insuranceOrgId, cov.policyNumber, cov.subscriber.tenantPatientId]);
-                        } else {
-                            // External subscriber (not a patient)
-                            const subId = cov.subscriber?.identifiers?.[0];
-                            await client.query(`
-                                INSERT INTO coverages (
-                                    coverage_id, tenant_id, organisme_id, policy_number, status,
-                                    subscriber_first_name, subscriber_last_name,
-                                    subscriber_identity_type, subscriber_identity_value, subscriber_issuing_country
-                                ) VALUES ($1, $2, $3, $4, 'ACTIVE', $5, $6, $7, $8, $9)
-                            `, [
-                                coverageId, tenantId, cov.insuranceOrgId, cov.policyNumber,
-                                cov.subscriber?.firstName || null, cov.subscriber?.lastName || null,
-                                subId?.typeCode || null, subId?.value || null, subId?.countryCode || null
-                            ]);
-                        }
+
+                        // Create coverage header — subscriber identity is tracked in coverage_members, not here
+                        const subId = (!isSelf && cov.subscriber) ? cov.subscriber.identifiers?.[0] : null;
+                        await client.query(`
+                            INSERT INTO coverages (
+                                coverage_id, tenant_id, organisme_id, policy_number, status,
+                                subscriber_first_name, subscriber_last_name,
+                                subscriber_identity_type, subscriber_identity_value, subscriber_issuing_country
+                            ) VALUES ($1, $2, $3, $4, 'ACTIVE', $5, $6, $7, $8, $9)
+                        `, [
+                            coverageId, tenantId, cov.insuranceOrgId, cov.policyNumber,
+                            isSelf ? null : (cov.subscriber?.firstName || null),
+                            isSelf ? null : (cov.subscriber?.lastName || null),
+                            subId?.typeCode || null, subId?.value || null, subId?.countryCode || null
+                        ]);
 
                         // Log History
                         await this.logCoverageChange(client, tenantId, coverageId, 'CREATE_COVERAGE', 'USER_UI', {
@@ -431,32 +446,48 @@ export class PatientTenantService {
                        newValue: `Patient ${patientId} as ${relationshipCode}`
                    });
                    
-                   // C. Add the Subscriber as a separate Member row (relationship = SELF) when subscriber != patient
+                   // C. Add the Subscriber as a separate Member row (relationship = SELF) when subscriber != patient.
+                   //    Guards:
+                   //      - Skip if a SELF already exists on this coverage (prevents phantom duplicates when
+                   //        the clerk picks an existing coverage that already has its subscriber recorded).
+                   //      - Skip if subscriber payload is effectively empty (no linked patient + no name fields).
                    if (relationshipCode !== 'SELF' && cov.subscriber) {
-                       const subscriberMemberId = uuidv4();
-                       const subId = cov.subscriber.identifiers?.[0];
-                       
-                       await client.query(`
-                           INSERT INTO coverage_members (
-                               coverage_member_id, tenant_id, coverage_id,
-                               tenant_patient_id, relationship_to_subscriber_code,
-                               member_first_name, member_last_name,
-                               member_identity_type, member_identity_value, member_issuing_country
-                           ) VALUES ($1, $2, $3, $4, 'SELF', $5, $6, $7, $8, $9)
-                       `, [
-                           subscriberMemberId, tenantId, coverageId,
-                           cov.subscriber.tenantPatientId || null,  // null if external
-                           cov.subscriber.firstName || null,
-                           cov.subscriber.lastName || null,
-                           subId?.typeCode || null,
-                           subId?.value || null,
-                           subId?.countryCode || null
-                       ]);
+                       const existingSelf = await client.query(`
+                           SELECT coverage_member_id FROM coverage_members
+                           WHERE tenant_id = $1 AND coverage_id = $2 AND relationship_to_subscriber_code = 'SELF'
+                           LIMIT 1
+                       `, [tenantId, coverageId]);
 
-                       await this.logCoverageChange(client, tenantId, coverageId as string, 'ADD_MEMBER', 'USER_UI', {
-                           memberId: subscriberMemberId,
-                           newValue: `Subscriber ${cov.subscriber.firstName || ''} ${cov.subscriber.lastName || ''} as SELF`
-                       });
+                       const hasPayload = !!cov.subscriber.tenantPatientId
+                           || (cov.subscriber.firstName && cov.subscriber.firstName.trim())
+                           || (cov.subscriber.lastName  && cov.subscriber.lastName.trim());
+
+                       if (existingSelf.rows.length === 0 && hasPayload) {
+                           const subscriberMemberId = uuidv4();
+                           const subId = cov.subscriber.identifiers?.[0];
+
+                           await client.query(`
+                               INSERT INTO coverage_members (
+                                   coverage_member_id, tenant_id, coverage_id,
+                                   tenant_patient_id, relationship_to_subscriber_code,
+                                   member_first_name, member_last_name,
+                                   member_identity_type, member_identity_value, member_issuing_country
+                               ) VALUES ($1, $2, $3, $4, 'SELF', $5, $6, $7, $8, $9)
+                           `, [
+                               subscriberMemberId, tenantId, coverageId,
+                               cov.subscriber.tenantPatientId || null,
+                               cov.subscriber.firstName || null,
+                               cov.subscriber.lastName || null,
+                               subId?.typeCode || null,
+                               subId?.value || null,
+                               subId?.countryCode || null
+                           ]);
+
+                           await this.logCoverageChange(client, tenantId, coverageId as string, 'ADD_MEMBER', 'USER_UI', {
+                               memberId: subscriberMemberId,
+                               newValue: `Subscriber ${cov.subscriber.firstName || ''} ${cov.subscriber.lastName || ''} as SELF`
+                           });
+                       }
                    }
                 }
             }
@@ -489,28 +520,60 @@ export class PatientTenantService {
 
     // --- SEARCH ---
 
-    async searchCoverages(tenantId: string, organismeId: string, policyNumber: string): Promise<Coverage[]> {
+    async searchCoverages(tenantId: string, organismeId: string, policyNumber: string): Promise<any[]> {
+        // Joins the SELF coverage_member (if any) so callers can display the existing subscriber
+        // and pre-fill / lock the subscriber fields when the clerk attaches a dependent to this
+        // existing coverage.
         const rows = await tenantQuery(tenantId, `
-            SELECT c.*, o.designation as organisme_name
+            SELECT
+                c.coverage_id, c.tenant_id, c.organisme_id, c.policy_number, c.group_number,
+                c.plan_name, c.coverage_type_code, c.effective_from, c.effective_to, c.status,
+                o.designation AS organisme_name,
+                self_cm.coverage_member_id      AS self_member_id,
+                self_cm.tenant_patient_id       AS self_tenant_patient_id,
+                self_cm.member_first_name       AS self_member_first_name,
+                self_cm.member_last_name        AS self_member_last_name,
+                self_cm.member_identity_type    AS self_member_identity_type,
+                self_cm.member_identity_value   AS self_member_identity_value,
+                self_cm.member_issuing_country  AS self_member_issuing_country,
+                self_pt.first_name              AS self_patient_first_name,
+                self_pt.last_name               AS self_patient_last_name
             FROM coverages c
             JOIN reference.organismes o ON o.id = c.organisme_id
-            WHERE c.tenant_id = $1 
-            AND c.organisme_id = $2
-            AND c.policy_number ILIKE $3
-            AND c.status = 'ACTIVE'
+            LEFT JOIN LATERAL (
+                SELECT * FROM coverage_members cm
+                WHERE cm.tenant_id = c.tenant_id
+                  AND cm.coverage_id = c.coverage_id
+                  AND cm.relationship_to_subscriber_code = 'SELF'
+                LIMIT 1
+            ) self_cm ON TRUE
+            LEFT JOIN patients_tenant self_pt ON self_pt.tenant_patient_id = self_cm.tenant_patient_id
+            WHERE c.tenant_id = $1
+              AND c.organisme_id = $2
+              AND c.policy_number ILIKE $3
+              AND c.status = 'ACTIVE'
         `, [tenantId, organismeId, policyNumber]);
 
-        return rows.map(r => ({
+        return rows.map((r: any) => ({
             coverageId: r.coverage_id,
             tenantId: r.tenant_id,
             organismeId: r.organisme_id,
+            organismeName: r.organisme_name,
             policyNumber: r.policy_number,
             groupNumber: r.group_number,
             planName: r.plan_name,
             coverageTypeCode: r.coverage_type_code,
             effectiveFrom: r.effective_from,
             effectiveTo: r.effective_to,
-            status: r.status
+            status: r.status,
+            hasSelfMember: !!r.self_member_id,
+            selfMemberId: r.self_member_id,
+            selfTenantPatientId: r.self_tenant_patient_id,
+            subscriberFirstName: r.self_patient_first_name || r.self_member_first_name || '',
+            subscriberLastName:  r.self_patient_last_name  || r.self_member_last_name  || '',
+            subscriberIdentityType:    r.self_member_identity_type    || null,
+            subscriberIdentityValue:   r.self_member_identity_value   || null,
+            subscriberIssuingCountry:  r.self_member_issuing_country  || null
         }));
     }
 
@@ -574,8 +637,8 @@ export class PatientTenantService {
             ];
 
             for (const f of demoFields) {
-                const oldVal = current[f.dbCol] || null;
-                const newVal = f.newVal || null;
+                const oldVal = (current[f.dbCol] || '').substring(0, 10) || null;
+                const newVal = (f.newVal || '').substring(0, 10) || null;
                 if (oldVal !== newVal) {
                     await client.query(`
                         INSERT INTO patient_identity_change 
@@ -701,25 +764,24 @@ export class PatientTenantService {
                 }
             }
 
-            // 8. Coverages — create/link coverages + coverage_members (admission linking is separate)
-            if (payload.coverages) {
+            // 8. Coverages — upsert-diff semantics. payload.coverages (if defined) is the complete
+            // new set of coverage memberships for this patient. We UPSERT each entry to keep
+            // coverage_member_id stable (admission_coverages.coverage_member_id FK stays valid),
+            // then DELETE only memberships the clerk actually removed.
+            // Empty array = self-pay. Undefined = partial update, leave coverages untouched.
+            if (payload.coverages !== undefined) {
+                const keptCoverageIds: string[] = [];
+
                 for (const cov of payload.coverages) {
-                    let subscriberId: string | null = null;
-                    
-                    if (cov.relationshipToSubscriberCode === 'SELF') {
-                        subscriberId = tenantPatientId;
-                    } else if (cov.subscriber) {
-                        subscriberId = cov.subscriber.tenantPatientId || null;
-                    }
+                    if (!cov.insuranceOrgId) continue;
 
-                    if (!subscriberId) continue;
-
+                    // Resolve or create the shared coverage row (by organisme + policy)
                     let coverageId: string;
                     const covExist = await client.query(`
-                        SELECT coverage_id FROM coverages 
+                        SELECT coverage_id FROM coverages
                         WHERE tenant_id = $1 AND organisme_id = $2 AND policy_number = $3
                     `, [tenantId, cov.insuranceOrgId, cov.policyNumber]);
-                    
+
                     if (covExist.rows.length > 0) {
                         coverageId = covExist.rows[0].coverage_id;
                     } else {
@@ -731,11 +793,34 @@ export class PatientTenantService {
                         coverageId = newCov.rows[0].coverage_id;
                     }
 
+                    // UPSERT the patient's membership in this coverage — preserves coverage_member_id
+                    // on unchanged rows so admission_coverages FK stays intact.
                     await client.query(`
-                        INSERT INTO coverage_members (tenant_id, coverage_member_id, coverage_id, tenant_patient_id, relationship_to_subscriber_code)
+                        INSERT INTO coverage_members
+                            (tenant_id, coverage_member_id, coverage_id, tenant_patient_id, relationship_to_subscriber_code)
                         VALUES ($1, gen_random_uuid(), $2, $3, $4)
-                        ON CONFLICT (coverage_id, tenant_patient_id) DO NOTHING
-                    `, [tenantId, coverageId, subscriberId, cov.relationshipToSubscriberCode]);
+                        ON CONFLICT (coverage_id, tenant_patient_id)
+                        DO UPDATE SET relationship_to_subscriber_code = EXCLUDED.relationship_to_subscriber_code
+                    `, [tenantId, coverageId, tenantPatientId, cov.relationshipToSubscriberCode]);
+
+                    keptCoverageIds.push(coverageId);
+                }
+
+                // Remove memberships the clerk took out of the form. If a removed coverage is
+                // still referenced by an admission binding, the RESTRICT FK will throw and the
+                // whole transaction rolls back — surface that to the clerk so they know.
+                if (keptCoverageIds.length > 0) {
+                    await client.query(`
+                        DELETE FROM coverage_members
+                        WHERE tenant_id = $1
+                          AND tenant_patient_id = $2
+                          AND coverage_id <> ALL($3::uuid[])
+                    `, [tenantId, tenantPatientId, keptCoverageIds]);
+                } else {
+                    await client.query(`
+                        DELETE FROM coverage_members
+                        WHERE tenant_id = $1 AND tenant_patient_id = $2
+                    `, [tenantId, tenantPatientId]);
                 }
             }
 

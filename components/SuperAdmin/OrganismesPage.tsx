@@ -14,6 +14,7 @@ export const OrganismesPage: React.FC = () => {
         designation: '',
         category: 'ASSURANCE',
         sub_type: 'CLASSIQUE',
+        coefficient_b: '',
         active: true
     });
     const [isEditing, setIsEditing] = useState(false);
@@ -42,6 +43,7 @@ export const OrganismesPage: React.FC = () => {
             designation: '',
             category: 'ASSURANCE',
             sub_type: 'CLASSIQUE',
+            coefficient_b: '',
             active: true
         });
         setIsEditing(false);
@@ -115,6 +117,7 @@ export const OrganismesPage: React.FC = () => {
                                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Désignation</th>
                                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Catégorie</th>
                                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Sous-Type</th>
+                                <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase">Coeff. B</th>
                                 <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase">Statut</th>
                                 <th className="px-6 py-4 text-right text-xs font-semibold text-slate-500 uppercase">Actions</th>
                             </tr>
@@ -141,6 +144,9 @@ export const OrganismesPage: React.FC = () => {
                                     </td>
                                     <td className="px-6 py-4 text-sm text-slate-600">
                                         {org.sub_type || '-'}
+                                    </td>
+                                    <td className="px-6 py-4 text-right">
+                                        {org.coefficient_b ? <span className="font-mono font-bold text-sm text-slate-800">{parseFloat(org.coefficient_b).toFixed(2)}</span> : <span className="text-slate-300">-</span>}
                                     </td>
                                     <td className="px-6 py-4">
                                         {org.active ? (
@@ -175,7 +181,7 @@ export const OrganismesPage: React.FC = () => {
                             ))}
                             {filteredOrganismes.length === 0 && (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
+                                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
                                         Aucun organisme trouvé
                                     </td>
                                 </tr>
@@ -236,6 +242,18 @@ export const OrganismesPage: React.FC = () => {
                                         <option value="TAKAFUL">Takaful</option>
                                     </select>
                                 </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Coefficient de B</label>
+                                <input
+                                    type="number" step="0.01" min="0"
+                                    className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none font-mono"
+                                    value={formData.coefficient_b}
+                                    onChange={e => setFormData({...formData, coefficient_b: e.target.value})}
+                                    placeholder="ex: 1.50"
+                                />
+                                <p className="text-xs text-slate-400 mt-1">Multiplicateur pour le calcul du prix des actes de biologie (nombre B x coefficient)</p>
                             </div>
 
                             <div className="flex justify-end space-x-3 pt-6 border-t border-slate-50 mt-4">

@@ -18,7 +18,8 @@ import {
   Package,
   FileText,
   RotateCcw,
-  Bell
+  Bell,
+  ShieldCheck
 } from 'lucide-react';
 import { AIAssistant } from './AIAssistant';
 import { useAuth } from '../context/AuthContext';
@@ -53,6 +54,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const availableNavItems = [
     { id: 'emr_patients', icon: Users, label: 'Patients', to: '/' },
     { id: 'emr_admissions', icon: ClipboardList, label: 'Admissions', to: '/admissions' },
+    { id: 'emr_coverages', icon: ShieldCheck, label: 'Couvertures', to: '/coverages' },
     { id: 'emr_replenishment', icon: ClipboardList, label: 'Réapprovisionnement', to: '/replenishment' },
     { id: 'emr_service_stock', icon: Package, label: 'Stock Service', to: '/service-stock' },
     { id: 'emr_returns', icon: RotateCcw, label: 'Retours', to: '/retours' },

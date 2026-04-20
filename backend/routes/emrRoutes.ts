@@ -7,8 +7,10 @@ import {
     closeAdmission, 
     createAdmission, 
     createPatient, // Now Tenant Register
-    updatePatient, 
-    getPatient, 
+    updatePatient,
+    getPatient,
+    getPatientChangeHistory,
+    getAdmissionsByPatient,
     getConsumptionsByAdmission,
     // New Global Endpoints
     searchGlobalPatient,
@@ -99,6 +101,8 @@ router.put('/patients/:id', requireTenant, updatePatient);
 router.get('/patients/:id', requireTenant, getPatient);
 
 // Merge history for a chart
+router.get('/patients/:id/change-history', requireTenant, getPatientChangeHistory);
+router.get('/patients/:patientId/admissions', requireTenant, getAdmissionsByPatient);
 router.get('/patients/:id/merge-history', requireTenant, getPatientMergeHistory);
 
 // --- PATIENT NETWORK ---
@@ -152,6 +156,25 @@ router.get('/patients/:tenantPatientId/transfusions/bags', requireTenant, listBl
 router.post('/patients/:tenantPatientId/transfusions/bags', requireTenant, createBloodBag);
 router.post('/transfusions/bags/:id/discard', requireTenant, discardBloodBag);
 router.get('/patients/:tenantPatientId/transfusions/timeline', requireTenant, getTransfusionTimeline);
+
+// --- ADMISSION CHARGES (Billing / Charge-Router foundation) ---
+import { admissionChargeController } from '../controllers/admissionChargeController';
+
+router.get('/acts/search', requireTenant, admissionChargeController.searchActs);
+router.post('/admissions/:admissionId/acts', requireTenant, admissionChargeController.addActToAdmission);
+router.get('/admissions/:admissionId/charges', requireTenant, admissionChargeController.listChargesForAdmission);
+router.post('/admission-charges/:chargeEventId/void', requireTenant, admissionChargeController.voidChargeEvent);
+
+// --- COVERAGES (patient-level policy registry) ---
+import { coverageController } from '../controllers/coverageController';
+
+router.get('/coverages', requireTenant, coverageController.list);
+router.post('/coverages', requireTenant, coverageController.create);
+router.get('/coverages/:id', requireTenant, coverageController.getById);
+router.put('/coverages/:id', requireTenant, coverageController.update);
+router.post('/coverages/:id/members', requireTenant, coverageController.addMember);
+router.put('/coverages/members/:memberId', requireTenant, coverageController.updateMember);
+router.delete('/coverages/members/:memberId', requireTenant, coverageController.removeMember);
 
 // --- ECG & Echo ---
 import { listECGs, createECG, updateECG, deleteECG, enterECGInError, listEchos, createEcho, updateEcho, deleteEcho, enterEchoInError } from '../controllers/ecgEchoController';

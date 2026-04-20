@@ -4,6 +4,7 @@ import { emrService } from '../services/emrService';
 import { patientGlobalService } from '../services/patientGlobalService';
 import { patientTenantService } from '../services/patientTenantService';
 import { patientNetworkService } from '../services/patientNetworkService';
+import { tenantQuery } from '../db/tenantPg';
 import { getTenantId } from '../middleware/authMiddleware';
 
 const getContext = (req: Request) => {
@@ -140,6 +141,23 @@ export const updatePatient = async (req: Request, res: Response) => {
     }
 };
 
+
+export const getPatientChangeHistory = async (req: Request, res: Response) => {
+    try {
+        const { tenantId } = getContext(req);
+        const rows = await tenantQuery(tenantId, `
+            SELECT pic.*, u.display_name as changed_by_name
+            FROM patient_identity_change pic
+            LEFT JOIN auth.users u ON u.user_id = pic.changed_by_user_id
+            WHERE pic.tenant_patient_id = $1
+            ORDER BY pic.changed_at DESC
+            LIMIT 200
+        `, [req.params.id]);
+        res.json(rows);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
 
 // --- PATIENT NETWORK (Relationships, etc.) ---
 
@@ -295,8 +313,9 @@ export const getServiceBedOccupancy = async (req: Request, res: Response) => {
 export const createAdmission = async (req: Request, res: Response) => {
     try {
         const { tenantId } = getContext(req);
-        const admissionData = { ...req.body }; 
-        const newAdmission = await emrService.createAdmission(tenantId, admissionData);
+        const userId = (req as any).auth?.userId || (req as any).user?.userId || (req as any).user?.id || null;
+        const admissionData = { ...req.body };
+        const newAdmission = await emrService.createAdmission(tenantId, admissionData, userId);
         res.status(201).json(newAdmission);
     } catch (error: any) {
         res.status(500).json({ message: error.message });

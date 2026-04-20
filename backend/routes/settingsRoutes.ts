@@ -83,13 +83,21 @@ router.post('/technical-unit-types', requireModule('SETTINGS'), createTechnicalU
 router.put('/technical-unit-types/:id', requireModule('SETTINGS'), updateTechnicalUnitType);
 router.delete('/technical-unit-types/:id', requireModule('SETTINGS'), deleteTechnicalUnitType);
 
-// --- PRICING ---
-router.get('/pricing', getPricing); // Pricing view might be needed?
+// --- PRICING (legacy) ---
+router.get('/pricing', getPricing);
 router.post('/pricing', requireModule('SETTINGS'), createPricing);
+
+// --- PRICING LISTS (new) ---
+import pricingListRoutes from './pricingListRoutes';
+router.use('/pricing-lists', pricingListRoutes);
 
 import {
     getFlowsheets, getGroups, getParameters, getUnits
 } from '../controllers/emrObservationCatalogController';
+
+// --- ORGANISMES (read-only, from tenant reference) ---
+import { getTenantOrganismes } from '../controllers/emrController';
+router.get('/organismes', getTenantOrganismes);
 
 // --- OBSERVATION CATALOG (Surveillance Flowsheets) ---
 router.get('/observation/flowsheets', getFlowsheets);

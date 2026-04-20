@@ -174,7 +174,7 @@ export class EmrService {
         }));
     }
 
-    async createAdmission(tenantId: string, data: Partial<Admission>): Promise<Admission> {
+    async createAdmission(tenantId: string, data: Partial<Admission>, userId: string | null = null): Promise<Admission> {
         return await tenantTransaction(tenantId, async (client) => {
             const id = data.id || require('uuid').v4();
 
@@ -208,18 +208,32 @@ export class EmrService {
                 data.type || null, data.arrivalMode || null, data.provenance || null
             ]);
 
-            // --- EPIC COVERAGE SNAPSHOT LOGIC ---
-            // If coverages are provided in the payload (e.g. from frontend selection), 
-            // we snapshot them NOW.
-            
-            // Note: usage of 'any' for data.coverages as Admission interface might not have it yet
-            const coveragesToSnapshot = (data as any).coverages; 
+            // --- COVERAGE BINDING LOGIC ---
+            // If the caller provided an explicit coverages payload (e.g. admission wizard
+            // with an override), use it. Otherwise auto-seed from the patient's existing
+            // coverage_members — whichever coverages the patient is already a member of
+            // become the admission's bindings, ordered by created_at (first-registered
+            // becomes filing_order=1 / primary).
+            const coveragesToSnapshot = (data as any).coverages;
 
             if (coveragesToSnapshot && Array.isArray(coveragesToSnapshot) && coveragesToSnapshot.length > 0) {
-                 for (const covItem of coveragesToSnapshot) {
-                     // covItem: { coverageId: string, filingOrder: number }
-                     await this.createAdmissionCoverageSnapshot(client, tenantId, id, covItem.coverageId, covItem.filingOrder || 1);
-                 }
+                for (const covItem of coveragesToSnapshot) {
+                    await this.createAdmissionCoverageSnapshot(client, tenantId, id, covItem.coverageId, covItem.filingOrder || 1, userId);
+                }
+            } else if (tenantPatientId) {
+                const autoRes = await client.query(`
+                    SELECT cm.coverage_id
+                    FROM coverage_members cm
+                    JOIN coverages c ON c.coverage_id = cm.coverage_id
+                    WHERE cm.tenant_id = $1
+                      AND cm.tenant_patient_id = $2
+                      AND c.status = 'ACTIVE'
+                    ORDER BY cm.created_at ASC
+                `, [tenantId, tenantPatientId]);
+                let order = 1;
+                for (const row of autoRes.rows) {
+                    await this.createAdmissionCoverageSnapshot(client, tenantId, id, row.coverage_id, order++, userId);
+                }
             }
             
             // --- PATIENT STAY LOGIC ---
@@ -266,90 +280,133 @@ export class EmrService {
      * This decouples the admission's billing data from future changes to the master coverage.
      */
     async createAdmissionCoverageSnapshot(
-        client: any, 
-        tenantId: string, 
-        admissionId: string, 
+        client: any,
+        tenantId: string,
+        admissionId: string,
         masterCoverageId: string,
-        filingOrder: number
+        filingOrder: number,
+        userId: string | null = null
     ): Promise<void> {
-        
-        // 1. Fetch Master Data (Current State)
+        // Helper — for a linked patient, pull the primary non-MRN identity from identity_ids;
+        // for an external member (tenant_patient_id NULL) fall back to the denormalized
+        // member_* columns on coverage_members.
+        const resolveIdentity = async (memberRow: any | null): Promise<{
+            type: string | null; value: string | null; country: string | null;
+        }> => {
+            if (!memberRow) return { type: null, value: null, country: null };
+            if (memberRow.tenant_patient_id) {
+                const idRes = await client.query(`
+                    SELECT identity_type_code, identity_value, issuing_country_code
+                    FROM identity_ids
+                    WHERE tenant_id = $1
+                      AND tenant_patient_id = $2
+                      AND status = 'ACTIVE'
+                      AND identity_type_code <> 'LOCAL_MRN'
+                    ORDER BY is_primary DESC, created_at ASC
+                    LIMIT 1
+                `, [tenantId, memberRow.tenant_patient_id]);
+                const row = idRes.rows[0];
+                if (row) return {
+                    type:    row.identity_type_code,
+                    value:   row.identity_value,
+                    country: row.issuing_country_code
+                };
+            }
+            return {
+                type:    memberRow.member_identity_type     || null,
+                value:   memberRow.member_identity_value    || null,
+                country: memberRow.member_issuing_country   || null
+            };
+        };
+
+        // 1. Fetch master coverage + organisme designation (for name snapshot)
         const covRes = await client.query(`
-            SELECT c.*, o.designation as organisme_name 
+            SELECT c.*, o.designation AS organisme_name
             FROM coverages c
             JOIN reference.organismes o ON o.id = c.organisme_id
             WHERE c.coverage_id = $1 AND c.tenant_id = $2
         `, [masterCoverageId, tenantId]);
-        
         if (covRes.rows.length === 0) throw new Error(`Coverage ${masterCoverageId} not found`);
         const masterCov = covRes.rows[0];
 
-        // 2. Fetch Master Members (Subscriber + Beneficiaries)
-        // We need the Subscriber details to freeze them on the header
-        // And we need the beneficiary details (usually the patient) to freeze as members
-        const memRes = await client.query(`
-            SELECT * FROM coverage_members 
-            WHERE coverage_id = $1 AND tenant_id = $2
-        `, [masterCoverageId, tenantId]);
-        const members = memRes.rows;
+        // 2. Identify the admitted patient (member lookup target)
+        const admRes = await client.query(
+            `SELECT tenant_patient_id FROM admissions WHERE id = $1 AND tenant_id = $2`,
+            [admissionId, tenantId]
+        );
+        const admittedPatientId = admRes.rows[0]?.tenant_patient_id ?? null;
 
-        // 3. Identify Subscriber
-        const subscriber = members.find((m: any) => m.relationship_to_subscriber_code === 'SELF');
-        
-        // 4. Create Snapshot Header (admission_coverages)
-        // We copy relevant fields: Policy, Plan, Subscriber Info
+        // 3. Locate the admitted patient's own coverage_members row
+        let memberRow: any = null;
+        if (admittedPatientId) {
+            const memRes = await client.query(`
+                SELECT cm.*, pt.first_name AS linked_first_name, pt.last_name AS linked_last_name
+                FROM coverage_members cm
+                LEFT JOIN patients_tenant pt ON pt.tenant_patient_id = cm.tenant_patient_id
+                WHERE cm.coverage_id = $1 AND cm.tenant_patient_id = $2
+                LIMIT 1
+            `, [masterCoverageId, admittedPatientId]);
+            memberRow = memRes.rows[0] || null;
+        }
+
+        // 4. Locate the SELF member (subscriber)
+        const selfRes = await client.query(`
+            SELECT cm.*, pt.first_name AS linked_first_name, pt.last_name AS linked_last_name
+            FROM coverage_members cm
+            LEFT JOIN patients_tenant pt ON pt.tenant_patient_id = cm.tenant_patient_id
+            WHERE cm.coverage_id = $1 AND cm.relationship_to_subscriber_code = 'SELF'
+            LIMIT 1
+        `, [masterCoverageId]);
+        const subscriber = selfRes.rows[0] || null;
+
+        // 5. Resolve identity triples (prefer identity_ids for linked patients)
+        const subscriberIdentity = await resolveIdentity(subscriber);
+        const memberIdentity     = await resolveIdentity(memberRow);
+
+        // 5. Insert the versioned binding row (single row — members are absorbed via coverage_member_id FK).
         const admissionCoverageId = uuidv4();
-        
         await client.query(`
             INSERT INTO admission_coverages (
-                admission_coverage_id, tenant_id, admission_id, coverage_id, filing_order,
-                organisme_id, policy_number, group_number, plan_name, coverage_type_code,
-                subscriber_first_name, subscriber_last_name, 
-                subscriber_identity_type, subscriber_identity_value, subscriber_issuing_country
+                admission_coverage_id, tenant_id, admission_id,
+                coverage_id, coverage_member_id, filing_order,
+                organisme_id, organisme_name_snapshot,
+                policy_number_snapshot, group_number_snapshot, plan_name_snapshot, coverage_type_code_snapshot,
+                subscriber_first_name_snapshot, subscriber_last_name_snapshot,
+                subscriber_identity_type_snapshot, subscriber_identity_value_snapshot, subscriber_issuing_country_snapshot,
+                member_first_name_snapshot, member_last_name_snapshot,
+                relationship_to_subscriber_code_snapshot,
+                member_identity_type_snapshot, member_identity_value_snapshot, member_issuing_country_snapshot,
+                binding_status, bound_at, bound_by_user_id
             ) VALUES (
-                $1, $2, $3, $4, $5,
-                $6, $7, $8, $9, $10,
-                $11, $12, $13, $14, $15
+                $1, $2, $3,
+                $4, $5, $6,
+                $7, $8,
+                $9, $10, $11, $12,
+                $13, $14,
+                $15, $16, $17,
+                $18, $19,
+                $20,
+                $21, $22, $23,
+                'ACTIVE', NOW(), $24
             )
         `, [
-            admissionCoverageId, tenantId, admissionId, masterCoverageId, filingOrder,
-            masterCov.organisme_id, masterCov.policy_number, masterCov.group_number, masterCov.plan_name, masterCov.coverage_type_code,
-            subscriber?.member_first_name || null, subscriber?.member_last_name || null,
-            subscriber?.member_identity_type || null, subscriber?.member_identity_value || null, subscriber?.member_issuing_country || null
+            admissionCoverageId, tenantId, admissionId,
+            masterCoverageId, memberRow?.coverage_member_id || null, filingOrder,
+            masterCov.organisme_id, masterCov.organisme_name,
+            masterCov.policy_number, masterCov.group_number, masterCov.plan_name, masterCov.coverage_type_code,
+            subscriber?.linked_first_name || subscriber?.member_first_name || null,
+            subscriber?.linked_last_name  || subscriber?.member_last_name  || null,
+            subscriberIdentity.type,
+            subscriberIdentity.value,
+            subscriberIdentity.country,
+            memberRow?.linked_first_name || memberRow?.member_first_name || null,
+            memberRow?.linked_last_name  || memberRow?.member_last_name  || null,
+            memberRow?.relationship_to_subscriber_code || null,
+            memberIdentity.type,
+            memberIdentity.value,
+            memberIdentity.country,
+            userId
         ]);
-
-        // 5. Create Snapshot Members (admission_coverage_members)
-        // Copy ALL members from master? Or just the patient?
-        // Epic usually snapshots everyone on the policy at that time, or at least the relevant patient + subscriber.
-        // Let's snapshot everyone found in master coverage_members to be safe.
-        
-        for (const m of members) {
-             await client.query(`
-                INSERT INTO admission_coverage_members (
-                    admission_coverage_member_id, tenant_id, admission_coverage_id,
-                    tenant_patient_id, 
-                    member_first_name, member_last_name, 
-                    relationship_to_subscriber_code,
-                    member_identity_type, member_identity_value, member_issuing_country
-                ) VALUES (
-                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
-                )
-             `, [
-                 uuidv4(), tenantId, admissionCoverageId,
-                 m.tenant_patient_id || null, // If linked to patient
-                 m.member_first_name, m.member_last_name,
-                 m.relationship_to_subscriber_code,
-                 m.member_identity_type, m.member_identity_value, m.member_issuing_country
-             ]);
-        }
-        
-        // Log to history
-        await client.query(`
-            INSERT INTO admission_coverage_change_history (
-                tenant_id, admission_id, admission_coverage_id,
-                change_type_code, change_source, change_reason, new_value
-            ) VALUES ($1, $2, $3, 'SNAPSHOT_CREATED', 'ADMISSION_ENTRY', 'Initial coverage assignment', $4)
-        `, [tenantId, admissionId, admissionCoverageId, `Snapshot of Master Coverage ${masterCoverageId}`]);
     }
 
     async closeAdmission(tenantId: string, id: string): Promise<Admission | null> {

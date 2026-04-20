@@ -32,6 +32,7 @@ export const PAGE_REGISTRY = [
         pages: [
             { id: 'emr_patients', name: 'Liste Patients', description: 'Base de données patients', route: '/' },
             { id: 'emr_admissions', name: 'Admissions', description: 'Gestion des entrées et séjours', route: '/admissions' },
+            { id: 'emr_coverages', name: 'Couvertures', description: 'Registre des polices d\'assurance patients', route: '/coverages' },
             { id: 'emr_replenishment', name: 'Réapprovisionnement', description: 'Demandes de produits à la pharmacie', route: '/replenishment' },
             { id: 'emr_service_stock', name: 'Stock Service', description: 'Gestion du stock interne du service', route: '/service-stock' },
             { id: 'emr_returns', name: 'Retours', description: 'Initiation des retours de stock service', route: '/retours' },

@@ -30,6 +30,8 @@ import { ServiceDetailPage } from './components/Settings/ServiceDetailPage';
 import { RoomsPage } from './components/Settings/RoomsPage';
 import { PlateauxTechniquesPage } from './components/Settings/PlateauxTechniquesPage';
 import { PricingPage } from './components/Settings/PricingPage';
+import { PricingListDetailPage } from './components/Settings/PricingListDetailPage';
+import { OrganismesReadOnlyPage } from './components/Settings/OrganismesReadOnlyPage';
 import { RolesPage } from './components/Settings/RolesPage'; 
 import { ReadOnlyRoleDetailPage } from './components/Settings/ReadOnlyRoleDetailPage'; 
 import { TenantTemplatesManager } from './components/Settings/Templates';
@@ -71,6 +73,8 @@ import { SectionTreePage } from './components/LIMS/SectionTreePage';
 import { SubSectionTreePage } from './components/LIMS/SubSectionTreePage';
 import { AnalyteContextsPage } from './components/LIMS/AnalyteContextsPage';
 import { BiologyActsPage } from './components/LIMS/BiologyActsPage';
+import { CoveragesListPage } from './components/Coverages/CoveragesListPage';
+import { CoverageDetailPage } from './components/Coverages/CoverageDetailPage';
 
 const ProtectedRoute = ({ role, permission, children }: { role?: string | UserType, permission?: string, children: React.ReactNode }) => {
   const { user, isAuthenticated, loading } = useAuth();
@@ -131,6 +135,8 @@ const App: React.FC = () => {
             <Route path="replenishment" element={<ServiceStockManager />} />
             <Route path="service-stock/demands/:demandId" element={<DemandDetailView />} />
             <Route path="templates" element={<UserTemplatesTab />} />
+            <Route path="coverages" element={<CoveragesListPage />} />
+            <Route path="coverages/:id" element={<CoverageDetailPage />} />
 
           </Route>
           
@@ -154,7 +160,9 @@ const App: React.FC = () => {
              <Route path="services/:id" element={<ServiceDetailPage />} />
              <Route path="rooms" element={<RoomsPage />} />
              <Route path="plateaux-techniques" element={<PlateauxTechniquesPage />} />
+             <Route path="organismes" element={<OrganismesReadOnlyPage />} />
              <Route path="pricing" element={<PricingPage />} />
+             <Route path="pricing/:id" element={<PricingListDetailPage />} />
              <Route path="roles" element={<RolesPage />} />
              <Route path="roles/:id" element={<ReadOnlyRoleDetailPage />} />
              <Route path="smart-phrases" element={<TenantTemplatesManager />} />

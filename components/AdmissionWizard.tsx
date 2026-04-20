@@ -383,17 +383,17 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed top-0 left-0 w-screen h-screen z-[9999] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300 text-left">
-      <div className="bg-white rounded-[2rem] shadow-2xl overflow-hidden flex flex-col transition-all duration-500 ease-out w-full max-w-6xl h-[96vh]">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-sm text-left" onClick={onClose}>
+      <div className="absolute top-0 right-0 h-full w-[70vw] bg-white shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-right duration-300" onClick={e => e.stopPropagation()}>
 
         {/* Header */}
-        <div className="px-6 py-4 flex justify-between items-center text-white bg-slate-900 shrink-0">
-          <div className="flex items-center space-x-4">
-            <div className="p-2.5 bg-emerald-500 rounded-xl shadow-lg shadow-emerald-500/20"><Activity size={20} /></div>
-            <div><h2 className="text-sm font-black uppercase tracking-[0.1em] text-white">Admission Patient</h2></div>
+        <div className="px-6 py-3.5 flex justify-between items-center text-white bg-slate-900 shrink-0">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-emerald-500 rounded-lg"><Activity size={18} /></div>
+            <div><h2 className="text-sm font-black uppercase tracking-wide text-white">Admission Patient</h2></div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-xl transition-all border border-transparent hover:border-white/10 active:scale-95"><X size={22} /></button>
+          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg transition-all"><X size={20} /></button>
         </div>
 
         {/* Stepper */}
@@ -409,10 +409,8 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto bg-slate-50/50 p-8">
           {step === 1 ? (
-             <div className="animate-in slide-in-from-bottom-4 duration-300">
-               <PatientIdentityForm 
+               <PatientIdentityForm
                   onSubmit={async (patientId) => {
                       try {
                           const patient = await api.getPatient(patientId);
@@ -429,8 +427,8 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
                   }}
                   onCancel={onClose}
                />
-             </div>
           ) : (
+        <div className="flex-1 overflow-y-auto bg-slate-50/50 p-8">
             <div className="space-y-8 animate-in slide-in-from-right-4 duration-300 text-left">
               {/* Patient Banner */}
               <div className="bg-slate-900 rounded-3xl p-5 text-white flex items-center justify-between shadow-2xl ring-1 ring-white/10 shrink-0">
@@ -545,25 +543,25 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
                 )}
               </div>
             </div>
+          </div>
           )}
-      </div>
 
         {/* Footer - Only for Step 2 */}
         {step === 2 && (
-          <div className="px-8 py-5 bg-white border-t flex justify-between items-center shrink-0">
-            <div><button onClick={() => setStep(1)} className="text-slate-400 font-black uppercase text-xs hover:text-slate-900 transition-colors border border-transparent hover:border-slate-100 px-4 py-2 rounded-xl">Retour</button></div>
-            <div className="flex space-x-4">
-              <button onClick={onClose} className="px-6 py-2.5 text-slate-400 font-black uppercase text-xs hover:text-slate-600">Annuler</button>
+          <div className="px-6 py-3 bg-white border-t border-slate-200 flex justify-between items-center shrink-0">
+            <button onClick={() => setStep(1)} className="text-slate-500 text-sm font-semibold hover:text-slate-700 transition-colors px-4 py-2 rounded-lg hover:bg-slate-50">Retour</button>
+            <div className="flex items-center gap-3">
+              <button onClick={onClose} className="px-5 py-2.5 text-slate-500 text-sm font-semibold hover:bg-slate-50 rounded-lg border border-slate-200">Annuler</button>
               <button
                 onClick={handleCreateAdmission}
-                className={`px-10 py-3 rounded-xl font-black uppercase text-xs transition-all shadow-xl flex items-center active:scale-95 ${
+                className={`px-6 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
                   (admissionData.type && admissionData.doctorName && admissionData.service)
-                    ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-600/30'
-                    : 'bg-slate-300 text-slate-100 cursor-not-allowed grayscale'
+                    ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm'
+                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                   }`}
               >
                 <span>Créer l'admission</span>
-                <ChevronRight size={18} className="ml-2" />
+                <ChevronRight size={16} />
               </button>
             </div>
           </div>
@@ -571,6 +569,7 @@ export const AdmissionWizard: React.FC<WizardProps> = ({ isOpen, onClose }) => {
     </div>
 
       {/* Search Overlay - REMOVED */}
-    </div>
+    </div>,
+    document.body
   );
 };

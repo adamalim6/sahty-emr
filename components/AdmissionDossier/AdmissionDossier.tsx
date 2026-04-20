@@ -103,7 +103,7 @@ export const AdmissionDossier: React.FC<{ mode?: 'emr' | 'lims' }> = ({ mode = '
 
   let tabs = [
     { id: 'Dashboard', label: 'Dashboard', icon: LayoutDashboard, component: <Dashboard /> },
-    { id: 'Actes', label: 'Actes', icon: ClipboardList, component: <Actes /> },
+    { id: 'Actes', label: 'Actes', icon: ClipboardList, component: <Actes admissionId={admission.id} /> },
     { id: 'Pharmacie', label: 'Pharmacie', icon: Pill, component: <Pharmacie admission={admission} /> },
     { id: 'Factures', label: 'Factures', icon: FileText, component: <Factures /> },
     { id: 'Devis', label: 'Devis', icon: FileSignature, component: <Devis /> },

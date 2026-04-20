@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { calculateAge, generateIPP } from '../constants';
 import { Gender, Patient } from '../types';
@@ -167,33 +168,32 @@ export const PatientList: React.FC = () => {
         })}
       </div>
 
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-[2rem] shadow-2xl overflow-hidden flex flex-col w-full max-w-6xl h-[92vh]">
-            <div className="px-8 py-6 flex justify-between items-center text-white bg-emerald-700 relative shrink-0">
-              <div className="flex items-center space-x-5">
-                <div className="p-3.5 bg-white/10 rounded-2xl border border-white/10 shadow-inner"><Plus size={28} /></div>
-                <div><h3 className="text-2xl font-black uppercase tracking-tight leading-tight">Nouveau Patient</h3><span className="text-[11px] font-black uppercase tracking-widest text-white/50">Création Dossier</span></div>
+      {isModalOpen && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}>
+          <div className="absolute top-0 right-0 h-full w-[70vw] bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-300" onClick={e => e.stopPropagation()}>
+            <div className="px-6 py-3.5 flex justify-between items-center text-white bg-emerald-700 shrink-0">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-white/10 rounded-lg"><Plus size={18} /></div>
+                <div><h3 className="text-sm font-black uppercase tracking-wide">Nouveau Patient</h3><span className="text-[9px] font-bold uppercase tracking-widest text-white/50">Création Dossier</span></div>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="p-3 hover:bg-white/10 rounded-2xl transition-all"><X size={26} /></button>
+              <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-white/10 rounded-lg transition-all"><X size={20} /></button>
             </div>
 
-            <div className="flex-1 overflow-y-auto bg-slate-50/50 p-8">
-               <PatientIdentityForm 
-                  onSubmit={async (patientId) => {
-                      try {
-                          const newPatient = await api.getPatient(patientId);
-                          setPatients(prev => [newPatient, ...prev]);
-                          setIsModalOpen(false);
-                      } catch (e) {
-                          console.error("Failed to fetch new patient", e);
-                      }
-                  }}
-                  onCancel={() => setIsModalOpen(false)}
-               />
-            </div>
+            <PatientIdentityForm
+                onSubmit={async (patientId) => {
+                    try {
+                        const newPatient = await api.getPatient(patientId);
+                        setPatients(prev => [newPatient, ...prev]);
+                        setIsModalOpen(false);
+                    } catch (e) {
+                        console.error("Failed to fetch new patient", e);
+                    }
+                }}
+                onCancel={() => setIsModalOpen(false)}
+            />
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

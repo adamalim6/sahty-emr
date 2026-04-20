@@ -121,3 +121,86 @@ export interface UserSettings {
   bankAccount: string;
   shareDataWithSahty: boolean;
 }
+
+// ============================================================
+// Admission Charge Billing (capture foundation)
+// ============================================================
+export type AdmissionChargeStatus =
+  | 'CAPTURED'
+  | 'PENDING_REVIEW'
+  | 'READY_TO_POST'
+  | 'VOIDED_BEFORE_POSTING'
+  | 'POSTED';
+
+export type PricingStatus =
+  | 'RESOLVED'
+  | 'PROVISIONAL'
+  | 'MANUAL_OVERRIDE'
+  | 'REPRICE_RECOMMENDED'
+  | 'PENDING_REVIEW';
+
+export type PricingLockStatus = 'AUTO' | 'MANUAL_LOCK';
+
+export type CoverageResolutionMode =
+  | 'COVERAGE_MATCHED'
+  | 'FALLBACK_DEFAULT'
+  | 'MANUAL'
+  | 'NONE';
+
+export type DispatchType =
+  | 'PART_MEDECIN_1'
+  | 'PART_MEDECIN_2'
+  | 'PART_CLINIQUE_BLOC'
+  | 'PART_PHARMACIE'
+  | 'PART_LABO'
+  | 'PART_RADIOLOGIE'
+  | 'PART_SEJOUR';
+
+export interface AdmissionChargeDispatch {
+  id: string;
+  admission_charge_snapshot_id: string;
+  dispatch_type: DispatchType;
+  sequence_no: number;
+  amount: string;
+  currency_code: string;
+}
+
+export interface AdmissionChargeSnapshot {
+  id: string;
+  snapshot_no: number;
+  unit_price_snapshot: string;
+  total_price_snapshot: string;
+  currency_code: string;
+  billing_label: string | null;
+  pricing_list_code: string | null;
+  pricing_list_version_no: number | null;
+  pricing_list_item_version_no: number | null;
+  pricing_source_type: 'PRICING_LIST' | 'MANUAL' | 'NONE';
+  snapshot_source: string;
+  quantity: string;
+  dispatches: AdmissionChargeDispatch[];
+}
+
+export interface AdmissionChargeEvent {
+  id: string;
+  admission_id: string;
+  admission_act_id: string;
+  patient_id: string;
+  global_act_id: string;
+  global_act_code_sih?: string;
+  global_act_libelle_sih?: string;
+  global_act_type_acte?: string;
+  quantity: string;
+  currency_code: string;
+  status: AdmissionChargeStatus;
+  pricing_status: PricingStatus;
+  pricing_lock_status: PricingLockStatus;
+  coverage_resolution_mode: CoverageResolutionMode;
+  coverage_resolution_reason: string | null;
+  admission_coverage_id: string | null;
+  current_snapshot_id: string | null;
+  captured_at: string;
+  voided_at: string | null;
+  void_reason: string | null;
+  current_snapshot: AdmissionChargeSnapshot | null;
+}

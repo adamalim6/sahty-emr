@@ -2,7 +2,7 @@ import express from 'express';
 import { 
     getTenants, createTenant, updateTenant, deleteTenant,
     getTenantDetails, updateClientDSI, 
-    getOrganismes, createOrganisme, 
+    getOrganismes, createOrganisme, updateOrganisme, toggleOrganismeStatus,
     getRoles, getRole, createRole, updateRole,
     getGlobalSuppliers, createGlobalSupplier, updateGlobalSupplier, deleteGlobalSupplier,
     getGroups, getGroup, createGroup, updateGroup, deleteGroup,
@@ -82,6 +82,8 @@ router.delete('/clients/:id', authenticateGlobalAdmin, deleteTenant);
 // Organismes
 router.get('/organismes', authenticateGlobalAdmin, getOrganismes);
 router.post('/organismes', authenticateGlobalAdmin, createOrganisme);
+router.put('/organismes/:id', authenticateGlobalAdmin, updateOrganisme);
+router.patch('/organismes/:id/status', authenticateGlobalAdmin, toggleOrganismeStatus);
 
 // Roles
 router.get('/roles', authenticateGlobalAdmin, getRoles);

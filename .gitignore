@@ -31,3 +31,7 @@ backend/data/**/*.db
 
 # Debug
 debug_output*.txt
+
+# Local tooling / backups
+.claude/
+backups/

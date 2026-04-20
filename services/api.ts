@@ -143,6 +143,8 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }),
+    getPatientChangeHistory: (id: string) => fetchJson<any[]>(`/emr/patients/${id}/change-history`),
+    getPatientAdmissions: (patientId: string) => fetchJson<any[]>(`/emr/patients/${patientId}/admissions`),
     addEmergencyContact: (patientId: string, data: any) => fetchJson<any>(`/emr/patients/${patientId}/emergency-contact`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -424,6 +426,16 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }),
+    updateOrganisme: (id: string, data: any) => fetchJson<any>(`/super-admin/organismes/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    }),
+    toggleOrganismeStatus: (id: string, active: boolean) => fetchJson<any>(`/super-admin/organismes/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active })
+    }),
     getRoles: () => fetchJson<any[]>('/super-admin/roles'),
     getRole: (id: string) => fetchJson<any>(`/super-admin/roles/${id}`),
     createRole: (data: any) => fetchJson<any>('/super-admin/roles', {
@@ -519,12 +531,101 @@ export const api = {
         method: 'DELETE'
     }),
 
+    getSettingsOrganismes: () => fetchJson<any[]>('/settings/organismes'),
     getPricing: () => fetchJson<any[]>('/settings/pricing'),
     createPricing: (data: any) => fetchJson<any>('/settings/pricing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     }),
+
+    // Pricing Lists (new)
+    pricingLists: {
+        list: (filters?: { search?: string; status?: string }) => {
+            const p = new URLSearchParams();
+            if (filters?.search) p.set('search', filters.search);
+            if (filters?.status) p.set('status', filters.status);
+            return fetchJson<any[]>(`/settings/pricing-lists?${p.toString()}`);
+        },
+        get: (id: string) => fetchJson<any>(`/settings/pricing-lists/${id}`),
+        create: (data: any) => fetchJson<any>('/settings/pricing-lists', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+        update: (id: string, data: any) => fetchJson<any>(`/settings/pricing-lists/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+        publish: (id: string) => fetchJson<any>(`/settings/pricing-lists/${id}/publish`, { method: 'POST' }),
+        archive: (id: string) => fetchJson<any>(`/settings/pricing-lists/${id}/archive`, { method: 'POST' }),
+        duplicate: (id: string) => fetchJson<any>(`/settings/pricing-lists/${id}/duplicate`, { method: 'POST' }),
+        // Items
+        listItems: (id: string, showRemoved?: boolean) => fetchJson<any[]>(`/settings/pricing-lists/${id}/items?showRemoved=${showRemoved || false}`),
+        addItem: (id: string, globalActId: string) => fetchJson<any>(`/settings/pricing-lists/${id}/items`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ global_act_id: globalActId }) }),
+        removeItem: (plId: string, itemId: string, reason?: string) => fetchJson<any>(`/settings/pricing-lists/${plId}/items/${itemId}/remove`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason }) }),
+        reactivateItem: (plId: string, itemId: string) => fetchJson<any>(`/settings/pricing-lists/${plId}/items/${itemId}/reactivate`, { method: 'PATCH' }),
+        // Item Versions
+        getItemVersions: (plId: string, itemId: string) => fetchJson<any[]>(`/settings/pricing-lists/${plId}/items/${itemId}/versions`),
+        createItemVersion: (plId: string, itemId: string, data: any) => fetchJson<any>(`/settings/pricing-lists/${plId}/items/${itemId}/versions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+        updateDraftVersion: (versionId: string, data: any) => fetchJson<any>(`/settings/pricing-lists/item-versions/${versionId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+        publishItemVersion: (versionId: string) => fetchJson<any>(`/settings/pricing-lists/item-versions/${versionId}/publish`, { method: 'POST' }),
+        // Organismes
+        listOrganismes: (id: string) => fetchJson<any[]>(`/settings/pricing-lists/${id}/organismes`),
+        assignOrganisme: (id: string, data: any) => fetchJson<any>(`/settings/pricing-lists/${id}/organismes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+        removeOrganisme: (assignmentId: string, reason?: string) => fetchJson<any>(`/settings/pricing-lists/organisme-assignments/${assignmentId}/remove`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason }) }),
+        reactivateOrganisme: (assignmentId: string) => fetchJson<any>(`/settings/pricing-lists/organisme-assignments/${assignmentId}/reactivate`, { method: 'PATCH' }),
+        // Dictionaries
+        searchActes: (q: string) => fetchJson<any[]>(`/settings/pricing-lists/search-actes?q=${encodeURIComponent(q)}`),
+        listAvailableOrganismes: () => fetchJson<any[]>('/settings/pricing-lists/available-organismes'),
+    },
+
+    // Coverages (patient-level policy registry)
+    coverages: {
+        list: (filters?: { search?: string; status?: string }) => {
+            const p = new URLSearchParams();
+            if (filters?.search) p.set('search', filters.search);
+            if (filters?.status) p.set('status', filters.status);
+            const q = p.toString();
+            return fetchJson<any[]>(`/emr/coverages${q ? '?' + q : ''}`);
+        },
+        get: (id: string) => fetchJson<any>(`/emr/coverages/${id}`),
+        create: (data: any) => fetchJson<any>('/emr/coverages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        }),
+        update: (id: string, data: any) => fetchJson<any>(`/emr/coverages/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        }),
+        addMember: (coverageId: string, data: any) => fetchJson<any>(`/emr/coverages/${coverageId}/members`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        }),
+        updateMember: (memberId: string, data: any) => fetchJson<any>(`/emr/coverages/members/${memberId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        }),
+        removeMember: (memberId: string) => fetchJson<any>(`/emr/coverages/members/${memberId}`, {
+            method: 'DELETE'
+        }),
+    },
+
+    // Admission Charges (billing / charge-router foundation)
+    admissionCharges: {
+        list: (admissionId: string, includeVoided?: boolean) =>
+            fetchJson<any[]>(`/emr/admissions/${admissionId}/charges${includeVoided ? '?includeVoided=true' : ''}`),
+        add: (admissionId: string, data: { globalActId: string; quantity?: number }) =>
+            fetchJson<any>(`/emr/admissions/${admissionId}/acts`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            }),
+        void: (chargeEventId: string, reason?: string) =>
+            fetchJson<any>(`/emr/admission-charges/${chargeEventId}/void`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason: reason || null })
+            }),
+        searchActs: (q: string) => fetchJson<any[]>(`/emr/acts/search?q=${encodeURIComponent(q)}`),
+    },
 
     // Pharmacy Extended
     getSerializedPacks: () => fetchJson<SerializedPack[]>('/pharmacy/packs'),

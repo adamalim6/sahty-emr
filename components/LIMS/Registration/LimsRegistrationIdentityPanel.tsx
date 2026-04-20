@@ -67,7 +67,7 @@ export const LimsRegistrationIdentityPanel: React.FC<LimsRegistrationIdentityPan
     const [patientAdmissions, setPatientAdmissions] = useState<Admission[]>([]);
 
     // Form State
-    const [status, setStatus] = useState<'UNKNOWN' | 'PROVISIONAL' | 'VERIFIED'>('VERIFIED');
+    const [isUnknown, setIsUnknown] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
@@ -94,6 +94,18 @@ export const LimsRegistrationIdentityPanel: React.FC<LimsRegistrationIdentityPan
         subscriberFirstName: '',
         subscriberLastName: ''
     });
+
+    // Derived identity status
+    const deriveStatus = (): 'UNKNOWN' | 'PROVISIONAL' | 'VERIFIED' => {
+        if (isUnknown) return 'UNKNOWN';
+        const hasName = !!formData.firstName?.trim() && !!formData.lastName?.trim();
+        const hasDob = !!formData.dob;
+        const hasSex = !!formData.sex;
+        const hasDoc = !!formData.docNumber?.trim();
+        if (hasName && hasDob && hasSex && hasDoc) return 'VERIFIED';
+        return 'PROVISIONAL';
+    };
+    const status = deriveStatus();
 
     const [countries, setCountries] = useState<any[]>([]);
     const [docTypes, setDocTypes] = useState<any[]>([]);
@@ -182,7 +194,7 @@ export const LimsRegistrationIdentityPanel: React.FC<LimsRegistrationIdentityPan
         }
 
         setSelectedExistingPatientId(res.id);
-        setStatus('VERIFIED');
+        setIsUnknown(false);
         setSearchQuery(`${res.firstName} ${res.lastName}`);
         setSearchResults([]);
     };
@@ -197,11 +209,11 @@ export const LimsRegistrationIdentityPanel: React.FC<LimsRegistrationIdentityPan
             isPayant: false, insuranceOrgId: '', policyNumber: '', 
             insuranceSubscriberRelationship: 'SELF', subscriberFirstName: '', subscriberLastName: ''
         });
-        setStatus('VERIFIED');
+        setIsUnknown(false);
     };
 
     const handleSubmit = async () => {
-        if (!formData.firstName || !formData.lastName || (status === 'VERIFIED' && (!formData.sex || !formData.dob))) return;
+        if (!isUnknown && (!formData.firstName || !formData.lastName)) return;
 
         setIsSubmitting(true);
         try {
@@ -522,7 +534,7 @@ export const LimsRegistrationIdentityPanel: React.FC<LimsRegistrationIdentityPan
             <div className="p-4 bg-white border-t border-slate-200 z-10 shrink-0">
                 <button 
                     onClick={handleSubmit}
-                    disabled={isSubmitting || !formData.firstName || !formData.lastName || (status === 'VERIFIED' && (!formData.sex || !formData.dob))}
+                    disabled={isSubmitting || (!isUnknown && (!formData.firstName || !formData.lastName))}
                     className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-black transition-colors shadow-lg shadow-emerald-600/20 uppercase tracking-wide flex items-center justify-center gap-2 disabled:opacity-50 disabled:bg-slate-300 disabled:shadow-none"
                 >
                     {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}

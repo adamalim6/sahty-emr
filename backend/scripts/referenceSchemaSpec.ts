@@ -73,6 +73,7 @@ export const REFERENCE_SCHEMA_DDL: ReferenceTableSpec[] = [
                 designation TEXT NOT NULL,
                 category TEXT NOT NULL CHECK (category IN ('ASSURANCE', 'ORGANISME_CONVENTIONNE', 'MUTUELLE')),
                 sub_type TEXT,
+                coefficient_b NUMERIC(8,4) NULL,
                 active BOOLEAN DEFAULT TRUE,
                 created_at TIMESTAMPTZ,
                 updated_at TIMESTAMPTZ

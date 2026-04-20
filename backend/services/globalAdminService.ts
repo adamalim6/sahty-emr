@@ -261,19 +261,33 @@ export class GlobalAdminService {
 
     public async createOrganisme(org: any): Promise<any> {
         const now = new Date().toISOString();
-        
+
         await globalQuery(`
-            INSERT INTO organismes (id, designation, category, sub_type, active, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $6)
+            INSERT INTO organismes (id, designation, category, sub_type, coefficient_b, active, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
         `, [
-            org.id, 
-            org.designation, 
-            org.category, 
-            org.sub_type, 
-            org.active !== false, 
+            org.id,
+            org.designation,
+            org.category,
+            org.sub_type,
+            org.coefficient_b || null,
+            org.active !== false,
             now
         ]);
         return org;
+    }
+
+    public async updateOrganisme(id: string, updates: any): Promise<any> {
+        const now = new Date().toISOString();
+        await globalQuery(`
+            UPDATE organismes SET designation = $2, category = $3, sub_type = $4, coefficient_b = $5, active = $6, updated_at = $7
+            WHERE id = $1
+        `, [id, updates.designation, updates.category, updates.sub_type, updates.coefficient_b || null, updates.active !== false, now]);
+        return globalQuery('SELECT * FROM organismes WHERE id = $1', [id]).then(r => r[0]);
+    }
+
+    public async toggleOrganismeStatus(id: string, active: boolean): Promise<void> {
+        await globalQuery('UPDATE organismes SET active = $2, updated_at = NOW() WHERE id = $1', [id, active]);
     }
 }
 

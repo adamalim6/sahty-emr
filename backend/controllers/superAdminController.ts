@@ -306,6 +306,20 @@ export const createOrganisme = async (req: Request, res: Response) => {
     }
 };
 
+export const updateOrganisme = async (req: Request, res: Response) => {
+    try {
+        const updated = await globalAdminService.updateOrganisme(req.params.id, req.body);
+        res.json(updated);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+};
+
+export const toggleOrganismeStatus = async (req: Request, res: Response) => {
+    try {
+        await globalAdminService.toggleOrganismeStatus(req.params.id, req.body.active);
+        res.json({ success: true });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+};
+
 // --- Global Roles (SQL) ---
 export const getRoles = async (req: Request, res: Response) => {
     try {

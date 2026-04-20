@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { Users, LayoutGrid, BedDouble, DollarSign, LogOut, Shield, Server, Link2, Cpu } from 'lucide-react';
+import { Users, LayoutGrid, BedDouble, DollarSign, LogOut, Shield, Server, Link2, Cpu, Building2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export const SettingsLayout: React.FC = () => {
@@ -35,6 +35,10 @@ export const SettingsLayout: React.FC = () => {
                     <NavLink to="/settings/plateaux-techniques" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700 hover:text-white'}`}>
                         <Cpu size={20} />
                         <span>Plateaux Techniques</span>
+                    </NavLink>
+                    <NavLink to="/settings/organismes" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700 hover:text-white'}`}>
+                        <Building2 size={20} />
+                        <span>Organismes</span>
                     </NavLink>
                     <NavLink to="/settings/pricing" className={({isActive}) => `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-700 hover:text-white'}`}>
                         <DollarSign size={20} />
