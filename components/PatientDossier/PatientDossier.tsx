@@ -325,7 +325,7 @@ export const PatientDossier: React.FC<PatientDossierProps> = ({ patientId, works
     { id: 'Electro', label: 'Electro & Echo', icon: Activity, component: <ElectroEcho patientId={patient.id} /> },
     { id: 'Transfusions', label: 'Transfusions', icon: Droplet, component: <Transfusions /> },
     { id: 'Interventions', label: 'Interventions', icon: Scissors, component: <Interventions /> },
-    { id: 'Admissions', label: 'Admissions', icon: Bed, component: <Admissions patientId={patient.id} /> },
+    { id: 'Admissions', label: 'Admissions', icon: Bed, component: <Admissions patientId={patient.id} patientName={`${patient.lastName || ''} ${patient.firstName || ''}`.trim()} /> },
   ];
 
   return (

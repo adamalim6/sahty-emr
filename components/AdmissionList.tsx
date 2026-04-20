@@ -7,12 +7,14 @@ import { AdmissionWizard } from './AdmissionWizard';
 
 import { api } from '../services/api';
 import { Admission } from '../types';
+import { useWorkspace } from '../context/WorkspaceContext';
 
 export const AdmissionList: React.FC = () => {
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [admissions, setAdmissions] = useState<Admission[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
   const navigate = useNavigate();
+  const { openTab } = useWorkspace();
 
   React.useEffect(() => {
     const loadData = async () => {
@@ -57,7 +59,12 @@ export const AdmissionList: React.FC = () => {
         {admissions.map(admission => (
           <div
             key={admission.id}
-            onClick={() => navigate(`/admission/${admission.id}`)}
+            onClick={() => openTab({
+              type: 'admission',
+              admissionId: admission.id,
+              title: admission.nda || 'Admission',
+              subtitle: getPatientName(admission.patientId),
+            })}
             className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:border-emerald-200 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-6 cursor-pointer group"
           >
 

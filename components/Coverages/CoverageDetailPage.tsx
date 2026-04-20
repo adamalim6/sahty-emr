@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 import { ArrowLeft, ShieldCheck, Users as UsersIcon, Plus, X, Loader2, Pencil, Trash2, Save, UserCheck, UserPlus, Search, User, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useWorkspace } from '../../context/WorkspaceContext';
 
 const RELATIONSHIP_LABELS: Record<string, string> = {
     SELF: 'Titulaire',
@@ -21,6 +22,7 @@ const STATUS_BADGE: Record<string, { label: string; color: string }> = {
 export const CoverageDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const { openTab } = useWorkspace();
 
     const [coverage, setCoverage] = useState<any | null>(null);
     const [loading, setLoading] = useState(true);
@@ -401,7 +403,11 @@ export const CoverageDetailPage: React.FC = () => {
                                         <td className="px-4 py-3 text-xs">
                                             {m.tenant_patient_id ? (
                                                 <button
-                                                    onClick={() => navigate(`/patient/${m.tenant_patient_id}`)}
+                                                    onClick={() => openTab({
+                                                        type: 'patient',
+                                                        patientId: m.tenant_patient_id,
+                                                        title: `${m.linked_patient_last_name || m.member_last_name || ''} ${m.linked_patient_first_name || m.member_first_name || ''}`.trim() || 'Patient',
+                                                    })}
                                                     className="text-indigo-600 hover:underline"
                                                 >
                                                     Ouvrir le dossier

@@ -97,6 +97,7 @@ const CardSection = ({ title, icon: Icon, children, colorClass = "text-emerald-6
 // --- Alert Component ---
 import { api } from '../services/api';
 import { PatientIdentityForm } from './PatientIdentityForm';
+import { useWorkspace } from '../context/WorkspaceContext';
 
 // ... (other imports)
 
@@ -111,6 +112,7 @@ export const PatientList: React.FC = () => {
       .catch(err => console.error("Failed to fetch patients", err));
   }, []);
   const navigate = useNavigate();
+  const { openTab } = useWorkspace();
 
   const filteredPatients = patients.filter(p =>
     `${p.firstName} ${p.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -142,7 +144,7 @@ export const PatientList: React.FC = () => {
           const lifecycleColor: Record<string, string> = { ACTIVE: 'bg-blue-50 text-blue-700 border-blue-200', MERGED: 'bg-purple-50 text-purple-700 border-purple-200', INACTIVE: 'bg-red-50 text-red-600 border-red-200' };
 
           return (
-          <div key={patient.id} onClick={() => navigate(`/patient/${patient.id}`)} className="bg-white rounded-2xl shadow-sm border p-6 transition-all cursor-pointer group hover:shadow-xl hover:-translate-y-1">
+          <div key={patient.id} onClick={() => openTab({ type: 'patient', patientId: patient.id, title: `${patient.lastName || ''} ${patient.firstName || ''}`.trim() })} className="bg-white rounded-2xl shadow-sm border p-6 transition-all cursor-pointer group hover:shadow-xl hover:-translate-y-1">
             <div className="flex items-start space-x-4">
               <div className={`h-14 w-14 rounded-2xl flex items-center justify-center border-2 ${patient.gender === Gender.Female ? 'bg-pink-50 text-pink-500 border-pink-100' : 'bg-blue-50 text-blue-500 border-blue-100'}`}><User size={28} /></div>
               <div className="flex-1 min-w-0">

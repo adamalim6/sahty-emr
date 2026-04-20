@@ -21,8 +21,10 @@ import {
   ShieldAlert,
   ArrowLeftRight,
   X,
-  CheckCircle
+  CheckCircle,
+  ExternalLink
 } from 'lucide-react';
+import { useWorkspace } from '../../context/WorkspaceContext';
 
 import { Dashboard } from './Dashboard';
 import { Actes } from './Actes';
@@ -35,9 +37,11 @@ import { Remboursement } from './Remboursement';
 import { api } from '../../services/api';
 import { Admission } from '../../types';
 
-export const AdmissionDossier: React.FC<{ mode?: 'emr' | 'lims' }> = ({ mode = 'emr' }) => {
-  const { id } = useParams<{ id: string }>();
+export const AdmissionDossier: React.FC<{ mode?: 'emr' | 'lims'; admissionId?: string }> = ({ mode = 'emr', admissionId }) => {
+  const params = useParams<{ id: string }>();
+  const id = admissionId ?? params.id;   // prefer explicit prop for keep-alive mounting inside tab container
   const navigate = useNavigate();
+  const { openTab } = useWorkspace();
 
   const [admission, setAdmission] = useState<Admission | null>(null);
   const [patient, setPatient] = useState<any | null>(null);
@@ -118,10 +122,12 @@ export const AdmissionDossier: React.FC<{ mode?: 'emr' | 'lims' }> = ({ mode = '
 
   return (
     <div className="flex flex-col h-[calc(100vh-100px)] animate-in fade-in duration-300">
-      {/* Back Link */}
-      <button onClick={() => navigate(mode === 'lims' ? `/lims/patients/${admission.tenantPatientId || admission.patientId}` : '/admissions')} className="flex items-center text-gray-500 hover:text-gray-900 w-fit mb-4">
-        <ArrowLeft size={18} className="mr-1" /> Retour
-      </button>
+      {/* Back Link — kept only for LIMS where there's no workspace tab system. EMR uses the top tab strip. */}
+      {mode === 'lims' && (
+        <button onClick={() => navigate(`/lims/patients/${admission.tenantPatientId || admission.patientId}`)} className="flex items-center text-gray-500 hover:text-gray-900 w-fit mb-4">
+          <ArrowLeft size={18} className="mr-1" /> Retour
+        </button>
+      )}
 
       {/* Admission Banner */}
       <div className="bg-slate-900 rounded-[2rem] p-6 text-white shadow-2xl flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-8 mb-6 border border-white/5 relative overflow-hidden">
@@ -141,6 +147,20 @@ export const AdmissionDossier: React.FC<{ mode?: 'emr' | 'lims' }> = ({ mode = '
               <span>•</span>
               <span>{patient.gender}</span>
             </div>
+            {mode === 'emr' && patient.id && (
+              <button
+                type="button"
+                onClick={() => openTab({
+                  type: 'patient',
+                  patientId: patient.id,
+                  title: `${patient.lastName || ''} ${patient.firstName || ''}`.trim(),
+                })}
+                className="mt-2 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-emerald-300 hover:text-emerald-200 transition-colors"
+                title="Ouvrir le dossier patient dans un onglet"
+              >
+                <ExternalLink size={11} /> Ouvrir le dossier patient
+              </button>
+            )}
           </div>
         </div>
 

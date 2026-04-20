@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 import { Bed, Clock, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
+import { useWorkspace } from '../../context/WorkspaceContext';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
   'En cours': { label: 'En cours', color: 'bg-amber-50 text-amber-700 border-amber-200', icon: Clock },
@@ -20,8 +20,8 @@ const getDuration = (start: string, end?: string | null) => {
   return `${days} jours`;
 };
 
-export const Admissions: React.FC<{ patientId: string }> = ({ patientId }) => {
-  const navigate = useNavigate();
+export const Admissions: React.FC<{ patientId: string; patientName?: string }> = ({ patientId, patientName }) => {
+  const { openTab } = useWorkspace();
   const [admissions, setAdmissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -59,7 +59,12 @@ export const Admissions: React.FC<{ patientId: string }> = ({ patientId }) => {
         return (
           <div
             key={adm.id}
-            onClick={() => navigate(`/admission/${adm.id}`)}
+            onClick={() => openTab({
+              type: 'admission',
+              admissionId: adm.id,
+              title: adm.admissionNumber || adm.nda || 'Admission',
+              subtitle: patientName,
+            })}
             className="bg-white rounded-xl border border-slate-200 p-4 hover:border-slate-300 hover:shadow-sm transition-all cursor-pointer group"
           >
             <div className="flex items-center justify-between">

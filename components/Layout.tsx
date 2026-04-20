@@ -19,14 +19,17 @@ import {
   FileText,
   RotateCcw,
   Bell,
-  ShieldCheck
+  ShieldCheck,
+  User,
+  Bed
 } from 'lucide-react';
 import { AIAssistant } from './AIAssistant';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { PAGE_REGISTRY } from '../constants/pageRegistry';
-import { useWorkspace } from '../context/WorkspaceContext';
+import { useWorkspace, WorkspaceTab } from '../context/WorkspaceContext';
 import { PatientDossier } from './PatientDossier/PatientDossier';
+import { AdmissionDossier } from './AdmissionDossier/AdmissionDossier';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -39,7 +42,12 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [aiOpen, setAiOpen] = useState(false);
   const { logout, user } = useAuth();
   const navigate = useNavigate();
-  const { workspaceTabs, activeWorkspaceId, isPatientRoute, openWorkspace, closeWorkspace, sidebarState, setSidebarState } = useWorkspace();
+  const { tabs, setActiveTab, closeTab, sidebarState, setSidebarState } = useWorkspace();
+  const location = useLocation();
+
+  // Tab that matches the current URL (null when the user is on a list/settings page).
+  // Drives both: which tab is highlighted AND which tab's keep-alive content is visible.
+  const activeTabInView: WorkspaceTab | null = tabs.find(t => t.route === location.pathname) || null;
 
   // Helper to find page definition by ID
   const getPageInfo = (pageId: string) => {
@@ -176,28 +184,38 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
           {/* CENTER ZONE: Workspace Tabs */}
           <div className="flex-1 flex items-end overflow-x-auto scrollbar-none px-2 space-x-1 h-full -mb-px">
-            {workspaceTabs.map(tab => (
-              <div 
-                key={tab.workspaceId}
-                onClick={() => tab.type === 'utility' && tab.route ? navigate(tab.route) : openWorkspace(tab.patientId as string)}
-                title={tab.label}
-                className={`group flex items-center justify-between h-[36px] px-3 border border-b-0 rounded-t-md text-sm select-none cursor-pointer transition-colors shrink-0 min-w-[120px] max-w-[160px]
-                  ${activeWorkspaceId === tab.workspaceId 
-                    ? 'bg-white border-gray-200 text-gray-900 font-medium z-10' 
-                    : 'bg-slate-100 border-transparent text-gray-500 hover:bg-slate-200 hover:text-gray-700'
-                  }`}
-              >
-                <span className="truncate pr-2 pointer-events-none">{tab.label}</span>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); closeWorkspace(tab.workspaceId); }}
-                  className={`p-0.5 rounded-sm transition-colors shrink-0
-                    ${activeWorkspaceId === tab.workspaceId ? 'text-gray-400 hover:text-red-500 hover:bg-red-50' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-300'}
-                  `}
+            {tabs.map(tab => {
+              const isActive = activeTabInView?.id === tab.id;
+              const Icon = tab.type === 'patient' ? User : tab.type === 'admission' ? Bed : ClipboardList;
+              // Subtle type indicator: emerald strip for patient tabs, indigo for admission tabs.
+              const typeStrip = tab.type === 'patient' ? 'before:bg-emerald-500' : tab.type === 'admission' ? 'before:bg-indigo-500' : 'before:bg-slate-300';
+              return (
+                <div
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  title={tab.subtitle ? `${tab.title} — ${tab.subtitle}` : tab.title}
+                  className={`group relative flex items-center justify-between h-[36px] pl-4 pr-3 border border-b-0 rounded-t-md text-sm select-none cursor-pointer transition-colors shrink-0 min-w-[140px] max-w-[200px]
+                    before:content-[''] before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:rounded-full ${typeStrip}
+                    ${isActive
+                      ? 'bg-white border-gray-200 text-gray-900 font-medium z-10'
+                      : 'bg-slate-100 border-transparent text-gray-500 hover:bg-slate-200 hover:text-gray-700'
+                    }`}
                 >
-                  <X size={14} strokeWidth={2.5} />
-                </button>
-              </div>
-            ))}
+                  <div className="flex items-center gap-2 min-w-0 pointer-events-none">
+                    <Icon size={13} className={isActive ? (tab.type === 'patient' ? 'text-emerald-600' : tab.type === 'admission' ? 'text-indigo-600' : 'text-slate-500') : 'text-slate-400'} />
+                    <span className="truncate">{tab.title}</span>
+                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }}
+                    className={`ml-2 p-0.5 rounded-sm transition-colors shrink-0
+                      ${isActive ? 'text-gray-400 hover:text-red-500 hover:bg-red-50' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-300'}
+                    `}
+                  >
+                    <X size={14} strokeWidth={2.5} />
+                  </button>
+                </div>
+              );
+            })}
           </div>
 
           {/* RIGHT ZONE: Controls */}
@@ -220,41 +238,60 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
         {/* Workspace & Routing Content */}
         <div className="flex-1 overflow-hidden relative">
-          
-          {/* 1. The Keep-Alive Patient Workspaces Collection */}
-          <div className={`absolute inset-0 bg-white ${isPatientRoute || location.pathname === '/templates' ? 'block z-10' : 'hidden z-0'}`}>
-            {workspaceTabs.map(tab => {
-               if (tab.type === 'utility') {
-                 return (
-                   <div 
-                     key={tab.workspaceId}
-                     className="absolute inset-0 overflow-auto bg-slate-50"
-                     style={{ display: activeWorkspaceId === tab.workspaceId ? 'block' : 'none' }}
-                   >
-                     <div className="w-full h-full p-6 md:p-8">
-                        {children}
-                     </div>
-                   </div>
-                 );
-               }
-               return (
-                 <div 
-                   key={tab.workspaceId}
-                   className="absolute inset-0"
-                   style={{ display: activeWorkspaceId === tab.workspaceId ? 'block' : 'none' }}
-                 >
-                   <PatientDossier 
-                     patientId={tab.patientId as string} 
-                     workspaceId={tab.workspaceId} 
-                     isActiveWorkspace={activeWorkspaceId === tab.workspaceId} 
-                   />
-                 </div>
-               );
+
+          {/* 1. Keep-Alive tab workspaces (patient, admission, utility) — one mounted instance per tab,
+                visibility toggled via display:none so component state survives tab switches. */}
+          <div className={`absolute inset-0 bg-white ${activeTabInView ? 'block z-10' : 'hidden z-0'}`}>
+            {tabs.map(tab => {
+              const visible = activeTabInView?.id === tab.id;
+
+              if (tab.type === 'patient') {
+                return (
+                  <div
+                    key={tab.id}
+                    className="absolute inset-0"
+                    style={{ display: visible ? 'block' : 'none' }}
+                  >
+                    <PatientDossier
+                      patientId={tab.entityId as string}
+                      workspaceId={tab.id}
+                      isActiveWorkspace={visible}
+                    />
+                  </div>
+                );
+              }
+
+              if (tab.type === 'admission') {
+                return (
+                  <div
+                    key={tab.id}
+                    className="absolute inset-0 overflow-auto bg-slate-50"
+                    style={{ display: visible ? 'block' : 'none' }}
+                  >
+                    <div className="w-full p-6 md:p-8">
+                      <AdmissionDossier admissionId={tab.entityId as string} />
+                    </div>
+                  </div>
+                );
+              }
+
+              // utility tab — relies on {children} from the router, so only render when visible
+              return (
+                <div
+                  key={tab.id}
+                  className="absolute inset-0 overflow-auto bg-slate-50"
+                  style={{ display: visible ? 'block' : 'none' }}
+                >
+                  <div className="w-full h-full p-6 md:p-8">
+                    {visible && children}
+                  </div>
+                </div>
+              );
             })}
           </div>
 
-          {/* 2. The Root Navigation Outlet (Admissions, Settings, etc.) */}
-          <div className={`absolute inset-0 overflow-auto bg-slate-50 ${!isPatientRoute && location.pathname !== '/templates' ? 'block z-10' : 'hidden z-0'}`}>
+          {/* 2. Outlet for non-tab routes — lists, settings, admin screens. */}
+          <div className={`absolute inset-0 overflow-auto bg-slate-50 ${!activeTabInView ? 'block z-10' : 'hidden z-0'}`}>
             <div className="w-full p-6 md:p-8">
               {children}
             </div>
